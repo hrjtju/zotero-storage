@@ -1,0 +1,57 @@
+Skip to main content
+Computer Science > Machine Learning
+[Submitted on 10 Jun 2025]
+CUDA-LLM: LLMs Can Write Efficient CUDA Kernels
+Wentao Chen, Jiace Zhu, Qi Fan, Yehan Ma, An Zou
+Large Language Models (LLMs) have demonstrated strong capabilities in general-purpose code generation. However, generating the code which is deeply hardware-specific, architecture-aware, and performance-critical, especially for massively parallel GPUs, remains a complex challenge. In this work, we explore the use of LLMs for the automated generation and optimization of CUDA programs, with the goal of producing high-performance GPU kernels that fully exploit the underlying hardware. To address this challenge, we propose a novel framework called \textbf{Feature Search and Reinforcement (FSR)}. FSR jointly optimizes compilation and functional correctness, as well as the runtime performance, which are validated through extensive and diverse test cases, and measured by actual kernel execution latency on the target GPU, respectively. This approach enables LLMs not only to generate syntactically and semantically correct CUDA code but also to iteratively refine it for efficiency, tailored to the characteristics of the GPU architecture. We evaluate FSR on representative CUDA kernels, covering AI workloads and computational intensive algorithms. Our results show that LLMs augmented with FSR consistently guarantee correctness rates. Meanwhile, the automatically generated kernels can outperform general human-written code by a factor of up to 179
+×
+ in execution speeds. These findings highlight the potential of combining LLMs with performance reinforcement to automate GPU programming for hardware-specific, architecture-sensitive, and performance-critical applications.
+Subjects:	Machine Learning (cs.LG); Artificial Intelligence (cs.AI)
+Cite as:	arXiv:2506.09092 [cs.LG]
+ 	(or arXiv:2506.09092v1 [cs.LG] for this version)
+ 	
+https://doi.org/10.48550/arXiv.2506.09092
+Focus to learn more
+Submission history
+From: Wentao Chen [view email]
+[v1] Tue, 10 Jun 2025 10:51:03 UTC (228 KB)
+
+Access Paper:
+View PDFHTML (experimental)TeX SourceOther Formats双语版本(沉浸式翻译)
+view license
+Current browse context: cs.LG
+< prev next >
+
+newrecent2025-06
+Change to browse by: cs cs.AI
+References & Citations
+NASA ADS
+Google Scholar
+Semantic Scholar
+Export BibTeX Citation
+Bookmark
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer (What is the Explorer?)
+Connected Papers Toggle
+Connected Papers (What is Connected Papers?)
+Litmaps Toggle
+Litmaps (What is Litmaps?)
+scite.ai Toggle
+scite Smart Citations (What are Smart Citations?)
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax (What is MathJax?)
+About
+Help
+Contact
+Subscribe
+Copyright
+Privacy Policy
+Web Accessibility Assistance
+
+arXiv Operational Status 
+Get status notifications via email or slack

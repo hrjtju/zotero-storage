@@ -1,0 +1,916 @@
+arXiv:2506.09092v1 [cs.LG] 10 Jun 2025
+CUDA-LLM: LLMs Can Write Efficient CUDA Kernels
+Wentao Chen Jiace Zhu Qi Fan Yehan Ma An Zou* Shanghai Jiao Tong University
+{wentaochen, zhujiace, fanqi666, yehanma, an.zou}@sjtu.edu.cn
+Abstract
+Large Language Models (LLMs) have demonstrated strong capabilities in general-purpose code generation. However, generating the code which is deeply hardware-specific, architecture-aware, and performance-critical, especially for massively parallel GPUs, remains a complex challenge. In this work, we explore the use of LLMs for the automated generation and optimization of CUDA programs, with the goal of producing high-performance GPU kernels that fully exploit the underlying hardware. To address this challenge, we propose a novel framework called Feature Search and Reinforcement (FSR). FSR jointly optimizes compilation and functional correctness, as well as the runtime performance, which are validated through extensive and diverse test cases, and measured by actual kernel execution latency on the target GPU, respectively. This approach enables LLMs not only to generate syntactically and semantically correct CUDA code but also to iteratively refine it for efficiency, tailored to the characteristics of the GPU architecture. We evaluate FSR on representative CUDA kernels, covering AI workloads and computational intensive algorithms. Our results show that LLMs augmented with FSR consistently guarantee correctness rates. Meanwhile, the automatically generated kernels can outperform general human-written code by a factor of up to 179× in execution speeds. These findings highlight the potential of combining LLMs with performance reinforcement to automate GPU programming for hardwarespecific, architecture-sensitive, and performance-critical applications.
+1. Introduction
+Large Language Models (LLMs) have shown increasing promise in automating software development tasks, including generating code snippets, completing function bodies, and offering basic debugging assistance [1, 2, 4, 11]. However, their effectiveness remains limited when the task shifts from general-purpose programming to generating code
+*Corresponding author.
+that is deeply hardware-specific, architecture-aware, and performance-critical, particularly when involving massively parallel computing on Graphics Processing Units (GPUs) [9].
+GPU programming, especially in CUDA, involves much more than writing syntactically correct code [3]. Developers must carefully manage thousands of concurrent threads across thread blocks and warps, optimize memory access patterns, and balance resource usage — all while targeting a specific hardware configuration. This process is inherently hardware-specific, which means it requires detailed knowledge of the specific hardware features of certain GPUs, such as memory sizes, the number and types of hardware units, and resource constraints. It is also architecture-aware, requiring an understanding of the execution model of GPUs, which involves how threads are grouped, scheduled, and executed to avoid bottlenecks like warp divergence or uncoalesced memory access. Most importantly, GPU programming is performance-critical, where even small inefficiencies in kernel design or resource usage can cause significant slowdowns at scale.
+These requirements pose a significant challenge for LLMs. While they may generate code that appears correct at a high level, they lack the architectural understanding to write and optimize low-level CUDA kernels effectively. The core question we explore is whether LLMs can be enhanced, not just to generate working CUDA code but to produce implementations that are tuned for real-world performance on actual hardware. In this work, we introduce Feature Search and Reinforcement (FSR), a framework that augments LLMs with performance optimization capabilities. FSR combines feature search and reinforcement to jointly target two critical objectives: (1) functional correctness, verified through test cases, and (2) runtime performance, measured by empirical execution latency on target GPUs. We apply FSR to a variety of CUDA workloads, and our results show that it improves both correctness and performance. This allows LLMs to generate CUDA code that meets the demands of real-world deployment. By tightly integrating correctness checking with performance optimization, FSR moves LLMs closer to being practical code generation tools
+1
+
+
+ for hardware-specific, architecture-aware, and performancesensitive applications.
+2. CUDA Kernels
+CUDA (Compute Unified Device Architecture) [3, 12] is a parallel computing platform and programming model developed by NVIDIA that allows developers to tap into the massive parallelism of NVIDIA GPUs for general-purpose computing, often referred to as GPGPU (General-Purpose computing on Graphics Processing Units). While GPUs were originally designed for graphics rendering, CUDA extends the C/C++ language to allow developers to write code that executes directly on the GPU. This enables dramatic acceleration of compute-intensive workloads across domains such as scientific simulation, deep learning, and real-time image processing. A typical CUDA application follows a heterogeneous computing model, where the CPU (host) manages control flow, memory allocation, and data transfer, while the GPU (device) handles data-parallel computation. The distinction between host and device code is fundamental to CUDA design. Functions that run on the GPU are known as kernels, marked with the __global__ qualifier and launched from the host using the special <<<gridSize, blockSize>>> syntax. Kernels execute in parallel across thousands of lightweight GPU threads, which are organized hierarchically into thread blocks and grids. The following example illustrates a complete CUDA program that performs element-wise addition of two vectors [8]. Each GPU thread is responsible for computing one element of the output vector by adding the corresponding elements from the input vectors a and b.
+1 #include <iostream>
+2 #define N 512 // Define the length of the vectors
+3
+4 // __global__ indicates this is a kernel function to be executed on the GPU
+5 __global__ void vectorAdd(float *a, float *b, float *c) {
+6 int i = threadIdx.x + blockDim.x * blockIdx.x ;
+7 if (i < N) { 8 c[i] = a[i] + b[i]; 9}
+10 }
+11
+12 int main() { 13 float *h_a, *h_b, *h_c; 14 float *d_a, *d_b, *d_c; 15 size_t size = N * sizeof(float);
+16
+17 // Allocate and initialize host memory 18 h_a = (float*)malloc(size); 19 h_b = (float*)malloc(size); 20 h_c = (float*)malloc(size); 21 for (int i = 0; i < N; i++) {
+22 h_a[i] = i; 23 h_b[i] = i * 2.0f;
+24 }
+25
+26 // Allocate device memory 27 cudaMalloc(&d_a, size); 28 cudaMalloc(&d_b, size); 29 cudaMalloc(&d_c, size);
+30
+31 // Copy inputs to device 32 cudaMemcpy(d_a, h_a, size, cudaMemcpyHostToDevice); 33 cudaMemcpy(d_b, h_b, size, cudaMemcpyHostToDevice);
+34
+35 // Launch kernel
+36 vectorAdd<<<(N + 255) / 256, 256>>>(d_a, d_b, d_c);
+37
+38 // Copy result back to host 39 cudaMemcpy(h_c, d_c, size, cudaMemcpyDeviceToHost);
+40
+41 // Display results
+42 for (int i = 0; i < 10; i++) { 43 std::cout << h_a[i] << " + " << h_b[i] << " = " << h_c[i] << std::endl;
+44 }
+45
+46 // Clean up 47 free(h_a); 48 free(h_b); 49 free(h_c); 50 cudaFree(d_a); 51 cudaFree(d_b); 52 cudaFree(d_c);
+53
+54 return 0;
+55 }
+Listing 1. Complete CUDA program for vector addition.
+This example demonstrates three core components of a CUDA program:
+• Host Code: Manages initialization, memory allocation, kernel launch, and post-processing. This is written in conventional C/C++ and runs on the CPU. • Memory Management: Because host and device use separate memory spaces, developers must explicitly allocate memory with cudaMalloc(), and transfer data between host and device using cudaMemcpy(). • Device (GPU) Kernel: Implements the parallel logic. The vectorAdd function uses built-in CUDA thread identifiers like threadIdx, blockIdx, and blockDim to distribute work across thousands of threads.
+While CUDA offers fine-grained control and exceptional performance for parallel workloads, writing CUDA code, especially device kernels, introduces challenges far beyond those encountered in Python or even traditional C development. Python is known for its high-level abstractions and ease of use, often relying on libraries like NumPy or PyTorch [10] to internally optimize performance with C or
+2
+
+
+ Performance Profiler
+LLM
+CUDA
+Compilation Error Function Error Runtime Performance
+❌⏲
+Multi-Dimensional Feature Functions
+Compilation Verifier
+Function Validator
+Host Code Kernel Function Description
+Host Code
+Hardware
+Prompt
+❌
+Figure 1. Overview of Feature Search and Reinforcement (FSR) framework.
+CUDA backends. C, though lower-level, follows a sequential or moderately parallel model that does not require deep architectural knowledge of the underlying hardware. Developing CUDA kernels requires a deep understanding of GPU execution models, thread hierarchies, and memory types (global, shared, local). Programmers must manage correct indexing, boundary checks, and synchronization to avoid race conditions and control-flow divergence. At the same time, achieving high performance demands careful optimizations, such as leveraging shared memory, maximizing memory coalescing, minimizing register spills, and tuning thread, and warp occupancy. This hardware-conscious nature makes CUDA development inherently complex and error-prone. Even small mistakes in thread coordination or memory access can lead to subtle bugs or significant performance loss. In recent work, Ouyang et al. [9] propose the question: Can LLMs write efficient GPU kernels? Follow-up studies [5] have further investigated the translation of PyTorch models into CUDA kernels. Our work demonstrates that LLMs Can Write Efficient CUDA Kernels directly from natural language.
+3. Multi-Dimensional Feature Search and Reinforcement Framework
+3.1. Overview
+To facilitate the generation of efficient CUDA kernel code by large language models (LLMs), we propose a novel framework called Feature Search and Reinforcement (FSR). This framework is designed to iteratively explore, evaluate, and optimize CUDA kernels, guiding the LLM toward producing high-performance and functionally correct code tailored to specific hardware environments, as shown in Fig. 1. FSR operates based on a multi-prompt paradigm, accepting the following three types of inputs:
+• Natural Language: A high-level description of the target functionality or computational objective that the kernel is expected to achieve. • Host Code: A segment of CPU-side host code that defines the context for the CUDA kernel, including declarations of input/output data structures and names.
+Algorithm 1: Feature Search and Reinforcement Framework Input: P0 — Initial prompt; N — Candidates per round; D — Max depth; Output: kbest — Fastest functionally-correct kernel; P ← P0;
+kbest ← ⊥;
+τbest ← ∞ ; // The best execution time d ← 1 ; // The initial depth while d ≤ D do
+// Generate N kernels C ← LLM(P, N );
+V ← { k ∈ C | COMPILATIONVERIFIER(k) ∧
+FUNCTIONVALIDATOR(k) };
+if V = ∅ then
+// Embed errors & history
+P ← REFINEPROMPT(P0, C); continue;
+k⋆ ← arg min
+k∈V
+{PERFORMANCEPROFILER(k)};
+τ ⋆ ← PERFORMANCEPROFILER(k⋆);
+if τ ⋆ < τbest then kbest ← k⋆; τbest ← τ ⋆;
+// Add perf hints d ← d + 1;
+P ← REFINEPROMPT(P0, k⋆); return kbest;
+• GPU Hardware and Architecture Specification: Detailed information about the target GPU hardware architecture, such as the number of streaming multiprocessors, available shared memory, warp size, and supported compute capabilities.
+Upon receiving these prompts, FSR orchestrates a series of feature functions to systematically evaluate candidate CUDA kernels. These feature functions assess:
+Compilation Correctness: Ensuring the generated kernel code is syntactically valid and successfully compiles.
+3
+
+
+ Initial
+Prompt LLM Kernels &
+Compilation Verifier
+Function Validator
+Kernel 2
+Kernel 1
+Kernel 3
+...... Kernel
+❌ ❌
+❌
+❌
+🚫
+Best Kernel
+Kernel 2
+Kernel 1
+Kernel 3
+...... Kernel
+❌
+❌
+If Some Kernels Pass
+If NO Kernel Passes
+Performance Profiler
+Kernel 1 🕗 Slower
+Kernel 3 🕗 Fastest
+If
+Refined Prompt
+History
+Performance
+Refined Prompt
+History
+Error Message
+Correctness Reinforcement
+Performance Reinforcement
+Figure 2. The Search and Reinforcement Process.
+Function Correctness: Validating the functional correctness of the kernel by comparing its output against expected results or reference implementations. Performance Efficiency: Measuring execution time and resource utilization to identify execution performance. Based on this multi-feature evaluation, FSR employs a feedback-driven search strategy to refine and regenerate kernel candidates, progressively reinforcing patterns and features that lead to optimal results. Through this iterative loop of generation, evaluation, and reinforcement, FSR effectively bridges the gap between natural language intent and hardware-optimized CUDA code synthesis.
+3.2. Feature Function
+After the initial CUDA kernel (codes) is generated with the initial prompt, we iteratively evaluate its quality through three evolutionary feature functions: Compilation Verifier, Function Validator, and Performance Profiler. Each function targets a specific aspect of kernel correctness or performance:
+• Compilation Verifier: This feature function checks whether the generated CUDA kernel can be successfully compiled. Kernels that pass this stage are guaranteed to be free from syntax and compilation errors. Any kernel that fails triggers a detailed compilation error message, which aids in diagnosing and correcting structural issues in the code. • Function Validator: This function evaluates the functional correctness of the kernel. It executes the kernel on a predefined set of test inputs and compares the outputs against expected results. A kernel passes this stage only if its output exactly matches the reference output for all test cases. Any mismatch results in an error message, indicating the presence of semantic or logical flaws. • Performance Profiler: This feature function measures the runtime performance of the kernel on the GPU. It collects execution time and other relevant performance metrics, allowing the framework to assess and compare
+the efficiency of candidate kernels. Faster kernels are favored in the evolutionary search process.
+Together, these three feature functions enable the FSR framework to effectively navigate the design space and evolve high-quality CUDA kernels. By enforcing syntactic correctness, validating functional behavior, and profiling runtime performance, the framework ensures that only valid, correct, and efficient kernels are retained for further optimization.
+3.3. Search and Reinforcement
+Based on the evaluation and feedback provided by our designed feature functions, we optimize the CUDA kernels generated by the LLM through iterative refinement of the input prompt. The optimization process consists of two stages: ensuring correctness and improving performance, as shown in Fig. 2. Initially, the LLM generates N candidate CUDA kernels from an initial prompt. Each candidate is sequentially evaluated by two correctness checking modules: the Compilation Verifier and the Function Validator. Suppose none of the candidates pass these checks. In that case, the FSR framework constructs a new prompt by incorporating the current kernel code, the corresponding error messages, and the interaction history with the LLM. It uses this refined prompt to generate a new set of N candidate kernels. This process repeats until at least one candidate successfully compiles and produces correct output. These valid kernels are then passed to the Performance Profiler, which measures their execution speed on the GPU. The fastest kernel is selected, and its code, along with the associated performanceoptimized prompt and dialogue history, forms a new prompt for the next round of LLM generation. This cycle of correctness verification and performance optimization continues until a predefined depth D is reached. The kernel with the highest execution efficiency at the final iteration is returned as the final output of the FSR framework. FSR effectively assists LLMs in overcoming the challenges of CUDA kernel generation by continuously evaluat
+4
+
+
+ GPU Task ID 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+GTX 1660 SUPER LLM (pass@5) ! ! ! ! ! % ! ! ! ! % % ! ! ! % ! ! ! !
+CUDA-LLM ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
+RTX 3090 Ti LLM (pass@5) ! ! ! ! ! ! ! ! ! ! % ! ! ! ! % ! ! ! !
+CUDA-LLM ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
+Table 1. Comparison of functional correctness between directly generated CUDA kernels and FSR-optimized kernels. Each Task ID corresponds to the task described in Table 2.
+ing various kernel features, thereby progressively reinforcing LLMs’ capability to produce efficient CUDA kernels. Through the proposed multi-dimensional validation process, FSR successfully addresses two critical objectives of ensuring correctness and optimizing runtime performance.
+4. Evaluation
+We present the results of CUDA-LLM in this section. Our experiments demonstrate that FSR can protect the correctness and bring a significant performance gain across various tasks.
+4.1. Evaluation Setup
+4.1.1. Benchmarks and Evaluation Metrics
+We evaluate our proposed method using a diverse set of benchmarks comprising 20 widely-used GPU kernel functions, selected from three sources: the official NVIDIA CUDA Samples [8], LeetGPU [6], and KernelBench [9]. These benchmarks span a variety of computational patterns and memory access behaviors, providing a representative evaluation of real-world CUDA kernel workloads. The specific tasks and their characteristics are summarized in Table 2. For each kernel, we test across variable input data sizes (detailed in Table 3) to assess the scalability and robustness of our method under different workload intensities.
+We evaluate performance using the following metrics:
+• Correctness: Incoperating both compilation and function correctness. We consider the result correct if all elements of the output differ from the human-written CUDA results by no more than a pre-determined deviation. • Runtime Latency: The measured execution time of each kernel on GPUs and the speedup is normalized to the human-written CUDA baseline.
+4.1.2. Backbone Model
+We employ DeepSeek-V3-0324 [7], a state-of-the-art large language model, as the core inference engine in our methodology. This model is chosen for its demonstrated capability in code understanding, reasoning, and performance prediction, making it well-suited for tasks involving CUDA kernel analysis and optimization recommendations.
+4.1.3. Hardware Setup
+The evaluations are conducted on two representative GPU platforms to analyze the performance of our method across different hardware configurations:
+• Edge Platform: NVIDIA GeForce GTX 1660 SUPER GPU with the Turing architecture. This setup reflects a resource-constrained edge computing environment. • Server Platform: NVIDIA GeForce RTX 3090 Ti GPU with the Ada Lovelace architecture. This high-end configuration represents a server-grade computing environment with ample computational and memory resources.
+This dual-platform setting allows us to investigate how well the CUDA-LLM generalizes and scales under both edge and high-performance GPU scenarios.
+4.2. Evaluation Results
+4.2.1. Compilation and Function Correctness
+In the experiments, the LLM is instructed to generate N CUDA kernels directly, and a task is considered successful if at least one candidate passes the Function Validator. As shown in Table 1, under the CUDA-LLM FSR framework, the LLM successfully completed all predefined tasks on GTX 1660 SUPER GPU and RTX 3090 Ti GPU. In contrast, when generating code directly without FSR, the LLM produces incorrect outputs, with all N candidates failing to meet the correctness criteria in some tasks.
+The FSR in CULDA-LLM not only optimizes the initial kernel but also addresses new accuracy issues that may arise in LLM-generated kernels after performance optimization. FSR continuously refines the code to resolve these issues. For example, in Task 11, shared-memory is used to optimize 2D convolution; however, the kernel silently produced incorrect results due to missing corner halo data, leading to inaccurate outputs despite successful execution. FSR automatically detected the mismatch with reference outputs and corrected the kernel by replacing the faulty shared-memory logic with a fully correct global memory-based implementation. This ensured consistent numerical accuracy across all input sizes, demonstrating FSR’s effectiveness in not only optimizing performance but also guaranteeing functional correctness.
+5
+
+
+ Task ID Task Description
+1 Sigmoid Applies the sigmoid activation function to each element in the input array: sigmoid(x) = 1/(1 + exp(−x)).
+2 Matrix multiplication Performs parallel multiplication of two matrices, accelerating large-scale matrix operations.
+3 Max Pooling 3D Slides a 3D window and keeps only the maximum value in each block, down-sampling the volume.
+4 LayerNorm Normalizes activations per sample, then applies learned scale γ and bias β.
+5 2D Convolution Applies a 2D convolution filter over the input matrix (e.g., image) to extract spatial features.
+6 Multi-Head Self-Attention Splits the input into multiple parts, computes attention in parallel for each part, then combines the results. This helps the model focus on different types of information at once.
+7 Mean Square Error Computes the mean squared error between predicted and target values for regression tasks.
+8 Matrix Transpose Transposes the input matrix by swapping rows and columns in parallel.
+9 Reverse Array Reverses the order of elements in a one-dimensional array using parallel operations.
+10 ReLU Activation Fuction Applies the ReLU function element-wise: ReLU(x) = max(0, x), commonly used in neural networks.
+11 Top-K Selection Selects the top k largest or smallest elements from an input array in parallel.
+12 Sorting Sorts an array in ascending or descending order using a parallel sorting algorithm.
+13 Matrix Copy Copies matrix data from a source to a destination in parallel, enabling fast memory transfer.
+14 Reduction Aggregates elements of an array (e.g., sum, max, min) into a single value using parallel tree-based reduction.
+15 Dot Product Computes the dot product of two vectors by multiplying corresponding elements and summing the results in parallel.
+16 Prefix Sum Produces the cumulative sum of an array in parallel.
+17 Categorical Cross-Entropy Loss Calculates the cross-entropy loss between predicted probability distributions and one-hot encoded labels, often used in classification tasks.
+18 Monte Carlo Integration Estimates the integral of a function using random sampling and averaging, leveraging GPU parallelism for high sampling efficiency.
+19 Histogramming Tallies how many inputs fall into each bin to form a histogram.
+20 Ordinary Least Squares Regression Solves closed-form solution (XT X)−1XT y to the Ordinary Least Squares (OLS) regression problem for choosing the unknown parameters in a linear regression model.
+Table 2. Description and features of evaluation benchmark tasks.
+6
+
+
+ Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+1
+2
+3
+4
+5
+Speedup
+1.00x
+0.984x
+0.988x
+1.00x
+1.2x
+1.01x
+1.00x
+1.39x
+1.27x
+1.00x
+1.26x
+1.06x
+1.00x
+1.17x
+1.01x
+1.00x
+1.2x
+1.07x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(a) Task 1: Sigmoid
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+2
+4
+6
+8
+10
+12
+Speedup
+1.00x
+5.67x
+1.58x
+1.00x
+5.84x
+1.56x
+1.00x
+5.67x
+1.27x
+1.00x
+4.69x
+1.28x
+1.00x
+4.44x
+0.00x
+1.00x
+5.26x
+1.14x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(b) Task 2: Matrix Multiplication
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+1
+2
+3
+4
+5
+Speedup
+1.00x
+1.06x
+1.06x
+1.00x
+1.04x
+1.09x
+1.00x
+1.01x
+1.22x
+1.00x
+1.01x
+1.14x
+1.00x
+1.01x
+1.15x
+1.00x
+1.02x
+1.13x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(c) Task 3: Max Pooling 3D
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+10
+20
+30
+40
+50
+60
+Speedup
+1.00x
+13.0x
+7.16x
+1.00x
+19.9x
+10.4x
+1.00x
+18.8x
+15.2x
+1.00x
+24.4x
+15.7x
+1.00x
+35.7x
+16.9x
+1.00x
+22.4x
+13.1x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(d) Task 4: LayerNorm
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+1
+2
+3
+4
+5
+Speedup
+1.00x
+1.16x
+1.05x
+1.00x
+1.05x
+1.00x
+1.00x
+1.01x
+1.02x
+1.00x
+1.00x
+1.02x
+1.00x
+1.00x
+1.02x
+1.00x
+1.05x
+1.02x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(e) Task 5: 2D Convolution
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+5
+10
+15
+20
+25
+30
+Speedup
+1.00x
+3.59x
+0.596x
+1.00x
+3.73x
+0.433x
+1.00x
+10.7x
+0.604x
+1.00x
+16.3x
+0.603x
+1.00x
+21.3x
+1.26x
+1.00x
+11.1x
+0.698x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(f) Task 6: Multi-Head Self-Attention
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+25
+50
+75
+100
+125
+150
+Speedup
+1.00x
+1.37x
+1.61x
+1.00x
+3.04x
+4.45x
+1.00x
+10.0x
+15.8x
+1.00x
+40.3x
+44.3x
+1.00x
+129x
+72.9x
+1.00x
+36.7x
+27.8x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(g) Task 7: Mean Square Error
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+50
+100
+150
+200
+250
+300
+350
+400
+450
+Speedup
+1.00x
+1.88x
+2.09x
+1.00x
+5.76x
+1.71x
+1.00x
+23.7x
+1.52x
+1.00x
+92.5x
+1.71x
+1.00x
+399x
+1.83x
+1.00x
+104x
+1.77x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(h) Task 8: Matrix Transpose
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+30
+60
+90
+120
+150
+180
+210
+240
+Speedup
+1.00x
+1.43x
+0.877x
+1.00x
+1.17x
+3.13x
+1.00x
+1.07x
+13.2x
+1.00x
+1.07x
+51.2x
+1.00x
+1.06x
+210x
+1.00x
+1.16x
+55.7x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(i) Task 9: Reverse Array
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+10
+20
+30
+40
+50
+60
+Speedup
+1.00x
+1.02x
+1.34x
+1.00x
+3.39x
+1.23x
+1.00x
+3.88x
+1.22x
+1.00x
+15.1x
+1.21x
+1.00x
+30.7x
+1.22x
+1.00x
+10.8x
+1.24x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(j) Task 10: ReLU Activation Fuction
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+2
+4
+6
+8
+10
+12
+14
+Speedup
+1.00x
+9.77x
+12.1x
+1.00x
+10.1x
+11.7x
+1.00x
+7.98x
+4.08x
+1.00x
+1.25x
+1.54x
+1.00x
+0.698x
+0.86x
+1.00x
+5.96x
+6.06x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(k) Task 11: Top-K Selection
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+1
+2
+3
+4
+5
+Speedup
+1.00x
+1.28x
+1.68x
+1.00x
+1.17x
+1.34x
+1.00x
+1.15x
+1.28x
+1.00x
+1.1x
+1.25x
+1.00x
+0.992x
+1.01x
+1.00x
+1.14x
+1.31x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(l) Task 12: Sorting
+7
+
+
+ Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+50
+100
+150
+200
+250
+300
+350
+400
+Speedup
+1.00x
+1.40x
+1.43x
+1.00x
+1.01x
+5.13x
+1.00x
+1.03x
+21.0x
+1.00x
+1.02x
+83.2x
+1.00x
+1.02x
+337x
+1.00x
+1.09x
+89.5x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(m) Task 13: Matrix Copy
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+50
+100
+150
+200
+250
+300
+Speedup
+1.00x
+1.43x
+2.02x
+1.00x
+3.14x
+5.31x
+1.00x
+10.3x
+17.3x
+1.00x
+42.1x
+75.4x
+1.00x
+149x
+267x
+1.00x
+41.3x
+73.3x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(n) Task 14: Reduction
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+25
+50
+75
+100
+125
+150
+175
+200
+225
+Speedup
+1.00x
+34.6x
+29.5x
+1.00x
+64.9x
+48.8x
+1.00x
+118x
+72.9x
+1.00x
+168x
+73.6x
+1.00x
+126x
+75.2x
+1.00x
+102x
+60.0x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(o) Task 15: Dot Product
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+1
+2
+3
+4
+5
+Speedup
+1.00x
+1.15x
+1.02x
+1.00x
+1.14x
+0.993x
+1.00x
+1.14x
+0.994x
+1.00x
+0.586x
+0.994x
+1.00x
+0.494x
+0.998x
+1.00x
+0.902x
+0.999x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(p) Task 16: Prefix Sum
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+5
+10
+15
+20
+25
+Speedup
+1.00x
+1.33x
+8.76x
+1.00x
+2.12x
+12.4x
+1.00x
+1.85x
+14.0x
+1.00x
+2.21x
+14.7x
+1.00x
+2.29x
+15.0x
+1.00x
+1.96x
+13.0x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(q) Task 17: Categorical Cross-Entropy Loss
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+50
+100
+150
+200
+250
+300
+350
+400
+450
+Speedup
+1.00x
+9.39x
+16.4x
+1.00x
+33.6x
+57.4x
+1.00x
+145x
+130x
+1.00x
+398x
+142x
+1.00x
+311x
+158x
+1.00x
+179x
+101x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(r) Task 18: Monte Carlo Integration
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+10
+20
+30
+40
+50
+60
+Speedup
+1.00x
+3.33x
+7.83x
+1.00x
+12.2x
+15.8x
+1.00x
+29.2x
+19.4x
+1.00x
+34.3x
+23.0x
+1.00x
+48.4x
+23.8x
+1.00x
+25.5x
+18.0x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(s) Task 19: Histogramming
+Size 1 Size 2 Size 3 Size 4 Size 5 Avg
+0
+20
+40
+60
+80
+100
+120
+Speedup
+1.00x
+39.4x
+3.32x
+1.00x
+53.6x
+5.32x
+1.00x
+85.6x
+5.35x
+1.00x
+85.5x
+5.35x
+1.00x
+77.6x
+4.94x
+1.00x
+68.3x
+4.86x
+Baseline CUDA-LLM GTX 1660 SUPER CUDA-LLM RTX 3090 Ti
+(t) Task 20: Ordinary Least Squares Regression
+Figure 3. Performance evaluation across various tasks.
+4.2.2. Execution Performance
+Fig. 3 demonstrates the execution speedup achieved by the CUDA kernels generated using our proposed FSR framework across twenty commonly used tasks, evaluated under five test input sizes (from Size 1 to Size 5, in increasing order detailed in Table 3). The results show that, compared to directly generated CUDA kernels, FSR consistently improves execution efficiency across nearly all tasks. In certain tasks, FSR achieves remarkable performance gains. As shown in Fig. 3h (Task 8: Matrix Transpose), Fig. 3o (Task 15: Dot Product), and Fig. 3r (Task 18: Monte Carlo Integration), the CUDA kernels generated by FSR achieve average speedups of 104×, 102×, and 179× respectively, compared to the baseline on an RTX 3090 Ti GPU. Similarly, on Tasks 13 and 14 (Figs. 3m and 3n), FSR delivers 89.5× and 73.3×
+speedups over the baseline on a GTX 1660 SUPER GPU. Notably, for some large input sizes in the Matrix Transpose, Monte Carlo Integration, and Matrix Copy tasks, the speedup exceeds 300×. While the speedups in most tasks are less dramatic than those mentioned above, FSR still delivers substantial performance improvements, achieving effective accelerations ranging from 5.95× to 68.3× on RTX 3090 Ti GPU and 6.06× to 60.0× on GTX 1660 SUPER GPU (Figs. 3b, 3d, 3g, 3j, 3k, 3n, 3s and 3t). Naturally, our experiments also revealed that in a few tasks, the performance improvement achieved by FSR was less pronounced.
+By analyzing the kernels generated under the FSR framework and comparing them to the baseline kernels, we observed that the optimized versions incorporate a wide range of effective techniques. In the Matrix Transpose task, for instance, the baseline kernel performs one scattered global
+8
+
+
+ read and one scattered global write per element; its write pattern (column-major) defeats coalescing, so memory bandwidth drops to a few GB/s. The FSR-generated version batches a large number (TILE_DIM*TILE_DIM) of elements per 32-thread warp, turns both accesses into fully coalesced, conflict-free bursts, and cuts the number of global transactions nearly in half. Combined with loop unrolling (#pragma unroll) and lighter address arithmetic, DRAM bandwidth is saturated and arithmetic latency is hidden, yielding the observed 104× speedup on modern GPUs. Moreover, the performance gains become more pronounced as the input data size increases (Fig. 3h). Additionally, many tasks — such as Reduction and Monte Carlo Integration benefit significantly from the use of warp-level primitives. Warp-level primitives enhance efficiency by enabling direct communication and data sharing among threads within the same warp, reducing the need for slower global or shared memory access. This leads to lower synchronization overhead and improved parallelism, particularly in operations such as Reduction and Monte Carlo Integration where intermediate results must be aggregated or exchanged efficiently.
+5. Conclusion
+Through the proposed Feature Search and Reinforcement (FSR) framework, we demonstrate that by integrating feature-aware search with reinforcement-driven refinement, FSR enhances the capabilities of LLMs from producing generic code to generating intelligent, hardware-specific, architecture-aware, and performance-critical implementations. This advancement empowers LLMs to effectively navigate the complexities of parallel computing architectures and platform-specific constraints. Empirical evaluations highlight the effectiveness of FSR in CUDA-LLM, showcasing its potential to enable the next generation of automated, high-performance code generation tools for GPUs and other heterogeneous computing platforms.
+References
+[1] Amazon Web Services. Amazon codewhisperer: Ai coding companion, 2023. Accessed: 2025-06-06. 1 [2] Anthropic. Claude 3 model family, 2024. Accessed: 2025-06-06. 1
+[3] Shane Cook. CUDA Programming: A Developer’s Guide to Parallel Computing with GPUs. CUDA Programming: A Developer’s Guide to Parallel Computing with GPUs, 2012. 1, 2 [4] Daya Guo, Qihao Zhu, Dejian Yang, Zhenda Xie, Kai Dong, Wentao Zhang, Guanting Chen, Xiao Bi, Yu Wu, YK Li, et al. Deepseek-coder: When the large language model meets programming–the rise of code intelligence. arXiv preprint arXiv:2401.14196, 2024. 1
+[5] Robert Tjarko Lange, Aaditya Prasad, Qi Sun, Maxence Faldor, Yujin Tang, and David Ha. The ai cuda engineer: Agentic cuda kernel discovery, optimization and composition. Technical report, Technical report, Sakana AI, 02 2025, 2025. 3 [6] LeetGPU. Challenges. https://leetgpu.com/ challenges, 2025. Accessed: 2025-06-09. 5 [7] Aixin Liu, Bei Feng, Bing Xue, Bingxuan Wang, Bochao Wu, Chengda Lu, Chenggang Zhao, Chengqi Deng, Chenyu Zhang, Chong Ruan, et al. Deepseekv3 technical report. arXiv preprint arXiv:2412.19437, 2024. 5 [8] NVIDIA Corporation. Cuda code samples. https: / / developer . nvidia . com / cuda - code samples, 2025. Accessed: 2025-06-07. 2, 5 [9] Anne Ouyang, Simon Guo, Simran Arora, Alex L Zhang, William Hu, Christopher Re ́, and Azalia Mirhoseini. Kernelbench: Can llms write efficient gpu kernels? arXiv preprint arXiv:2502.10517, 2025. 1, 3, 5
+[10] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, et al. Pytorch: An imperative style, high-performance deep learning library. Advances in neural information processing systems, 32, 2019. 2
+[11] Baptiste Roziere, Gautier Izacard, Sylvain Bars, David Grangier, and Guillaume Lample. Code llama: Open foundation models for code, 2023. 1 [12] Jason Sanders and Edward Kandrot. CUDA by example: an introduction to general-purpose GPU programming. Addison-Wesley Professional, 2010. 2
+9
+
+
+ Appendix
+A. Size Settings of Test Inputs
+Table 3 provides a detailed overview of the input data sizes used to evaluate the functional correctness of the kernel in the Function Validator.
+Task ID Task Input Size
+1 Sigmoid (16, dim), dim = {210, 212, 214, 216, 218}
+2 Matrix Multiplication A: (size, 4096), size = {210, 212, 214, 216, 218}
+B: (4096, 2048)
+3 Max Pooling 3D (16, 32, dim1, dim2, dim3), dim1 = dim2 = dim3 = {16, 24, 32, 40, 48}
+4 LayerNorm (16, 4, dim1, dim2), dim1 = dim2 = {26, 27, 28, 29, 210}
+5 2D Convolution 2D matrix: (size, size), size = {128, 256, 512, 1024, 2048}
+kernel: (24, 24)
+6 Multi-Head Self-Attention {(N, dmodel, h)} = {(64, 32, 4), (128, 64, 8), (256, 128, 8), (384, 256, 16), (512, 512, 16)}
+7 Mean Square Error predictions: N , N = {210, 212, 214, 216, 218}
+targets: N
+8 Matrix Transpose A: (N, N ), N = {210, 211, 212, 213, 214}
+9 Reverse Array N , N = {220, 222, 224, 226, 228}
+10 ReLU Activation Fuction N , N = {220, 222, 224, 226, 228}
+11 Top-K Selection {(N, k)} = {(210, 32), (212, 64), (214, 128), (216, 256), (218, 512)}
+12 Sorting N , N = {29, 210, 211, 212, 213}
+13 Matrix Copy A: (N, N ), N = {210, 211, 212, 213, 214}
+14 Reduction N , N = {210, 212, 214, 216, 218}
+15 Dot Product A: N , N = {216, 217, 218, 219, 220}
+B: N
+16 Prefix Sum N , N = {210, 212, 214, 216, 218}
+17 Categorical Cross-Entropy Loss N = {214, 216, 218, 220, 222}
+C = 10
+18 Monte Carlo Integration
+a = 0, b = 1 f (x) = sin (2πx)
+N = {214, 216, 218, 220, 222}
+19 Histogramming num bins = 256
+N = {216, 218, 220, 222, 224}
+20 Ordinary Least Squares Regression n samples = {214, 216, 218, 220, 222}
+n f eatures = 10
+Table 3. Size settings of randomly generated test inputs used in the Function Validator.
+1
+
+
+ B. Prompt
+B.1. Initial Prompt
+Prompt
+Write a CUDA kernel function on [Device type] GPU, utilizing the functions described as below: [Task]: [Prompt] The output should be the content of whole .cu file containing ONE kernel function, completing the reference code below: [Code] Do not modify the test part.
+B.2. Refined Prompt
+When the generated N candidates contain at least one valid kernel that passes both the Compilation Verifier and the Function Validator, the Performance Profiler selects the fastest kernel and constructs a new Refined Prompt for the subsequent round of LLM generation. The format of this Refined Prompt is as follows:
+Prompt
+Optimize the kernel function for less execution time on [Device type] GPU. The output should be the content of whole .cu file containing ONE kernel function. Do not modify the test part.
+When none of the generated N candidates pass both the Compilation Verifier and the Function Validator, the FSR framework constructs a new prompt for each candidate. If a candidate fails specifically at the Compilation Verifier stage, the corresponding Refined Prompt is structured as follows:
+Prompt
+Modify the code with the execution error result. The output should be the content of whole .cu file containing ONE kernel function. Do not modify the test part. The execution output is: [Execution error output]
+When none of the generated N candidates pass both the Compilation Verifier and the Function Validator, the FSR framework constructs a new prompt for each candidate. If a candidate fails at the Function Validator specifically due to incorrect kernel execution (despite successful compilation), the corresponding Refined Prompt is structured as follows:
+Prompt
+The code failed to launch the kernel. Modify the code with the device information: [Device type] GPU. The output should be the content of whole .cu file containing ONE kernel function. Do not modify the test part.
+When none of the generated N candidates pass both the Compilation Verifier and the Function Validator, the FSR framework constructs a new prompt for each candidate. If a candidate fails at the Function Validator specifically due to an output mismatch with the reference output, the corresponding Refined Prompt is structured as follows:
+2
+
+
+ Prompt
+The result is not the same with the reference output. Modify the code. The output should be the content of whole .cu file containing ONE kernel function. Do not modify the test part.
+C. Prompt of Tasks in Benchmarks
+Table 4 presents a high-level description of the target functionality or computational objective that each task is expected to achieve in the evaluation benchmarks. These descriptions are incorporated into the initial prompts to explicitly specify the intended task for each corresponding evaluation scenario.
+Task ID Task Prompt
+1 Sigmoid Implement a CUDA program for sigmoid activation function: sigmoid(x) = 1/(1 + exp(−x)). Input shape: (batch size, dim); Output: same shape as input.
+2 Matrix Multiplication Write a program that multiplies two matrices of 32-bit floating point numbers on a GPU. Given matrix A of dimensions M × K and matrix B of dimensions K × N , compute the product matrix C = A × B, which will have dimensions M × N.
+3 Max Pooling 3D Implement a CUDA program for 3D max pooling function that selects the maximum value within a defined region (a window) of a feature map. Input shape: (batch size, channels, dim1, dim2, dim3); Output: with 3D max pooling applied.
+4 LayerNorm Implement a GPU program that performs Layer Normalization (LayerNorm) operation, which normalizes across the features for each individual data sample in a layer. Input of shape (batch size, features, dim1, dim2); Output with Layer Normalization applied, same shape as input.
+5 2D Convolution Write a program that performs a 2D convolution operation on the GPU. Given an input matrix and a kernel (filter), compute the convolved output. The convolution should be performed with a “valid” boundary condition, meaning the kernel is only applied where it fully overlaps with the input. The input consists of: (1) input: A 2D matrix of 32-bit floating-point numbers, represented as a 1D array in row-major order. (2) kernel: A 2D kernel (filter) of 32-bit floatingpoint numbers, also represented as a 1D array in row-major order. The output should be written to the output matrix (also a 1D array in row-major order). The output matrix will have dimensions: output rows = input rows - kernel rows + 1, output cols = input cols - kernel cols + 1. The convolution operation is defined as: output[i][j] = Pkernel rows−1
+m=0
+Pkernel cols−1
+n=0 input[i + m][j + n] ∗ kernel[m][n].
+6 Multi-Head Self-Attention Implement a CUDA program for multi-head self-attention. Given three input matrices Q (queries), K (keys), and V (values) of size N × dmodel, compute: MultiHead(Q, K, V ) = Concat(head1, . . . , headh), where each head computes:
+headi = softmax QiKT
+i
+√dk Vi with dk = dmodel/h and Qi, Ki, Vi being the i-th
+head’s partition of the input matrices.
+7 Mean Square Error Implement a CUDA program to calculate the Mean Squared Error (MSE) between predicted values and target values. Given two arrays of equal length, predictions and targets, compute: MSE = 1
+N
+PN
+i=1(predictionsi − targetsi)2 where N is the number of elements in each array. Input: predictions, targets; Output: MSE.
+3
+
+
+ 8 Matrix Transpose Write a program that transposes a matrix of 32-bit floating point numbers on a GPU. The transpose of a matrix switches its rows and columns. Given a matrix A of dimensions rows × cols, the transpose AT will have dimensions cols × rows. All matrices are stored in row-major format.
+9 Reverse Array Implement a program that reverses an array of 32-bit floating point numbers inplace. The program should perform an in-place reversal of input.
+10 ReLU Activation Fuction Implement a program that performs the Rectified Linear Unit (ReLU) activation function on a vector of 32-bit floating point numbers. The ReLU function sets all negative values to zero and leaves positive values unchanged: ReLU(x) = max(0, x).
+11 Top-K Selection Implement a GPU program that, given a 1D array input of 32-bit floating point numbers of length N , selects the k largest elements and writes them in descending order to the output array of length k.
+12 Sorting Write a CUDA program that sorts an array of 32-bit floating-point numbers in ascending order using the bubble sort algorithm. Do not use other algorithms.
+13 Matrix Copy Implement a program that copies an N ×N matrix of 32-bit floating point numbers from input array A to output array B on the GPU. The program should perform a direct element-wise copy so that Bi,j = Ai,j for all valid indices.
+14 Reduction Write a CUDA program that performs parallel reduction on an array of 32-bit floating point numbers to compute their sum. The program should take an input array and produce a single output value containing the sum of all elements.
+15 Dot Product Implement a CUDA program that computes the dot product of two vectors containing 32-bit floating point numbers. The dot product is the sum of the products of the corresponding elements of two vectors. Mathematically, the dot product of two vectors A and B of length n is defined as: A · B = Pn−1
+i=0 Ai · Bi.
+16 Prefix Sum Write a CUDA program that computes the prefix sum (cumulative sum) of an array of 32-bit floating point numbers. For an input array [a, b, c, d, . . .], the prefix sum is [a, a + b, a + b + c, a + b + c + d, . . .].
+17 Categorical Cross-Entropy Loss Implement a CUDA program to calculate the categorical cross-entropy loss for a batch of predictions. Given a matrix of predicted logits Z of size N × C and a vector of true class labels true labels of size N , compute the average cross-entropy loss over the batch. The loss for a single sample j with logits zj = [zj1, . . . , zjC ] and true label yj is calculated using the numerically stable
+formula: Lossj = log PC
+k=1 ezjk − zj,yj . The final output stored in the loss
+variable should be the average loss over the N samples: L = 1
+N
+PN
+j=1 Lossj . Input: logits, true labels, N (number of samples), and C (number of classes). Output: loss (a pointer to a single float).
+18 Monte Carlo Integration Implement Monte Carlo integration on a GPU. Given a set of function values yi = f (xi) sampled at random points uniformly distributed in the interval [a, b],
+estimate the definite integral: R b
+a f (x)dx ≈ (b − a) · 1
+n
+PN
+i=1 yi. The Monte Carlo method approximates the integral by computing the average of the function values and multiplying by the interval width.
+4
+
+
+ 19 Histogramming Write a GPU program that computes the histogram of an array of 32-bit integers. The histogram should count the number of occurrences of each integer value in the range [0, num bins). You are given an input array input of length N and the number of bins num bins. The result should be an array of integers of length num bins, where each element represents the count of occurrences of its corresponding index in the input array.
+20 Ordinary Least Squares Regression Solve the Ordinary Least Squares (OLS) regression problem on a GPU. Given a feature matrix X of size n samples × n f eatures and a target vector y of size n samples, compute the coefficient vector β that minimizes the sum of squared residuals: minβ ∥Xβ − y∥2. The closed-form solution to OLS is: β = (XT X)−1XT y.
+Table 4. High-level functional descriptions of evaluation tasks for initial prompt construction.
+5

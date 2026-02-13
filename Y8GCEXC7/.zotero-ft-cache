@@ -1,0 +1,1076 @@
+Computers & Operations Research 133 (2021) 105357 Contents lists available at ScienceDirect
+Computers and Operations Research
+journal homepage: www.elsevier.com/locate/cor
+
+A reinforcement learning approach to the orienteering problem with time windows
+Ricardo Gama a, Hugo L. Fernandes b
+a Research Centre in Digital Services (CISeD), Polytechnic Institute of Viseu, Portugal b Rockets of Awesome, New York City, USA
+
+ARTICLE INFO
+Keywords: Machine learning Combinatorial optimization
+
+ABSTRACT
+The Orienteering Problem with Time Windows (OPTW) is a combinatorial optimization problem where the goal is to maximize the total score collected from different visited locations. The application of neural network models to combinatorial optimization has recently shown promising results in dealing with similar problems, like the Travelling Salesman Problem. A neural network allows learning solutions using reinforcement learning or su­ pervised learning, depending on the available data. After the learning stage, it can be generalized and quickly fine-tuned to further improve performance and personalization. The advantages are evident since, for real-world applications, solution quality, personalization, and execution times are all important factors that should be taken into account.
+This study explores the use of Pointer Network models trained using reinforcement learning to solve the OPTW problem. We propose a modified architecture that leverages Pointer Networks to better address problems related with dynamic time-dependent constraints. Among its various applications, the OPTW can be used to model the Tourist Trip Design Problem (TTDP). We train the Pointer Network with the TTDP problem in mind, by sampling variables that can change across tourists visiting a particular instance-region: starting position, starting time, available time, and the scores given to each point of interest. Once a model-region is trained, it can infer a solution for a particular tourist using beam search. We based the assessment of our approach on several existing benchmark OPTW instances. We show that it generalizes across different tourists that visit each region and that it generally outperforms the most commonly used heuristic, while computing the solution in realistic times.
+
+1. Introduction
+The Orienteering Problem and its variants are a family of combina­ torial optimization problems with numerous applications, from logistics to telecommunications. It is an established problem with an extensive amount of literature (see e.g. Gunawan et al., 2016; Vansteenwegen and Gunawan, 2019) and an active area of research, with recent new vari­ ants, applications and approaches (see e.g. Freeman et al., 2018; Yu et al., 2019a; Yahiaoui et al., 2019; Chou et al., 2021). Among its vari­ ants, the Orienteering Problem with Time Windows (OPTW) has received a considerable attention (see e.g. Yu et al., 2019c; Yu et al., 2019b; Roozbeh et al., 2020; Saeedvand et al., 2020).
+The OPTW can be seen as a model for the Tourist Trip Design Problem (TTDP) (Gavalas et al., 2014). When they plan a trip to a given destination, tourists intend to visit most of their favourite points of in­ terest within a limited time schedule. Usually, the large number of points of interest, located in different places and with different operation
+
+hours, makes it arduous and time-consuming to design relevant tourist routes. In the OPTW problem, one has to find the route that maximizes the sum of scores of the visited points of interest considering local and global time constraints.
+The OPTW is an NP-hard problem and several heuristics have been proposed to obtain high-quality solutions. The Iterate Local Search (ILS) (Vansteenwegen et al., 2009) heuristic is one of the most well-known and provides fast and good quality solutions, which allows its incorpo­ ration in real-time applications. Gunawan et al., 2017 extended the ILS approach making some point-wise adaptations and including other local search operations, such as swap, 2-opt and replace, which improved the score on standard benchmark instances at the expense of computation time. More recently, effective neighbourhood search (Schmid and Ehmke, 2017), large neighbourhood search Amarouche et al., 2020 and evolution strategy approaches (Karabulut and Tasgetiren, 2020) were found to improve best-known results on several benchmark instances. Several other local search-based heuristics have been proposed to tackle
+
+E-mail address: rgama@estgl.ipv.pt (R. Gama).
+https://doi.org/10.1016/j.cor.2021.105357 Received 20 November 2020; Received in revised form 29 April 2021; Accepted 29 April 2021 Available online 15 May 2021 0305-0548/© 2021 Elsevier Ltd. All rights reserved.
+
+R. Gama and H. L. Fernandes
+OPTW, like variable neighbourhood search methods, ant colony opti­ mization or simulated annealing heuristics (see e.g. Vansteenwegen et al., 2011; Gunawan et al., 2016; Vansteenwegen and Gunawan, 2019).
+For practical applications, the heuristic that will be chosen depends on the trade-off between the aimed quality of the solution and execution time constraints. For real-time tourist trip planning in particular, fast and effective methods are mandatory. Thus, despite the existence of a wide variety of methods, which allow building good quality solutions, few alternatives like the fast ILS heuristic, or some variations of it (see e. g. Gavalas et al., 2019; Hapsari et al., 2019) can be used in real-time applications.
+Recently, there have been some encouraging results showing the possibility of tackling combinatorial optimization problems using neural networks (see e.g. Bengio et al., 2020). Compared to machine learning models, a typical heuristic has smaller potential for generalization and personalization. Hybrid methods combining heuristics with machine learning to solve combinatorial optimization problems begin to appear (see e.g. Saeedvand et al., 2020; Bayliss et al., 2020; Bayliss, 2021). Strict machine learning approaches have also been proposed. In the work of Vinyals et al., 2015, the authors introduced a neural network model called Pointer Network (PNs) and applied it to three classical combinatorial problems: planar convex hulls problem, Delaunay trian­ gulation, and the planar Travelling Salesman Problem (TSP), with very promising results. One important aspect of their approach is that their model is trained using supervised learning on generated training data. This may be advisable when ground-truth data is promptly accessible but may be a drawback for some combinatorial optimization problems for which data collection is not possible. The lack of real data for model training imposes the existence of efficient heuristics to generate approximated ground-truth data and leads to a model performance strongly influenced by the performance of the selected heuristics. Furthermore, in most problems, fast solutions can only be obtained for smaller problems or at the expense of the quality of the solution. This limits the applicability of the proposed approaches to smaller size problems and leaves out important practical applications.
+To overcome these limitations, Bello et al., 2017 used reinforcement learning to train Pointer Networks for the TSP and the Knapsack Prob­ lem. This opened the way to the possibility of tackling a broader set of combinatorial optimization problems. Following that work, other Pointer Network architectural modifications and applications have appeared, e.g., Vehicle Routing Problems (Deudon et al., 2018; Nazari et al., 2018; Kool et al., 2019a; Falkner and Schmidt-Thieme, 2020 and Lin et al., 2020), Knapsack Problem (Gu and Hao, 2018) or the Max-Cut Problem (Gu and Yang, 2018).
+An optimization problem to which the use of these machine learning techniques can be particularly beneficial is the TTDP. In a realistic setting, we can expect the variability across instances of the same region to come mostly from the choices made by tourists, and not so much from region specific characteristics like the location of its points of interest or their opening and closing times. This means that, in practice, one needs to repeatedly solve a nearly same instance problem where only a limited set of specific features/parameters may vary, usually in an expected and controlled way. Thus, when access to real data is not possible, the generation of realistic instances for training can be achieved through simulation. This should allow the training with reinforcement learning of a model that can generalize across that variability.
+In this paper, we explore the application of Pointer Networks to the OPTW/TTDP problem. We propose a model that takes into account the recurrent nature of the construction process of the sequential solution, using Pointer Networks to better address problems with dynamic timedependent constraints. This is a recursive attentive model that relies on a Transformer block (Vaswani et al., 2017; Deudon et al., 2018; Kool et al., 2019a) with dynamical graph self-attention (Veliˇckovi´c et al., 2018). We use reinforcement learning to train the model for a particular instance-region (a fixed set of points of interests with fixed coordinates,
+
+Computers and Operations Research 133 (2021) 105357
+
+opening and closing times and duration of visit). During learning, we generate new instances (new instant-tourists) for that instance-region that vary depending on the score provided by tourists to each point of interest, starting time and position, and the time available for the tour. We generate these instances in a way that mimics the variability ex­ pected across tourists so that we might obtain a model capable of generalizing across tourists who visit that region/city/neighbourhood.
+
+2. Orienteering problem with time windows
+
+In an OPTW instance, ϕ, a set of n nodes, {vi}ni=1 with their corre­ sponding coordinates xi ∈ R2 are given. Every node vi has a positive score or reward, ri, a visiting time window [oi, ci] with opening time (the earliest a visit can start) and closing time (the time at which a visit has to stop), and duration of visit di. Without loss of generality, we can assume that the starting location is v1, and vn is the ending location for every solution path (also called route). The objective is to find a solution route S = (π1, …, πm) with the maximum possible sum of scores, without repeating visits, starting the route at or after a given time Tstart and ending it before time Tend (see Vansteenwegen and Gunawan, 2019).
+We build a solution in a sequential fashion. For each step of the process, the existing time budget and time windows constraints have to be taken into account. We start the route in v1, initializing the current time t0 with the particular instance starting time Tstart. After the first initialization step, the path construction process follows iteratively, setting which node, vj, will be visited next assuming that the following
+constrains are satisfied:
+
+aj + waitj⩽cj;
+
+(2.1)
+
+aj + waitj + dj + Δjn⩽Tend,
+
+(2.2)
+
+where aj is the time of arrival at node vj, waitj = max(0, oj − aj) is the time one has to wait before the visit can start, and Δjn the time it takes to go from node vj to node vn. That is, one must arrive at vj before closing time and, at arrival, there needs to be enough time left to visit the vj and travel to the last location vn. After the visit to node vj, the current time is updated tl = aj +waitj +dj and the construction loop proceeds until vn is reached.
+At each iteration step l, we define A l(vl*, tl) as the set of nodes that are admissible to be visited next. This set is a function of the subsequence built until step l, and of the current node vl* and current time tl.
+
+2.0.1. The tourist trip design problem perspective
+
+An OPTW instance can be interpreted as a TTDP instance, i.e. a particular tourist visiting a particular region. From this perspective, a route can be considered a tourist tour, and the nodes will be points of interest that the tourist might want to visit. Some of the parameters are instance-region specific and tourist invariant, while others are not. Here, we assume that a routes starting location v1, its starting time Tstart and ending time Tend, as well as the scores obtained by the different points of interest are tourist dependent, while the coordinates of the points of interest, their opening and closing times, and the duration of the visit are tourist invariant. We use 3 different sets of benchmark instances (Van­ steenwegen et al., 2011; Gavalas et al., 2019, see Section 4.1). Each benchmark instance can be interpreted as a particular tourist visiting a particular instance-region. For each of these instances we can generate new tourists with some variability across the tourist-dependent param­ eters (see Section 4.2 in Methods). We use these generated tourists or tourist-instance-regions to train, monitor, evaluate and validate our model.
+
+2
+
+R. Gama and H. L. Fernandes
+
+Computers and Operations Research 133 (2021) 105357
+
+Fig. 3.1. The proposed Pointer Network architecture and information flow during an iteration step. (I) – Set encoder block; (II) – Sequence encoder block; (III) – Pointing mechanism; (IV) – Representation vectors computed in the previous iteration step are used recursively in their corresponding func­ tional block.
+3. Pointer network model
+
+In fact, the inclusion of this adjustment in the model architecture allows us to: use recursion in the set encoding block (Transformer with recursion, see below); mask the set of nodes and lookahead connections that are not admissible (Masked self-attention using induced graph structure, see below).
+Transformer with recursion. A second aspect is that we use selfattention with recursion (see Section 3.1.2 for details, and no recur­ sion in Supplementary materials Appendix A for model comparison) to try to make the best of the recurrent nature of the solution building process. Intuitively, this change somewhat brings part of the sequence encoding effort to the set encoding block.
+Masked self-attention using induced graph structure. A third important aspect is that at each iteration step, and in order to consider the time constraints of the problem, we dynamically compute the set of admissible nodes and a graph structure that can be induced over it (see Section 3.1.3 for detains, and complete graph in Supplementary mate­ rials Appendix A for model comparison). We use this graph-structure to apply masked self-attention during set encoding.
+
+Our model is a graph recursive attentive model based on the Pointer Network model architecture (Vinyals et al., 2015). We conducted a detailed description of the model and of the Pointer Network architec­ ture to explain the particularities of the model, the differences in rela­ tion to the other approaches used to solve combinatorial optimization problems using Pointer Network models, and the motivation behind those choices.
+For a large set of combinatorial optimization problems, e.g. the TSP and the OPTW, a solution can be constructed sequentially, with elements chosen iteratively one by one. The Pointer Network model architecture (Vinyals et al., 2015) was designed to address this kind of problem. Its architecture consists of tree main blocks (see Fig. 3.1): the set encoder block that processes the input set; the sequence encoder block that han­ dles the sequence as it is built; and a third block that consists of a pointing mechanism. Typically, this sequential process is carried out in two distinct phases: an encoding phase and a pointing phase. During the encoding phase, the set encoder block creates a higher-dimensional feature representation of the given input set. Afterwards, the sequence encoding block encodes the solution/sub-sequence constructed so far. In the second phase, both representations are fed into the pointing mech­ anism to generate a probability distribution over the input set. This probability distribution “points” to which element is more likely to be the best choice as the next sequence element.
+Both the encoding (set and sequence) and the pointing mechanisms can be design in different ways (e.g.Vinyals et al., 2015; Bello et al., 2017; Nazari et al., 2018; Kool et al., 2019a). Here we use the same sequence encoding and pointing mechanism architecture as Vinyals et al., 2015. The main and substantial differences regarding this and other existing Pointer Network variations lie in the set encoding block. There are three main aspects to highlight when comparing previous Pointer Network studies. Before going into more detail, we will briefly outline them.
+New set representation at every iteration. The first essential aspect is that the set encoder runs in parallel with the sequence encoder and provides an updated vector representation of each node in every iteration step. When building a solution, at each iteration, we recompute the representation of each node (the output of the set encoding block), feeding both dynamic and static features to the set encoding block (Dai et al., 2017). It is important to note that this is different from previous proposed Pointer Network models, including from those that also use both static and dynamic features (Nazari et al., 2018; Kool et al., 2019a). In those works, the static features are only encoded once: in the first step of the solution building process. The dynamic features are used by the sequence-encoder block and pointing mechanism which rely on contextbased attention.
+
+3.1. Set Encoding
+
+Formally, given an input set of{nodes V =}{v1, v2, …, vn}, and their corresponding feature vectors f = f1, f2, …, fn , where fi ∈ Rdf , the first
+
+step is to project these vectors into a higher-dimension space through a
+
+learnable transformation.
+
+We
+
+separate
+
+fi
+
+into
+
+static
+
+f
+
+st i
+
+and
+
+dynamic
+
+f
+
+dy i
+
+groups
+
+(Nazari
+
+et
+
+al.,
+
+2018). As the model is building a particular solution, the dynamic fea­
+
+tures (e.g. time until vi opens) may change at each iteration, while the
+
+static remain the same throughout that process (e.g. Euclidean co­
+
+ordinates of vi). We map each fi into ei ∈ Rde where ei = [est, edy], esit =
+
+tanh(Wst
+
+f
+
+st i
+
++
+
+bst )and
+
+edi y
+
+=
+
+tanh(Wdy
+
+f
+
+dy i
+
++
+
+bdy),
+
+i.e.
+
+in
+
+a
+
+first
+
+layer
+
+we
+
+process the static and dynamic features separately before concatenating
+
+them.
+
+These embedded node vectors e = {e1, e2, …, en} are fed into a
+
+Transformer (Vaswani et al., 2017) with a tweak. This tweak is the
+
+introduction of recursion in computing the key of the self-attention sub-
+
+btrlaoncskfo(sremeedreistaailssebt e{lhoe1w, h).e2T, …he,
+
+hfienn}alreopurtepsuetnotafttihoen
+
+set encoder and of of V, with hei ∈ Rde.
+
+the We
+
+chose the Transformer architecture both because it is suitable for per­
+
+mutation invariant input sets (the set of points of interest) and because
+
+of the good results reported in similar combinatorial optimization
+
+problems (Deudon et al., 2018; Kool et al., 2019a).
+
+3.1.1. Vanilla transformer In this section we describe the original transformer architecture
+before explaining how we introduce recursion. The Transformer archi­ tecture consists of a set of stacked layers (here we use 2 layers). Each layer is composed of 2 sublayers or functional components: a multi-head self-attention sublayer followed by a feedforward sublayer.
+Given a list of input vectors {e1, e2, ⋯, en}, the self-attention vectors are determined (note that this is the description of the vanilla Trans­ former, in our model the keys ki are computed recursively, see Section 3.1.2) by first computing two linear transformations for each ei:
+
+ki = Wkei
+
+(3.1)
+
+vi = Wvei,
+
+(3.2)
+
+followed by the determination of the similarity score between each ei
+
+and each kj, using scaled dot-product attention:
+
+uij
+
+=
+
+eTi√W̅̅Tq̅̅kj, dk
+
+{
+
+}
+
+∀i, j ∈ 1, …, n ,
+
+(3.3)
+
+where dk is a scaling constant, Wk, Wv and Wq ∈ Rdha ×de . The variables ki
+
+3
+
+R. Gama and H. L. Fernandes
+
+Computers and Operations Research 133 (2021) 105357
+
+and vi in Eqs. 3.1 and 3.2 are usually called key and value, respectively. The output vector hai is then computed by taking the average of the
+
+vector of values v, using a vector ai, the softmax normalization of the
+
+similarity scores vector ui:
+
+∑ hai = aijvj,
+j
+
+with
+
+() aij = exp (uij ) .
+∑ exp uij′
+j′
+
+(3.4)
+
+For multi-head attention, the attention mechanics is independently
+
+applied, i.e without weight sharing, multiple times in parallel to the
+
+same input. Here we used 8 heads. The vectors resulting from each
+
+attention head are concatenated and once again projected into Rde
+
+tthatriooungvheactloirnsea{rha1t,rahna2,s⋯for, mhana}t.ion. This results in the attention represen­ The second component of the Transformer layer is then a feedfor­
+
+ward fully connected layer:
+
+hi
+
+=
+
+W
+
+ff 2
+
+( Relu
+
+W
+
+ff 1
+
+hai
+
++
+
+bf1f
+
+)
+
++
+
+bf2f
+
+(3.5)
+
+where Relu(x) = max(0, x), Wf1f ∈ Rdff ×de , Wf2f ∈ Rde×dff , bf1f ∈ Rdffand bf2f ∈ Rde.
+Both the attention and the feedforward components are followed by
+a skip connection and layer normalization (Vaswani et al., 2017). The
+final output is then the output of the set encoding block, i.e., a repre­ sentation vector hei ∈ Rde for each node/point of interest.
+
+3.1.2. Transformer with recursion We changed the self-attention of the set encoder of previous work
+(Deudon et al., 2018; Kool et al., 2019a by making it recursive. In order to make the set encoder block recursive, we changed the self-attention inputs by changing Eq. 3.1 to compute each key ki at iteration l using the representation hei from the previous iteration:
+
+ki = Wkhei ,l− 1.
+
+(3.6)
+
+We used hei for every self-attention layer of the set encoder block. This change forces the self-attention mechanism to be a function of the
+solution construction state at each iteration step.
+
+3.1.3. Graph masked self-attention In the OPTW, as in many other routing problems, at each iteration
+step l of the iterative process of building a solution, the set of admissible locations, A l(vl*, tl), may change significantly. At each iteration step, a different graph structure can be induced over the various elements of the admissible set of locations, A l, leveraging the computation of selfattention during the set encoding (Veliˇckovi´c et al., 2018). One straightforward approach to building such graph is to assume the set of admissible locations as a complete graph and use this graph to perform masked self-attention (see “complete graph” in Supplementary materials Appendix A). Previous studies (Kool et al., 2019a) have referenced graph attention, however they typically use complete graph representations over the set of admissible nodes and do not take effective advantage of the dynamic graph structure that can be induced. In the next paragraph we explain how we refine that graph and clarify what we mean by masked self-attention.
+We define a more refined graph structure by considering that the node or point of interest vi is connected to node vj if [vl*, vi, vj, vn] is a feasible sequence, where vl* is the current node and vn is the ending location. This is essentially a one-step lookahead search. At every iter­ ation step l, we determine the adjacency matrix Adl of the graph. When performing self-attention, the scores uij are computed using Eq. 3.3 only if Adlij = 1, and are set to zero otherwise (i.e. are masked). By masking
+not only the immediate non-admissible nodes, but also one-step look­ ahead paths, it is reasonable to expect better representation vectors for
+
+each node or point of interest. Note that using graph masked self-attention and dynamic features
+requires updating the set representation at each iteration step. Per­ forming set encoding only at the first step/iteration would make the model ignore these relevant pieces of information.
+
+3.2. Sequence encoding
+The main objective of this functional block is to compute a vector representation of the subsequence that is being built iteratively. We denote this vector by hd,l, with hd,l ∈ Rdd.
+We call this block the “sequence encoding” block. The name might generate some confusion since, in NLP-translation/seq-2-seq applica­ tions where the Pointer Network architecture originated, this block is typically named the decoding block as it is translating/decoding into the target language. For the OPTW, and other combinatorial optimization problems, “sequence encoding” seems a more suitable name considering its role in the overall architecture.
+As in Vinyals et al., 2015 we chose a Long Short Term Memory (LSTM) (Hochreiter and Schmidhuber, 1997) for sequence encoding. Since we compute a new set encoding at each iteration l, together with the hidden state vector of the previous step, hd,l− 1 we can give as input to the LSTM the vector representation of the current point of interest computed by the set encoder in the current iteration step, hei ,l. By relying on an up-to-date iterative encoding of each point of interest, we expect to obtain a better encoding of the sequence built up to step l.
+
+3.3. Pointing mechanism
+
+On top of the set and sequence encoder blocks, lies the pointing
+
+mechanism (see Fig. 3.1). At eac{h iteration step}l, it takes as input both the set encoding of each node he1,l, he2,l, ⋯, hen,l and the latest hidden
+
+state hd,l of the sequence encoder’s LSTM, and computes a probability
+
+distribution over the set of points of interest. This probability vector can
+
+then be use for selecting of the point of interest vl of the tour.
+
+To get to this probability vector we start by computing an importance
+
+score for each element of the input set using additive attention (Bah­
+
+danau et al., 2015)
+
+{
+
+(
+
+)
+
+ulj = wT tanh W1hej ,l + W2hd,l ,
+
+− ∞, otherwise
+
+∀j : vj ∈ A l− 1 .
+
+(3.7)
+
+where w ∈ Rdh and the matrices W1 ∈ Rdh×de and W2 ∈ Rdh×dd are learn­
+
+able parameters. Points of interest that cannot be visited, i.e. vj ∕∈ A l− 1,
+
+are masked (Bello et al., 2017; Deudon et al., 2018; Kool et al., 2019a).
+
+In order to control the range of the logits, ulj is subsequently transformed
+
+by
+
+{
+
+()
+
+̃ulj = Ctanh ulj , ∀j : vj ∈ A l− 1 .
+
+− ∞, otherwise
+
+(3.8)
+
+where C a hyper-parameter (Bello et al., 2017). Finally we obtain the
+
+probability distribution over the points of interests after a softmax
+
+normalization of ̃ul
+
+pl
+
+⎛ ⎜⎝vlj
+
+⃒⃒⃒⃒⃒⃒⃒Al−
+
+1,
+
+Sl−
+
+⎞ 1 ⎟⎠
+
+=
+
+()
+
+exp (̃ulj )
+
+∑ exp
+
+̃ulj′
+
+.
+
+j′
+
+(3.9)
+
+Using this probability distribution, we can choose the next point of interest to be visited and after its selection, the iterative loop proceeds until a stopping condition (i.e. reaching vn) is met.
+
+4
+
+R. Gama and H. L. Fernandes
+
+Computers and Operations Research 133 (2021) 105357
+
+Fig. 4.1. Starting times (Tstart, black) and upper-bounds on ending time (Tend, red) of 64 generated instances (tourists) for the instance-regions t101 (A) and t201 (B) of the Gavalas group. Blue shaded area (top panels) indicates the time period between Tstart and Tend for the original benchmark instance. Vertical blue lines in the bottom panels indicate Tstart and Tend of the original benchmark instance. Histograms in the bottom panels correspond to the data shown in the upper panels.
+
+4. Methods
+4.1. Benchmark Instances
+We use three groups of benchmark instances: Solomon, Cordeau and Gavalas. All these instances have best-known results documented in recent publications (Karabulut and Tasgetiren, 2020; Gavalas et al., 2019) and represent a diverse set, with different distributions of points of interest (Figs. C.1–C.3), scores and duration of visit (Figs. C.4–C.6) and schedules (Figs. C.7–C.9).
+The Solomon and Cordeau instances are groups of established benchmarks in the OPTW literature (Vansteenwegen et al., 2011). The Solomon group was originally adapted from a set of vehicle routing problems with time windows and is composed of 56 instances, all with 100 points of interest. The Cordeau group, includes 20 instances, ranging from 48 to 288 points of interest.
+The Gavalas instances (Gavalas et al., 2019) were designed to be more representative of real TTDP problems. In particular, their times lay within a 24-h (1440 min) time range and they were generated with the assumption that a tourist will attach higher value, on average, to a point of interest that requires more time to visit, i.e., they all have a correla­ tion between the scores and the duration of the visit of each point of interest (see Fig. C.6). The Gavalas group includes instances for the more general problem of Team OPTW, which can be framed as a tourist problem if we allow the tourist to use more than one day to visit the instance-region. Here, since we are only addressing the OPTW (and not the TOPTW), we consider only the 33 Gavalas instances for which the tourist has a single day available. These instances range from 100 to 200 points of interest (see Section Appendix C in Supplementary materials and Vansteenwegen and Gunawan, 2019 for further characterization of all benchmark instances).
+The distances between locations are rounded to the first decimal place for the Solomon instances and to the second decimal place for the Cordeau and Gavalas instances. For most of our analysis, we focus on a subset of each of the groups, which we dubbed sub-Cordeau (8
+
+instances), sub-Solomon (12 instances) and sub-Gavalas (8 instances), making it a total of 28 instances (see Section 4.6).
+4.2. Generated instances
+Some of the parameters of an instance are tourist dependent and some others are invariant across tourists. We can look at each instance as the representation of a given tourist visiting a given region. Each tourist has a particular taste (scores), and preferences regarding starting loca­ tions and starting and ending times. Here we assume that the co­ ordinates of the points of interest, the duration of the visit and the opening and closing times are instance-region parameters and remain unchanged regardless of the tourists.
+Having a model for a particular instance-region means having a model that works for all tourists that might visit that region. For that reason, for each benchmark instance we generate new tourists, i.e., new instances with the same instance-region parameters but different tourist parameters. We use these generated instances for training, monitoring and validation (see Sections 4.4 and 4.5). The choice of hyperparameters for sampling was not done to specifically optimize general­ ization for the benchmark tourist-instance, but instead to generalize a reasonable range of tourists parameters while maintaining the same hyper-parameters across groups of instances.
+4.2.1. Generate starting (and ending) location We sample uniformly a new starting location from the [0, 100] × [0,
+100] square for Solomon and Gavalas instances and from the [ − 100, 100] × [ − 100, 100] square for Cordeau instances. In all the benchmark instances, the tour ends in the same position as it starts, and we assume the same for the generated instances.
+4.2.2. Generate starting and ending times Let us name Tbstart and Tbend the starting time of the tour and the upper-
+bound on the tour’s end time, respectively, for the tourist in the benchmark instance. We want to sample new times Tgstart and Tgend for a
+
+5
+
+R. Gama and H. L. Fernandes
+
+new generated tourist. We chose this sampling empirically because it
+
+seems realistic enough and works for the 3 groups of benchmark in­
+
+stances. Most importantly we wanted it to span a range that is diverse
+
+enough and that would include the Tbstart and Tbend. We start by defining the duration of a day for a benchmark-instance
+
+as the maximum time stamp of that instance: Tbday := max{Tbend,
+
+maxi=1,..n{ci}}. Then we normalize all times so that the duration of a day
+
+is 24 (as in 24 h). Finally we sample Tgstart as
+
+(
+
+)
+
+T
+
+g start
+
+∼
+
+U
+
+T
+
+b start
+
+−
+
+4, ub
+
+where
+
+{
+
+}
+
+ub = min
+
+15,
+
+T
+
+b end
+
++
+
+4
+
+,
+
+i.e. the tour starts 4 “hours” at most before the benchmark-tourist, and
+
+before time 15 (3 pm) unless the tourist in the benchmark-instance ends
+
+tour 4 “hours” before 3 pm, in which case Tbend +4 is the upper bound ub.
+
+We sample Tgend uniformly:
+
+T
+
+g end
+
+∼
+
+U
+
+(
+
+lb,
+
+T
+
+b end
+
+) +4
+
+where
+
+{
+
+}
+
+lb = max
+
+12,
+
+T
+
+g start
+
++
+
+4
+
+,
+
+i.e. Tgend is at most 4 “hours” after the benchmark-tourist, not before noon and there also must be at least 4 h left for the tour. After the sampling, we divide by 24 and multiply back by the duration of the day for the benchmark-instance and round it to the closest integer (see Fig. 4.1).
+Note that Tmax = max{Tbday, Tbend +4} is an upper-bound on the max
+time stamp for all generated instances. We use this instance-region specific value to normalize the time input features.
+
+4.2.3. Generate scores
+
+The Gavalas instances were created to reflect essential characteristics
+
+of a realistic TTDP. In particular, the authors assumed that the scores
+
+that a tourist gives to each point of interest is correlated with the time it
+
+takes to visit that point of interest. The authors do not specify how this
+
+correlation was generated (Gavalas et al., 2019) but, in an attempt to
+
+improve learning, our aim was to generate instances with the same
+
+property. For that reason, when sampling scores we tried two different
+
+sampling schemes for the Gavalas instances: a uniform sampling scheme
+
+and a non-uniform or correlated one.
+
+In the uniform scheme the scores are uniformly sampled from [1,
+
+1.1 × Sbmax] where Sbmax is the maximum score for the benchmark instance. This is the scheme used for the Solomon and Cordeau gener­
+
+ated instances. In the correlated sampling scheme, the scores are
+
+generated according to:
+
+(
+
+)
+
+si ∼ N
+
+Sbmax
+
+di dmax
+
+,
+
+100
+
+(4.1)
+
+and clipped to be in the [1, 1.1 × Sbmax] interval, where dmax = maxj=1,…,n{dj} is the maximum duration of visit across all points of in­ terest of that instance. Note that 1.1 × Sbmax is an upper-bound on the scores of the generated instances, which we will use as a normalization factor for score-related features. For visualizations of the correlation between score and duration of visit for every benchmark instance see
+
+Computers and Operations Research 133 (2021) 105357
+Figs. C.4–C.6. These generated instance-tourists are used to train the model: during
+training they are generated on the fly for the given instance-region the model is being trained for (see Section 4.4). For each instance of the three benchmark groups, we have also created a fixed validation set consisting of 64 generated instances. These fixed validation sets are used to monitor each models training and evaluate its performance.
+
+4.3. Input features
+The first encoding block of the neural network has a set of feature vectors as input: one feature vector for each point of interest (see Section 3.1). These features can be divided into 2 groups: the static features and the dynamic features.
+The static features remain constant during the iterative process of building a solution. Here, we use 7 straightforward features retrieved directly from the instance data, namely the point of interest’s Euclidean coordinates, visiting duration, opening and closing time and score, and also the upper bound on the finishing time of the trip, Tend. The Euclidean coordinates are mapped using min–max scaling into unit square [ − 1,1] × [ − 1,1]. The scores are normalized by 1.1 × Sbmax and all the time features are normalized by Tmax. Note that these normalization constants are the same across tourists for a same instance-region.
+The dynamic features can change at every iteration step. We designed 8 features that are functions of the current time, tl, and current point of interest, vl*: for each point of interest, the time left until the opening time and time left until closing time; the fraction of time elapsed since the Tstart; the fraction of the time left to Tend. To these features we add the same set of 4 features but assuming we have traveled from the current position to the point of interest that the feature corresponds to (remember that there is one feature vector for each point of interest), i. e., adding to tl, the travel time from vl* to vi. All the dynamic time fea­ tures are normalized by the maximum time available for the tourist to perform the tour, i.e. Tend − Tstart. Thus, contrary to the static time fea­ tures, this normalization constant is tourist dependent.
+
+4.4. Training
+
+We train the neural network model using reinforcement learning.
+
+4.4.1. Objective function
+
+For a given instance ϕ, the Pointer Network model, with parame­
+
+terization θ defines, at each iteration step, a stochastic policy from which
+
+the next visiting location can be sampled. We can use this policy itera­
+
+tively until the ending location is reached and obtain a solution/route
+
+S = (π1, …, πm). For simplicity we can represent this by S ∼ pθ(⋅|ϕ).
+
+The total route probability can be determined using the chain rule of
+
+probability:
+
+pθ (S⃒⃒⃒⃒⃒ϕ)
+
+=
+
+∏m
+
+pθ
+
+( πl
+
+⃒⃒⃒⃒⃒ϕ,
+
+A
+
+l−
+
+1, Sl−
+
+) 1.
+
+l=1
+
+We want to determine θ such that we can sample high total score
+
+solutions from its policy with high probability. For a sample solution S, the total score is given
+
+by
+
+R(S)
+
+=
+
+∑ml=1 r(πl )
+
+and our objective function is defined as the expected total score, that for
+
+instance ϕ is given by:
+
+6
+
+R. Gama and H. L. Fernandes
+
+[ ( )]
+
+J(θ|ϕ)
+
+=
+
+E S∼pθ
+
+(⋅|ϕ)
+
+R
+
+S
+
+4.4.2. REINFORCE algorithm We maximize J(θ) using gradient ascent, and resort to REINFORCE
+algorithm (Williams, 1992) to estimate the gradients (see Algorithm 1).
+
+Computers and Operations Research 133 (2021) 105357
+previous literature (Bello et al., 2017). We tried to set it to be a learnable parameter without much success in the few attempts and confirmed empirically the quality of the suggested value.
+We use 2 transformer blocks with 8 heads in the multi-head selfattention. We use dh = de = dd = 128 and dff = 256.
+
+Algorithm 1: REINFORCE algorithm
+
+Typically, when using the REINFORCE algorithm, each batch is
+
+composed by B different (generated) instances. In our approach, how­
+
+ever, each batch comprises a single generated instance and thus B in­
+
+dependent solutions are sampled for that same single tourist-instance.
+
+This allows a straightforward baseline estimation, thus avoiding the
+
+need to maintain a moving average estimate of the baseline, obtain an
+
+estimate of it through a greedy roll-out computation, (Kool et al.,
+
+2019a), or having to rely on a critic neural network, (Bello et al., 2017;
+
+Vaswani et al., 2017). In concrete terms, we determine the batch average
+
+total
+
+score,
+
+R
+
+=
+
+1∑B
+B b=1
+
+( R
+
+Sb
+
+) ,
+
+and
+
+use
+
+it
+
+as
+
+our
+
+baseline
+
+to
+
+reduce
+
+gradient estimation variance. This approach is a particular case of the
+
+multiple sampling with replacement method (Kool et al., 2019b with
+
+k = 1) where the number of solution samples equals to the batch size.
+
+4.4.3. Other training details We train all models with the Adam optimizer (Kingma and Ba, 2015)
+and use a batch size of B = 32. We use 500,000 epochs for models trained from scratch and 50,000 epochs for the models that are finetuned (see 4.6). For models trained from scratch all parameters are initialized with the Xavier uniform initialization (Glorot and Bengio, 2010), and an initial learning rate of 10− 4 decaying every 5000 steps by a factor of 0.96, until a minimum of 10− 5. For fine-tuning we use a fixed learning rate of 10− 5. Both the first hidden and the first cell state vectors of the sequence enc[oder’s LSTM]are treated as learnable parameters and
+
+initialized from U − √1̅̅̅ ; √1̅̅̅ .
+
+dh
+
+dh
+
+We set the hyper-parameter C = 10, in Eq. 3.8, as suggested in
+
+4.5. Inference
+
+Inference is the process of building a solution for a particular
+
+instance-tourist from the model (or network policy) trained in that
+
+instance-region. We use four different solution construction strategies,
+
+namely: sampling, greedy, beam search, and active search. We use
+
+sampling during training in the REINFORCE algorithm and greedy
+
+search to monitor the evolution of learning. In a sampling strategy, for
+
+each step, we sample from the probability vector that the model outputs.
+
+In a greedy strategy, for each time step, we select the node/point of
+
+interest for argmaxvi∈A l−
+
+which the model gives
+
+( 1 pθ
+
+⋅⃒⃒ϕ, A
+
+l−
+
+1, Sl−
+
+) 1.
+
+the
+
+highest
+
+probability,
+
+that
+
+is
+
+πl
+
+=
+
+4.5.1. Beam search Beam search is a search heuristic that approximately maximizes the
+total route probability under the network policy pθ(⋅|ϕ). It keeps a re­ cord, at each time step, a list of the nb most promising partial solutions sequences. From these candidates, beam search considers all admissible next visiting locations, and selects the best top-nb of them. When every beam reaches the final location, the solution with higher score is selected. When nb = 1, beam-search heuristic reduces to a simple greedy search. For beam search inference we show performance for nb ranging from 1 up to a maximum of 128 and finally consider performance and processing times for a maximum of 128 beams. Note that the number of beams cannot be higher than the number of nodes in the instance.
+
+4.5.2. Active search (with beam search) Active Search (Bello et al., 2017) optimizes the network policy for
+
+7
+
+R. Gama and H. L. Fernandes
+the given tourist-region instance, i.e., given an instance ϕ we can retrain the model’s weights directly on that instance. The vanilla version uses greedy inference, here we use beam search (see Algorithm 2).
+Algorithm 2: Acive Learning algorithm
+
+Computers and Operations Research 133 (2021) 105357
+and then fine-tune it for each of the instances. This was done to inves­ tigate the feasibility of warming up a general model when we have a lot of different instance-regions to train.
+
+Even though it is considered an inference method, active search can be seen as a way to achieve training/fine-tuning of the region-model for a specific tourist. For active search, we use 128 epochs and a maximum of 128 beams for the beam search that follows active search.
+4.6. Experiments
+In addition to exploring different kinds of inference, we also explore different training schemes. All the experiments conducted allowed us to obtain results for at least a subset of 28 benchmark instances (or 3 subsets, 8 of Cordeau, 8 of Gavalas and 12 of Solomon). The instances of these subsets are: Solomon: c101, c102, r101, r102, rc101, rc102, c201, c202, r201, r202, rc201, rc202; Cordeau: pr01, pr02, pr03, pr04, pr11, pr12, pr13, pr14; Gavalas: t101, t105, t114, t117, t201, t202, t203, t204. We chose these subsets because we wanted to have results for at least 8 instances of each group and at the same time have a balanced repre­ sentation of the diversity within each group. In all models/experiments we use beam search for inference with up to a maximum of 128 beams.
+4.6.1. Models trained from scratch For the main result, we train models from scratch for 500,000 epochs
+for each of the subset of 28 instances. Then, we look at performance with (“model + as”) and without (“model”) 128 epochs of active search. We also look at the performance of “model” at 50,000 epochs of training: we denote this model by “st”.
+
+All experiments were performed on a 12 core CPU at 3.5 GHz (AMD Threadripper 1920X) with 64 GB of RAM and an Nvidia GeForce GTX 1080 Ti GPU.
+4.7. Metrics and statistical analysis
+To quantify performance, we use total score of the solution, i.e., the sum of the scores/rewards. For each generated instance group, the re­ ported score is the mean value of the average score across the 64 in­ stances of the validation sets within that group.
+We compare our model’s performance to the Iterate Local Search (ILS) heuristic (Vansteenwegen et al., 2009), as it presents one of the best trade-offs between solution quality and execution time. We also report the score gap to the best-known solution in the benchmark in­ stances. We define score gap to a baseline model as scorebaseline − scoremodel × 100
+scorebaseline
+We use bootstrapping to obtain a 95% confidence intervals for gap to ILS and gap to best known. We sample with replacement the benchmark instances or instant-regions 10000 times. For determining the p-values in pairwise comparisons of scores we use the non-parametric one-sided Wilcoxon signed-rank test.
+5. Results
+
+4.6.2. Transfer learning For each instance group, we also use the instances in the subset of 28
+instances as leave-out sets for evaluating the feasibility of using transfer learning: we train a global model on all instances except for the in­ stances in the leave-out set and then evaluate its performance regarding those left-out instances. We called this model “tl”. Furthermore, we evaluate the performance of fine-tuning that global model on each of those left-out instances of the subset. Fine-tuning happens for 10% of regular training, i.e. 50,000 epochs. We called these fine-tuned models “ft + tl”. While training a global model, i.e., a model in several instances at the same time, the instance chosen for each batch in the REINFORCE algorithm is generated from one randomly chosen benchmark instance of the training set of instances.
+4.6.3. General global model Finally, we also train a global model on all instances simultaneously
+
+We investigate the performance of an attentive deep reinforcement learning approach to solving the Orienteering Problem with Time Windows (OPTW). We use a Pointer Network architecture and the REINFORCE algorithm to estimate gradients during training. We eval­ uate the performance of greedy inference as well as that of beam search and active search. We address the problem with the Tourist Trip Design Problem (TTDP) application in mind, but our models performance and inference times do not limit it to that application. We consider 3 groups of benchmark tourist-instance-regions (the benchmark instances) and generate new tourists for each of the instance-regions (the generated instances) in a way that mimics variations expected in the TTDP appli­ cations (i.e., the variability across tourists). In concrete terms, from each benchmark instance we sample new instances (new tourists for that instances region) with different route starting positions, different route starting and ending times, and different tourist-specific scores/prefer­ ences for each point of interest. Then, we compare performance with a
+
+8
+
+R. Gama and H. L. Fernandes
+
+Computers and Operations Research 133 (2021) 105357
+
+Fig. 5.1. Evolution of model performance during training using greedy inference (blue) and post-training model performance using beam search for inference (red) with up to a maximum number of 128 beams, in both benchmark and generated instances for the three sub-groups of instance-regions (n = 12 for Solomon, n = 8 Cordeau and n = 8 for Gavalas). A. Average score gap to ILS on the generated instances (n = 64 generated instances per instance-region). B. Average score gap to best-known and ILS-score gap to best-known on the benchmark instances. Inference during training (blue) uses greedy inference. Shaded area represents 90% confidence intervals (bootstrap instance-regions).
+
+well-established heuristic, the Iterated Local Search (ILS) algorithm, on both the benchmark and generated instances, and quantify inference speeds. Finally, we explore the practicality and performance of transfer learning and fine-tuning training schemes.
+5.1. The model is able to learn and achieve production-level performance
+First we wanted to know if the model can learn a particular instanceregion when trained from scratch. We evaluate training on a subset 28 instances (n = 12 for Solomon, n = 8 for Cordeau and n = 8 for Gavalas, see Section 4. Methods for details). We find that the model is able to learn for each set of instances on both the generated instances (Fig. 5.1A blue) and also that it generalizes to the benchmark instances (Fig. 5.1B blue) during training. At the end of training the performance (using greedy inference) is already in line with ILS. We find that beam search significantly improves performance (Fig. 5.1A and B red) and that it is generally able to significantly outperform ILS (Table 5.1) with inference times below half a second. In fact, we find that already with only 10% of
+
+training (50,000 epochs) the model already has higher scores than ILS in the generated instances (p = 2.6E − 06, one-sided Wilcoxon signed-rank test, see “ILS→st” in Fig. 5.4). Our model is able to learn and achieve competitive production level performance in both scores and execution times.
+5.2. Active search inference improves performance at the cost of speed
+Beam search inference produces good results in less than half a second. However, if the user is willing to wait a couple of minutes for a better solution, active search (Bello et al., 2017, see Algorithm 2) can be an appropriate inference solution. In active search the model is finetuned on for a particular tourist-region instance, improving its policy for solving the problem for that tourist. We apply active search to the models trained from scratch on the same subset of 28 instances, before applying beam search. Aiming for realistic off-line computation times (under 2 min), we applied 128 epochs of active search for each bench­ mark and generated tourist-region instance. We found that indeed while
+
+Table 5.1 Average performance (average score, gap to ILS and gap to best-known) and inference times of beam search inference with a maximum number of 128 beams for models trained from scratch for 500,000 epochs on each of the instance-regions in the subset of instances (12 Solomon, 8 Cordeau and 8 Gavalas). The generated instances include n = 64 generated instances for each of template benchmark instance-regions. The 95% confidence intervals are computed using bootstrap (sampling instance-regions with replacement). For performance on each of the 28 individual benchmark instances and average performance for each individual instant-region see “model” in Tables B.1 and B.2 in Supplementary materials.
+
+instance group
+
+best-known (bk)
+
+ILS
+
+model score gap to ILS gap to ILS [95%CI] gap to bk gap to bk [95%CI] time [s] time [95%CI]
+
+Solomon [generated] Cordeau [generated] Gavalas [generated] Solomon [benchmark] Cordeau [benchmark] Gavalas [benchmark]
+
+– – – 575.58 428.00 310.75
+
+429.99 253.69 299.99 558.83 401.62 307.50
+
+438.72 266.61 333.80 571.33 418.25 313.88
+
+− 3.06% − 4.90% − 11.52% − 2.19% − 3.90% − 1.70%
+
+[− 4.27%, − 1.98%] [− 6.12%, − 3.77%] [− 14.44%, − 8.85%] [− 3.81%, − 0.85%] [− 7.34%, − 0.7%]
+[− 3.4%, 0.15%]
+
+– – – 0.46% 2.10% − 0.67%
+
+– – – [0.02%, 1.27%] [0.75%, 3.58%] [− 1.95%, 0.71%]
+
+0.155 0.245 0.349 0.301 0.412 0.344
+
+[0.099, 0.212] [0.148, 0.354] [0.258, 0.464] [0.201, 0.406] [0.265, 0.573] [0.214, 0.509]
+
+9
+
+R. Gama and H. L. Fernandes
+
+Computers and Operations Research 133 (2021) 105357
+Fig. 5.4. Improvement in score in generated in­ stances for different training/inference strategies. Each data point is the average of 64 generated tourists for each instance-region (see Fig. 5.3 left panel). Inference in all models uses beam search with up to a maximum of 128 beams. Training for 50,000 epochs from scratch (st); transfer learning of a model trained simultaneously during 500,000 epochs in all instances within each group except for those in the subset of 28 instances (tl), fine-tuning the tl model for each instance during 50,000 epochs (tl + ft), training from scratch on each individual instance-region for 500,000 epochs (model), “model” with added 128 epochs of active search inference (model + as) before beam search. For example, “ILS→st” represents the average score improvement from the ILS algorithm to the model trained for just 50,000 epochs across the 64 fixed generated instances for each instance-region in the subset of the 28 (12 Solomon, 8 Cordeau, 8 Gav­ alas). The p-values are from one-sided Wilcoxon s. igned-rank test.
+
+it significantly slower (it is considerably slower than beam search (see Fig. 5.2 and Table 5.2) it improves the scores (p = 1.6E − 05, one-sided Wilcoxon signed-rank test; see “model→model + as” in Fig. 5.4, and Table 5.2). Active search is slower than beam search but can give a justified performance boost for situations where an immediate response is not necessary.
+5.3. Transfer learning and fine-tuning
+Next, we investigate the possibility of speeding up training by finetuning a model trained on another set of relatively similar instanceregions. This could be relevant in practice, if there is some change to the current instance-region, e.g., opening times changes, new points of
+
+interest opened and others closed, etc., and we do not want to train the model from scratch. It could also happen in practice, if one wants to train for a new instance-region while potentially taking advantage of an already warmed-up model. We train on all instances of each of the 3 sets of instances while leaving out the same subset of instances we have considered so far (i.e., we leave out that same subset of 12 Solomon, 8 Cordeau, 8 Gavalas instance-regions and train on the remaining 44 Solomon, 12 Cordeau and 25 Gavalas instance-regions).
+We find out that with transfer learning we are able to reach good levels of performance in all subgroups (see Fig. 5.3). Even without any fine-tuning, it achieves higher scores than ILS (p = 2.9E − 06, one-sided Wilcoxon signed-rank test) and it is better than training on each specific instance from scratch for just 50,000 epochs (p = 1.4E − 03, one-sided
+
+Fig. 5.2. Average score in the generated instances as a function of inference time. Results are for 64 generated instances/tourists for each of the 28 benchmark template instance-regions in the subgroup of instances trained individually (12 Solomon, 8 Cordeau and 8 Gavalas). Scores are for inference using beam search changing the maximum number of beams from 1 to 128 (red) and for active search (yellow) with 1 and up to 128 epochs followed by beam search with a maximum of 128 beams. The x-axis is capped at 5 s for visualization purposes. See Table 5.2 for inference times with 128 epochs o.f active search.
+10
+
+R. Gama and H. L. Fernandes
+
+Computers and Operations Research 133 (2021) 105357
+
+Table 5.2 Average performance of inference using active search with 128 epochs followed by beam search with a maximum number of 128 beams. Results are for the subset of instance-regions trained from scratch (n = 12 for Solomon, n = 8 Cordeau and n = 8 for Gavalas). The generated instances include n = 64 generated instances for each of template benchmark instance-regions. The 95% confidence intervals are computed using bootstrap (sampling instance-regions with replacement). For performance on each of the 28 individual benchmark instances and average performance for each individual instant-region see “model + as” in Tables 5.1 and 5.2 in Supplementary materials.
+
+instance group
+
+best-known (bk)
+
+ILS
+
+model score gap to ILS gap to ILS [95%CI] gap to bk gap to bk [95%CI] time [s] time [95%CI]
+
+Solomon [generated] Cordeau [generated] Gavalas [generated] Solomon [benchmark] Cordeau [benchmark] Gavalas [benchmark]
+
+– – – 575.58 428.00 310.75
+
+429.99 253.69 299.99 558.83 401.62 307.50
+
+439.76 267.32 334.50 571.00 420.25 316.12
+
+− 3.25% − 5.14% − 11.73% − 2.16% − 4.38% − 2.71%
+
+[− 4.35%, − 2.26%] [− 6.33%, − 4.06%] [− 14.62%, − 9.16%] [− 3.77%, − 0.82%] [− 7.74%, − 1.5%] [− 4.04%, − 1.21%]
+
+– – – 0.50% 1.64% − 1.67%
+
+– – – [0.03%, 1.26%] [0.65%, 2.76%] [− 2.61%, − 0.64%]
+
+27.069 39.252 49.553 47.682 61.512 48.184
+
+[19.3, 35.2] [25.1, 54.8] [37.5, 65.1] [33.4, 62.5] [41.9, 84.1] [31.6, 68.5]
+
+Wilcoxon signed-rank test, see “st→tl” in Fig. 5.4). We find also that finetuning for 50,000 epochs further improves the transfer learned model (p = 1.1E − 05, one-sided Wilcoxon signed-rank test, see “tl→tl + ft” in Fig. 5.4)) to performance levels closer to training from scratch even if still lower (p = 8.6E − 04, one-sided Wilcoxon signed-rank test, see “tl + ft→model” in Fig. 5.4).
+5.4. Importance of representative generated instances
+In generating new instances, we aimed at mimicking the kind of variability expected across tourists for a particular instance-region. We did this while trying to use the same hyperparameters across groups of instances (see Section 4.2 in Methods). However, in the Gavalas set, we are given some information about the generative process (Gavalas et al., 2019). In concrete terms, we know that the score of each point of interest is correlated with how long it takes to visit that point of interest. We used that information when generating new tourists for each instance-region of the Gavalas set. We found that ignoring that information leads to
+
+weak performances on the real instances (see Fig. 5.5 B vs Fig. 5.1 B 3rd column). It also leads to weaker performances on the generated in­ stances (see Fig. 5.5 A vs Fig. 5.1 A 3rd column) even though it still manages to outperform the ILS algorithm for these. This probably hap­ pens because forcing that correlation reduces the dimensionality of the space of generated instances and therefore the model trains more effi­ ciently. On the other hand, since the distribution of instances used during training is closer to the benchmark instances, the model gener­ alizes better for that instance. Having a better generative process or sampling method improves the performance of the model.
+5.5. Fine-tune a global model for every instance
+Finally, we explore another possible practical scenario in which the OPTW has to be solved for a good number of different instance-regions. If any cost, energy, or time restriction presents itself as an impediment, it may be wiser not to train a model from scratch for each instance-regions. Instead, we can take advantage of the fact that transfer-learning and
+
+Fig. 5.3. Performance of the different training/inference strategies. Gap to ILS in generated (left panel) and benchmark (middle panel) instances, and gap to bestknown in benchmark instances (right panel), within the subset of 28 instances (12 Solomon, 8 Cordeau and 9 Gavalas), for the different training or inference strategies: training for 50,000 epochs from scratch (st); transfer learning of a model trained simultaneously during 500,000 epochs in all instances within each group except for those in the subset of 28 instances (tl), fine-tuning the transfer learning model for each instance during 50,000 epochs (tl + ft), training from scratch on each individual instance-region for 500,000 epochs (model), “model” with added 128 epochs of active search inference (model + as) before beam search. All models use beam search with a maximum of 128 beams. In the “generated” panel (left) we consider 64 fixed generated tourists for each instance-region, while each for benchmark instances there is a single tourist per instance. See Fig. 5.4 for more granularity and further analysis on the .left panel data.
+11
+
+R. Gama and H. L. Fernandes
+
+Computers and Operations Research 133 (2021) 105357
+
+Fig. 5.5. Evolution of model performance during training using greedy inference (blue) and post-training model performance using beam search for inference (red) with up to a maximum number of 128 beams, in both benchmark and generated instances for the three sub-set of n = 8 Gavalas instance-regions using uniform sampling of rewards/scores (for Gavalas with correlated sampling see Fig. 5.1 right panels). Evolution of the mean validation score during training and model performance using Beam Search for inference. A. Average score gap to ILS on the generated instances (n = 64 generated instances per instance-region). B. Average score gap to best-known and ILS-score gap to best-known on the benchmark instances. Inference during training (blue) uses greedy inference. Shaded area represents 90% confidence intervals (bootstrap in.stance-regions).
+
+fine-tuning produce good results, and in a similar way obtain a model for each instance-region in a reasonable amount of time. With this aim, we start by training one global model for each instance group (without leaving any instances out) and then fine-tune it for 10% (50,000) of the epochs on each individual instance-region. By global we mean that it is simultaneously trained on all the instance-regions of that group. We thus obtain one fine-tuned model for each instance-region with considerable savings in resources. We find that both on the subset of 28 instances (Table 5.3) as well as when looking at all instances (Table 5.4) this model and training scheme is able to outperform ILS.
+6. Discussion
+Here we show that a Pointer Network model trained using rein­ forcement learning is able to solve the Orienteering Problem with Time Windows. We approach the problem with the Tourist Trip Design Problem in mind, making sure that each model generalizes across different tourists who might visit the particular region(s) the model is trained on. We test our approach in both established and relatively new
+
+benchmark instances and show that it significantly outperforms the standard competitive heuristic ILS with inference times that are suitable for real time on-line applications.
+This work was inspired by previous application of PNs to solving nphard combinatorial optimization problems such as the Travelling Salesman Problem and variations of the Vehicle Routing Problem, (Deudon et al., 2018; Nazari et al., 2018; Kool et al., 2019a). We customized the PN architecture specifically for the OPTW. This cus­ tomization happens mainly on the encoding of the points of interest, which is significantly different from previously proposed PNNs models. To start with, we use blocks of transformers (Deudon et al., 2018) that being permutation invariant, unlike RNNs (Nazari et al., 2018), are well suited for set encoding. Furthermore, we apply set encoding in a dy­ namic or iterative way. In particular, we use dynamical features that are updated at each iteration and we use one step lookahead to construct a graph representation of the admissible points of interest and use its adjacency matrix for self-attention masking. Importantly, we introduce a change in the transformer architecture: we add recursion by making the key of the attention sub-block dependent on the previous iteration
+
+12
+
+R. Gama and H. L. Fernandes
+
+Computers and Operations Research 133 (2021) 105357
+
+Table 5.3 Average performance on the subset of instances (n = 12 for Solomon, n = 8 Cordeau and n = 8 for Gavalas) of a global model trained on all instances and then finetuned during 50,000 epochs for each instance-region. Inference using beam search with a maximum number of 128 beams. The generated instances include n = 64 generated instances for each of template benchmark instance-regions. The 95% confidence intervals are computed using bootstrap (sampling instance-regions with replacement). For detailed performance on each individual benchmark instance and average performance for each instance-region see Tables B.3–B.8 in Supple­ mentary materials.
+
+instance group
+
+best-known (bk)
+
+ILS
+
+model score
+
+gap to ILS
+
+gap to ILS [95%CI]
+
+gap to bk
+
+gap to bk [95%CI]
+
+Solomon [generated] Cordeau [generated] Gavalas [generated] Solomon [benchmark] Cordeau [benchmark] Gavalas [benchmark]
+
+– – – 575.58 428.00 310.75
+
+429.99 253.69 299.99 558.83 401.62 307.50
+
+437.59 265.60 333.26 566.08 417.62 316.75
+
+− 2.93% − 4.55% − 11.35% − 1.41% − 3.79% − 2.46%
+
+[− 4.19%, − 1.75%] [− 5.56%, − 3.55%] [− 14.38%, − 8.74%] [− 3.05%, − 0.17%] [− 6.62%, − 1.29%] [− 4.32%, − 0.54%]
+
+– – – 1.22% 2.17% − 1.43%
+
+– – – [0.34%, 2.29%] [1.04%, 3.41%] [− 3.07%, 0.2%]
+
+Table 5.4 Average performance on all instances of a global model trained on all instance-regions and then fine-tuned during 50,000 epochs for each instance-region. Inference using beam search with a maximum number of 128 beams. The generated instances include n = 64 generated instances for each of template benchmark instanceregions. The 95% confidence intervals are computed using bootstrap (sampling instance-regions with replacement). For detailed performance on each individual benchmark instance and average performance for each instance-region see Tables B.3–B.8 in Supplementary materials.
+
+instance group
+
+best-known
+
+ILS
+
+model score
+
+gap to ILS
+
+gap to ILS [95%CI]
+
+gap to bk
+
+gap to bk [95%CI]
+
+Solomon [generated] Cordeau [generated] Gavalas [generated] Solomon [benchmark] Cordeau [benchmark] Gavalas [benchmark]
+
+– – – 624.59 498.50 307.64
+
+480.50 279.16 300.71 607.12 458.60 298.88
+
+487.26 293.99 333.26 607.55 482.75 311.15
+
+− 2.63% − 5.08% − 11.04% − 0.35% − 4.77% − 4.52%
+
+[− 3.23%, − 2.06%] [− 5.74%, − 4.36%] [− 12.09%, − 10.04%] [− 1.03%, 0.29%] [− 6.65%, − 2.95%] [− 6.78%, − 2.54%]
+
+– – – 2.19% 2.91% − 0.82%
+
+– – – [1.64%, 2.78%] [1.9%, 4.01%] [− 1.56%, − 0.09%]
+
+step. While these changes seem to improve the model (see Supplemen­ tary materials Appendix A), future work could offer a more systematic study on how these variations impact the models performance in this and other applications of the PNNs.
+We have shown that we can get production-level performance and inference times. While ultimately the inference time is more important, the long training time can be inconvenient. Our main results are for a model trained for 500,000 epochs, which might take up to 72 h. We show that training for 10% of the epochs produces higher scores than the ILS algorithm and we have explored several ways of improving training speed and performance. In particular, we show that having a better generative model of tourists or a better sampling strategy improves training, and we also show, using different practical training scenarios, that using warmed-up models, transfer learning and fine-tuning works and speeds-up training.
+The first application of PNNs for solving combinatorial optimization problems (Vinyals et al., 2015) used supervised learning on data generated by algorithmic/heuristic approaches instead of reinforcement learning. This limits performance to how good the heuristics are. It would be interesting to see if such strategy could be used to warm-up a model for a reinforcement learning approach.
+A hybrid supervised and reinforcement learning approach could also benefit from access to real data. Our work shows that neural networks can be used in real world applications of the TTDP problem. The pos­ sibility of having access to real data, e.g., tours and tourist feedback, could lead to models that enhance route usability and could better address a tourists preferences. The formal optimal solution of the ab­ stract optimization problem may not always be the best practical solu­ tion in a real-world setting. The ideal tour may depend on many other features not considered in the OPTW, which could be implicitly addressed in a machine learning approach that is capable of leveraging real data. The exploration strategy in a reinforcement learning approach can also have a big impact on performance and learning speed. While we use beam search for inference, we use stochastic sampling as an explo­ ration strategy. We briefly explored using stochastic beam search but obtained worse results. It would be interesting to try different explora­
+
+tion strategies, like for instance a Monte Carlo tree search (Browne et al., 2012). Another aspect of our exploration strategy is that each batch has samples from the same generated instance or tourist. It would be interesting to see if the inclusion of more tourists in the same batch (i.e. k > 1 in Kool et al., 2019b) can improve learning.
+An advantage of a machine learning approach is that the output is probabilistic. This allows us, for instance, to retrieve ranked top-n so­ lutions and use them in a broader route recommendation system. It also allows different inference strategies and the selection of the inference times according to the execution time requirements for the application at hand: we can make it faster by using almost instantaneous inference strategies like stochastic sampling or greedy inference, or by reducing the number of beams in beam search, or slower, but with better per­ formance, by adding active search. This is an advantage over the several algorithmic approaches to the OPTW (Vansteenwegen and Gunawan, 2019) that often have execution times that make it difficult to include them in real-time applications.
+Our approach is broad and flexible enough to be applied to different OPTW applications, like vehicle routing, transportation, scheduling, telecommunication, logistics and/or to other combinatorial optimiza­ tion problems. The overall model architecture would remain the same. It would require the rewriting of admissibility conditions for node masking and lookahead search that are specific to the new optimization problem. It would also be necessary to choose features that make sense and are relevant for that specific problem. Furthermore, even for different OPTW applications the distribution from which training instances are sampled should reflect the specific application of interest. Altogether, the flexibility of the approach makes it a potentially useful tool for solving practical problems.
+The source code can be found in GitHub 1.
+1 https://github.com/mustelideos/optw_rl
+
+13
+
+R. Gama and H. L. Fernandes
+Acknowledgements
+The authors are grateful to Nishan Mann, Bahram Marami, Joa˜o Gama and Hugo Penedones for their valuable suggestions. The first author is grateful to the Research Centre in Digital Services (CISeD), the Polytechnic of Viseu and FCT – Foundation for Science and Technology, I.P., within the scope of the project Ref UIDB/05583/2020 for their support.
+Appendix A. Supplementary data
+Supplementary data associated with this article can be found, in the online version, athttps://doi.org/10.1016/j.cor.2021.105357.
+References
+Amarouche, Y., Guibadj, R.N., Chaalal, E., Moukrim, A., 2020. Effective neighborhood search with optimal splitting and adaptive memory for the team orienteering problem with time windows. Comput. Oper. Res. 123, 105039.
+Bahdanau, D., Cho, K., and Bengio, Y. (2015). Neural Machine Translation by Jointly Learning to Align and Translate. 3rd International Conference on Learning Representations, ICLR 2015, Conference Track Proceedings, abs/1409.0473.
+Bayliss, C., 2021. Machine learning based simulation optimisation for urban routing problems. Appl. Soft Comput. 105.
+Bayliss, C., Juan, A.A., Currie, C.S., Panadero, J., 2020. A learnheuristic approach for the team orienteering problem with aerial drone motion constraints. Appl. Soft Comput. 92, 106280.
+Bello, I., Pham, H., Le, Q.V., Norouzi, M., Bengio, S., 2017. Neural Combinatorial Optimization with Reinforcement Learning. In: Proceedings of the 5th International Conference on Learning Representations (ICLR).
+Bengio, Y., Lodi, A., Prouvost, A., 2020. Machine learning for combinatorial optimization: a methodological tour dhorizon. Eur. J. Oper. Res.
+Browne, C.B., Powley, E., Whitehouse, D., Lucas, S.M., Cowling, P.I., Rohlfshagen, P., Tavener, S., Perez, D., Samothrakis, S., Colton, S., 2012. A survey of monte carlo tree search methods. IEEE Trans. Comput. Intell. AI Games 4 (1), 1–43.
+Chou, X., Gambardella, L.M., Montemanni, R., 2021. A tabu search algorithm for the probabilistic orienteering problem. Comput. Oper. Res. 126, 105107.
+Dai, H., Khalil, E.B., Zhang, Y., Dilkina, B., and Song, L. (2017). Learning combinatorial optimization algorithms over graphs. Advances in Neural Information Processing Systems, 2017-December:6349–6359.
+Deudon, M., Cournut, P., Lacoste, A., Adulyasak, Y., Rousseau, L.-M., 2018. Learning Heuristics for the TSP by Policy Gradient. In: Proceedings of the 15th International Conference on the Integration of Constraint Programming, Artificial Intelligence, and Operations Research (CPAIOR), pp. 170–181.
+Falkner, J.K. and Schmidt-Thieme, L. (2020). Learning to solve vehicle routing problems with time windows through joint attention. arXiv: 2006.091005.
+Freeman, N.K., Keskin, B.B., Capar, I., 2018. Attractive orienteering problem with proximity and timing interactions. Eur. J. Oper. Res. 266 (1), 354–370.
+Gavalas, D., Konstantopoulos, C., Mastakas, K., Pantziou, G., 2014. A survey on algorithmic approaches for solving tourist trip design problems. Journal of Heuristics 20 (3), 291–328.
+Gavalas, D., Konstantopoulos, C., Mastakas, K., Pantziou, G., 2019. Efficient ClusterBased Heuristics for the Team Orienteering Problem with Time Windows. AsiaPacific J. Oper. Res. 36 (01), 1–44.
+Glorot, X., Bengio, Y., 2010. Understanding the difficulty of training deep feedforward neural networks. J. Mach. Learn. Res. 9, 249–256.
+Gu, S., Hao, T., 2018. A Pointer Network Based Deep Learning Algorithm for 0–1 Knapsack Problem. In: 2018 Tenth International Conference on Advanced Computational Intelligence (ICACI), pp. 473–477.
+
+Computers and Operations Research 133 (2021) 105357
+Gu, S., Yang, Y., 2018. A Pointer Network Based Deep Learning Algorithm for the MaxCut Problem. Neural Information Processing. ICONIP 2018. Lect. Notes Comput. Sci. 11301, 238–248.
+Gunawan, A., Lau, H.C., Vansteenwegen, P., Lu, K., 2017. Well-tuned algorithms for the Team Orienteering Problem with Time Windows. J. Oper. Res. Soc. 68 (8), 861–876.
+Gunawan, A., Lau Hoong, C., Vansteenwegen, P., 2016. Orienteering problem: a survey of recent variants, solution approaches and applications. Eur. J. Oper. Res. 255 (2), 315–332.
+Hapsari, I., Surjandari, I., Komarudin, K., 2019. Solving multi-objective team orienteering problem with time windows using adjustment iterated local search. J. Ind. Eng. Int. 15 (4), 679–693.
+Hochreiter, S., Schmidhuber, J., 1997. Long short-term memory. Neural Comput. 9 (8), 1735–1780.
+Karabulut, K., Tasgetiren, M.F., 2020. An evolution strategy approach to the team orienteering problem with time windows. Comput. Ind. Eng. 139, 106109.
+Kingma, D.P. and Ba, J. (2015). Adam: A method for stochastic optimization. International Conference on Learning Representations (ICLR), abs/1412.6980.
+Kool, W., Van Hoof, H., and Welling, M. (2019a). Attention, learn to solve routing problems! 7th International Conference on Learning Representations, ICLR 2019, pages 1–25.
+Kool, W., Van Hoof, H., and Welling, M. (2019b). Buy 4 reinforce samples, get a baseline for free! Deep Reinforcement Learning Meets Structured Prediction, DeepRLStructPred@ICLR 2019 Workshop, pages 1–14.
+Lin, B., Ghaddar, B., and Nathwani, J. (2020). Deep reinforcement learning for electric vehicle routing problem with time windows. arXiv: 2010.020685.
+Nazari, M., Oroojlooy, A., Snyder, L.V., Tak´aˇc, M., 2018. Deep Reinforcement Learning for Solving the Vehicle Routing Problem. Proceedings Neural Information Processing Systems (NIPS) 9839–9849.
+Roozbeh, I., Hearne, J.W., Pahlevani, D., 2020. A solution approach to the orienteering problem with time windows and synchronisation constraints. Heliyon 6 (6), e04202.
+Saeedvand, S., Aghdasi, H.S., Baltes, J., 2020. Novel hybrid algorithm for team orienteering problem with time windows for rescue applications. Appl. Soft Comput. 96, 106700.
+Schmid, V., Ehmke, J.F., 2017. An effective large neighborhood search for the team orienteering problem with time windows. Comput. Logist. ICCL Lect. Notes Comput. Sci. 10572, 3–18.
+Vansteenwegen, P., Gunawan, A., 2019. Orienteering Problems, Models and Algorithms for Vehicle Routing Problems with Profits. Springer, euro advan edition.
+Vansteenwegen, P., Souffriau, W., Oudheusden, D.V., 2011. The orienteering problem: a survey. Eur. J. Oper. Res. 209 (1), 1–10.
+Vansteenwegen, P., Souffriau, W., Vanden Berghe, G., Van Oudheusden, D., 2009. Iterated local search for the team orienteering problem with time windows. Comput. Oper. Res. 36 (12), 3281–3290.
+Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.N., Kaiser, L., Polosukhin, I., 2017. Attention Is All You Need. In: NIPS’17: Proceedings of the 31st International Conference on Neural Information Processing Systems, pp. 6000–6010.
+Veliˇckovi´c, P., Casanova, A., Lio`, P., Cucurull, G., Romero, A., Bengio, Y., 2018. Graph attention networks. In: 6th International Conference on Learning Representations, ICLR 2018 - Conference Track Proceedings, pp. 1–12.
+Vinyals, O., Fortunato, M., and Jaitly, N. (2015). Pointer networks. In Cortes, C., Lawrence, N.D., Lee, D.D., Sugiyama, M., and Garnett, R., editors, Advances in Neural Information Processing Systems 28, pages 2692–2700. Curran Associates Inc.
+Williams, R.J., 1992. Simple statistical gradient-following algorithms for connectionist reinforcement learning. Machine Learning 8 (3), 229–256.
+Yahiaoui, A.-E., Moukrim, A., Serairi, M., 2019. The clustered team orienteering problem. Comput. Oper. Res. 111, 386–399.
+Yu, Q., Fang, K., Zhu, N., Ma, S., 2019a. A matheuristic approach to the orienteering problem with service time dependent profits. Eur. J. Oper. Res. 273 (2), 488–503.
+Yu, V.F., Jewpanya, P., Lin, S.-W., Redi, A.P., 2019b. Team orienteering problem with time windows and time-dependent scores. Comput. Ind. Eng. 127, 213–224.
+Yu, V.F., Redi, A.P., Jewpanya, P., Gunawan, A., 2019c. Selective discrete particle swarm optimization for the team orienteering problem with time windows and partial scores. Comput. Ind. Eng. 138, 106084.
+
+14
+

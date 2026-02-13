@@ -1,0 +1,3830 @@
+General E(2) - Equivariant Steerable CNNs
+Maurice Weiler∗
+University of Amsterdam, QUVA Lab m.weiler@uva.nl
+Gabriele Cesa∗†
+University of Amsterdam cesa.gabriele@gmail.com
+Abstract
+The big empirical success of group equivariant networks has led in recent years to the sprouting of a great variety of equivariant network architectures. A particular focus has thereby been on rotation and reflection equivariant CNNs for planar images. Here we give a general description of E(2)-equivariant convolutions in the framework of Steerable CNNs. The theory of Steerable CNNs thereby yields constraints on the convolution kernels which depend on group representations describing the transformation laws of feature spaces. We show that these constraints for arbitrary group representations can be reduced to constraints under irreducible representations. A general solution of the kernel space constraint is given for arbitrary representations of the Euclidean group E(2) and its subgroups. We implement a wide range of previously proposed and entirely new equivariant network architectures and extensively compare their performances. E(2)-steerable convolutions are further shown to yield remarkable gains on CIFAR-10, CIFAR-100 and STL-10 when used as a drop-in replacement for non-equivariant convolutions.
+1 Introduction
+The equivariance of neural networks under symmetry group actions has in the recent years proven to be a fruitful prior in network design. By guaranteeing a desired transformation behavior of convolutional features under transformations of the network input, equivariant networks achieve improved generalization capabilities and sample complexities compared to their non-equivariant counterparts. Due to their great practical relevance, a big pool of rotation- and reflection- equivariant models for planar images has been proposed by now. Unfortunately, an empirical survey, reproducing and comparing all these different approaches, is still missing.
+An important step in this direction is given by the theory of Steerable CNNs [1, 2, 3, 4, 5] which defines a very general notion of equivariant convolutions on homogeneous spaces. In particular, steerable CNNs describe E(2)-equivariant (i.e. rotation- and reflection-equivariant) convolutions on the image plane R2. The feature spaces of steerable CNNs are thereby defined as spaces of feature fields, characterized by a group representation which determines their transformation behavior under transformations of the input. In order to preserve the specified transformation law of feature spaces, the convolutional kernels are subject to a linear constraint, depending on the corresponding group representations. While this constraint has been solved for specific groups and representations [1, 2], no general solution strategy has been proposed so far. In this work we give a general strategy which reduces the solution of the kernel space constraint under arbitrary representations to much simpler constraints under single, irreducible representations.
+Specifically for the Euclidean group E(2) and its subgroups, we give a general solution of this kernel space constraint. As a result, we are able to implement a wide range of equivariant models, covering regular GCNNs [6, 7, 8, 9, 10, 11], classical Steerable CNNs [1], Harmonic Networks [12], gated Harmonic Networks [2], Vector Field Networks [13], Scattering Transforms [14, 15, 16, 17, 18] and entirely new architectures, in one unified framework. In addition, we are able to build hybrid models, mixing different field types (representations) of these networks both over layers and within layers.
+* Equal contribution, author ordering determined by random number generator. † This research has been conducted during an internship at QUVA lab, University of Amsterdam.
+33rd Conference on Neural Information Processing Systems (NeurIPS 2019), Vancouver, Canada.
+arXiv:1911.08251v2 [cs.CV] 6 Apr 2021
+
+
+order |G| G ≤ O(2) (R2, +) o G
+orthogonal - O(2) E(2) ∼= (R2, +) o O(2)
+special orthogonal - SO(2) SE(2) ∼= (R2, +) o SO(2)
+cyclic N CN (R2, +) o CN
+reflection 2 ({±1}, ∗) ∼= D1 (R2, +) o ({±1}, ∗)
+dihedral 2N DN ∼= CN o({±1}, ∗) (R2, +) o DN
+Table 1: Overview over the different groups covered in our framework.
+We further propose a group restriction operation, allowing for network architectures which are decreasingly equivariant with depth. This is useful e.g. for natural images which show low level features like edges in arbitrary orientations but carry a sense of preferred orientation globally. An adaptive level of equivariance accounts for the resulting loss of symmetry in the hierarchy of features.
+Since the theory of steerable CNNs does not give a preference for any choice of group representation or equivariant nonlinearity, we run an extensive benchmark study, comparing different equivariance groups, representations and nonlinearities. We do so on MNIST 12k, rotated MNIST SO(2) and reflected and rotated MNIST O(2) to investigate the influence of the presence or absence of certain symmetries in the dataset. A drop in replacement of our equivariant convolutional layers is shown to yield significant gains over non-equivariant baselines on CIFAR10, CIFAR100 and STL-10.
+Beyond the applications presented in this paper, our contributions are of relevance for general steerable CNNs on homogeneous spaces [3, 4] and gauge equivariant CNNs on manifolds [5] since these models obey the same kind of kernel constraints. More specifically, 2-dimensional manifolds, endowed with an orthogonal structure group O(2) (or subgroups thereof), necessitate exactly the kernel constraints solved in this paper. Our results can therefore readily be transferred to e.g. spherical CNNs [19, 5, 20, 21, 22, 23] or more general models of geometric deep learning [24, 25, 26, 27].
+2 General E(2) - Equivariant Steerable CNNs
+Convolutional neural networks process images by extracting a hierarchy of feature maps from a given input signal. The convolutional weight sharing ensures the inference to be translation-equivariant which means that a translated input signal results in a corresponding translation of the feature maps. However, vanilla CNNs leave the transformation behavior of feature maps under more general transformations, e.g. rotations and reflections, undefined. In this work we devise a general framework for convolutional networks which are equivariant under the Euclidean group E(2), that is, under isometries of the plane R2. We work in the framework of steerable CNNs [1, 2, 3, 4, 5] which provides a quite general theory for equivariant CNNs on homogeneous spaces, including Euclidean spaces Rd as a specific instance. Sections 2.2 and 2.3 briefly review the theory of Euclidean steerable CNNs as described in [2]. The following subsections explain our main contributions: a decomposition of the kernel space constraint into irreducible subspaces (2.4), their solution for E(2) and subgroups (2.5), an overview on the group representations used to steer features, their admissible nonlinearities and their use in related work (2.6), the group restriction operation (2.7) and implementation details (2.8).
+2.1 Isometries of the Euclidean plane R2
+The Euclidean group E(2) is the group of isometries of the plane R2, consisting of translations, rotations and reflections. Characteristic patterns in images often occur at arbitrary positions and in arbitrary orientations. The Euclidean group therefore models an important factor of variation of image features. This is especially true for images without a preferred global orientation like satellite imagery or biomedical images but often also applies to low level features of globally oriented images.
+One can view the Euclidean group as being constructed from the translation group (R2, +) and the orthogonal group O(2) = {O ∈ R2×2 | OT O = id2×2} via the semidirect product operation as E(2) ∼= (R2, +) o O(2). The orthogonal group thereby contains all operations leaving the origin invariant, i.e. continuous rotations and reflections. In order to allow for different levels of equivariance and to cover a wide spectrum of related work we consider subgroups of the Euclidean group of the form (R2, +) o G, defined by subgroups G ≤ O(2). Specifically, G could be either the special orthogonal group SO(2), the group ({±1}, ∗) of the reflections along a given axis, the cyclic groups CN , the dihedral groups DN or the orthogonal group O(2) itself. While SO(2) describes continuous
+2
+
+
+rotations (without reflections), CN and DN contain N discrete rotations by angles multiple of 2π
+N
+and, in the case of DN , reflections. CN and DN are therefore discrete subgroups of order N and 2N , respectively. For an overview over the groups and their interrelations see Table 1.
+Since the groups (R2, +) o G are semidirect products, one can uniquely decompose any of their elements into a product tg where t ∈ (R2, +) and g ∈ G [3] which we will do in the rest of the paper.
+2.2 E(2) - steerable feature fields
+Steerable CNNs define feature spaces as spaces of steerable feature fields f : R2 → Rc which
+associate a c-dimensional feature vector f (x) ∈ Rc to each point x of a base space, in our case the plane R2. In contrast to vanilla CNNs, the feature fields of steerable CNNs are associated with a transformation law which specifies their transformation under actions of E(2) (or subgroups) and therefore endows features with a notion of orientation1. Formally, a feature vector f (x) encodes the coefficients of a coordinate independent geometric feature relative to a choice of reference frame or, equivalently, image orientation (see Appendix A).
+scalar field ρ(g) = 1 vector field ρ(g) = g
+Figure 1: Transformation behavior of ρ-fields.
+An important example are scalar feature fields s : R2 → R, describing for instance gray-scale images or temperature and pressure fields. The Euclidean group acts on scalar fields by moving each pixel to a new position, that is, s(x) 7→ s ((tg)−1x) = s (g−1(x − t)) for some tg ∈ (R2, +) o G; see Figure 1, left. Vector fields v : R2 → R2, like optical flow or gradient images, on the other hand transform as v(x) 7→ g · v (g−1(x − t)). In contrast to the case of scalar fields, each vector is therefore not only moved to a new position but additionally changes its orientation via the action of g ∈ G; see Figure 1, right.
+The transformation law of a general feature field f : R2 → Rc is fully characterized by its type ρ.
+Here ρ : G 7→ GL(Rc) is a group representation, specifying how the c channels of each feature vector f (x) mix under transformations. A representation satisfies ρ(gg ̃) = ρ(g)ρ(g ̃) and therefore models the group multiplication gg ̃ as multiplication of c × c matrices ρ(g) and ρ(g ̃); see Ap
+pendix B. More specifically, a ρ-field transforms under the induced representation23
+[
+Ind(R2,+)oG
+Gρ
+]
+of (R2, +) o G as
+f (x) 7→
+([
+Ind(R2,+)oG
+Gρ
+]
+(tg) · f
+)
+(x) := ρ(g) · f (g−1(x − t)) . (1)
+As in the examples above, it transforms feature fields by moving the feature vectors from g−1(x − t) to a new position x and acting on them via ρ(g). We thus find scalar fields to correspond to the trivial representation ρ(g) = 1 ∀g ∈ G which reflects that the scalar values do not change when being moved. Similarly, a vector field corresponds to the standard representation ρ(g) = g of G.
+In analogy to the feature spaces of vanilla CNNs comprising multiple channels, the feature spaces of steerable CNNs consist of multiple feature fields fi : R2 → Rci , each of which is associated with its
+own type ρi : G → GL(Rci ). A stack f = ⊕
+i fi of feature fields is then defined to be concatenated
+from the individual feature fields and transforms under the direct sum ρ = ⊕
+i ρi of the individual representations. Since the direct sum representation is block diagonal, the individual feature fields are guaranteed to transform independently from each other. A common example for a stack of feature fields are RGB images f: R2 → R3. Since the color channels transform independently under rotations we identify them as three independent scalar fields. The stacked field representation is thus given by the direct sum ⊕3
+i=1 1 = id3×3 of three trivial representations. While the input and output types of
+steerable CNNs are given by the learning task, the user needs to specify the types ρi of intermediate feature fields as hyperparameters, similar to the choice of channels for vanilla CNNs. We discuss different choices of representations in Section 2.6 and investigate them empirically in Section 3.1.
+1Steerable feature fields can therefore be seen as fields of capsules [28]. 2Induced representations are the most general transformation laws compatible with convolutions [3, 4]. 3Note that this simple form of the induced representation is a special case for semidirect product groups.
+3
+
+
+2.3 E(2) - steerable convolutions
+In order to preserve the transformation law of steerable feature spaces, each network layer is required to be equivariant under the group actions. As proven for Euclidean groups4 in [2], the most general equivariant linear map between steerable feature spaces, transforming under ρin and ρout, is given by
+convolutions with G-steerable kernels5 k : R2 → Rcout×cin , satisfying a kernel constraint
+k(gx) = ρout(g)k(x)ρin(g−1) ∀g ∈ G, x ∈ R2 . (2)
+Intuitively, this constraint determines the form of the kernel in transformed coordinates gx in terms of the kernel in non-transformed coordinates x and thus its response to transformed input fields. It ensures that the output feature fields transform as specified by Ind ρout when the input fields are being transformed by Ind ρin; see Appendix D.1 for a proof.
+Since the kernel constraint is linear, its solutions form a linear subspace of the vector space of unconstrained kernels considered in conventional CNNs. It is thus sufficient to solve for a basis of the G-steerable kernel space in terms of which the equivariant convolutions can be parameterized. The lower dimensionality of the restricted kernel space enhances the parameter efficiency of steerable CNNs over conventional CNNs similarly to the increased parameter efficiency of CNNs over MLPs by translational weight sharing.
+2.4 Irrep decomposition of the kernel constraint
+The kernel constraint (2) in principle needs to be solved individually for each pair of input and output types ρin and ρout to be used in the network6. Here we show how the solution of the kernel constraint for arbitrary representations can be reduced to much simpler constraints under irreducible representations (irreps). Our approach relies on the fact that any representation of a finite or compact group decomposes under a change of basis into a direct sum of irreps, each corresponding to an
+invariant subspace of the representation space Rc on which ρ acts. Denoting the change of basis
+by Q, this means that one can always write ρ = Q−1 [⊕
+i∈I ψi
+] Q where ψi are the irreducible representations of G and the index set I encodes the types and multiplicities of irreps present in ρ. A decomposition can be found by exploiting basic results of character theory and linear algebra [29].
+The decomposition of ρin and ρout in the kernel constraint (2) leads to
+k(gx) = Q−1
+out
+[⊕
+i∈Iout
+ψi(g)
+]
+Qout k(x) Q−1
+in
+[⊕
+j∈Iin
+ψ−1
+j (g)
+]
+Qin ∀g ∈ G, x ∈ R2,
+which, defining a kernel relative to the irrep bases as κ := QoutkQ−1
+in , implies
+κ(gx) =
+[⊕
+i∈Iout
+ψi(g)
+]
+κ(x)
+[⊕
+j∈Iin
+ψ−1
+j (g)
+]
+∀g ∈ G, x ∈ R2.
+The left and right multiplication with a direct sum of irreps reveals that the constraint decomposes into independent constraints
+κij (gx) = ψi(g) κij (x) ψ−1
+j (g) ∀g ∈ G, x ∈ R2 where i ∈ Iout, j ∈ Iin (3)
+on blocks κij in κ corresponding to invariant subspaces of the full space of equivariant kernels; see Appendix E for a visualization. In order to solve for a basis of equivariant kernels satisfying the original constraint (2), it is therefore sufficient to solve the irrep constraints (3) to obtain bases for each block, revert the change of basis and take the union over different blocks. Specifically, given dij-dimensional bases{κij
+1 , · · ·, κij
+dij
+} for the blocks κij of κ, we get a d = ∑
+ijdij-dimensional basis
+{k1, · · · , kd
+} :=
+⋃
+i∈Iout
+⋃
+j∈Iin
+{
+Q−1
+out κij
+1 Qin, · · · , Q−1
+out κij
+dij Qin
+}
+(4)
+of solutions of (2). Here κij denotes a block κij being filled at the corresponding location of a matrix of the shape of κ with all other blocks being set to zero; see Appendix E. The completeness of the basis found this way is guaranteed by construction if the bases for each block ij are complete.
+4Proofs for more general cases can be found in [3, 4]. 5As k : R2 → Rcout×cin returns a matrix of shape (cout, cin) for each position x ∈ R2, its discretized version can be represented by a tensor of shape (cout, cin, X, Y ) as usually done in deep learning frameworks. 6A numerical solution technique which is based on a Clebsch-Gordan decomposition of tensor products of irreps has been proposed in [2]. While this technique would generalize to arbitrary representations it becomes prohibitively expensive for larger representations as considered here; see Appendix G.
+4
+
+
+Note that while this approach shares some basic ideas with the solution strategy proposed in [2], it is computationally more efficient for large representations; see Appendix G. We want to emphasize that this strategy for reducing the kernel constraint to irreducible representations is not restricted to subgroups of O(2) but applies to steerable CNNs in general.
+2.5 General solution of the kernel constraint for O(2) and subgroups
+In order to build isometry-equivariant CNNs on R2 we need to solve the irrep constraints (3) for the specific case of G being O(2) or one of its subgroups. For this purpose note that the action of G on R2 is norm-preserving, that is, |g.x| = |x| ∀g ∈ G, x ∈ R2. The constraints (2) and (3) therefore only restrict the angular parts of the kernels but leave their radial parts free. Since furthermore all irreps of G correspond to one unique angular frequency (see Appendix F.2), it is convenient to expand the kernel w.l.o.g. in terms of an (angular) Fourier series
+κij
+αβ
+(x(r, φ)) = Aαβ,0(r) +
+∑∞
+μ=1
+[
+Aαβ,μ(r) cos(μφ) + Bαβ,μ(r) sin(μφ)
+]
+(5)
+with real-valued, radially dependent coefficients Aαβ,μ : R+ → R and Bαβ,μ : R+ → R for each matrix entry κij
+αβ of block κij. By inserting this expansion into the irrep constraints (3) and projecting on individual harmonics we obtain constraints on the Fourier coefficients, forcing most of them to be zero. The vector spaces of G-steerable kernel blocks κij satisfying the irrep constraints (3) are then parameterized in terms of the remaining Fourier coefficients. The completeness of this basis follows immediately from the completeness of the Fourier basis. Similar approaches have been followed in simpler settings for the cases of CN in [7], SO(2) in [12] and SO(3) in [2].
+The resulting bases for the angular parts of kernels for each pair of irreducible representations of O(2) are shown in Table 2. It turns out that each basis element is harmonic and associated to one unique angular frequency. Appendix F gives an explicit derivation and the resulting bases for all possible pairs of irreps for all groups G ≤ O(2) following the strategy presented in this section. The analytical solutions for SO(2), ({±1}, ∗), CN and DN are found in Tables 8, 10, 11 and 12. Since these groups are subgroups of O(2), they enforce a weaker kernel constraint as compared to O(2). As a result, the bases for G < O(2) are higher dimensional, i.e. they allow for a wider range of kernels. A higher level of equivariance therefore leads simultaneously to a guaranteed behavior of the inference process under transformations and on the other hand to an improved parameter efficiency.
+ψi ψj trivial sign-flip frequency n ∈ N+
+trivial [1] ∅ [ sin(nφ), 9 cos(nφ)]
+sign-flip ∅ [1] [ cos(nφ), sin(nφ)]
+frequency m ∈ N+
+[
+sin(mφ) 9cos(mφ)
+][
+cos(mφ) sin(mφ)
+][
+cos((m9n)φ)
+9sin((m9n)φ) sin((m9n)φ) cos((m9n)φ)
+]
+,
+[
+cos((m+n)φ) sin((m+n)φ) sin((m+n)φ)
+9cos((m+n)φ)
+]
+Table 2: Bases for the angular parts of O(2)-steerable kernels satisfying the irrep constraint (3) for different pairs of input field irreps ψj and output field irreps ψi.The different types of irreps are explained in Appendix F.2.
+2.6 Group representations and nonlinearities
+A question which so far has been left open is which field types, i.e. which representations ρ of G, should be used in practice. Considering only the convolution operation with G-steerable kernels for the moment, it turns out that any change of basis P to an equivalent representation ρ ̃ := P −1ρP is
+irrelevant. To see this, consider the irrep decomposition ρ = Q−1 [⊕
+i∈I ψi
+] Q used in the solution of the kernel constraint to obtain a basis {ki}d
+i=1 of G-steerable kernels as defined by Eq. (4). Any equivalent representation will decompose into ρ ̃ = Q ̃−1 [⊕
+i∈I ψi
+]
+Q ̃ with Q ̃ = QP for some P and therefore result in a kernel basis {P −1
+out kiPin}d
+i=1 which entirely negates changes of bases between equivalent representations. It would therefore w.l.o.g. suffice to consider direct sums of irreps ρ=⊕
+i∈I ψi as representations only, reducing the question on which representations to choose to the question on which types and multiplicities of irreps to use.
+In practice, however, convolution layers are interleaved with other operations which are sensitive to specific choices of representations. In particular, nonlinearity layers are required to be equivariant under the action of specific representations. The choice of group representations in steerable CNNs
+5
+
+
+therefore restricts the range of admissible nonlinearities, or, conversely, a choice of nonlinearity allows only for certain representations. In the following we review prominent choices of representations found in the literature in conjunction with their compatible nonlinearities.
+All equivariant nonlinearities considered here act spatially localized, that is, on each feature vector f (x) ∈ Rcin for all x ∈ R2 individually. They might produce different types of output fields
+ρout : G → GL(Rcout ), that is, σ : Rcin → Rcout , f (x) 7→ σ(f (x)). As proven in Appendix D.2, it is sufficient to require the equivariance of σ under the actions of ρin and ρout, i.e. σ ◦ ρin(g) = ρout(g)◦σ ∀g ∈ G, for the nonlinearities to be equivariant under the action of induced representations when being applied to a whole feature field as σ(f )(x) := σ(f (x)).
+A general class of representations are unitary representations which preserve the norm of their
+representation space, that is, they satisfy |ρunitary(g)f (x)| = ∣
+∣f (x)∣
+∣ ∀ g ∈ G. As proven in Appendix D.2.2, nonlinearities which solely act on the norm of feature vectors but preserve their orientation are equivariant w.r.t. unitary representations. They can in general be decomposed in σnorm : Rc → Rc, f (x) 7→ η(|f (x)|) f(x)
+|f(x)| for some nonlinear function η : R≥0 → R≥0 acting
+on the norm of feature vectors. Norm-ReLUs, defined by η(|f (x)|) = ReLU(|f (x)| − b) where b ∈ R+ is a learned bias, were used in [12, 2]. In [28], the authors consider squashing nonlinearities
+η(|f (x)|) = |f(x)|2
+|f(x)|2+1 . Gated nonlinearities were proposed in [2] as conditional version of norm
+nonlinearities. They act by scaling the norm of a feature field by learned sigmoid gates 1
+1+e−s(x) ,
+parameterized by a scalar feature field s. All representations considered in this paper are unitary such that their fields can be acted on by norm-nonlinearities. This applies specifically also to all irreducible representations ψi of G ≤ O(2) which are discussed in detail in Section F.2.
+A common choice of representations of finite groups like CN and DN are regular representations. Their representation space R|G| has dimensionality equal to the order of the group, e.g. RN for CN and R2N for DN . The action of the regular representation is defined by assigning each axis eg of R|G| to a group element g ∈ G and permuting the axes according to ρG
+reg(g ̃)eg := eg ̃g. Since this action is just permuting channels of ρG
+reg-fields, it commutes with pointwise nonlinearities like ReLU; a proof is given in Appendix D.2.3. While regular steerable CNNs were empirically found to perform very well, they lead to high dimensional feature spaces with each individual field consuming |G| channels. Regular steerable CNNs were investigated for planar images in [6, 7, 8, 9, 10, 17, 18, 30], for spherical CNNs in [19, 5] and for volumetric convolutions in [31, 32]. Further, the translation of feature maps of conventional CNNs can be viewed as action of the regular representation of the translation group.
+Closely related to regular representations are quotient representations. Instead of permuting |G| channels indexed by G, they permute |G|/|H| channels indexed by cosets gH in the quotient
+space G/H of a subgroup H ≤ G. Specifically, they act on axes egH of R|G|/|H| as defined by
+ρG/H
+quot (g ̃)egH := eg ̃gH . This definition covers regular representations as a special case for the trivial subgroup H = {e}. As permutation representations, quotient representations allow for pointwise nonlinearities; see Appendix D.2.3. A benefit of quotient representations over regular representation is that they require by a factor of |H| less channels per feature field. On the other hand, they enforce more symmetries in the feature fields which result in a restriction of the G-steerable kernel basis; see Appendix C for details and intuitive examples. Quotient representations were considered in [1, 11].
+Both regular and quotient representations can be viewed as being induced from the trivial representation of a subgroup H ≤ G, specifically ρG
+reg = IndG
+{e} 1 and ρG
+quot = IndG
+H 1. More generally, any representation ρ ̃ : H → GL(Rc) can be used to define an induced representations7 ρind = IndG
+H ρ ̃ : G → GL(Rc·|G:H|). Here |G : H| denotes the index of H in G which corresponds to |G|/|H| if G and H are both finite. Admissible nonlinearities of induced representations can be constructed from valid nonlinearities of ρ ̃. For more information on inductions we refer to Appendix B.
+Regular and quotient fields can furthermore be acted on by nonlinear pooling operators. Via a
+group pooling or projection operation max : Rc → R, f (x) → max(f (x)) the works [6, 7, 9, 32, 31] extract the maximum value of a regular or quotient field. The invariance of the maximum operation implies that the resulting features form scalar fields. Since group pooling operations
+7The induction from H to G considered here is conceptually equivalent to the induction (1) from G to G o (R2, +) but applies to representations acting on a single feature vector rather than on a full feature field.
+6
+
+
+discard information on the feature orientations entirely, vector field nonlinearities σvect : RN → R2 for regular representations of CN were proposed in [13]. Vector field nonlinearities do not only keep the maximum response max(f (x)) but also its index arg max(f (x)). This index corresponds to a rotation angle θ = 2π
+N arg max(f (x)) which is used to define a vector field with elements
+v(x) = max(f (x))(cos(θ), sin(θ))T . The equivariance of this operation is proven in D.2.4.
+In general, any pair of feature fields f1 : R2 → Rc1 and f2 : R2 → Rc2 can be combined via the tensor product operation f1 ⊗ f2. Given that the individual fields transform under arbitrary representations ρ1 and ρ2, their product transforms under the tensor product representation ρ1 ⊗ρ2 :
+G → GL(Rc1·c2 ). Since the tensor product is a nonlinear transformation by itself, no additional nonlinearity needs to be applied. Tensor product nonlinearities have been discussed in [33, 2, 20, 34].
+Any pair f1 and f2 of feature fields can furthermore be concatenated by taking their direct sum f1 ⊕ f2 : R2 → Rc1+c2 which we used in Section 2.2 to define feature spaces comprising multiple feature fields. The concatenated field transforms according to the direct sum representation as (ρ1 ⊕ ρ2
+)(g)(f1 ⊕ f2
+) := ρ1(g)f1 ⊕ ρ2(g)f2. Since each constituent fi of a concatenated field transforms independently it can be viewed as an individual feature and is equivariant under the action of its corresponding nonlinearity σi; see Section D.2.1.
+The theory of steerable CNNs does not prefer any of the here presented representations or nonlinearities over each other. We are therefore extensively comparing different choices in Section 3.1.
+2.7 Group restrictions and inductions
+The key idea of equivariant networks is to exploit symmetries in the distribution of characteristic patterns in signals. The level of symmetry present in data might thereby vary over different length scales. For instance, natural images typically show small features like edges or intensity gradients in arbitrary orientations and reflections. On a larger length scale, however, the rotational symmetry is broken as manifested in visual patterns exclusively appearing upright but still in different reflections. Each individual layer of a convolutional network should therefore be adapted to the symmetries present in the length scale of its fields of view.
+A loss of symmetry can be implemented by restricting the equivariance constraints at a certain depth to a subgroup (R2, +) o H ≤ (R2, +) o G, where H ≤ G; e.g. from rotations and reflections G = O(2) to mere reflections H = ({±1}, ∗) in the example above. This requires the feature fields produced by a layer with a higher level of equivariance to be reinterpreted in the following layer as fields transforming under a subgroup. Specifically, a ρ-field, transforming under a representation
+ρ : G → GL(Rc), needs to be reinterpreted as a ρ ̃-field, where ρ ̃ : H → GL(Rc) is a representation of the subgroup H ≤ G. This is naturally achieved by defining ρ ̃ to be the restricted representation
+ρ ̃ := ResG
+H (ρ) : H → GL(Rc), h 7→ ρ(h) , (6)
+defined by restricting the domain of ρ to H. Since a subsequent H-steerable convolution layers can map fields of arbitrary representations we can readily process the resulting ResG
+H (ρ)-field further.
+Conversely, it is also possible that local patterns are aligned, while patterns which emerge on a larger scale are more symmetrically distributed. This can be exploited by lifting a ρ field, transforming under H ≤ G, to an induced IndG
+H ρ field, transforming under G.
+The effect of enforcing different levels of equivariance through group restrictions is investigated empirically in Sections 3.2, 3.4, 3.5 and 3.6.
+2.8 Implementation details
+E(2)-steerable CNNs rely on convolutions with O(2)-steerable kernels. Our implementation therefore involves 1) computing a basis of steerable kernels, 2) the expansion of a steerable kernel in terms of this basis with learned expansion coefficients and 3) running the actual convolution routine. Since the kernel basis depends only on the chosen representations it is precomputed before training.
+Given an input and output representation ρin and ρout of G ≤ O(2), we first precompute a basis {k1, . . . kd} of G-steerable kernels satisfying Eq. (2). In order to solve the kernel constraint we compute the types and multiplicities of irreps in the input and output representations using character theory [29]. The change of basis can be obtained by solving the linear system of equations ρ(g) = Q−1[⊕
+i∈I ψi(g)]Q ∀g ∈ G. For each pair ψi, ψj of irreps occurring in ρout and
+7
+
+
+ρin we retrieve the analytical solutions {κij
+1 , . . . , κij
+dij } listed in Appendix F.3. Together with the
+change of basis matrices Qin and Qout, they fully determine the angular parts of the basis {k1, . . . , kd} of G-steerable kernels via Eq. (4). Since the kernel space constraint affects only the angular behavior of the kernels we are free to choose any radial profile. Following [7] and [2], we choose Gaussian radial profiles exp ( 1
+2σ2 (r 9R)2) of width σ, centered at radii R = 1, . . . , bs/2c.
+In practice, we consider digitized signals on a pixel grid8 Z2. Correspondingly, we sample the analytically found kernel basis {k1, . . . , kd} on a square grid of size s×s to obtain their numerical representation of shape (d, cout, cin, s, s). In this process it is important to prevent aliasing effects. Specifically, each basis kernel corresponds to one particular angular harmonic; see Table 2. When being sampled with a too low rate, a basis kernel can appear as a lower harmonic and might therefore introduce non-equivariant kernels to the sampled basis. For this reason, preventing aliasing is necessary to guarantee (approximate) equivariance. In order to ensure a faithful discretization, note that each Gaussian radial profile defines a ring whose circumference, and thus angular sampling rate, is proportional to its radius. It is therefore appropriate to bandlimit the kernel basis by a cutoff frequency which is chosen in proportion to the rings’ radii. Since the basis kernels are harmonics of specific angular frequencies this is easily implemented by discarding high frequency solutions.
+In typical applications the feature spaces are defined to be composed of multiple independent feature fields. Since the corresponding representations are block diagonal, this implies that the actual constraint (2) decomposes into multiple simpler constraints9 which we leverage in our implementation to improve its computational efficiency. Assuming the output and input representations of a layer to be given by ρout = ⊕
+γ ρout,γ and ρin = ⊕
+δ ρin,δ respectively, the constraint on the full kernel space
+is equivalent to constraints on its blocks kγδ which map between the independent fields transforming under ρin,δ and ρout,γ. Our implementation therefore computes a sampled basis {kγδ
+1 , . . . , kγδ
+dγδ
+} of kγδ for each pair (ρin,δ, ρout,γ) of input and output representations individually.
+At runtime, the convolution kernels are expanded by contracting the sampled kernel bases with learned weights. Specifically, each basis {kγδ
+1 , . . . , kγδ
+dγδ
+}, realized by a tensor of shape (dγδ, cout,γ, cin,δ, s, s),
+is expanded into the corresponding block kγδ of the kernel by contracting it with a tensor of learned parameters of shape (dγδ). This process is sped up further by batching together multiple occurrences of the same pair of representations and thus block bases.
+The resulting kernels are then used in a standard convolution routine. In practice we find that the time spent on the actual convolution of reasonably sized images outweighs the cost of the kernel expansion. In evaluation mode the parameters are not updated such that the kernel needs to be expanded only once and can then be reused. E(2)-steerable CNNs therefore have no computational overhead in comparison to conventional CNNs at test time.
+Our implementation is provided as a PyTorch extension which is available at https://github.com/ QUVA-Lab/e2cnn. The library provides equivariant versions of many neural network operations, including G-steerable convolutions, nonlinearities, mappings to produce invariant features, spatial pooling, batch normalization and dropout. Feature fields are represented by geometric tensors, which are wrapping a torch.Tensor object and augment it, among other things, with their transformation law under the action of a symmetry group. This allows for a dynamic type-checking which prevents the user from applying operations to geometric tensors whose transformation law does not match the transformation law expected by the operation. The user interface hides most complications on group theory and solutions of the kernel space constraint and requires the user only to specify the transformation laws of feature spaces. For instance, a C8-equivariant convolution operation, mapping a RGB image, identified as three scalar fields, to ten regular feature fields, would be instantiated by:
+1 r2_act = Rot2dOnR2(N=8) 2 feat_type_in = FieldType(r2_act, 3*[r2_act.trivial_repr])
+3 feat_type_out = FieldType(r2_act, 10*[r2_act.regular_repr])
+4 conv_op = R2Conv(feat_type_in, feat_type_out, kernel_size=5)
+8Note that this prevents equivariance from being exact for groups which are not symmetries of the grid. Specifically, for Z2 only subgroups of D4 are exact symmetries which motivated their use in [6, 10, 1]. 9The same decomposition was used in a different context in Section 2.4.
+8
+
+
+Everything the user has to do is to specify that the group C8 acts on R2 by rotating it (line 1) and to define the types ρin = ⊕3
+i=1 1 and ρout = ⊕10
+i=1 ρrCeg4 of the input and output feature fields (lines 2 and 3), which are subsequently passed to the constructor of the steerable convolution (line 4).
+3 Experiments
+Since the framework of general E(2)-equivariant steerable CNNs supports many choices of groups, representations and nonlinearities, we first run an extensive benchmark study over the space of supported models in Section 3.1. As the performance of the models depends heavily on the level of symmetry present in the data, we evaluate each model on three different versions of the MNIST dataset: on untransformed digits, randomly rotated digits and simultaneously rotated and reflected digits, corresponding to transformations in {e}, in SO(2) and O(2), respectively. Section 3.2 further investigates the effect of the invariance of models to different global symmetries. We discuss how too high levels of invariance can hurt the performance and demonstrate how it can be prevented via group restrictions. The convergence rate of equivariant models is being explored in Section 3.3. In addition, we present two models which improve upon the previous state of the art on MNIST rot in Section 3.4.
+The insights from these benchmark experiments are then applied to build several models for classifying CIFAR-10 and CIFAR-100 images in Section 3.5 and STL-10 images in Section 3.6. These datasets consist of globally aligned, natural images which allows us to validate that exploiting local symmetries is advantageous. In order to compare the benefit from different local symmetries we restrict the equivariance of our models to different subgroups at varying depths. All models are built by replacing the non-equivariant convolutions of well established baseline models with our G-steerable convolutions. Despite not tuning any hyperparameters, we find that all of our models significantly outperform the baselines. This holds true even for settings in which a strong auto-augmentation policy is being used.
+All of our experiments are found in a dedicated repository at https://github.com/gabri95/ e2cnn_experiments.
+3.1 Model benchmarking on transformed MNIST datasets
+We first perform a comprehensive benchmarking to compare the impact of the different design choices covered in this work. Each model is evaluated on three different versions of the MNIST dataset, each of which consists of 12000 training images and 50000 test images. As non-transformed version we use the official MNIST 12k dataset. The official rotated MNIST dataset, often called MNIST rot, differs from MNIST 12k by a random SO(2) rotation of each digit. In addition we build MNIST O(2) whose digits are both rotated and reflected. These datasets allow us to study the benefit from different levels of G-steerability in the presence or absence of certain symmetries. In order to not disadvantage models with lower levels of equivariance and since it would be done in real scenarios we train all models using augmentation by the transformations present in the corresponding dataset.
+Table 3 shows the test errors of 57 different models on the three MNIST variants. The first four columns state the equivariance groups, representations, nonlinearities and invariant maps which distinguish the models. Column five cites related work which proposed the corresponding model design. The statistics of each entry are averaged over (at least) 6 samples. All models in these experiments are derived from the base architecture described in Table 13 in Appendix H. The actual width of each model is adapted such that the number of parameters is approximately preserved. Note that this results in different numbers of channels, depending on the parameter efficiency of the corresponding models. All models apply some form of invariant mapping to scalar fields followed by spatial pooling after the last convolutional layer such that the predictions are guaranteed to be invariant under the equivariance group of the model. The number of invariant features passed to the fully connected classifier is approximately kept constant by adapting the width of the last convolutional layer to the invariant mapping used. In the remainder of this subsection we will guide through the results presented in Table 3. For more information on the training setup, see Appendix H.1.
+Regular steerable CNNs: Due to their popularity we first cover steerable CNNs whose features transform under regular representations of CN and DN for varying orders N . Note that these models correspond to group convolutional CNNs [6, 7]. For the dihedral models we choose a vertical reflection axis. We use ELUs [35] as pointwise nonlinearities and perform group pooling (see Section 2.6) as invariant map after the final convolution. Overall, regular steerable CNNs perform
+9
+
+
+4 8 12 16 20 N
+0.5
+0.6
+0.7
+0.8
+0.9
+1
+2
+3
+4
+5
+test error (%)
+MNIST O(2)
+CN DN CNN
+4 8 12 16 20 N
+MNIST rot
+CN DN DN|5CN CNN
+4 8 12 16 20 N
+MNIST 12k
+CN DN CN|5{e} DN|5{e} CNN
+Figure 2: Test errors of CN and DN regular steerable CNNs for different orders N for all three MNIST variants. Left: All equivariant models improve upon the non-equivariant CNN baseline on MNIST O(2). The error decreases before saturating at around 8 to 12 orientations. Since the dataset contains reflected digits, the DN -equivariant models perform better than their CN counterparts. Middle: Since the intraclass variability of MNIST rot is reduced, the performances of the CN model and the baseline CNN improve on this dataset. In contrast, the DN models are invariant to reflections such that they can’t distinguish between MNIST O(2) and MNIST rot. For N = 1 this leads to a worse performance than that of the baseline. Restricted dihedral models, denoted by DN |5CN , make use of the local reflectional symmetries but are not globally invariant. This makes them perform even better than the CN models. Right: On MNIST 12k the globally invariant models CN and DN don’t yield better results than the baseline, however, the restricted (i.e. non-invariant) models CN |5{e} and DN |5{e} do. For more details see the main text.
+very well. The reason for this is that feature vectors, transforming under regular representations, can encode any function on the group.
+Figure 2 summarizes the results for all regular steerable CNNs on all variants of MNIST (rows 2-10 and 19-27 in Table 3). For MNIST O(2) and MNIST rot the prediction accuracies improve with N but start to saturate at approximately 8 to 12 rotations. On MNIST O(2) the DN models perform consistently better than the CN models of the same order N . This is the case since the dihedral models are guaranteed to generalize over reflections which are present in the dataset. All equivariant models outperform the non-equivariant CNN baseline.
+On MNIST rot, the accuracy of the CN -equivariant models improve significantly in comparison to their results on MNIST O(2) since the intra-class variability is reduced. In contrast, the test errors of the DN -equivariant models is the same on both datasets. The reason for this result is the reflection invariance of the DN models which implies that they can’t distinguish between reflected digits. For N = 1 the dihedral model is purely reflection- but not rotation invariant and therefore performs even worse than the CNN baseline. This issue is resolved by restricting the dihedral models after the penultimate convolution to CN ≤ DN , such that the group pooling after the final convolution results in only CN -invariant features. This model, denoted in the figure by DN |5CN , achieves a slightly better
+accuracy than the pure CN -equivariant model since it can leverage local reflectional symmetries10.
+For MNIST 12k the non-restricted DN models perform again worse than the CN models since they are insensitive to the chirality of the digits. In order to explain the non-monotonic trend of the curves
+10The group restricted models are not listed in Table 3 but are discussed in Section 3.2.
+10
+
+
+group representation nonlinearity invariant map citation MNIST O(2) MNIST rot MNIST 12k
+1 {e} (conventional CNN) ELU - - 5.53 ± 0.20 2.87 ± 0.09 0.91 ± 0.06
+2 C1 [7, 9] 5.19 ± 0.08 2.48 ± 0.13 0.82 ± 0.01 3 C2 [7, 9] 3.29 ± 0.07 1.32 ± 0.02 0.87 ± 0.04
+4 C3 - 2.87 ± 0.04 1.19 ± 0.06 0.80 ± 0.03 5 C4 [6, 1, 7, 9, 10] 2.40 ± 0.05 1.02 ± 0.03 0.99 ± 0.03
+6 C6 [8] 2.08 ± 0.03 0.89 ± 0.03 0.84 ± 0.02 7 C8 [7, 9] 1.96 ± 0.04 0.84 ± 0.02 0.89 ± 0.03
+8 C12 [7] 1.95 ± 0.07 0.80 ± 0.03 0.89 ± 0.03
+9 C16 [7, 9] 1.93 ± 0.04 0.82 ± 0.02 0.95 ± 0.04
+10 C20
+regular ρreg
+[7] 1.95 ± 0.05 0.83 ± 0.05 0.94 ± 0.06
+11 C4 5ρreg ⊕2ρC4/C2
+quot ⊕2ψ0 [1] 2.43 ± 0.05 1.03 ± 0.05 1.01 ± 0.03 12 C8 5ρreg ⊕2ρC8/C2
+quot ⊕2ρC8/C4
+quot ⊕2ψ0 - 2.03 ± 0.05 0.84 ± 0.05 0.91 ± 0.02 13 C12 5ρreg ⊕2ρC12/C2
+quot ⊕2ρC12/C4
+quot ⊕3ψ0 - 2.04 ± 0.04 0.81 ± 0.02 0.95 ± 0.02 14 C16 5ρreg ⊕2ρC16/C2
+quot ⊕2ρC16/C4
+quot ⊕4ψ0 - 2.00 ± 0.01 0.86 ± 0.04 0.98 ± 0.04
+15 C20
+quotient
+5ρreg ⊕2ρC20/C2
+quot ⊕2ρC20/C4
+quot ⊕5ψ0
+ELU
+- 2.01 ± 0.05 0.83 ± 0.03 0.96 ± 0.04
+16 regular/scalar ψ0
+−co−nv→ ρreg
+G-pool
+−−−−→ ψ0 ELU, G-pooling [6, 36] 2.02 ± 0.02 0.90 ± 0.03 0.93 ± 0.04
+17 regular/vector ψ1
+−co−nv→ ρreg
+vector pool
+−−−−−−→ ψ1 vector field [13, 37] 2.12 ± 0.02 1.07 ± 0.03 0.78 ± 0.03
+18
+C16
+mixed vector ρreg ⊕ψ1
+c−o−n→v 2ρreg
+vector
+−po−ol→ ρreg ⊕ψ1 ELU, vector field
+G-pooling
+- 1.87 ± 0.03 0.83 ± 0.02 0.63 ± 0.02
+19 D1 - 3.40 ± 0.07 3.44 ± 0.10 0.98 ± 0.03
+20 D2 - 2.42 ± 0.07 2.39 ± 0.04 1.05 ± 0.03
+21 D3 - 2.17 ± 0.06 2.15 ± 0.05 0.94 ± 0.02 22 D4 [6, 1, 38] 1.88 ± 0.04 1.87 ± 0.04 1.69 ± 0.03
+23 D6 [8] 1.77 ± 0.06 1.77 ± 0.04 1.00 ± 0.03
+24 D8 - 1.68 ± 0.06 1.73 ± 0.03 1.64 ± 0.02
+25 D12 - 1.66 ± 0.05 1.65 ± 0.05 1.67 ± 0.01
+26 D16 - 1.62 ± 0.04 1.65 ± 0.02 1.68 ± 0.04
+27 D20
+regular ρreg ELU G-pooling
+- 1.64 ± 0.06 1.62 ± 0.05 1.69 ± 0.03
+28 D16 regular/scalar ψ0,0
+−co−nv→ ρreg
+G-pool
+−−−−→ ψ0,0 ELU, G-pooling - 1.92 ± 0.03 1.88 ± 0.07 1.74 ± 0.04
+29 irreps ≤ 1 ⊕1
+i=0 ψi - 2.98 ± 0.04 1.38 ± 0.09 1.29 ± 0.05 30 irreps ≤ 3 ⊕3
+i=0 ψi - 3.02 ± 0.18 1.38 ± 0.09 1.27 ± 0.03 31 irreps ≤ 5 ⊕5
+i=0 ψi - 3.24 ± 0.05 1.44 ± 0.10 1.36 ± 0.04 32 irreps ≤ 7 ⊕7
+i=0 ψi - 3.30 ± 0.11 1.51 ± 0.10 1.40 ± 0.07 33 C-irreps ≤ 1 ⊕1
+i=0 ψiC [12] 3.39 ± 0.10 1.47 ± 0.06 1.42 ± 0.04 34 C-irreps ≤ 3 ⊕3
+i=0 ψiC [12] 3.48 ± 0.16 1.51 ± 0.05 1.53 ± 0.07 35 C-irreps ≤ 5 ⊕5
+i=0 ψiC - 3.59 ± 0.08 1.59 ± 0.05 1.55 ± 0.06 36 C-irreps ≤ 7 ⊕7
+i=0 ψiC
+ELU, norm-ReLU conv2triv
+- 3.64 ± 0.12 1.61 ± 0.06 1.62 ± 0.03
+37 ELU, squash - 3.10 ± 0.09 1.41 ± 0.04 1.46 ± 0.05 38 ELU, norm-ReLU - 3.23 ± 0.08 1.38 ± 0.08 1.33 ± 0.03 39 ELU, shared norm-ReLU - 2.88 ± 0.11 1.15 ± 0.06 1.18 ± 0.03 40 shared norm-ReLU
+norm
+- 3.61 ± 0.09 1.57 ± 0.05 1.88 ± 0.05
+41 ELU, gate - 2.37 ± 0.06 1.09 ± 0.03 1.10 ± 0.02
+42 ELU, shared gate conv2triv - 2.33 ± 0.06 1.11 ± 0.03 1.12 ± 0.04 43 ELU, gate - 2.23 ± 0.09 1.04 ± 0.04 1.05 ± 0.06
+44
+SO(2)
+irreps ≤ 3 ⊕3
+i=0 ψi
+ELU, shared gate norm - 2.20 ± 0.06 1.01 ± 0.03 1.03 ± 0.03
+45 irreps = 0 ψ0,0 ELU - - 5.46 ± 0.46 5.21 ± 0.29 3.98 ± 0.04 46 irreps ≤ 1 ψ0,0 ⊕ ψ1,0 ⊕ 2ψ1,1 - 3.31 ± 0.17 3.37 ± 0.18 3.05 ± 0.09 47 irreps ≤ 3 ψ0,0 ⊕ ψ1,0
+⊕3
+i=1 2ψ1,i - 3.42 ± 0.03 3.41 ± 0.10 3.86 ± 0.09 48 irreps ≤ 5 ψ0,0 ⊕ ψ1,0
+⊕5
+i=1 2ψ1,i - 3.59 ± 0.13 3.78 ± 0.31 4.17 ± 0.15 49 irreps ≤ 7 ψ0,0 ⊕ ψ1,0
+⊕7
+i=1 2ψ1,i
+ELU, norm-ReLU O(2)-conv2triv
+- 3.84 ± 0.25 3.90 ± 0.18 4.57 ± 0.27
+50 Ind-irreps ≤ 1 Ind ψSO(2)
+0 ⊕ Ind ψSO(2)
+1 - 2.72 ± 0.05 2.70 ± 0.11 2.39 ± 0.07
+51 Ind-irreps ≤ 3 Ind ψSO(2)
+0
+⊕3
+i=1 Ind ψSO(2)
+i - 2.66 ± 0.07 2.65 ± 0.12 2.25 ± 0.06
+52 Ind-irreps ≤ 5 Ind ψSO(2)
+0
+⊕5
+i=1 Ind ψSO(2)
+i - 2.71 ± 0.11 2.84 ± 0.10 2.39 ± 0.09
+53 Ind-irreps ≤ 7 Ind ψSO(2)
+0
+⊕7
+i=1 Ind ψSO(2)
+i
+ELU, Ind norm-ReLU Ind-conv2triv
+- 2.80 ± 0.12 2.85 ± 0.06 2.25 ± 0.08
+54 O(2)-conv2triv - 2.39 ± 0.05 2.38 ± 0.07 2.28 ± 0.07
+55
+irreps ≤ 3 ψ0,0 ⊕ ψ1,0
+⊕3
+i=1 2ψ1,i ELU, gate norm - 2.21 ± 0.09 2.24 ± 0.06 2.15 ± 0.03
+56 Ind-conv2triv - 2.13 ± 0.04 2.09 ± 0.05 2.05 ± 0.05
+57
+O(2)
+Ind-irreps ≤ 3 Ind ψSO(2)
+0
+⊕3
+i=1 Ind ψSO(2)
+i ELU, Ind gate Ind-norm - 1.96 ± 0.06 1.95 ± 0.05 1.85 ± 0.07
+Table 3: Extensive comparison of G-steerable CNNs for different choices of groups G, representations, nonlinearities and final G-invariant maps on three transformed MNIST datasets. Multiplicities of representations are reported in relative terms; the actual multiplicities are integer multiples with a depth dependent factor. All models apply a G-invariant map after the convolutions to guarantee an invariant prediction. Citations give credit to the works which proposed the corresponding model design. For reference see Sections 2.6, 3.1, C and I.
+
+
+of the CN and DN models, notice that some of the digits are approximately related by symmetry
+transformations11. If these transformations happen to be part of the equivariance group w.r.t. which the model is invariant the predictions are more likely to be confused. This is mostly the case for N being a multiple of 2 or 4 or for large orders N , which include almost all orientations. Once again, the restricted models, here DN |5{e} and CN |5{e}, show the best results since they exploit local symmetries but preserve information on the global orientation. Since the restricted dihedral model generalizes over local reflections, its performance is consistently better than that of the restricted cyclic model.
+Quotient representations: As an alternative to regular representations we experiment with some mixtures of quotient representations of CN (rows 11-15). These models differ from the regular models by enforcing more symmetries in the feature fields and thus kernels. The individual feature fields are lower dimensional; however, by fixing the number of parameters, the models use more different fields which in this specific case leads to approximately the same number of channels and therefore compute and memory requirements. We do not observe any significant difference in performance between regular and quotient representations. Appendix C gives more intuition on our specific choices of quotient representations and which symmetries they enforce. Note that the space of possible quotient representations and their multiplicities is very large and still needs to be investigated more thoroughly.
+Group pooling and vector field nonlinearities: For C16 we implement a group pooling network (row 16) and a vector field network (row 17). These models map regular feature fields, produced by each convolutional layer, to scalar fields and vector fields, respectively; see Section 2.6. These pooling operations compress the features in the regular fields, which can lead to lower memory and compute requirements. However, since we fix the number of parameters, the resulting models are ultimately much wider than the corresponding regular steerable CNNs. Since the pooling operations lead to a loss of information, both models perform worse than their purely regular counterpart on MNIST O(2) and MNIST rot. Surprisingly, the group pooling network, whose features are orientation unaware, performs better than the vector field network. On MNIST 12k the group pooling network closes up with the regular steerable CNN while the vector field network achieves an even better result. We further experiment with a model which applies vector field nonlinearities to only half of the regular fields and preserves the other half (row 18). This model is on par with the regular model on both transformed MNIST versions but achieves the overall best result on MNIST 12k. Similar to the case of C16, the group pooling network for D16 (row 28) performs worse than the corresponding regular model, this time also on MNIST 12k.
+SO(2) irrep models: The feature fields of all SO(2)-equivariant models which we consider are defined to transform under irreducible representations; see Appendix B and F.2. Note that this covers scalar fields and vector fields which transform under ψSO(2)
+0 and ψSO(2)
+1 , respectively. Overall these models are not competitive compared to the regular steerable CNNs. This result is particularly important for SE(3) ∼= (R3, +) o SO(3)-equivariant CNNs whose feature fields are often transforming under the irreps of SO(3) [39, 2, 33, 20, 34].
+The models in rows 29-32 are inspired by Harmonic Networks [12] and consist of irrep fields with the same multiplicity up to a certain threshold. All models apply ELUs on scalar fields and norm-ReLUs (see Section 2.6) on higher order fields. The projection to invariant features is done via a convolution to scalar features (conv2triv) in the last convolutional layer. We find that irrep fields up to order 1 and 3 perform equally well while higher thresholds yield worse results. The original implementation of Harmonic Networks considered complex irreps of SO(2) which results in a lower dimensional steerable kernel basis as discussed in Appendix F.5. We reimplemented these models and found that their reduced kernel space leads to consistently worse results (rows 33-36).
+For the model containing irreps up to order 3 we implemented some alternative variants. For instance, the model in row 38 does not convolve to trivial features in the last layer but computes these by taking the norms of all non-scalar fields. This does not lead to significantly different results. Appendix I discusses all variations in detail.
+11E.g.
+9
+and
+6
+(6 and 9) or 5 and 2 (2 and 5) are related by a rotations by π and might therefore be confused by all models C2k and D2k for k ∈ N. Similarly, and (4 and 7) are related by a reflection and a rotation by π/2 and might be confused by all models D4k.
+12
+
+
+restriction depth MNIST rot MNIST 12k group test error (%) group test error (%) group test error (%)
+(0) C16 0.82 ± 0.02 {e} 0.82 ± 0.01 {e} 0.82 ± 0.01
+1
+D16, C16
+0.86 ± 0.05
+D16, {e}
+0.79 ± 0.03
+C16, {e}
+0.80 ± 0.03 2 0.82 ± 0.03 0.74 ± 0.03 0.77 ± 0.03 3 0.77 ± 0.03 0.73 ± 0.03 0.76 ± 0.03 4 0.79 ± 0.03 0.72 ± 0.02 0.77 ± 0.03 5 0.78 ± 0.04 0.68 ± 0.04 0.75 ± 0.02
+no restriction D16 1.65 ± 0.02 D16 1.68 ± 0.04 C16 0.95 ± 0.04
+Table 4: Effect of the group restriction operation at different depths of the network on MNIST rot and MNIST 12k. Before restriction, the models are equivariant to a larger symmetry group than the group of global symmetries of the corresponding dataset. A restriction at larger depths leads to an improved accuracy. All restricted models perform better than non-restricted, and hence globally invariant, models.
+By far the best results are achieved by the models in rows 41-44, which replace the norm-ReLUs with gated nonlinearities, see Section 2.6. This observation is in line with the results presented in [2], where gated nonlinearities were proposed.
+O(2) models: As for SO(2), we are investigating O(2)-equivariant models whose features transform under irreps up to a certain order and apply norm-ReLUs (rows 46-49). In this case we choose twice the multiplicity of 2-dimensional fields than scalar fields, which reflects the multiplicity of irreps contained in the regular representation of O(2). Invariant predictions are computed by convolving in
+equal proportion to fields which transform under trivial irreps ψO(2)
+0,0 and sign-flip irreps ψO(2)
+1,0 (see Appendix F.2), followed by taking the absolute value of the latter (O(2)-conv2triv). We again find that higher irrep thresholds yield worse results, this time already starting from order 1. In particular, these models perform worse than their SO(2)-equivariant counterparts even on MNIST O(2). This suggests that the kernel constraint for this particular choice of representations is too restrictive.
+If only scalar fields, corresponding to the trivial irrep ψO(2)
+0,0 , are chosen, the kernel constraint becomes k(gx) = k(x) ∀g ∈ O(2) and therefore allows for isotropic kernels only. This limits the expressivity of the model so severely that it performs even worse than a conventional CNN on MNIST rot and MNIST 12k while being on par for MNIST O(2), see row 45. Note that isotropic kernels correspond to vanilla graph convolutional networks (cf. the results and discussion in [5]).
+In order to improve the performance of O(2)-steerable CNNs, we propose to use representations
+IndO(2)
+SO(2) ψSO(2)
+k , which are induced from the irreps of SO(2) (see Appendix B for more details on
+induction). By the definition of induction, this leads to pairs of fields which transform according
+to ψSO(2)
+k under rotations but permute under reflections. The multiplicity of the irreps of O(2)
+contained in this induced representation coincides with the multiplicities chosen in the pure O(2) irrep models. However, the change of basis, relating both representations, does not commute with the nonlinearities, such that the networks behave differently. We apply Ind norm-ReLU nonlinearities to the induced O(2) models which compute the norm of each of the permuting subfields individually but share the norm-ReLU parameters (the bias) to guarantee equivariance. In order to project to final, invariant features, we first apply a convolution producing IndO(2)
+SO(2) ψSO(2)
+0 fields (Ind-conv2triv).
+Since these transform like the regular representation of ({±1}, ∗) ∼= O(2)/ SO(2), we can simply apply G-pooling over the two reflections. The results, given in rows 50-53, show that these models perform significantly better than the O(2) irreps models and outperform the SO(2) irrep models on MNIST O(2). More specific details on all induced O(2) model operations are given in Appendix I.
+We again build models which apply gated nonlinearities. As for SO(2), this leads to a greatly improved performance of the pure irrep models, see rows 54-55. In addition we adapt the gated nonlinearity to the induced irrep models (rows 56-57). Here we apply an independent gate to each of the two permuting sub-fields (Ind gate). In order to be equivariant, the gates need to permute under
+reflections as well, which is easily achieved by deriving them from IndO(2)
+SO(2) ψSO(2)
+0 fields instead
+of scalar fields. The gated induced irrep model achieves the best results among all O(2)-steerable networks, however, it is still not competitive compared to the DN models with large N .
+13
+
+
+0 1000 2000 3000 4000 iterations
+100
+101
+102
+validation error (%)
+0 1000 2000 3000 4000 iterations
+10 1
+100
+validation loss
+CNN C2 C4 C8 C16
+Figure 3: Validation errors and losses during the training of a conventional CNN and CN -equivariant models on MNIST rot. Networks with higher levels of equivariance converge significantly faster.
+3.2 MNIST group restriction experiments
+All transformed MNIST datasets clearly show local rotational and reflectional symmetries but differ in the level of symmetry present at the global scale. While the DN and O(2)-equivariant models in the last section could exploit these local symmetries, their global invariance leads to a considerable loss of information. On the other hand, models which are equivariant to the symmetries present at the global scale of the dataset only are not able to generalize over all local symmetries. The proposed group restriction operation allows for models which are locally equivariant but are globally invariant only to the level of symmetry present in the data. Table 4 reports the results of models which are restricted after different layers. Specifically, on MNIST rot the D16-equivariant model introduced in the last section is restricted to C16, while we restrict the D16 and the C16 model to the trivial group {e} on MNIST 12k. The overall trend is that a restriction at later stages of the model improves the performance. All restricted models perform significantly better than the invariant models. Figure 2 shows that this behavior is consistent for different orders N .
+3.3 On the convergence of Steerable CNNs
+In our experiments we find that steerable CNNs converge significantly faster than non-equivariant CNNs. Figure 3 shows this behavior for the regular CN -steerable CNNs from Section 3.1 in comparison to a conventional CNN, corresponding to N = 1, on MNIST rot. The rate of convergence thereby increases with the order N and, as already observed in Figure 2, saturates at approximately N = 8. All models share approximately the same number of parameters.
+The faster convergence of equivariant networks is explained by the fact that they generalize over G-transformed images by design which reduces the amount of intra-class variability which they have to learn12. In contrast, a conventional CNN has to learn to classify all transformed versions of each image explicitly which requires either an increased batch size or more training iterations. The enhanced data efficiency of E(2)-steerable CNNs can therefore lead to a reduced training time.
+3.4 Competitive MNIST rot experiments
+As a final experiment on MNIST rot we are replicating the regular C16 model from [7] which was the previous SOTA. It is mostly similar to the models evaluated in the previous sections but is wider, uses larger kernel sizes and adds additional fully connected layers; see Table 14 in the Appendix. As reported in Table 5, our reimplementation matches the accuracy of the original model. Replacing the regular feature fields with the quotient representations used in Section 3.1 leads to slightly better results. We refer to Appendix C for more insights on the improved performance of the quotient model. A further significant improvement and a new state of the art is being achieved by a D16-equivariant model, which is restricted to C16 after the penultimate layer.
+12Mathematically, G-steerable CNNs classify equivalence classes of images defined by the equivalence relation f ∼ f ′ ⇔ ∃ tg ∈ (R2, +) o G s.t. f (x) = f (g−1(x − t)). Instead, MLPs learn to classify each image individually and conventional CNNs classify equivalence classes defined by translations, i.e. above equivalence classes for G = {e}. For more details see Section 2 of [7].
+14
+
+
+model group representation test error (%)
+[6] C4 regular/scalar 3.21 ± 0.0012 [6] C4 regular 2.28 ± 0.0004 [12] SO(2) irreducible 1.69 [40] - - 1.2 [13] C17 regular/vector 1.09 Ours C16 regular 0.716 ± 0.028 [7] C16 regular 0.714 ± 0.022 Ours C16 quotient 0.705 ± 0.025 Ours D16|5C16 regular 0.682 ± 0.022
+Table 5: Final runs on MNIST rot
+model CIFAR-10 CIFAR-100
+wrn28/10 [41] 3.87 18.80
+wrn28/10 D1 D1 D1 3.36 ± 0.08 17.97 ± 0.11 wrn28/10* D8 D4 D1 3.28 ± 0.10 17.42 ± 0.33 wrn28/10 C8 C4 C1 3.20 ± 0.04 16.47 ± 0.22 wrn28/10 D8 D4 D1 3.13 ± 0.17 16.76 ± 0.40 wrn28/10 D8 D4 D4 2.91 ± 0.13 16.22 ± 0.31
+wrn28/10 [42] AA 2.6 ± 0.1 17.1 ± 0.3 wrn28/10* D8 D4 D1 AA 2.39 ± 0.11 15.55 ± 0.13 wrn28/10 D8 D4 D1 AA 2.05 ± 0.03 14.30 ± 0.09
+Table 6: Test errors on CIFAR (AA=autoaugment)
+3.5 CIFAR experiments
+The statistics of natural images are typically invariant under global translations and reflections but are not under global rotations. Here we are investigating the practical benefit of G-steerable convolutions for such images by classifying CIFAR-10 and CIFAR-100. For this purpose we implement several DN and CN -equivariant versions of WideResNet [41]. Different levels of equivariance, stated in the model specifications in Table 6, are thereby used in the three main blocks of the network (i.e. between pooling layers). Regular representations are used throughout the whole model except for the last convolution which maps to a scalar field to produce invariant predictions. For a fair comparison we scale the width of all layers such that the number of parameters of the original wrn28/10 model is approximately preserved. Note that, due to their enhanced parameter efficiency, our models become wider than conventional CNNs. Since this implies a higher computational cost, we add an equivariant model, marked by an additional *, which has about the same number of channels as the non-equivariant wrn28/10. For rotation order N = 8 we are further using 5 × 5 kernels to mitigate the discretization artifacts of steering 3 × 3 kernels by 45 degrees. All runs use the same training procedure as reported in [41] and Appendix H.3. We want to emphasize in particular that we perform no further hyperparameter tuning.
+The results of the D1 D1 D1 model in Table 6 confirm that incorporating the global symmetries of the data already yields a significant boost in accuracy. Interestingly, the C8 C4 C1 model, which is purely rotation but not reflection-equivariant, achieves better results, which shows that it is worthwhile to leverage local rotational symmetries. Both symmetries are respected simultaneously by the wrn28/10 D8 D4 D1 model. While this model performs better than the two previous ones on CIFAR-10, it surprisingly yields slightly worse result on CIFAR-100. This might be due to the higher dimensionality of its feature fields which, despite the model having more channels in total, leads to less independent fields. The best results (without using auto augment) are obtained by the D8 D4 D4 model which suggests that rotational symmetries are useful even on a larger scale. The small wrn28/10* D8 D4 D1 model shows a remarkable gain compared to the non-equivariant wrn28/10 baseline despite not being computationally more expensive. To investigate whether equivariance is useful even when a powerful data augmentation policy is available, we further rerun both D8 D4 D1 models with AutoAugment (AA) [42]. As without AA, both the computationally cheap wrn28/10* model and the wider wrn28/10 version outperform the wrn28/10 baseline by a large margin.
+3.6 STL-10 experiments
+model group #params test error (%)
+wrn16/8 [43] - 11M 12.74±0.23 wrn16/8* D1 D1 D1 5M 11.05±0.45 wrn16/8 D1 D1 D1 10M 11.17±0.60 wrn16/8* D8 D4 D1 4.2M 10.57±0.70 wrn16/8 D8 D4 D1 12M 9.80±0.40
+Table 7: Test errors of different equivariant models on the STL-10 dataset. Models with * are not scaled to the same number of parameters as the original model but preserve the number of channels of the baseline.
+In order to test whether the previous results generalize to natural images of higher resolution we run additional experiments on STL-10 [44]. While this dataset was originally intended for semi-supervised learning tasks, its 5000 training images are also being used for supervised classification in the low data regime [43]. We adapt the experiments in [43] by replacing the nonequivariant convolutions of their wrn16/8 model, which was the previous supervised SOTA, with DN -steerable convolutions. As in the CIFAR experiments, all intermediate features transform according to regular representations. A final, invariant prediction is generated via a convolution to scalar fields. We are again using
+15
+
+
+steerable convolutions as a mere drop-in replacement, that is, we use the same training setting and hyperparameters as in the original paper. The four adapted models, reported in Table 7, are equivariant under either the action of D1 in all blocks or the actions of D8, D4 and D1 in the respective blocks. For both choices we build a large model, whose width is scaled up to approximately match the number of parameters of the baseline, and a small model, which preserves the number of channels and thus compute and memory requirements, but is more parameter efficient.
+250 500 1000 2000 4000 training set size
+10
+20
+30
+40
+50
+60
+test error (%)
+wrn16/8 D8D4D1 wrn16/8* D8D4D1 wrn16/8
+Figure 4: Data ablation study on STL-10. The equivariant models yield significantly improved results on all dataset sizes.
+As expected, all models improve significantly over the baseline with larger models outperforming smaller ones. However, due to their extended equivariance, the small D8 D4 D1 model performs better than the large D1 D1 D1 model. In comparison to the CIFAR experiments, rotational equivariance seems to give a more significant boost in accuracy. This is expected since the higher resolution of 96 × 96 pixels of the STL-10 images allows for more detailed local patterns which occur in arbitrary orientations.
+Figure 4 reports the results of a data ablation study which investigates the performance of the D8 D4 D1 models for smaller training set sizes. The results validate that the gains from incorporating equivariance are consistent over all training sets. More information on the exact training procedures is given in Appendix H.4.
+4 Conclusions
+A wide range of rotation- and reflection-equivariant models has been proposed in the recent years. In this work we presented a general theory of E(2)-equivariant steerable CNNs which describes many of these models in one unified framework. By analytically solving the kernel constraint for any representation of O(2) or its subgroups we were able to reproduce and systematically compare these models. We further proposed a group restriction operation which allows us to adapt the level of equivariance to the symmetries present on the corresponding length scale. When using G-steerable convolutions as drop in replacement for conventional convolution layers we obtained significant improvements on CIFAR-10, CIFAR-100 and STL-10 without additional hyperparameter tuning. While the kernel expansion leads to a small overhead during train time, the final kernels can be stored such that during test time steerable CNNs are computationally not more expensive than conventional CNNs of the same width. Due to the enhanced parameter efficiency of equivariant models it is a common practice to adapt the model width to match the parameter cost of conventional CNNs. Our results show that even non-scaled models outperform conventional CNNs in accuracy. Since steerable CNNs converge faster than non-equivariant CNNs, they can even be cheaper to train.
+We believe that equivariant CNNs will in the long term become the default choice for tasks like biomedical imaging, where symmetries are present on a global scale. The impressive results on natural images demonstrate the great potential of applying E(2)-steerable CNNs to more general vision tasks which involve only local symmetries. Future research still needs to investigate the wide range of design choices of steerable CNNs in more depth and collect evidence on whether our findings generalize to different settings. We hope that our library13 will help equivariant CNNs to be adopted by the community and facilitate further research.
+Acknowledgments
+We would like to thank Taco Cohen for fruitful discussions on an efficient implementation and helpful feedback on the paper and Daniel Worrall for elaborating on the real valued implementation of Harmonic Networks.
+13The library is available at https://github.com/QUVA-Lab/e2cnn.
+16
+
+
+General E(2) - Equivariant Steerable CNNs Appendix
+A Local gauge equivariance of E(2)-steerable CNNs
+active trafo
+global coord. trafo (passive)
+local coord. trafo
+(passive)
+Figure 5: Different viewpoints on transformations of signals on R2. Top Left: In our work we considered active rotations of the signal while keeping the coordinate frames fixed. Bottom Left: The equivalent, passive interpretation views the transformation as a global rotation of reference frames (a global gauge transformation). Right: Local gauge transformations rotate reference frames independently from each other. E(2)-steerable CNNs are equivariant w.r.t. both global and local gauge transformations.
+The E(2)-equivariant steerable CNNs considered in this work were derived in the classical framework of steerable CNNs on Euclidean spaces Rd (or more general homogeneous spaces) [1, 2, 3, 4]. This formulation considers active transformations of signals, in our case translations, rotations and reflections of images. Specifically, an active transformation by a group element tg ∈ (R2, +) o G moves signal values from x to g−1(x − t); see Eq. (1) and Figure 5, top left. The proven equivariance properties of the proposed E(2)-equivariant steerable CNNs guarantee the specified transformation behavior of the feature spaces under such active transformations. However, our derivations so far don’t prove any equivariance guarantees for local, independent rotations or reflections of small patches in an image.
+The appropriate framework for analyzing local transformations is given by Gauge Equivariant Steerable CNNs [5]. In contrast to active transformations, Gauge Equivariant CNNs consider passive gauge transformations; see Figure 5, right. Adapted to our specific setting, each feature vector f (x) is being expressed relative to a local reference frame (or gauge) (e1(x), e2(x)) at
+x ∈ R2. A gauge transformation formalizes a change of local reference frames by the action of position dependent elements g(x) of the gauge group (or structure group), in our case rotations and reflections in G ≤ O(2). Since gauge transformations act independently on each position, they model independent transformation of local patches in an image. As derived in [5], the demand for local gauge equivariance results in the same kernel constraint as in Eq. (2). This implies that our models are automatically locally gauge equivariant14.
+More generally, the kernel constraint (2) applies to arbitrary 2-dimensional Riemannian manifolds M with structure groups G ≤ O(2). The presented solutions of the kernel space constraint therefore describe spherical CNNs [19, 5, 20, 21, 22, 23] or convolutional networks on triangulated meshes [24, 25, 26, 27] for different choices of structure groups and group representations.
+14Conversely, the equivariance under local gauge transformations g(x) ∈ O(2) implies the equivariance under active isometries. In the case of the Euclidean space R2 these isometries are given by the Euclidean group E(2).
+
+
+B A short primer on group representation theory
+Linear group representations model abstract algebraic group elements via their action on some vector space, that is, by representing them as linear transformations (matrices) on that space. Representation theory forms the backbone of Steerable CNNs since it describes the transformation law of their feature spaces. It is furthermore widely used to describe fields and their transformation behavior in physics.
+Formally, a linear representation ρ of a group G on a vector space (representation space) Rn is a
+group homomorphism from G to the general linear group GL(Rn) (the group of invertible n × n matrices), i.e. it is a map
+ρ : G → GL(Rn) such that ρ(g1g2) = ρ(g1)ρ(g2) ∀g1, g2 ∈ G .
+The requirement to be a homomorphism, i.e. to satisfy ρ(g1g2) = ρ(g1)ρ(g2), ensures the compatibility of the matrix multiplication ρ(g1)ρ(g2) with the group composition g1g2 which is necessary for a well defined group action. Note that group representations do not need to model the group faithfully (which would be the case for an isomorphism instead of a homomorphism).
+A simple example is the trivial representation ρ : G → GL(R) which maps any group element to the
+identity, i.e. ∀g ∈ G ρ(g) = 1. The 2-dimensional rotation matrices ψ(θ) =
+[cos (θ) 9 sin (θ) sin (θ) cos (θ)
+]
+are an example of a representation of SO(2) (whose elements are identified by a rotation angle θ).
+Equivalent representations Two representations ρ and ρ′ on Rn are called equivalent iff they
+are related by a change of basis Q ∈ GL(Rn), i.e. ρ′(g) = Qρ(g)Q−1 for each g ∈ G. Equivalent representations behave similarly since their composition is basis independent as seen by ρ′(g1)ρ′(g2) = Qρ(g1)Q−1Qρ(g2)Q−1 = Qρ(g1)ρ(g2)Q−1.
+Direct sums Two representations can be combined by taking their direct sum. Given representations
+ρ1 : G → GL(Rn) and ρ2 : G → GL(Rm), their direct sum ρ1 ⊕ρ2 : G → GL(Rn+m) is defined as
+(ρ1 ⊕ ρ2)(g) =
+[ρ1(g) 0 0 ρ2(g)
+]
+,
+i.e. as the direct sum of the corresponding matrices. Its action is therefore given by the independent
+actions of ρ1 and ρ2 on the orthogonal subspaces Rn and Rm in Rn+m. The direct sum admits an obvious generalization to an arbitrary number of representations ρi:
+⊕
+i ρi(g) = ρ1(g) ⊕ ρ2(g) ⊕ . . .
+Irreducible representations The action of a representation might leave a subspace of the representation space invariant. If this is the case there exists a change of basis to an equivalent representation which is decomposed into the direct sum of two independent representations on the invariant subspace and its orthogonal complement. A representation is called irreducible if no non-trivial invariant subspace exists.
+Any representation ρ : G → Rn of a compact group G can therefore be decomposed as
+ρ(g) = Q
+[⊕
+i∈I ψi(g)
+]
+Q−1
+where I is an index set specifying the irreducible representations ψi contained in ρ and Q is a change of basis. In proofs it is therefore often sufficient to consider irreducible representations which we use in Section 2.4 to solve the kernel constraint.
+Regular and quotient representations A commonly used representation in equivariant deep learning is the regular representation. The regular representation of a finite group G acts on a vector space R|G| by permuting its axes. Specifically, associating each axis eg of R|G| to an element g ∈ G, the representation of an element g ̃ ∈ G is a permutation matrix which maps eg to eg ̃g. For instance,
+the regular representation of the group C4 with elements {p π
+2 |p = 0, . . . , 3} is instantiated by:
+18
+
+
+φ0 π
+2 π 3π
+2
+ρrCeg4 (φ)
+
+   
+1000 0100 0010 0001
+
+   
+
+   
+0001 1000 0100 0010
+
+   
+
+   
+0010 0001 1000 0100
+
+   
+
+   
+0100 0010 0001 1000
+
+   
+A vector v = ∑
+g vgeg in R|G| can be interpreted as a scalar function v : G → R, g 7→ vg on G. Since ρ(h)v = ∑
+g vgehg = ∑
+g ̃ vh−1g ̃eg ̃ the regular representation corresponds to a left translation [ρ(h)v](g) = vh−1g of such functions.
+Very similarly, the quotient representation ρG/H
+quot of G w.r.t. a subgroup H acts on R|G|/|H| by permuting its axes. Labeling the axes by the cosets gH in the quotient space G/H, it can be defined
+via its action ρG/H
+quot (g ̃)egH = eg ̃gH . An intuitive explanation of quotient representations is given in Appendix C.
+Regular and trivial representations are two specific cases of quotient representations obtained by choosing H = {e} or H = G, respectively. Vectors in the representation space R|G|/|H| can be viewed as scalar functions on the quotient space G/H. The action of the quotient representations on v then corresponds to a left translation of these functions on G/H.
+Restricted representations Any representation ρ : G → GL(Rn) can be uniquely restricted to a representation of a subgroup H of G by restricting its domain of definition:
+ResG
+H (ρ) : H → GL(Rn), h 7→ ρ∣
+∣H (h)
+Induced Representations Instead of restricting a representation from a group G to a subgroup H ≤ G, it is also possible to induce a representation of H to a representation of G. In order to keep the presentation accessible we will first only consider the case of finite groups G and H.
+Let ρ : H → GL(Rn) be any representation of a subgroup H of G. The induced representation IndG
+H (ρ) is then defined on the representation space Rn|G|/|H| which can be seen as one copy of
+Rn for each of the |G|/|H| cosets gH in the quotient set G/H. For the definition of the induced
+representation it is customary to view this space as the tensor product R|G|/|H| ⊗ Rn and to write vectors in this space as15
+w=
+∑
+gH
+egH ⊗ wgH ∈ Rn |G|
+|H| , (7)
+where egH is a basis vector of R|G|/|H|, associated to the coset gH, and wgH is some vector in the representation space Rn of ρ. Intuitively, IndG
+H (ρ) acts on Rn|G|/|H| by i) permuting the |G|/|H| subspaces associated to the cosets gH and ii) acting on each of these subspaces via ρ.
+To formalize this intuition, note that any element g ∈ G can be identified by the coset gH to which it belongs and an element h(g) ∈ H which specifies its position within this coset. Hereby h : G → H expresses g relative to an arbitrary representative16 R(gH) ∈ G of gH and is defined as h(g) := R(gH)−1g from which it immediately follows that g is decomposed relative to R as
+g = R(gH)h(g) . (8)
+The action of an element g ̃ ∈ G on a coset gH ∈ G/H is naturally given by g ̃gH ∈ G/H. This action
+defines the aforementioned permutation of the n-dimensional subspaces in Rn|G|/|H| by sending egH in Eq. (7) to eg ̃gH . Each of the n-dimensional, translated subspaces g ̃gH, is in addition transformed
+15The vector can equivalently be expressed as w = ⊕
+gH wgH , however, we want to make the tensor product basis explicit. 16Formally, a representative for each coset is chosen by a map R : G/H → G such that it projects back to the same coset, i.e. R(gH)H = gH. This map is therefore a section of the principal bundle G π → G/H with fibers isomorphic to H and the projection given by π(g) := gH.
+19
+
+
+by the action of ρ(h(g ̃R(gH))). This H-component h(g ̃R(gH)) = R(g ̃gH)−1g ̃R(gH) of the g ̃ action within the cosets accounts for the relative choice of representatives R(g ̃gH) and R(gH). Overall, the action of IndG
+H (ρ(g ̃)) is given by
+[
+IndG
+Hρ
+]
+(g ̃)
+∑
+gH
+egH ⊗ wgH :=
+∑
+gH
+eg ̃gH ⊗ ρ(h(g ̃R(gH))) wgH , (9)
+which can be visualized as:
+IndG
+H ρ(g ̃) ·
+
+           
+...
+wgH
+...
+...
+...
+
+           
+=
+
+           
+...
+...
+...
+ρ(h(g ̃R(gH )))wgH
+...
+
+           
+}
+gH
+}
+g ̃gH = g ̃R(gH)H
+Both quotient representations and regular representations can be viewed as being induced from trivial representations of a subgroup. Specifically, let ρ{e}
+triv : {e} → GL(R) = {(+1)} be the
+trivial representation of the the trivial subgroup. Then IndG
+{e} ρ{e}
+triv : G → GL(R|G|) is the regular
+representation which permutes the cosets g{e} of G/{e} ∼= G which are in one to one relation to the group elements themself. For ρH
+triv : H → GL(R) = {(+1)} being the trivial representation of an
+arbitrary subgroup H of G, the induced representation IndG
+H ρH
+triv : G → GL(R|G|/|H|) permutes the
+cosets gH of H and thus coincides with the quotient representation ρG/H
+quot .
+Note that a vector in R|G|/|H| ⊗ Rn is in one-to-one correspondence to a function f : G/H → Rn. The induced representation can therefore equivalently be defined as acting on the space of such functions as17
+[IndG
+H ρ(g ̃) · f ](gH) = ρ(h(g ̃R(g ̃−1gH)))f (g ̃−1gH) . (10)
+This definition generalizes to non-finite groups where the quotient space G/H is not necessarily finite anymore.
+For the special case of semidirect product groups G = N o H it is possible to choose representatives of the cosets gH such that the elements h(g ̃R(g′H)) = h(g ̃) become independent of the cosets [3]. This simplifies the action of the induced representation to
+[IndG
+H ρ(g ̃) · f ](gH) = ρ(h(g ̃)) f (g ̃−1gH) (11)
+which corresponds to Eq. (1) for the group G = E(2) = (R2, +) o O(2), subgroup H = O(2) and quotient space G/H = E(2)/ O(2) = R2.
+C An intuition for quotient representation fields
+The quotient representations of CN in rows 11-15 of Table 3 and in Table 5 are all of the form ρCN/CM
+quot
+with CM ≤ CN . By the definition of quotient representations, given in Section 2.6, this implies features which are invariant under the action of CM . For instance, ρCN/C2
+quot -fields encode features
+like lines, which are invariant under rotations by π. Similarly, ρCN/C4
+quot features are invariant under
+rotations by π/2, and therefore describe features like a cross. The N/M channels of a ρCN/CM
+quot -field
+respond to different orientations of these patterns, e.g. to + and × for the two channels of ρC8/C4
+quot .
+A few more examples are given by the 16/2 = 8 channels of ρC16/C2
+quot , which respond to the patterns
+−, −,−,
+−
+,
+−
+,
+−
+,
+−
+and
+−
+,
+17The rhs. of Eq. (9) corresponds to [IndG
+H ρ(g ̃) · f ](g ̃gH) = ρ(h(g ̃R(gH)))f (gH).
+20
+
+
+respectively, or the 16/4 = 4 channels of ρC16/C4
+quot , which respond to
++, +,+ and
++
+.
+In principle, each of these patterns18 could be encoded by a regular feature field of CN . A regular field
+of type ρrCegN comprises N instead of N/M channels, which detect arbitrary patterns in N orientations, for instance,
+o,o,
+o
+,
+o
+,
+o
+,
+o
+,
+o
+and
+o
+for N = 8. In the case of CM -symmetric patterns, e.g. crosses for M = 4, this becomes
+×, ×,
+×
+,
+×
+,
+×
+,
+×
+,
+×
+and
+×
+.
+As evident from this example, the repetition after N/M orientations (here 8/4 = 2), introduces a
+redundancy in the responses of the regular feature fields. A quotient representation ρCN/CM
+quot addresses this redundancy by a-priori assuming the CM symmetry to be present and storing only the N/M non-redundant responses. If symmetric patterns are important for the learning task, a quotient representation can therefore save computational, memory and parameter cost.
+In our experiments we mostly used quotients by C2 and C4 since we assumed the corresponding symmetric patterns ( | and +) to be most frequent in MNIST. As hypothesized, our model, which
+uses the representations 5ρreg ⊕ 2ρC16/C2
+quot ⊕ 2ρC16/C4
+quot ⊕ 4ψ0 of C16, improves slightly upon a purely regular model with the same number of parameters, see Table 5. By mixing regular, quotient and trivial19 representations, our model keeps a certain level of expressiveness in its feature fields but incorporates a-priori known symmetries and compresses the model.
+We want to emphasize that quotient representations are expected to severely harm the model performance if the assumed symmetry does not actually exist in the data or is unimportant for the inference. Since the space of possible quotient representations and their multiplicities is very large, it might be necessary to apply some form of neural architecture search to find beneficial combinations. As a default choice we recommend the user to work with regular representations.
+Further, note that the intuition given above is specific for the case of quotient representations ρG/N
+quot
+where N E G is a normal subgroup (which is always the case for CN ). Since normal subgroups imply gN = N g ∀g ∈ G by definition, the action of the quotient representation by any element n ∈ N is given by ρG/N
+quot (n)egN = engN = enNg = eNg = egN , that it, it describes N -invariant
+feature fields. The quotient representations ρG/H
+quot for general, potentially non-normal subgroups H ≤ G also imply certain symmetries in the feature fields but are not necessarily H-invariant. For instance, the quotient representation ρDN /CN
+quot is invariant under rotations since CN is a normal
+subgroup of DN ∼= CN o({±1}, ∗), while the quotient representation ρDN /({±1},∗)
+quot is not invariant since ({±1}, ∗) is not a normal subgroup of DN . In the latter case one has instead
+ρDN /({±1},∗)
+quot (s)er({±1},∗) = esr({±1},∗) =
+{er({±1},∗) for s = +1
+er−1s({±1},∗) = er−1({±1},∗) for s = −1
+for all s ∈ ({±1}, ∗) and representatives r ∈ CN . The feature fields are therefore not invariant under the action of ({±1}, ∗) but become reversed.
+D Equivariance of E(2) - steerable CNNs
+D.1 Equivariance of E(2) - steerable convolutions
+Assume two feature fields fin : R2 → Rcin of type ρin and fout : R2 → Rcout of type ρout to be given. Under actions of the Euclidean group these fields transform as
+fin(x) 7→
+([
+Ind(R2,+)oG
+G ρin
+]
+(gt)fin
+)
+(x) := ρin(g) fin
+(g−1(x − t))
+fout(x) 7→
+([
+Ind(R2,+)oG
+G ρout
+]
+(gt)fout
+)
+(x) := ρout(g)fout
+(g−1(x − t)) .
+18Or more generally, any possible pattern. 19Trivial representations ψ0 ∼= ρG/G
+quot can themself be seen as an extreme case of quotient representations which are invariant to the full group G.
+21
+
+
+Here we show that the G-steerability (2) of convolution kernels is sufficient to guarantee the equivariance of the mapping. We therefore define the convolution (or correlation) operation of a feature field with a G-steerable kernel k : R2 → Rcout×cin as usual by
+fout(x) := (k ∗ fin) (x) =
+∫
+R2
+k(y)fin(x + y) dy .
+The convolution with a transformed input field then gives
+∫
+R2
+dy k(y)
+([
+Ind(R2,+)oG
+G ρin
+]
+(gt) fin
+)
+(x + y)
+=
+∫
+R2
+dy k(y)ρin(g)fin
+(g−1(x + y − t))
+=
+∫
+R2
+dy ρout(g)k(g−1y)ρin(g)−1 ρin(g)fin
+(g−1(x + y − t))
+= ρout(g)
+∫
+R2
+dy ̃ k(y ̃)fin
+(g−1(x − t) + y ̃)
+= ρout(g)fout
+(g−1(x − t))
+=
+([
+Ind(R2,+)oG
+G ρout
+]
+(gt)fout
+)
+(x) ,
+i.e. it satisfies the desired equivariance condition
+k∗
+([
+Ind(R2,+)oG
+G ρin
+]
+(gt)fin
+)
+=
+[
+Ind(R2,+)oG
+G ρout
+]
+(gt)(k ∗ fin
+).
+We used the kernel steerability (2) in the second step to identify k(x) with ρout(g)k(g−1x)ρin(g−1). In
+the third step we substituted y ̃ = g−1y which does not affect the integral measure since
+∣ ∣
+∣det
+( ∂y ∂y ̃
+)∣
+∣
+∣=
+|det(g)| = 1 for an orthogonal transformation g ∈ G.
+A proof showing the G-steerability of the kernel to not only be sufficient but necessary is given in [2].
+D.2 Equivariance of spatially localized nonlinearities
+We consider nonlinearities of the form
+σ : Rcin → Rcout , f (x) 7→ σ(f (x)) ,
+which act spatially localized on feature vectors f (x) ∈ Rcin . These localized nonlinearities are used to define nonlinearities σ ̄ acting on entire feature fields f : R2 → Rcin by mapping each feature vector individually, that is,
+σ ̄ : f 7→ σ ̄(f ) such that σ ̄(f )(x) := σ(f (x)) .
+In order for σ ̄ to be equivariant under the action of induced representations it is sufficient to require
+σ ◦ ρin(g) = ρout(g) ◦ σ ∀g ∈ G
+since then
+σ ̄
+([
+Ind(R2,+)oG
+G ρin
+]
+(gt)f
+)
+(x) = σ (ρin(g)f (g−1(x − t)))
+= ρout(g)σ (f (g−1(x − t)))
+= ρout(g)σ ̄(f )(g−1(x − t))
+=
+[
+Ind(R2,+)oG
+G ρout
+]
+σ ̄(f )(x) .
+22
+
+
+D.2.1 Equivariance of individual subspace nonlinearities w.r.t. direct sum representations
+The feature spaces of steerable CNNs comprise multiple feature fields fi : R2 → Rcin,i which are concatenated into one big feature field f : R2 → R
+∑
+i cin,i defined by f := ⊕
+i fi. By definition f (x)
+transforms under ρin = ⊕
+i ρin,i if each fi(x) transforms under ρin,i. If σi : Rcin,i → Rcout,i is an
+equivariant nonlinearity satisfying σi ◦ ρin,i(g) = ρout,i(g) ◦ σi for all g ∈ G, then
+(⊕
+i σi
+)
+◦
+(⊕
+i ρin,i(g)
+)
+=
+(⊕
+i ρout,i(g)
+)
+◦
+(⊕
+i σi
+)
+∀g ∈ G,
+i.e. the concatenation of feature fields respects the equivariance of the individual nonlinearities. Here we defined ⊕
+i σi : R
+∑
+i cin,i → R
+∑
+i cout,i as acting individually on the corresponding fi(x) in f (x), that is, (⊕
+i σi) (⊕
+i fi(x)) = ⊕
+i (σi ◦ proji) (f (x)).
+To proof this statement consider without loss of generality the case of two feature fields f1 and f2 with corresponding representations ρ1 and ρ2 and equivariant nonlinearities σ1 and σ2. Then it follows for all g ∈ G that
+(σ1 ⊕ σ2
+)((ρ1,in ⊕ ρ2,in)(g))(f1 ⊕ f2
+)
+= σ1 (ρ1(g) f1) ⊕ σ2 (ρ2(g) f2)
+= ρ1(g) σ1(f1) ⊕ ρ2(g) σ2(f2)
+=
+((ρ1,out ⊕ ρ2,out)(g))(σ1 ⊕ σ2
+)(f1 ⊕ f2
+).
+The general case follows by induction.
+D.2.2 Equivariance of norm nonlinearities w.r.t. unitary representations
+We define unitary representations to preserve the norm of feature vectors, i.e. ∣
+∣ρiso(g)f (x)∣
+∣=
+∣
+∣f (x)∣
+∣ ∀g ∈ G. Norm nonlinearities are functions of the type σnorm
+(f (x)) := η(|f (x)|) f(x)
+|f (x)| ,
+where η : R≥0 → R is some nonlinearity acting on norm of a feature vector. Since norm nonlinearities preserve the orientation of feature vectors they are equivariant under the action of unitary representations:
+σnorm
+(ρiso(g)f (x)) = η (∣
+∣ρiso(g)f (x)∣
+∣
+) ρiso(g)f (x)
+∣
+∣ρiso(g)f (x)∣
+∣
+= η (∣
+∣f (x)∣
+∣
+) ρiso(g)f (x)
+∣
+∣f (x)∣
+∣
+= ρiso(g)σnorm
+(f (x)) .
+D.2.3 Equivariance of pointwise nonlinearities w.r.t. regular and quotient representations
+Quotient representations act on feature vectors by permuting their entries according to the group composition as defined by ρG/H
+quot (g ̃)egH := eg ̃gH . The permutation of vector entries commutes with pointwise nonlinearities σ : R → R which are being applied to each entry of a feature vector individually:
+σpt
+(ρG/H
+quot (g ̃) f (x)) = σpt
+
+ρG/H
+quot (g ̃)
+∑
+gH ∈G/H
+fgH (x) egH
+
+
+= σpt
+
+
+∑
+gH ∈G/H
+fgH (x) eg ̃gH
+
+
+=
+∑
+gH ∈G/H
+σpt
+(fgH (x)) eg ̃gH
+= ρG/H
+quot (g ̃)
+∑
+gH ∈G/H
+σpt
+(fgH (x)) egH
+= ρG/H
+quot (g ̃)σpt
+(f (x)) .
+23
+
+
+Any pointwise nonlinearity is therefore equivariant under the action of quotient representations. The same holds true for regular representations ρG
+reg = ρG/{e}
+quot which are a special case of quotient representations for the choice H = {e}
+D.2.4 Equivariance of vector field nonlinearities w.r.t. regular and standard representations
+Vector field nonlinearities map an N -dimensional feature field which is transforming under the regular representation ρrCegN of CN to a vector field. As the elements of CN correspond to rotations by angles
+θp ∈ {p 2π
+N
+}N −1
+p=0 we can write the action of the cyclic group in this specific case as ρrCegN (θ ̃)eθ := eθ ̃+θ
+and the feature vector as f (x) = ∑
+θ∈CN
+fθ(x)eθ. In this convention vector field nonlinearities are
+defined as
+σvec
+(f (x)) := max (f (x))
+(cos(arg max f (x)) sin(arg max f (x))
+)
+.
+The maximum operation max : RN → R thereby returns the maximal field value which is invariant under transformations of the regular input field. Observe that
+arg max
+(
+ρCN
+reg (θ ̃)f (x)
+)
+= arg max
+(
+ρCN
+reg (θ ̃)
+∑
+θ∈CN
+fθ (x)eθ
+)
+= arg max
+( ∑
+θ∈CN
+fθ (x)eθ ̃+θ
+)
+= θ ̃ + arg max (f (x))
+such that
+σvec
+(ρCN
+reg (θ ̃)f (x)) = max (f (x))
+(cos(θ ̃ + arg max f (x)) sin(θ ̃ + arg max f (x))
+)
+= max (f (x))
+(cos(θ ̃) − sin(θ ̃) sin(θ ̃) cos(θ ̃)
+) (cos(arg max f (x)) sin(arg max f (x))
+)
+transforms under the standard representation ρ(θ ̃) =
+(cos(θ ̃) − sin(θ ̃) sin(θ ̃) cos(θ ̃)
+)
+of CN . This proofs that
+the resulting feature field indeed transforms like a vector field.
+The original paper [13] used a different convention arg max : RN → {0, . . . , N 9 1}, returning the integer index of the maximal vector entry. This leads to a corresponding rotation angle θ = 2π
+N arg max(f (x)) ∈ CN in terms of which the vector field nonlinearity reads σvec
+(f (x)) =
+max (f (x))
+(cos(θ) sin(θ)
+)
+D.2.5 Equivariance of nonlinearities w.r.t. induced representations
+Consider a group H < G with two representations ρin : H → GL(Rcin ) and ρout : H → GL(Rcout ).
+Suppose we are given an equivariant non-linearity σ : Rcin → Rcout with respect to the actions of ρin and ρout, that is, ρout(h) ◦ σ = σ ◦ ρin(h) ∀h ∈ H. Then an induced non-linearity σ ̃, equivariant w.r.t. the induced representations IndG
+H ρin and IndG
+H ρout of G, can be defined as applying σ independently to each of the |G : H| different cin-dimensional subspaces of the representation space which are being permuted by the action of IndG
+H ρin, see Appendix B. The permutation of the subspaces commutes with the individual action of the nonlinearity σ ̃ on the subspaces, while the non-linearity σ itself commutes with the transformation within the subspaces through ρ by assumption.
+24
+
+
+Expressing the feature vector as f (x) = ∑
+gH egH ⊗ fgH (x) this is seen by:
+σ ̃( IndG
+H ρin(g ̃) f (x)) = σ ̃
+
+IndG
+H ρin(g ̃)
+∑
+gH ∈G/H
+egH ⊗ fgH (x)
+
+
+= σ ̃
+
+
+∑
+gH ∈G/H
+IndG
+H ρin(g ̃) (egH ⊗ fgH (x))
+
+
+= σ ̃
+
+
+∑
+gH ∈G/H
+eg ̃gH ⊗ ρin(h(g ̃r(gH))fgH (x)
+
+
+=
+∑
+gH ∈G/H
+eg ̃gH ⊗ σ(ρin(h(g ̃r(gH))fgH (x))
+=
+∑
+gH ∈G/H
+eg ̃gH ⊗ ρout(h(g ̃r(gH))σ(fgH (x))
+= IndG
+H ρout(g ̃)
+∑
+gH ∈G/H
+egH ⊗ σ (fgH (x))
+= IndG
+H ρout(g ̃) σ ̃(f (x))
+E Visualizations of the irrep kernel constraint
+The irrep kernel constraint
+κ(gx) =
+[⊕
+i∈Iout
+ψi(g)
+]
+κ(x)
+[⊕
+j∈Iin
+ψ−1
+j (g)
+]
+∀g ∈ G, x ∈ R2
+decomposes into independent constraints
+κij (gx) = ψi(g) κij(x) ψ−1
+j (g) ∀g ∈ G, x ∈ R2 where i ∈ Iout, j ∈ Iin ,
+on invariant subspaces corresponding to blocks κij of κ. This is the case since the direct sums of irreps on the right hand side are block diagonal:
+
+  
+κi1j1(gx) κi1j2(gx) . . .
+κi2j1(gx) κi2j2(gx) . . . ... ... . . .
+
+  
+} {{ }
+κ(gx)
+=
+
+  
+ψi1(g)
+ψi2(g)
+...
+
+  
+} {{ } ⊕
+i∈Iout ψi(g)
+·
+
+  
+κi1j1(x) κi1j2(x) . . .
+κi2j1(x) κi2j2(x) . . . ... ... . . .
+
+  
+} {{ }
+κ(x)
+·
+
+  
+ψ91
+j1(g)
+ψ91
+j2(g)
+...
+
+  
+} {{ } ⊕
+j∈Iin ψ91
+j (g)
+A basis {κij
+1 , · · · , κij
+dij
+} for the space of G-steerable kernels satisfying the independent constraints (3)
+on κij contributes to a part of the full basis
+{k1, · · · , kd
+} :=
+⋃
+i∈Iout
+⋃
+j∈Iin
+{
+Q−1
+out κij
+1 Qin, · · · , Q−1
+out κij
+dij Qin
+}
+. (12)
+of G-steerable kernels satisfying the original constraint (2). Here we defined a zero-padded block
+κij :=
+
+  
+000
+0 κij 0
+000
+
+  
+.
+F Solutions of the kernel constraints for irreducible representations
+In this section we are deriving analytical solutions of the kernel constraints
+κij (gx) = ψi(g) κij (x) ψ−1
+j (g) ∀g ∈ G, x ∈ R2 (13)
+25
+
+
+for irreducible representations ψi of O(2) and its subgroups. The linearity of the constraint implies that the solution space of G-steerable kernels forms a linear subspace of the unrestricted kernel space
+k ∈ L2(R2)cout×cin of square integrable functions k : R2 → Rcout×cin .
+Section F.1 introduces the conventions, notation and basic properties used in the derivations. Since our numerical implementation is on the real field we are considering real-valued irreps. It is in general possible to derive all solutions considering complex valued irreps of G ≤ O(2). While this approach would simplify some steps it comes with an overhead of relating the final results back to the real field which leads to further complications, see Appendix F.5. An overview over the real-valued irreps of G ≤ O(2) and their properties is given in Section F.2.
+We present the analytical solutions of the irrep kernel constraints for all possible pairs of irreps in Section F.3. Specifically, the solutions for SO(2) are given in Table 8 while the solutions for O(2), ({±1}, ∗), CN and DN are given in Table 9, Table 10, Table 11 and Table 12 respectively.
+Our derivation of the irrep kernel bases is motivated by the observation that the irreps of O(2) and subgroups are harmonics, that is, they are associated to one particular angular frequency. This suggests that the kernel constraint (13) decouples into simpler constraints on individual Fourier modes. In the derivations, presented in Section F.4, we are therefore defining the kernels in polar coordinates x = x(r, φ) and expand them in terms of an orthogonal, angular, Fourier-like basis. A projection on this orthogonal basis then yields constraints on the expansion coefficients. Only specific coefficients are allowed to be non-zero; these coefficients parameterize the complete space of G-steerable kernels satisfying the irrep constraint (13). The completeness of the solution follows from the completeness of the orthogonal basis.
+We start with deriving the bases for the simplest cases SO(2) and ({±1}, ∗) in sections F.4.1 and F.4.2. The G-steerable kernel basis for O(2) forms a subspace of the kernel basis for SO(2) such that it can be easily derived from this solution by adding the additional constraint coming from the reflectional
+symmetries in ({±1}, ∗) ∼= O(2)/ SO(2). This additional constraint is imposed in Section F.4.3. Since CN is a subgroup of discrete rotations in SO(2) their derivation is mostly similar. However, the discreteness of rotation angles leads to N systems of linear congruences modulo N in the final step. This system of equations is solved in Section F.4.4. Similar to how we derived the kernel basis for O(2) from SO(2), we derive the basis for DN from CN by adding reflectional constraints from
+({±1}, ∗) ∼= DN / CN in Section F.4.5.
+F.1 Conventions, notation and basic properties
+Throughout this section we denote rotations in SO(2) and CN by rθ with θ ∈ [0, 2π) and θ ∈
+{p 2π
+N
+}N −1
+p=0 respectively. Since O(2) ∼= SO(2) o ({±1}, ∗) can be seen as a semidirect product of
+rotations and reflections we decompose orthogonal group elements into a unique product g = rθs ∈ O(2) where s ∈ ({±1}, ∗) is a reflection and rθ ∈ SO(2). Similarly, we write g = rθs ∈ DN for the
+dihedral group DN ∼= CN o({±1}, ∗), in this case with rθ ∈ CN .
+The action of a rotation rθ on R2 in polar coordinates x(r, φ) is given by rθ.x(r, φ) = x(r, rθ.φ) =
+x(r, φ + θ). An element g = rθs of O(2) or DN acts on R2 as g.x(r, φ) = x(r, rθs.φ) = x(r, sφ + θ) where the symbol s denotes both group elements in ({±1}, ∗) and numbers in {±1}.
+We denote a 2×2 orthonormal matrix with positive determinant, i.e. rotation matrix for an angle θ, by:
+ψ(θ) =
+[cos (θ) 9 sin (θ) sin (θ) cos (θ)
+]
+We define the orthonormal matrix with negative determinant corresponding to a reflection with respect to the horizontal axis as:
+ξ(s = 91) =
+[1 0 0 91
+]
+and a general orthonormal matrix with negative determinant, i.e. reflection with respect to the axis 2θ, as:
+[cos (θ) sin (θ) sin (θ) 9 cos (θ)
+]
+=
+[cos (θ) 9 sin (θ) sin (θ) cos (θ)
+] [1 0
+0 −1
+]
+26
+
+
+Hence, we can express any orthonormal matrix in the form:
+[cos (θ) 9 sin (θ) sin (θ) cos (θ)
+] [1 0
+0s
+]
+= ψ(θ)ξ(s)
+where ξ(s) =
+[1 0 0s
+]
+and s ∈ ({±1}, ∗).
+Moreover, these properties will be useful later:
+ψ(θ)ξ(s) = ξ(s)ψ(sθ) (14)
+ξ(s)−1 = ξ(s)T = ξ(s) (15)
+ψ(θ)−1 = ψ(θ)T = ψ(−θ) (16)
+ψ(θ1)ψ(θ2) = ψ(θ1 + θ2) = ψ(θ2)ψ(θ1) (17)
+tr(ψ(θ)ξ(−1)) = tr
+[cos (θ) sin (θ) sin (θ) 9 cos (θ)
+]
+= 0 (18)
+tr(ψ(θ)) = tr
+[cos (θ) 9 sin (θ) sin (θ) cos (θ)
+]
+= 2 cos(θ) (19)
+w1 cos(α) + w2 sin(α) = w1 cos(β) + w2 sin(β) ∀w1, w2 ∈ R
+⇔ ∃t ∈ Z s.t. α = β + 2tπ (20)
+F.2 Irreducible representations of G≤O(2)
+Special Orthogonal group SO(2): SO(2) irreps would decompose into complex irreps of U(1) on the complex field but since we are implementing the theory with real-valued variables we will not consider these. Except for the trivial representation ψ0, all the other irreps are 2-dimensional rotation
+matrices with frequencies k ∈ N+.
+– ψSO(2)
+0 (rθ) = 1
+– ψSO(2)
+k (rθ) =
+[cos (kθ) 9 sin (kθ) sin (kθ) cos (kθ)
+]
+= ψ(kθ), k ∈ N+
+Orthogonal group O(2): O(2) has two 1-dimensional irreps: the trivial representation ψ0,0 and a representation ψ1,0 which assigns ±1 to reflections. The other representations are rotation matrices precomposed by a reflection.
+– ψO(2)
+0,0 (rθs) = 1
+– ψO(2)
+1,0 (rθs) = s
+– ψO(2)
+1,k (rθs) =
+[cos (kθ) 9 sin (kθ) sin (kθ) cos (kθ)
+] [1 0
+0s
+]
+= ψ(kθ)ξ(s), k ∈ N+
+Cyclic groups CN: The irreps of CN are identical to the irreps of SO(2) up to frequency bN/2c. Due to the discreteness of rotation angles, higher frequencies would be aliased.
+– ψCN
+0 (rθ) = 1
+– ψCN
+k (rθ) =
+[cos (kθ) 9 sin (kθ) sin (kθ) cos (kθ)
+]
+= ψ(kθ), k ∈ {1, . . . , b N−1
+2 c}
+If N is even, there is an additional 1-dimensional irrep corresponding to frequency b N
+2c= N
+2:
+27
+
+
+– ψCN
+N/2(rθ) = cos ( N
+2 θ) ∈ {±1} since θ ∈ {p 2π
+N }N−1
+p=0
+Dihedral groups DN: Similarly, DN consists of irreps of O(2) up to frequency bN/2c.
+– ψDN
+0,0 (rθs) = 1
+– ψDN
+1,0 (rθs) = s
+– ψDN
+1,k (rθs) =
+[cos (kθ) 9 sin (kθ) sin (kθ) cos (kθ)
+] [1 0
+0s
+]
+= ψ(kθ)ξ(s), k ∈ {1, . . . , b N−1
+2 c}
+If N is even, there are two 1-dimensional irreps:
+– ψDN
+0,N/2(rθs) = cos ( N
+2 θ) ∈ {±1} since θ ∈ {p 2π
+N }N−1
+p=0
+– ψDN
+1,N/2(rθs) = s cos ( N
+2 θ) ∈ {±1} since θ ∈ {p 2π
+N }N−1
+p=0
+Reflection group ({±1}, ∗) ∼= D1 ∼= C2: The reflection group ({±1}, ∗) is isomorphic to D1 and C2. For this reason, it has the same irreps of these two groups:
+– ψ({±1},∗)
+0 (s) = 1
+– ψ({±1},∗)
+1 (s) = s
+28
+
+
+F.3 Analytical solutions of the irrep kernel constraints
+Special Orthogonal Group SO(2)
+ψm ψn ψ0 ψn, n ∈ N+
+ψ0
+[1] [ cos(nφ) sin(nφ)], [
+9 sin(nφ) cos(nφ)]
+ψm,
+m ∈ N+
+[
+cos(mφ) sin(mφ)
+]
+,
+[
+9sin(mφ) cos(mφ)
+]
+[
+cos((m−n)φ)
+9sin((m−n)φ) sin((m−n)φ) cos((m−n)φ)
+]
+,
+[
+9 sin((m−n)φ)
+9cos((m−n)φ) cos((m−n)φ)
+9sin((m−n)φ)
+]
+,
+[
+cos((m+n)φ) sin((m+n)φ) sin((m+n)φ)
+9cos((m+n)φ)
+]
+,
+[
+9 sin((m+n)φ) cos((m+n)φ) cos((m+n)φ) sin((m+n)φ)
+]
+Table 8: Bases for the angular parts of SO(2)-steerable kernels satisfying the irrep constraint (3) for different pairs of input field irreps ψn and output field irreps ψm. The different types of irreps are explained in F.2.
+Orthogonal Group O(2)
+ψi,m ψj,n ψ0,0 ψ1,0 ψ1,n, n ∈ N+
+ψ0,0
+[1] ∅ [
+9 sin(nφ) cos(nφ)]
+ψ1,0 ∅ [1] [ cos(nφ) sin(nφ)]
+ψ1,m,
+m ∈ N+
+[
+9sin(mφ)
+cos(mφ)
+][
+cos(mφ)
+sin(mφ)
+][
+cos((m9n)φ)
+9sin((m9n)φ)
+sin((m9n)φ) cos((m9n)φ)
+]
+,
+[
+cos((m+n)φ) sin((m+n)φ)
+sin((m+n)φ)
+9cos((m+n)φ)
+]
+Table 9: Bases for the angular parts of O(2)-steerable kernels satisfying the irrep constraint (3) for different pairs of input field irreps ψj,n and output field irreps ψi,m. The different types of irreps are explained in F.2.
+Reflection group ({±1}, ∗)
+ψi ψj ψ0 ψ1
+ψ0
+[
+cos (μ(φ − β))
+][
+sin (μ(φ − β))
+]
+ψ1
+[
+sin (μ(φ − β))
+][
+cos (μ(φ − β))
+]
+Table 10: Bases for the angular parts of ({±1}, ∗)-steerable kernels satisfying the irrep constraint (3) for different pairs of input field irreps ψj and output field irreps ψi for i, j ∈ {0, 1}. The different types of irreps are explained in F.2. The group is assumed to act by reflecting over an axis defined by the angle β. Note that the
+bases shown here are a special case of the bases shown in Table 12 since ({±1}, ∗) ∼= D1.
+29
+
+
+Cyclic groups CN
+ψm
+ψn ψ0 ψN/2 (if N even) ψn with n ∈ N+ and 1 ≤ n < N/2
+ψ0
+[ cos(ˆ
+tN φ)],
+[ sin(ˆ
+tN φ)]
+[
+cos ((ˆ
+t+ 1
+2
+)N φ)
+]
+,
+[
+sin ((ˆ
+t+ 1
+2
+)N φ)
+]
+[
+9 sin((n + tN )φ) cos((n + tN )φ)],
+[ cos((n + tN )φ) sin((n + tN )φ)]
+ψN/2 (N even)
+[
+cos ((ˆ
+t+ 1
+2
+)N φ)
+]
+,
+[
+sin ((ˆ
+t+ 1
+2
+)N φ)
+]
+[ cos(ˆ
+tN φ)],
+[ sin(ˆ
+tN φ)]
+[
+9 sin ((n + (t+ 1
+2
+)N )φ) cos ((n + (t+ 1
+2
+)N )φ)
+]
+,
+[
+cos ((n + (t+ 1
+2
+)N )φ) sin ((n + (t+ 1
+2
+)N )φ)
+]
+ψm,
+m ∈ N+
+1 ≤ m < N/2
+[
+9sin((m + tN )φ)
+cos((m + tN )φ)
+]
+,
+[
+cos((m + tN )φ)
+sin((m + tN )φ)
+]
+[
+9sin ((m + (t+ 1
+2
+)N )φ)
+cos ((m + (t+ 1
+2
+)N )φ)
+]
+,
+[
+cos ((m + (t+ 1
+2
+)N )φ)
+sin ((m + (t+ 1
+2
+)N )φ)
+]
+[
+cos((m−n + tN)φ)
+9sin((m−n + tN)φ)
+sin((m−n + tN)φ) cos((m−n + tN)φ)
+]
+,
+[
+9 sin((m−n + tN)φ)
+9cos((m−n + tN)φ)
+cos((m−n + tN)φ)
+9sin((m−n + tN)φ)
+]
+,
+[
+cos((m+n + tN)φ) sin((m+n + tN)φ)
+sin((m+n + tN)φ)
+9cos((m+n + tN)φ)
+]
+,
+[
+9 sin((m+n + tN)φ) cos((m+n + tN)φ)
+cos((m+n + tN)φ) sin((m+n + tN)φ)
+]
+Table 11: Bases for the angular parts of CN -steerable kernels for different pairs of input and output fields irreps ψn and ψm. The full basis is found
+by instantiating these solutions for each t ∈ Z or ˆ
+t ∈ N. The different types of irreps are explained in Appendix F.2.
+Dihedral groups DN
+ψi,m
+ψj,n ψ0,0 ψ1,0 ψ0,N/2 (if N even) ψ1,N/2 (if N even) ψ1,n with n ∈ N+ and 1 ≤ n < N/2
+ψ0,0
+[ cos(ˆ
+tN φ)] [ sin(ˆ
+tN φ)]
+[
+cos ((ˆ
+t+ 1
+2
+)N φ)
+][
+sin ((ˆ
+t+ 1
+2
+)N φ)
+]
+[
+9 sin((n + tN )φ) cos((n + tN )φ)]
+ψ1,0
+[ sin(ˆ
+tN φ)] [ cos(ˆ
+tN φ)]
+[
+sin ((ˆ
+t+ 1
+2
+)N φ)
+][
+cos ((ˆ
+t+ 1
+2
+)N φ)
+]
+[ cos ((n + tN )φ) sin ((n + tN )φ) ]
+ψ0,N/2 (N even)
+[
+cos ((ˆ
+t+ 1
+2
+)N φ)
+][
+sin ((ˆ
+t+ 1
+2
+)N φ)
+]
+[ cos(ˆ
+tN φ)] [ sin(ˆ
+tN φ)]
+[
+9 sin((n + (t+ 1
+2
+)N )φ) cos((n + (t+ 1
+2
+)N )φ)
+]
+ψ1,N/2 (N even)
+[
+sin ((ˆ
+t+ 1
+2
+)N φ)
+][
+cos ((ˆ
+t+ 1
+2
+)N φ)
+]
+[ sin(ˆ
+tN φ)] [ cos(ˆ
+tN φ)]
+[
+cos((n + (t+ 1
+2
+)N )φ) sin((n + (t+ 1
+2
+)N )φ)
+]
+ψ1,m,
+m ∈ N+
+1 ≤ m < N/2
+[
+9sin((m + tN )φ)
+cos((m + tN )φ)
+][
+cos((m + tN )φ)
+sin((m + tN )φ)
+][
+9sin((m + (t+ 1
+2
+)N )φ)
+cos((m + (t+ 1
+2
+)N )φ)
+][
+cos((m + (t+ 1
+2
+)N )φ)
+sin((m + (t+ 1
+2
+)N )φ)
+]
+[
+cos((m−n + tN)φ)
+9sin((m−n + tN)φ)
+sin((m−n + tN)φ) cos((m−n + tN)φ)
+]
+,
+[
+cos((m+n + tN)φ) sin((m+n + tN)φ)
+sin((m+n + tN)φ)
+9cos((m+n + tN)φ)
+]
+Table 12: Bases for the angular parts of DN -steerable kernels for different pairs of input and output fields irreps ψj,n and ψi,m. The full basis is
+found by instantiating these solutions for each t ∈ Z or ˆ
+t ∈ N. The different types of irreps are explained in Appendix F.2. The solutions here shown
+are for a group action where the reflection is defined around the horizontal axis (β = 0). For different axes β 6= 0 substitute φ with φ − β.
+30
+
+
+F.4 Derivations of the kernel constraints
+Here we solve the kernel constraints for the irreducible representations of G ≤ O(2). Since the irreps of G are either 1- or 2-dimensional, we distinguish between mappings between 2-dimensional irreps, mappings from 2- to 1-dimensional and 1- to 2-dimensional irreps and mappings between 1-dimensional irreps. We are first exclusively considering positive radial parts r > 0 in the following sections. The constraint at the origin r = 0 requires some additional considerations which we postpone to Section F.4.6.
+F.4.1 Derivation for SO(2)
+2-dimensional irreps:
+We first consider the case of 2-dimensional irreps both in the input and in output, that is, ρout = ψSO(2)
+m
+and ρin = ψSO(2)
+n , where ψSO(2)
+k (θ) =
+[cos (kθ) 9 sin (kθ) sin (kθ) cos (kθ)
+]
+. This means that the kernel has the
+form κij : R2 → R2×2. To reduce clutter we will from now on suppress the indices ij corresponding to the input and output irreps in the input and output fields.
+We expand each entry of the kernel κ in terms of an (angular) Fourier series20
+κ(r, φ) =
+∞
+∑
+μ=0
+A00,μ(r)
+[cos(μφ) 0 00
+]
++ B00,μ(r)
+[sin(μφ) 0 00
+]
++ A01,μ(r)
+[0 cos(μφ) 00
+]
++ B01,μ(r)
+[0 sin(μφ) 00
+]
++ A10,μ(r)
+[0 0 cos(μφ) 0
+]
++ B10,μ(r)
+[0 0 sin(μφ) 0
+]
++ A11,μ(r)
+[0 0
+0 cos(μφ)
+]
++ B11,μ(r)
+[0 0
+0 sin(μφ)
+]
+and, for convenience, perform a change of basis to a different, non-sparse, orthogonal basis
+κ(r, φ) =
+∞
+∑
+μ=0
+w0,0,μ(r)
+[cos (μφ) 9 sin (μφ) sin (μφ) cos (μφ)
+]
++ w0,1,μ(r)
+[cos (μφ + π
+2
+)
+9 sin (μφ + π
+2
+)
+sin (μφ + π
+2
+) cos (μφ + π
+2
+)
+]
++ w1,0,μ(r)
+[cos (μφ) sin (μφ) sin (μφ) 9 cos (μφ)
+]
++ w1,1,μ(r)
+[cos (μφ + π
+2
+) sin (μφ + π
+2
+)
+sin (μφ + π
+2
+)
+9 cos (μφ + π
+2
+)
+]
++ w2,0,μ(r)
+[cos (9μφ) 9 sin (9μφ) sin (9μφ) cos (9μφ)
+]
++ w2,1,μ(r)
+[cos (
+9μφ + π
+2
+)
+9 sin (
+9μφ + π
+2
+)
+sin (
+9μφ + π
+2
+) cos (
+9μφ + π
+2
+)
+]
++ w3,0,μ(r)
+[cos (9μφ) sin (9μφ) sin (9μφ) 9 cos (9μφ)
+]
++ w3,1,μ(r)
+[cos (
+9μφ + π
+2
+) sin (
+9μφ + π
+2
+)
+sin (
+9μφ + π
+2
+)
+9 cos (
+9μφ + π
+2
+)
+]
+.
+The last four matrices are equal to the first four, except for their opposite frequency. Moreover, the second matrices of each row are equal to the first matrices, with a phase shift of π
+2 added. Therefore,
+we can as well write:
+κ(r,φ) =
+∞
+∑
+μ=9∞
+∑
+γ∈{0, π
+2}
+w0,γ,μ(r)
+[cos (μφ+γ) 9 sin (μφ+γ) sin (μφ+γ) cos (μφ+γ)
+]
++w1,γ,μ(r)
+[cos (μφ+γ) sin (μφ+γ) sin (μφ+γ) 9 cos (μφ+γ)
+]
+Notice that the first matrix evaluates to ψ(μφ + γ)ξ(1) = ψ(μφ + γ) while the second evaluates to ψ(μφ + γ)ξ(−1). Hence, for s ∈ {±1} we can compactly write:
+κ(r, φ) =
+∞
+∑
+μ=−∞
+∑
+γ∈{0, π
+2}
+∑
+s∈{±1}
+ws,γ,μ(r)ψ(μφ + γ)ξ(s)
+20For brevity, we suppress that frequency 0 is associated to only half the number of basis elements which does not affect the validity of the derivation.
+31
+
+
+As already shown in Section 2.5, we can w.l.o.g. consider the kernels as being defined only on the angular component φ ∈ [0, 2π) = S1 by solving only for a specific radial component r. As a result, we consider the basis
+{
+bμ,γ,s(φ) = ψ(μφ + γ)ξ(s)
+∣ ∣ ∣ ∣
+μ ∈ Z, γ ∈
+{
+0, π
+2
+}
+, s ∈ ({±1}, ∗)
+}
+(21)
+of the unrestricted kernel space which we will constrain in the following by demanding
+κ(φ + θ) = ψSO(2)
+m (rθ)κ(φ)ψSO(2)
+n (rθ)−1 ∀φ, θ ∈ [0, 2π), (22)
+where we dropped the unrestricted radial part.
+We solve for a basis of the subspace satisfying this constraint by projecting both sides on the basis
+elements defined above. The inner product on L2(S1)2×2 is hereby defined as
+〈k1, k2〉 = 1
+4π
+∫
+dφ〈k1(φ), k2(φ)〉F = 1
+4π
+∫
+dφ tr (k1(φ)T k2(φ)) ,
+where 〈·, ·〉F denotes the Frobenius inner product between 2 matrices.
+First consider the projection of the lhs of the kernel constraint (22) on a generic basis element bμ′,γ′,s′ (φ) = ψ(μ′φ + γ′)ξ(s′). Defining the operator Rθ by (Rθκ) (φ) := κ(φ + θ), the projection gives:
+〈bμ′,γ′,s′ , Rθκ〉 = 1
+4π
+∫
+dφ tr (bμ′,γ′,s′ (φ)T (Rθκ) (φ))
+=1
+4π
+∫
+dφ tr (bμ′,γ′,s′ (φ)T κ(φ + θ)) .
+By expanding the kernel in the linear combination of the basis we further obtain
+=1
+4π
+∫
+dφ tr
+(
+bμ′,γ′,s′ (φ)T
+( ∑
+μ
+∑
+γ
+∑
+s
+ws,γ,μψ (μ(φ + θ) + γ) ξ(s)
+))
+,
+which, observing that the trace, sums and integral commute, results in:
+=1
+4π
+∑
+μ
+∑
+γ
+∑
+s
+ws,γ,μ tr
+(∫
+dφ bμ′,γ′,s′ (φ)T ψ (μ(φ + θ) + γ) ξ(s)
+)
+=1
+4π
+∑
+μ
+∑
+γ
+∑
+s
+ws,γ,μ tr
+(∫
+dφ (ψ(μ′φ + γ′)ξ(s′))T ψ (μ(φ + θ) + γ) ξ(s)
+)
+=1
+4π
+∑
+μ
+∑
+γ
+∑
+s
+ws,γ,μ tr
+(∫
+dφ ξ(s′)T ψ(μ′φ + γ′)T ψ (μ(φ + θ) + γ) ξ(s)
+)
+Using the properties in Eq. (15) and (16) then yields:
+=1
+4π
+∑
+μ
+∑
+γ
+∑
+s
+ws,γ,μ tr
+(∫
+dφ ξ(s′)ψ(−μ′φ − γ′)ψ (μ(φ + θ) + γ) ξ(s)
+)
+=1
+2
+∑
+μ
+∑
+γ
+∑
+s
+ws,γ,μ tr
+(
+ξ(s′)ψ(γ − γ′)
+(1
+2π
+∫
+dφ ψ((μ − μ′)φ)
+)
+ψ(μθ)ξ(s)
+)
+In the integral, each cell of the matrix ψ((μ − μ′)φ) contains either a sine or cosine. As a result, if μ − μ′ 6= 0, all these integrals evaluate to 0. Otherwise, the cosines on the diagonal evaluate to 1, while the sines integrate to 0. The whole integral evaluates to δμ,μ′ id2×2, such that
+=1
+2
+∑
+γ
+∑
+s
+ws,γ,μ′ tr (ξ(s′)ψ(γ − γ′)ψ(μ′θ)ξ(s)) ,
+which, using the property in Eq. (14) leads to
+=1
+2
+∑
+γ
+∑
+s
+ws,γ,μ′ tr (ψ(s′(γ − γ′ + μ′θ))ξ(s′ ∗ s)) .
+32
+
+
+Recall the propetries of the trace in Eq. (18), (19). If s′ ∗ s = −1, i.e. s′ 6= s, the matrix has a trace of 0:
+=1
+2
+∑
+γ
+∑
+s
+ws,γ,μ′ δs′,s2 cos(s′(γ − γ′ + μ′θ))
+Since cos(−α) = cos(α) and s′ ∈ {±1}:
+=1
+2
+∑
+γ
+∑
+s
+ws,γ,μ′ δs′,s2 cos(γ − γ′ + μ′θ)
+=
+∑
+γ
+ws′,γ,μ′ cos((γ − γ′) + μ′θ)
+Next consider the projection of the rhs of Eq. (22):
+〈bμ′,γ′,s′ , ψSO(2)
+m (rθ)κ(·)ψSO(2)
+n (rθ)−1〉
+=1
+4π
+∫
+dφ tr
+(
+bμ′,γ′,s′ (φ)T ψSO(2)
+m (rθ)κ(φ)ψSO(2)
+n (rθ)−1)
+=1
+4π
+∫
+dφ tr (bμ′,γ′,s′ (φ)T ψ(mθ)κ(φ)ψ(−nθ))
+An expansion of the kernel in the linear combination of the basis yields:
+=1
+4π
+∫
+dφ tr
+(
+bμ′,γ′,s′ (φ)T ψ(mθ)
+( ∑
+μ
+∑
+γ
+∑
+s
+ws,γ,μψ (μφ + γ) ξ(s)
+)
+ψ(−nθ)
+)
+=1
+4π
+∑
+μ
+∑
+γ
+∑
+s
+ws,γ,μ tr
+(∫
+dφ bμ′,γ′,s′ (φ)T ψ(mθ)ψ (μφ + γ) ξ(s)ψ(−nθ)
+)
+=1
+4π
+∑
+μ
+∑
+γ
+∑
+s
+ws,γ,μ tr
+(∫
+dφ ξ(s′)ψ(−μ′φ − γ′)ψ(mθ)ψ (μφ + γ) ξ(s)ψ(−nθ)
+)
+=1
+2
+∑
+μ
+∑
+γ
+∑
+s
+ws,γ,μ tr
+(
+ξ(s′)ψ(γ 9 γ′)ψ(mθ)
+(1
+2π
+∫
+dφ ψ((μ 9 μ′)φ)
+)
+ξ(s)ψ(9nθ)
+)
+Again, the integral evaluates to δμ,μ′ id2×2:
+=1
+2
+∑
+μ
+∑
+γ
+∑
+s
+ws,γ,μδμ,μ′ tr (ξ(s′)ψ(γ − γ′)ψ(mθ)ξ(s)ψ(−nθ))
+=1
+2
+∑
+γ
+∑
+s
+ws,γ,μ′ tr (ξ(s′)ψ(γ − γ′)ψ(mθ)ξ(s)ψ(−nθ))
+=1
+2
+∑
+γ
+∑
+s
+ws,γ,μ′ tr (ψ(s′(γ − γ′ + mθ − nsθ))ξ(s′ ∗ s))
+For the same reason as before, the trace is not zero if and only if s′ = s:
+=1
+2
+∑
+γ
+∑
+s
+ws,γ,μ′ δs′,s2 cos(s′(γ − γ′ + mθ − nsθ))
+Since cos(−α) = cos(α) and s′ ∈ {±1}:
+=
+∑
+γ
+ws′,γ,μ′ cos(γ − γ′ + mθ − ns′θ)
+=
+∑
+γ
+ws′,γ,μ′ cos((γ − γ′) + (m − ns′)θ)
+Finally, we require the two projections to be equal for all rotations in SO(2), that is,
+∑
+γ
+ws′,γ,μ′ cos((γ − γ′) + μ′θ) =
+∑
+γ
+ws′,γ,μ′ cos((γ − γ′) + (m − ns′)θ) ∀θ ∈ [0, 2π),
+33
+
+
+or, explicitly, with γ ∈ {0, π
+2 } and cos(α + π
+2 ) = − sin(α):
+ws′,0,μ′ cos(μ′θ − γ′) − ws′, π
+2 ,μ′ sin(μ′θ − γ′)
+= ws′,0,μ′ cos((m − ns′)θ − γ′) − ws′, π
+2 ,μ′ sin((m − ns′)θ − γ′) ∀θ ∈ [0, 2π)
+Using the property in Eq. (20) then implies that for each θ in [0, 2π) there exists a t ∈ Z such that:
+⇔ μ′θ − γ′ = (m − ns′)θ − γ′ + 2tπ
+⇔ (μ′ − (m − ns′))θ = 2tπ (23)
+Since the constraint needs to hold for any θ ∈ [0, 2π) this results in the condition μ′ = m − sn′ on the frequencies occurring in the SO(2)-steerable kernel basis. Both γ and s are left unrestricted such that we end up with the four-dimensional basis
+KSO(2)
+ψm←ψn =
+{
+bμ,γ,s(φ) = ψ(μφ + γ)ξ(s)
+∣ ∣ ∣ ∣
+μ = (m 9 sn), γ ∈
+{
+0, π
+2
+}
+, s ∈ {±1}
+}
+(24)
+for the angular parts of equivariant kernels for m, n > 0. This basis is explicitly written out in the lower right cell of Table 8.
+1-dimensional irreps:
+For the case of 1-dimensional irreps in both the input and output, i.e. ρout = ρin = ψSO(2)
+0 the kernel
+has the form κij : R2 → R1×1. As a scalar function in L2(R2), it can be expressed by the Fourier decomposition of its angular part:
+κ(r, φ) = w0,0 +
+∞
+∑
+μ=1
+∑
+γ∈{0, π
+2}
+wμ,γ(r) cos(μφ + γ)
+As before, we can w.l.o.g. drop the dependency on the radial part as it is not restricted by the constraint. We are therefore considering the basis
+{
+bμ,γ(φ) = cos(μφ + γ)
+∣ ∣ ∣ ∣ ∣
+μ ∈ N, γ ∈
+{{0} if μ = 0 {0, π/2} otherwise
+}
+(25)
+of angular kernels in L2(S1)1×1. The kernel constraint in Eq. (3) then requires
+κ(φ + θ) = ψSO(2)
+m (rθ)κ(φ)ψSO(2)
+n (rθ)−1 ∀θ, φ ∈ [0, 2π)
+⇔ κ(φ + θ) = κ(φ) ∀θ, φ ∈ [0, 2π),
+i.e. the kernel has to be invariant to rotations.
+Again, we find the space of all solutions by projecting both sides on the basis defined above. Here, the projection of two kernels is defined through the standard inner product 〈k1, k2〉 = 1
+2π
+∫ dφk1(φ)k2(φ) on L2(S1).
+We first consider the projection of the lhs:
+〈bμ′,γ′ , Rθκ〉 = 1
+2π
+∫
+dφ bμ′,γ′ (φ) (Rθκ) (φ)
+=1
+2π
+∫
+dφ bμ′,γ′ (φ)κ(φ + θ)
+As before we expand the kernel in the linear combination of the basis:
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ bμ′,γ′ (φ) cos(μφ + μθ + γ)
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ cos(μ′φ + γ′) cos(μφ + μθ + γ)
+34
+
+
+With cos(α) cos(β) = 1
+2 (cos(α − β) + cos(α + β)) this results in:
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ 1
+2
+( cos(μ′φ + γ′ − μφ − μθ − γ)
++ cos(μ′φ + γ′ + μφ + μθ + γ))
+=
+∑
+μ,γ
+wμ,γ
+1 2
+(1
+2π
+∫
+dφ cos((μ′ − μ)φ + (γ′ − γ) − μθ)
++1
+2π
+∫
+dφ cos((μ′ + μ)φ + (γ′ + γ) + μθ))
+=
+∑
+μ,γ
+wμ,γ
+1
+2 (δμ,μ′ cos((γ′ − γ) − μθ) + δμ,−μ′ cos((γ′ + γ) + μθ))
+Since μ, μ′ ≥ 0 and μ = −μ′ imply μ = μ′ = 0 this simplifies further to
+=1
+2
+∑
+γ
+wμ′,γ (cos((γ′ − γ) − μ′θ) + δμ′,0 cos(γ′ + γ)) .
+A projection of the rhs yields:
+〈bμ′,γ′ , κ〉 = 1
+2π
+∫
+dφ bμ′,γ′ (φ)κ(φ)
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ bμ′,γ′ (φ) cos(μφ + γ)
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ cos(μ′φ + γ′) cos(μφ + γ)
+=1
+2
+∑
+γ
+wμ′,γ (cos(γ′ − γ) + δμ′,0 cos((γ′ + γ)))
+The projections are required to coincide for all rotations:
+〈bμ′,γ′ , Rθκ〉 = 〈bμ′,γ′ , κ〉 ∀θ ∈ [0, 2π)
+∑
+γ
+wμ′,γ (cos((γ′ −γ)−μ′θ) + δμ′,0 cos((γ′ +γ))) =
+∑
+γ
+wμ′,γ (cos(γ′ −γ)+δμ′,0 cos((γ′ +γ)))
+∀θ ∈ [0, 2π)
+We consider two cases:
+• μ′ = 0 In this case, the basis in Eq.(25) is restricted to the single case γ′ = 0 (as γ′ = π
+2 and μ′ = 0
+together lead to a null basis element). Then:
+∑
+γ
+w0,γ (cos(−γ) + cos(γ)) =
+∑
+γ
+w0,γ (cos(−γ) + cos(γ))
+As γ ∈ {0, π
+2 } and cos(± π
+2 ) = 0:
+⇔ w0,0 (cos(0) + cos(0)) = w0,0 (cos(0) + cos(0))
+⇔ w0,0 = w0,0
+which is always true.
+• μ′ > 0 Here:
+∑
+γ
+wμ′,γ cos((γ′ − γ) − μ′θ) =
+∑
+γ
+wμ′,γ cos(γ′ − γ) ∀θ ∈ [0, 2π)
+⇔ wμ′,0 cos(γ′ 9 μ′θ) + wμ′, π
+2 sin(γ′ 9 μ′θ) = wμ′,0 cos(γ′) + wμ′, π
+2 sin(γ′) ∀θ ∈ [0, 2π)
+⇔ −μ′θ = 2tπ ∀θ ∈ [0, 2π),
+where Eq. (20) was used in the last step. From the last equation one can see that μ′ must be zero. Since this contradicts the assumption that μ′ ≥ 0, no solution exists.
+35
+
+
+This results in a one dimensional basis of isotropic (rotation invariant) kernels
+KSO(2)
+ψm←ψn = {b0,0(φ) = 1} (26)
+for m = n = 0, i.e. trivial representations. The basis is presented in the upper left cell of Table 8.
+1 and 2-dimensional irreps:
+Finally, consider the case of a 1-dimensional irrep in the input and a 2-dimensional irrep in the output, that is, ρout = ψSO(2)
+m and ρin = ψSO(2)
+0 . The corresponding kernel κij : R2 → R2×1 can be
+expanded in the following generalized Fourier series on L2(R2)2×1:
+κ(r, φ) =
+∞
+∑
+μ=0
+A0,μ(r)
+[cos(μφ) 0
+]
++ B0,μ(r)
+[sin(μφ) 0
+]
++ A1,μ(r)
+[0
+cos(μφ)
+]
++ B1,μ(r)
+[0
+sin(μφ)
+]
+As before, we perform a change of basis to produce a non-sparse basis
+κ(r, φ) =
+∞
+∑
+μ=−∞
+∑
+γ∈{0, π
+2}
+wγ,μ(r)
+[cos(μφ + γ) sin(μφ + γ)
+]
+.
+Dropping the radial parts as usual, this corresponds to the complete basis :
+{
+bμ,γ (φ) =
+[cos(μφ + γ) sin(μφ + γ)
+]∣ ∣ ∣ ∣
+μ ∈ Z, γ ∈
+{
+0, π
+2
+}
+}
+(27)
+of angular kernels on L2(S1)2×1.
+The constraint in Eq. (3) requires the kernel space to satisfy
+κ(φ + θ) = ψSO(2)
+m (rθ)κ(φ)ψSO(2)
+0 (rθ)−1 ∀θ, φ ∈ [0, 2π)
+⇔ κ(φ + θ) = ψSO(2)
+m (rθ)κ(φ) ∀θ, φ ∈ [0, 2π).
+We again project both sides of this equation on the basis elements defined above where the projection on L2(S1)2×1 is defined by 〈k1, k2〉 = 1
+2π
+∫ dφ k1(φ)T k2(φ).
+Consider first the projection of the lhs
+〈bμ′,γ′ , Rθκ〉 = 1
+2π
+∫
+dφ bμ′,γ′ (φ)T (Rθκ) (φ)
+=1
+2π
+∫
+dφ bμ′,γ′ (φ)T κ(φ + θ) ,
+which, after expanding the kernel in terms of the basis reads:
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ bμ′,γ′ (φ)T
+[cos(μ(φ + θ) + γ) sin(μ(φ + θ) + γ)
+]
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ [cos(μ′φ + γ′) sin(μ′φ + γ′)]
+[cos(μ(φ + θ) + γ) sin(μ(φ + θ) + γ)
+]
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ cos((μ′ − μ)φ + (γ′ − γ) − μθ).
+As before, the integral is non-zero only if the frequency is 0, i.e. iff μ′ − μ = 0 and thus:
+=
+∑
+γ
+wμ′,γ cos((γ′ − γ) − μ′θ)
+36
+
+
+For the rhs we obtain:
+〈bμ′,γ′ , ψSO(2)
+m (rθ)κ(·)〉
+=1
+2π
+∫
+dφ bμ′,γ′ (φ)T ψm(rθ)κ(φ)
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ bμ′,γ′ (φ)T ψm(rθ)
+[cos(μφ + γ) sin(μφ + γ)
+]
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ [cos(μ′φ + γ′) sin(μ′φ + γ′)] ψm(rθ)
+[cos(μφ + γ) sin(μφ + γ)
+]
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ cos(μ′φ + γ′ − μφ − γ − mθ)
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ cos((μ′ − μ)φ + γ′ − γ − mθ) .
+The integral is non-zero only if the frequency is 0, i.e. μ′ − μ = 0:
+=
+∑
+γ
+wμ′,γ cos(γ′ − γ − mθ)
+Requiring the projections to be equal implies
+〈bμ′,γ′ , Rθκ〉 = 〈bμ′,γ′ , ψm(rθ)κ(·)〉 ∀θ ∈ [0, 2π)
+⇔
+∑
+γ
+wμ′,γ cos(γ′ − γ − μ′θ) =
+∑
+γ
+wμ′,γ cos(γ′ − γ − mθ) ∀θ ∈ [0, 2π)
+⇔ wμ′,0 cos(γ′ −μ′θ) + wμ′, π
+2 sin(γ′ −μ′θ) = wμ′,0 cos(γ′ −mθ) + wμ′, π
+2 sin(γ′ −mθ)
+∀θ ∈ [0, 2π)
+⇔ γ′ − μ′θ = γ′ − mθ + 2tπ ∀θ ∈ [0, 2π)
+⇔ μ′θ = mθ + 2tπ ∀θ ∈ [0, 2π),
+where we made use of Eq. (20) once again. It follows that μ′ = m, resulting in the two-dimensional basis
+KSO(2)
+ψm←ψn =
+{
+bm,γ (φ) =
+[cos(mφ + γ) sin(mφ + γ)
+]∣ ∣ ∣ ∣
+γ∈
+{
+0, π
+2
+}
+}
+(28)
+of equivariant kernels for m > 0 and n = 0. This basis is explicitly given in the lower left cell of Table 8.
+2 and 1-dimensional irreps:
+The case for 2-dimensional input and 1-dimensional output representations, i.e. ρin = ψSO(2)
+n and ρout = ψSO(2)
+0 , is identical to the previous one up to a transpose. The final two-dimensional basis for m = 0 and n > 0 is therefore given by
+KSO(2)
+ψm←ψn =
+{
+bn,γ(φ) = [cos(nφ + γ) sin(nφ + γ)]
+∣ ∣ ∣ ∣
+γ∈
+{
+0, π
+2
+}
+}
+(29)
+as shown in the upper right cell of Table 8.
+37
+
+
+F.4.2 Derivation for the reflection group
+The action of the reflection group ({±1}, ∗) on R2 depends on a choice of reflection axis, which we specify by an angle β. More precisely, the element s ∈ ({±1}, ∗) acts on x = (r, φ) ∈ R2 as
+s.x(r, φ) := x(r, s.φ) := x(r, 2βδs,−1 + sφ) =
+{x(r, φ) if s = 1 x(r, 2β − φ) if s = 91 .
+The kernel constraint for the reflection group is therefore being made explicit by
+κ(r, s.φ) = ρout(s)κ(r, φ)ρin(s)−1 ∀s ∈ ({±1}, ∗), φ ∈ [0, 2π)
+⇔ κ(r, δs,−12β + sφ) = ρout(s)κ(r, φ)ρin(s)−1 ∀s ∈ ({±1}, ∗), φ ∈ [0, 2π)
+⇔ κ(r, δs,−12β + sφ) = ρout(s)κ(r, φ)ρin(s) ∀s ∈ ({±1}, ∗), φ ∈ [0, 2π) ,
+where we used the identity s−1 = s. For s = +1 the constraint is trivially true. We will thus in the following consider the case s = −1, that is,
+κ(r, 2β − φ) = ρout(−1)κ(r, φ)ρin(−1) ∀φ ∈ [0, 2π) .
+In order to simplify this constraint further we define a transformed kernel κ′(r, φ) := κ(r, φ + β) which is oriented relative to the reflection axis. The transformed kernel is then required to satisfy
+κ′(r, β − φ) = ρout(−1)κ′(r, φ − β)ρin(−1) ∀φ ∈ [0, 2π) ,
+which, with the change of variables φ′ = φ − β , reduces to the constraint for equivariance under reflections around the x-axis, i.e. the case for β = 0 :
+κ′(r, −φ′) = ρout(−1)κ′(r, φ′)ρin(−1) ∀φ′ ∈ [0, 2π) .
+As a consequence we can retrieve kernels equivariant under reflections around the β-axis through
+κ(r, φ) := κ′(r, φ − β) .
+We will therefore without loss of generality consider the case β = 0 only in the following.
+1-dimensional irreps:
+The reflection group ({±1}, ∗) has only two irreps, namely the trivial representation ψ({±1},∗)
+0 (s) = 1
+and the sign-flip representation ψ({±1},∗)
+1 (s) = s. Therefore only the 1-dimensional case with a
+kernel of form κ : R2 → R1×1 exists. Note that we can write the irreps out as ψ({±1},∗)
+f (s) = sf , in
+particular ψ({±1},∗)
+f (−1) = (−1)f .
+Consider the output and input irreps ρout = ψ({±1},∗)
+i and ρin = ψ({±1},∗)
+j (with i, j ∈ {0, 1}) and the usual 1-dimensional Fourier basis for scalar functions in L2(S1) as before:
+{
+bμ,γ(φ) = cos(μφ + γ)
+∣ ∣ ∣ ∣ ∣
+μ ∈ N, γ ∈
+{{0} if μ = 0 {0, π/2} otherwise
+}
+(30)
+Defining the reflection operator S by its action (S κ) (φ) := κ(−φ), we require the projections of both sides of the kernel constraint on the same basis element to be equal as usual. Specifically, for a particular basis bμ′,γ′ :
+〈bμ′,γ′ , S κ〉 = 〈bμ′,γ′ , ψ({±1},∗)
+i (−1)κ(·)ψ({±1},∗)
+j (−1)〉
+38
+
+
+The lhs implies
+〈bμ′,γ′ , S κ〉 =
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ bμ′,γ′ (φ)bμ,γ (−φ)
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ cos(μ′φ + γ′) cos(−μφ + γ)
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ 1
+2 (cos((μ′ + μ)φ + (γ′ − γ)) + cos((μ′ − μ)φ + (γ′ + γ)))
+=
+∑
+γ
+wμ′,γ
+1
+2 (cos(γ′ + γ) + δμ′,0 cos(γ′ − γ))
+while the rhs leads to
+〈bμ′,γ′ , ψ({±1},∗)
+m (−1)κ(·)ψ({±1},∗)
+n (−1)〉
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ bμ′,γ′ (φ)ψ({±1},∗)
+i (−1)bμ,γ (φ)ψ({±1},∗)
+j (−1)
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ cos(μ′φ + γ′)(−1)i cos(μφ + γ)(−1)j
+= (−1)i+j ∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ cos(μ′φ + γ′) cos(μφ + γ)
+= (−1)i+j ∑
+γ
+wμ′,γ
+1
+2 (cos(γ′ − γ) + δμ′,0 cos(γ′ + γ)) .
+Now, we require both sides to be equal, that is,
+∑
+γ
+wμ′,γ
+1
+2 (cos(γ′ + γ) + δμ′,0 cos(γ′ 9 γ)) = (91)i+j ∑
+γ
+wμ′,γ
+1
+2 (cos(γ′ 9 γ) + δμ′,0 cos(γ′ + γ))
+and again consider two cases for μ′:
+• μ′ = 0 The basis in Eq.(30) is restricted to the single case γ′ = 0. Hence:
+∑
+γ
+w0,γ
+1
+2 (cos(γ) + cos(−γ)) = (−1)i+j ∑
+γ
+w0,γ
+1
+2 (cos(−γ) + cos(γ))
+As γ ∈ {0, π
+2 } and cos(± π
+2 ) = 0:
+⇔ w0,0
+1
+2 (cos(0) + cos(0)) = (−1)i+jw0,0
+1
+2 (cos(−0) + cos(0))
+⇔ w0,0 = (−1)i+j w0,0
+Which is always true when i = j, while it enforces w0,0 = 0 when i 6= j.
+• μ′ > 0 In this case we get:
+∑
+γ
+wμ′,γ
+1
+2 cos(γ′ + γ) = (−1)i+j ∑
+γ
+wμ′,γ
+1
+2 cos(γ′ − γ)
+⇔ (1 − (−1)i+j )wμ′,0 cos(γ′) = (1 + (−1)i+j )wμ, π
+2 sin(γ′)
+If i + j ≡ 0 mod 2, the equation becomes sin(γ′) = 0 and, so, γ′ = 0. Otherwise, it becomes cos(γ′) = 0, which means γ′ = π
+2 . Shortly, γ′ = (i + j mod 2) π
+2.
+As a result, only half of the basis for β = 0 is preserved:
+K({±1},∗),β=0
+ψi←ψj =
+{
+bμ,γ(φ) = cos(μφ + γ)
+∣ ∣ ∣ ∣
+μ ∈ N, γ = (i + j mod 2) π
+2, μ > 0∨γ = 0
+}
+(31)
+39
+
+
+The solution for a general reflection axis β is therefore given by
+K({±1},∗),β
+ψi←ψj =
+{
+bμ,γ(φ) = cos(μ(φ 9 β) + γ)
+∣ ∣ ∣ ∣
+μ ∈ N, γ = (i + j mod 2) π
+2,μ > 0∨γ = 0
+}
+(32)
+which is visualized in Table 10 for the different cases of irreps for i, j ∈ {0, 1}.
+F.4.3 Derivation for O(2)
+The orthogonal group O(2) is the semi-direct product between the rotation group SO(2) and the
+reflection group ({±1}, ∗), i.e. O(2) ∼= SO(2) o ({±1}, ∗). This justifies a decomposition of the constraint on O(2)-equivariant kernels as the union of the constraints for rotations and reflections. Consequently, the space of O(2)-equivariant kernels is the intersection between the spaces of SO(2)and reflection-equivariant kernels.
+Proof
+Sufficiency:
+Assume a rotation- and reflection-equivariant kernel, i.e. a kernel which for all r ∈ R+
+0 and φ ∈ [0, 2π) satisfies
+κ(r, rθφ) =
+(
+ResO(2)
+SO(2) ρout
+)
+(rθ) κ(r, φ)
+(
+ResO(2)
+SO(2) ρin
+)−1
+(rθ) ∀ rθ ∈ SO(2)
+= ρout(rθ) κ(r, φ) ρ−1
+in (rθ)
+and
+κ(r, sφ) =
+(
+ResO(2)
+({±1},∗) ρout
+)
+(s) κ(r, φ)
+(
+ResO(2)
+({±1},∗) ρin
+)−1
+(s) ∀ s ∈ ({±1}, ∗)
+= ρout(s) κ(r, φ) ρ−1
+in (s) .
+Then, for any g = rθs ∈ O(2), the kernel constraint becomes:
+κ(r, gφ) = ρout(g) κ(r, φ) ρ−1
+in (g)
+⇔ κ(r, rθsφ) = ρout(rθs) κ(r, φ) ρ−1
+in (rθs)
+⇔ κ(r, rθsφ) = ρout(rθ)ρout(s) κ(r, φ) ρ−1
+in (s)ρ−1
+in (rθ) .
+Applying reflection-equivariance this equation simplifies to
+⇔ κ(r, rθsφ) = ρout(rθ) κ(r, sφ) ρ−1
+in (rθ) ,
+which, applying rotation-equivariance yields
+⇔ κ(r, rθsφ) = κ(r, rθsφ) .
+Hence any kernel satisfying both SO(2) and reflection constraints is also O(2) equivariant.
+Necessity:
+Trivially, O(2) equivariance implies equivariance under SO(2) and reflections. Specifically, for any r ∈ R+
+0 and φ ∈ [0, 2π), the equation
+κ(r, gφ) = ρout(g) κ(r, φ) ρ−1
+in (g) ∀ g = rθs ∈ O(2)
+implies
+κ(r, rθφ) = ρout(rθ) κ(r, φ) ρ−1
+in (rθ)
+=
+(
+ResO(2)
+SO(2) ρout
+)
+(rθ) κ(r, φ)
+(
+ResO(2)
+SO(2) ρin
+)−1
+(rθ) ∀ rθ ∈ SO(2)
+40
+
+
+and
+κ(r, sφ) = ρout(s) κ(r, φ) ρ−1
+in (s)
+=
+(
+ResO(2)
+({±1},∗) ρout
+)
+(s) κ(r, φ)
+(
+ResO(2)
+({±1},∗) ρin
+)−1
+(s) ∀ s ∈ ({±1}, ∗).
+This observation allows us to derive the kernel space for O(2) by intersecting the previously derived kernel space of SO(2) with the kernel space of the reflection group:
+KO(2)
+ρout←ρin = {κ | κ(r, g.φ) = ρout(g)κ(r, φ)ρin(g)−1 ∀ g ∈ O(2)}
+=
+{κ | κ(r, rθ.φ) = ρout(rθ)κ(r, φ)ρin(rθ)−1 ∀ rθ ∈ SO(2)}
+∩
+{κ | κ(r, s.φ) = ρout(s)κ(r, φ)ρin(s)−1 ∀ s ∈ ({±1}, ∗)}
+As O(2) contains all rotations, it does also contain all reflection axes. Without loss of generality, we define s ∈ O(2) as the reflection along the x-axis. A reflection along any other axis β is associated with the group element r2βs ∈ O(2), i.e. the combination of a reflection with a rotation of 2β. As a result, we consider the basis for reflection equivariant kernels derived for β = 0 in Eq. (31).
+Therefore, to derive a basis associated to a pair of input and output representations ρin and ρout, we restrict the representations to SO(2) and the reflection group, compute the two bases using the results found in Appendix F.4.1 and in Appendix F.4.2, and, finally, take their intersection.
+2-dimensional irreps:
+The restriction of any 2-dimensional irrep ψO(2)
+1,n of O(2) to the reflection group decomposes into the direct sum of the two 1-dimensional irreps of the reflection group, i.e. into the diagonal matrix
+ResO(2)
+({±1},∗) ψ1,n(s) =
+(
+ψ({±1},∗)
+0 ⊕ ψ({±1},∗)
+1
+)
+(s) =
+[
+ψ({±1},∗)
+0 (s) 0
+0 ψ({±1},∗)
+1 (s)
+]
+=
+[1 0 0s
+]
+.
+It follows that the restricted kernel space constraint decomposes into independent constraints on each entry of the original kernel. Specifically, for output and input representations ρout = ψO(2)
+1,m and
+ρin = ψO(2)
+1,n , the constraint becomes
+κ(s.x) =
+(
+ψ({±1},∗)
+0 (s)
+ψ({±1},∗)
+1 (s)
+)
+} {{ }
+ResO(2)
+({±1},∗) ρout(s)
+·
+(
+κ00 κ01
+κ10 κ11
+)
+} {{ }
+κ(x)
+·
+(
+ψ({±1},∗)
+0 (s)−1
+ψ({±1},∗)
+1 (s)−1
+)
+} {{ }
+ResO(2)
+({±1},∗) ρin(s)
+We can therefore solve for a basis for each entry individually following Appendix F.4.2 to obtain the complete basis
+{b00
+μ,0 (φ) =
+[cos(μφ) 0 00
+]∣ ∣ ∣ ∣
+μ ∈ N } ∪ {b01
+μ, π
+2 (φ) =
+[0 sin(μφ) 00
+]∣ ∣ ∣ ∣
+μ ∈ N+} ∪
+{b10
+μ, π
+2 (φ) =
+[0 0 sin(μφ) 0
+]∣ ∣ ∣ ∣
+μ ∈ N+} ∪ {b11
+μ,0 (φ) =
+[0 0
+0 cos(μφ)
+]∣ ∣ ∣ ∣
+μ ∈ N }.
+Through the same change of basis applied in the first paragraph of Appendix F.4.1, we get the following equivalent basis for the same space:
+{
+bμ,s(φ) =
+[cos (μφ) 9 sin (μφ) sin (μφ) cos (μφ)
+] [1 0
+0s
+]}
+μ∈Z,s∈{±1}
+=
+{bμ,s(φ) = ψ(μφ)ξ(s)}
+μ∈Z,s∈{±1} . (33)
+On the other hand, 2-dimensional O(2) representations restrict to the SO(2) irreps of the corresponding frequency, i.e.
+ResO(2)
+SO(2) ρin = ResO(2)
+SO(2) ψO(2)
+1,n (rθ) = ψSO(2)
+n (rθ)
+41
+
+
+and
+ResO(2)
+SO(2) ρout = ResO(2)
+SO(2) ψO(2)
+1,m (rθ) = ψSO(2)
+m (rθ).
+In Appendix F.4.1, a basis for SO(2)-equivariant kernels with respect to a ψSO(2)
+n input field and
+ψSO(2)
+m output field was derived starting from the basis in Eq. (21). Notice that the basis of reflectionequivariant kernels in Eq. (33) contains exactly half of the elements in Eq. (21), indexed by γ = 0. A basis for O(2)-equivariant kernels can be found by repeating the derivations in Appendix F.4.1 for SO(2)-equivariant kernels using only the subset in Eq. (33) of reflection-equivariant kernels. The resulting two-dimensional O(2)-equivariant basis, which includes the SO(2)-equivariance conditions (μ = m − sn) and the reflection-equivariance conditions (γ = 0), is given by
+KO(2)
+ψi,m←ψj,n =
+{
+bμ,0,s(φ) = ψ(μφ)ξ(s)
+∣ ∣ ∣ ∣
+μ = m − sn, s ∈ {±1}
+}
+, (34)
+where i = j = 1 and m, n > 0. See the bottom right cell in Table 9.
+1-dimensional irreps:
+O(2) has two 1-dimensional irreps ψO(2)
+0,0 and ψO(2)
+1,0 (see Appendix F.2). Both are trivial under rotations and each of them corresponds to one of the two reflection group’s irreps, i.e.
+ResO(2)
+({±1},∗) ψO(2)
+i,0 (s) = ψ({±1},∗)
+i (s)= si
+and
+ResO(2)
+SO(2) ψO(2)
+i,0 (rθ) = ψSO(2)
+0 (rθ) = 1.
+Considering output and input representations ρout = ψO(2)
+i,0 and ρin = ψO(2)
+j,0 , it follows that:
+ResO(2)
+({±1},∗) ρin = ResO(2)
+({±1},∗) ψO(2)
+j,0 = ψ({±1},∗)
+j
+ResO(2)
+({±1},∗) ρout = ResO(2)
+({±1},∗) ψO(2)
+i,0 = ψ({±1},∗)
+i
+ResO(2)
+SO(2) ρin = ResO(2)
+SO(2) ψO(2)
+j,0 = ψSO(2)
+0
+ResO(2)
+SO(2) ρout = ResO(2)
+SO(2) ψO(2)
+i,0 = ψSO(2)
+0
+In order to solve the O(2) kernel constraint consider again the reflectional constraint and the SO(2) constraint. Bases for reflection-equivariant kernels with above representations were derived in Appendix F.4.2 and are shown in Eq. (31). These bases form a subset of the Fourier basis in Eq. (25) which is being indexed by γ = (i + j mod 2) π
+2 . On the other hand, the full Fourier basis was
+restricted by the SO(2) constraint to satisfy μ = 0 and therefore γ = 0, see Eq. (26). Intersecting both constraints therefore implies i = j, resulting in the O(2)-equivariant basis
+KO(2)
+ψi,m←ψj,n =
+{{b0,0(φ) = 1} if i = j,
+∅ else (35)
+for m, n = 0 which is shown in the top left cell in Table 9.
+1 and 2-dimensional irreps:
+Now we consider the 2-dimensional output representation ρout = ψO(2)
+1,m and the 1-dimensional input
+representation ρin = ψO(2)
+j,0 .
+42
+
+
+Following the same strategy as before we find the reflectional constraints for these representations to be given by
+κ(s.x) =
+(
+ψ({±1},∗)
+0 (s)
+ψ({±1},∗)
+1 (s)
+)
+} {{ }
+ResO(2)
+({±1},∗) ρout(s)
+·
+(
+κ00
+κ10
+)
+} {{ }
+κ(x)
+·
+(
+ψ({±1},∗)
+j (s)−1
+)
+} {{ }
+ResO(2)
+({±1},∗) ρin(s)
+,
+and therefore to decompose into two independent constraints on the entries κ00 and κ10. Solving for a basis for each entry and taking their union as before we get21
+{
+b00
+μ (φ) =
+[cos(μφ + j π
+2)
+0
+]}
+μ∈N
+∪
+{
+b10
+μ (φ) =
+[0
+sin(μφ − j π
+2)
+]}
+μ∈N
+,
+which, through a change of basis, can be rewritten as
+{
+bμ,j π
+2 (φ) =
+[cos(μφ + j π
+2)
+sin(μφ + j π
+2)
+]}
+μ∈Z
+. (36)
+We intersect this basis with the basis of SO(2) equivariant kernels with respect to a ResO(2)
+SO(2) ρin = ψSO(2)
+0 input field and ResO(2)
+SO(2) ρout = ψSO(2)
+m output field as derived in Appendix F.4.1. Both constraints, that is, γ = j π
+2 for the reflection group and μ = m for SO(2) (see Eq. (27)), define the
+one-dimensional basis for O(2)-equivariant kernels for n = 0, m > 0 and i = 1 as
+KO(2)
+ψi,m←ψj,n =
+{
+bμ,j π
+2 (φ) =
+[cos(μφ + j π
+2)
+sin(μφ + j π
+2)
+]∣ ∣ ∣ ∣
+μ=m
+}
+, (37)
+see the bottom left cell in Table 9.
+2 and 1-dimensional irreps:
+As already argued in the case for SO(2), the basis for 2-dimensional input representations ρin = ψO(2)
+1,n
+and 1-dimensional output representations ρout = ψO(2)
+i,0 is identical to the previous basis up to a transpose, i.e. it is given by
+KO(2)
+ψi,m←ψj,n =
+{
+bμ,i π
+2 (φ) = [cos(μφ + i π
+2 ) sin(μφ + i π
+2 )]
+∣ ∣ ∣ ∣
+μ=n
+}
+, (38)
+where j = 1, n > 0 and m = 0. This case is visualized in the top right cell of Table 9.
+F.4.4 Derivation for CN
+The derivations for CN coincide mostly with the derivations done for SO(2) with the difference that the projected constraints need to hold for discrete angles θ ∈ {p 2π
+N | p = 0, . . . , N − 1} only. Furthermore, CN has one additional 1-dimensional irrep of frequencyN/2 if (and only if) N is even.
+2-dimensional irreps:
+During the derivation of the solutions for SO(2)’s 2-dimensional irreps in Appendix F.4.1, we assumed continuous angles only in the very last step. The constraint in Eq. (23) therefore holds for
+21Notice that for μ = 0 some of the elements of the set are zero and are therefore not part of the basis. We omit this detail to reduce clutter.
+43
+
+
+CN as well. Specifically, it demands that for each θ ∈ {p 2π
+N | p = 0, . . . , N − 1} there exists a t ∈ Z
+such that:
+(μ′ − (m − ns′))θ = 2tπ
+⇔ (μ′ − (m − ns′))p 2π
+N = 2tπ
+⇔ (μ′ − (m − ns′))p = tN
+The last result corresponds to a system of N linear congruence equations modulo N which require N to divide (μ′ − (m − ns′))p for each non-negative integer p smaller than N . Note that solutions of the constraint for p = 1 already satisfy the constraints for p ∈ 2, . . . , N − 1 such that it is sufficient to consider
+(μ′ − (m − ns′))1 = tN
+⇔ μ′ = m − ns′ + tN .
+The resulting basis
+KCN
+ψm ←ψn =
+{
+bμ,γ,s(φ) = ψ(μφ + γ)ξ(s)
+∣ ∣ ∣ ∣
+μ = m 9 sn + tN, γ ∈
+{
+0, π
+2
+}
+s ∈ {±1}
+}
+t∈Z
+(39)
+for m, n > 0 thus coincides mostly with the basis 24 for SO(2) but contains solutions for aliased frequencies, defined by adding tN . The bottom right cell in Table 11 gives the explicit form of this basis.
+1-dimensional irreps:
+The same trick could be applied to solve the remaining three cases. However, since CN has an additional one dimensional irrep of frequency N/2 for even N it is convenient to rederive all cases. We therefore consider ρout = ψCmN and ρin = ψnCN , where m, n ∈ {0, N/2}. Note that
+ψCmN (θ), ψnCN (θ) ∈ {±1} for θ ∈ {p 2π
+N | p = 0, . . . , N − 1}.
+We use the same Fourier basis
+{
+bμ,γ(φ) = cos(μφ + γ)
+∣ ∣ ∣ ∣ ∣
+μ ∈ N, γ ∈
+{{0} if μ = 0 {0, π/2} otherwise
+}
+(40)
+and the same projection operators as used for SO(2).
+Since the lhs of the kernel constraint does not depend on the representations considered its projection 〈bμ′,γ′ , Rθκ〉 is the same found for SO(2):
+〈bμ′,γ′ , Rθκ〉 = 1
+2
+∑
+γ
+wμ′,γ (cos((γ′ − γ) − μ′θ) + δμ′,0 cos(γ′ + γ))
+For the rhs we find
+〈bμ′,γ′ , ψCmN (rθ)κ ψnCN (rθ)−1〉
+=1
+2π
+∫
+dφ bμ′,γ′ (φ)ψCmN (rθ)κ(φ)ψnCN (rθ)−1 ,
+which by expanding the kernel in the linear combination of the basis and writing the respresentations out yields:
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ bμ′,γ′ (φ) cos(mθ)bμ,γ (φ) cos(nθ)−1
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ cos(μ′φ + γ′) cos(mθ) cos(μφ + γ) cos(nθ)−1
+44
+
+
+Since cos(nθ) ∈ {±1} the inverses can be dropped and terms can be collected via trigonometric identities:
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ cos(μ′φ + γ′) cos(mθ) cos(μφ + γ) cos(nθ)
+=
+∑
+μ,γ
+wμ,γ cos(mθ) cos(nθ) 1
+2π
+∫
+dφ cos(μ′φ + γ′) cos(μφ + γ)
+=
+∑
+μ,γ
+wμ,γ cos((±m ± n)θ) 1
+4π
+∫
+dφ
+(
+cos((μ′ 9 μ)φ + γ′ 9 γ) + cos((μ′ + μ)φ + γ′ + γ)
+)
+=
+∑
+μ,γ
+wμ,γ cos((±m ± n)θ) 1
+2 (δμ,μ′ cos(γ′ − γ) + δμ+μ′,0 cos(γ′ + γ))
+=1
+2
+∑
+μ′ ,γ
+wμ′,γ cos((±m ± n)θ) (cos(γ′ − γ) + δμ′,0 cos(γ′ + γ))
+We require the projections to be equal for each θ = p 2π
+N with p ∈ {0, . . . , N − 1}:
+〈bμ′,γ′ , Rθκ〉 =
+〈
+bμ′,γ′ , ψCmN (rθ)κ ψnCN (rθ)−1〉
+⇔
+∑
+γ
+wμ′,γ (cos((γ′ − γ) − μ′θ) + δμ′,0 cos(γ′ + γ)) =
+=
+∑
+μ′ ,γ
+wμ′,γ cos((±m ± n)θ)
+(
+cos(γ′ − γ) + δμ′,0 cos(γ′ + γ)
+)
+Again, we consider two cases for μ′:
+• μ′ = 0 : The basis in Eq.(40) is restricted to the single case γ′ = 0.
+∑
+γ
+w0,γ(cos(−γ)+cos(γ)) = cos((±m±n)θ)
+∑
+γ
+w0,γ
+(
+cos(−γ)+cos(γ)
+)
+⇔ w0,02 cos(0) + w0, π
+2 0 = cos((±m ± n)θ) (w0,02 cos(0) + w0, π
+2 0)
+⇔ w0,0 = cos((±m ± n)θ)w0,0
+If cos((±m ± n)θ) 6= 1, the coefficient w0,0 is forced to 0. Conversely:
+cos((±m ± n)θ) = 1
+⇔ ∃t ∈ Z s.t. (±m ± n)θ = 2tπ
+Using θ = p 2π
+N:
+⇔ ∃t ∈ Z s.t. (±m ± n)p 2π
+N = 2tπ
+⇔ ∃t ∈ Z s.t. (±m ± n)p = tN
+• μ′ > 0 :
+∑
+γ
+wμ′,γ cos(γ′ − γ − μ′θ) = cos((±m ± n)θ)
+∑
+γ
+wμ′,γ cos(γ′ − γ)
+⇔ wμ′,0 cos(γ′ − μ′θ) + wμ′, π
+2 sin(γ′ − μ′θ) =
+cos((±m ± n)θ) (wμ′,0 cos(γ′) + wμ′, π
+2 sin(γ′))
+Since (±m ± n)θ ∈ {9π, 0, π} we have cos((±m ± n)θ) = ±1, therefore:
+⇔ wμ′,0 cos(γ′ 9 μ′θ) + wμ′, π
+2 sin(γ′ 9 μ′θ) =
+= wμ′,0 cos(γ′ + (±m ± n)θ) + wμ′, π
+2 sin(γ′ + (±m ± n)θ)
+45
+
+
+Using the property in Eq. (20):
+⇔ ∃t ∈ Z s.t. γ′ − μ′θ = γ′ + (±m ± n)θ + 2tπ
+⇔ ∃t ∈ Z s.t. μ′θ = (±m ± n)θ + 2tπ
+Using θ = p 2π
+N:
+⇔ ∃t ∈ Z s.t. μ′p 2π
+N = (±m ± n)p 2π
+N + 2tπ
+⇔ ∃t ∈ Z s.t. μ′p = (±m ± n)p + tN
+⇔ ∃t ∈ Z s.t. (±m ± n + μ′)p = tN
+In both cases μ′ = 0 and μ′ > 0 we thus find the constraints
+∀p ∈ {0, 1, . . . , N − 1} ∃t ∈ Z s.t. (±m ± n + μ′)p = tN .
+It is again sufficient to consider the constraint for p = 1 which results in solutions with frequencies μ′ = ±m ± n + tN . As (±m ± n) ∈ {0, ± N
+2 , ±N }, all valid solutions are captured by μ′ = (m + n mod N ) + tN , resulting in the basis
+KCN
+ψm ←ψn =
+{
+bμ,γ(φ) = cos(μφ+γ)
+∣ ∣ ∣ ∣
+μ = (m+n mod N )+tN, γ ∈
+{
+0, π
+2
+}
+, μ 6= 0∨γ = 0
+}
+t∈N
+(41)
+for n, m ∈ {0, N
+2
+}. See the top left cells in Table 11.
+1 and 2-dimensional irreps Next consider a 1-dimensional irrep ρin = ψnCN with n ∈ {0, N
+2 } in
+the input and a 2-dimensional irrep ρout = ψCmN in the output. We derive the solutions by projecting the kernel constraint on the basis introduced in Eq. (27).
+For the lhs the projection coincides with the result found for SO(2) as before:
+〈bμ′,γ′ , Rθκ〉 =
+∑
+γ
+wμ′,γ cos((γ′ − γ) − μ′θ)
+An expansion and projection of rhs gives:
+〈bμ′,γ′ , ψCmN (rθ)κ(·)ψnCN (rθ)−1〉
+=1
+2π
+∫
+dφ bμ′,γ′ (φ)T ψCmN (rθ)κ(φ)ψnCN (rθ)−1
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ bμ′,γ′ (φ)T ψCmN (rθ)
+[cos(μφ + γ) sin(μφ + γ)
+]
+ψnCN (rθ)−1
+=
+∑
+μ,γ
+wμ,γ
+1 2π
+∫
+dφ [cos(μ′φ + γ′) sin(μ′φ + γ′)] ψCmN (rθ)
+[cos(μφ + γ) sin(μφ + γ)
+]
+ψnCN (rθ)91
+=
+∑
+μ,γ
+wμ,γ
+(1
+2π
+∫
+dφ cos(μ′φ + γ′ − μφ − γ − mθ)
+)
+ψnCN (rθ)−1 .
+The integral is non-zero only if the frequency is 0, i.e. iff μ′ = μ:
+=
+∑
+γ
+wμ′,γ cos(γ′ − γ − mθ)ψnCN (rθ)−1
+=
+∑
+γ
+wμ′,γ cos(γ′ − γ − mθ) cos(±nθ)
+46
+
+
+Since ±nθ = pπ for some p ∈ N one has sin(±nθ) = 0 which allows to add the following zero summand and simplify:
+=
+∑
+γ
+wμ′,γ (cos(γ′ − γ − mθ) cos(±nθ) − sin(γ′ − γ − mθ) sin(±nθ))
+=
+∑
+γ
+wμ′,γ cos(γ′ − γ − (m ± n)θ)
+Requiring the projections to be equal then yields:
+〈bμ′,γ′ , Rθκ〉 = 〈bμ′,γ′ , ψCmN (rθ)κ(·)ψnCN (rθ)−1〉 ∀θ ∈
+{
+p 2π
+N
+}
+⇔
+∑
+γ
+wμ′,γ cos(γ′ − γ − μ′θ) =
+∑
+γ
+wμ′,γ cos(γ′ − γ − (m ± n)θ) ∀θ ∈
+{
+p 2π
+N
+}
+⇔ wμ′,0 cos(γ′ 9μ′θ)+wμ′,π
+2 sin(γ′ 9μ′θ) = wμ′,0 cos(γ′ 9(m±n)θ)+wμ′,π
+2 sin(γ′ 9(m±n)θ)
+∀θ ∈
+{
+p 2π
+N
+}
+Using the property in Eq. (20), this requires that for each θ there exists a t ∈ Z such that:
+⇔ γ′ − μ′θ = γ′ − (m ± n)θ + 2tπ ∀θ ∈
+{
+p 2π
+N
+}
+⇔ μ′θ = (m ± n)θ + 2tπ ∀θ ∈
+{
+p 2π
+N
+}
+Since θ = p 2π
+N with p ∈ {0, . . . , N − 1} we find that
+⇔ μ′p 2π
+N = (m ± n)p 2π
+N + 2tπ ∀p ∈ {0, . . . , N 91}
+⇔ μ′p = (m ± n)p + tN ∀p ∈ {0, . . . , N 91}
+⇔ μ′ = (m ± n) + tN
+⇔ μ′ − (m ± n) = tN ,
+which implies that N needs to divide μ′ − (m ± n). It follows that the condition holds also for any other p. This gives the basis
+KCN
+ψm←ψn =
+{
+bμ,γ (φ) =
+[cos(μφ + γ) sin(μφ + γ)
+]∣ ∣ ∣ ∣
+μ = (m ± n) + tN, γ ∈
+{
+0, π
+2
+}
+}
+t∈Z
+(42)
+for m > 0 and n ∈ {0, N
+2
+}; see the bottom left cells in Table 11.
+2 and 1-dimensional irreps:
+The basis for 2-dimensional input and 1-dimensional output representations, i.e. ρin = ψnCN and
+ρout = ψCmN with n > 0 and m ∈ {0, N
+2 }, is identical to the previous one up to a transpose:
+KCN
+ψm←ψn =
+{
+bμ,γ(φ) = [cos(μφ + γ) sin(μφ + γ)]
+∣ ∣ ∣ ∣
+μ = (±m+n)+tN, γ ∈
+{
+0, π
+2
+}
+}
+t∈Z
+(43)
+for n > 0 and m ∈ {0, N
+2
+}. See the top right cells in Table 11.
+47
+
+
+F.4.5 Derivation for DN
+A solution for DN can easily be derived by repeating the process done for O(2) in Appendix F.4.3 but starting from the bases derived for CN in Appendix F.4.4 instead of those for SO(2).
+In contrast to the case of O(2)-equivariant kernels, the choice of reflection axis β is not irrelevant since DN does not act transitively on axes. More precisely, the action of DN defines equivalence
+classes β ∼= β′ ⇔ ∃ 0 ≤ n < N : β = β′ + n 2π
+N of axes which can be labeled by representatives
+β ∈ [0, 2π
+N ). For the same argument considered in Appendix F.4.2 we can without loss of generality
+consider reflections along the axis β = 0 in our derivations and retrieve kernels κ′, equivariant to reflections along a general axis β, as κ′(r, φ) = κ(r, φ − β).
+2-dimensional irreps:
+For 2-dimensional input and output representations ρin = ψDN
+1,n and ρout = ψDN
+1,m, the final basis is
+KDN
+ψi,m←ψj,n =
+{
+bμ,0,s(φ) = ψ(μφ)ξ(s)
+∣ ∣ ∣ ∣
+μ = m − sn + tN, s ∈ {±1}
+}
+t∈Z
+(44)
+where i = j = 1 and m, n > 0. These solutions are written out explicitly in the bottom right of Table 12.
+1-dimensional irreps:
+DN has 1-dimensional representations ρin = ψDN
+j,n and ρout = ψDN
+i,m for m, n ∈ {0, N
+2 }. In these cases
+we find the bases
+KDN
+ψi,m←ψj,n =
+{
+bμ,γ(φ) = cos(μφ + γ)
+∣ ∣ ∣ ∣
+μ = (m + n mod N ) + tN,
+γ = (i + j mod 2) π
+2 , μ 6= 0 ∨ γ = 0
+}
+t∈N
+(45)
+which are shown in the top left cells of Table 12.
+1 and 2-dimensional irreps:
+For 1-dimensional input and 2-dimensional output representations, that is, ρin = ψDN
+j,n and ρout = ψDN
+1,m
+with i = 1, m > 0 and n ∈ {0, N
+2 }, the kernel basis is given by:
+KDN
+ψi,m←ψj,n =
+{
+bμ,γ (φ) =
+[cos(μφ + γ) sin(μφ + γ)
+]∣ ∣ ∣ ∣
+μ = (m ± n) + tN, γ = j π
+2
+}
+t∈Z
+(46)
+See the bottom left of Table 12.
+2 and 1-dimensional irreps:
+Similarly, for 2-dimensional input and 1-dimensional output representations ρin = ψDN
+1,n and ρout = ψDN
+i,m with j = 1, n > 0 and m ∈ {0, N
+2 }, we find:
+KDN
+ψi,m←ψj,n =
+{
+bμ,γ(φ) = [cos(μφ + γ) sin(μφ + γ)]
+∣ ∣ ∣ ∣
+μ = (±m + n) + tN, γ = i π
+2
+}
+t∈Z
+(47) Table 12 shows these solutions in its top right cells.
+48
+
+
+F.4.6 Kernel constraints at the origin
+Our derivations rely on the fact that the kernel constraints restrict only the angular parts of the unconstrained kernel space L2(R2)cout×cin which suggests an independent solution for each radius r ∈ R+ ∪ {0}. Particular attention is required for kernels defined at the origin, i.e. when r = 0. The reason for this is that we are using polar coordinates (r, φ) which are ambiguous at the origin where the angle is not defined. In order to stay consistent with the solutions for r > 0 we still define the kernel at the origin as an element of L2(S1)cout×cin . However, since the coordinates (0, φ) map to the same point for all φ ∈ [0, 2π), we need to demand the kernels to be angularly constant, that is, κ(φ) = κ(0). This additional constraint restricts the angular Fourier bases used in the previous derivations to zero frequencies only. Apart from this, the kernel constraints are the same for r = 0 and r > 0 which implies that the G-steerable kernel bases at r = 0 are given by restricting the bases derived in F.4.1, F.4.2, F.4.3, F.4.4 and F.4.5 to the elements indexed by frequencies μ = 0.
+F.5 Complex valued representations and Harmonic Networks
+Instead of considering real (irreducible) representations we could have derived all results using complex representations, acting on complex feature maps. For the case of O(2) and DN this would essentially not affect the derivations since their complex and real irreps are equivalent, that is, they coincide up to a change of basis. Conversely, all complex irreps of SO(2) and CN are 1-dimensional which simplifies the derivations in complex space. However, the solution spaces of complex Gsteerable kernels need to be translated back to a real valued implementation. This translation has some not immediately obvious pitfalls which can lead to an underparameterized implementation in real space. In particular, Harmonic Networks [12] were derived with a complete solution in complex space; however, their real valued implementation is using a G-steerable kernel space of half the dimensionality as ours. We will in the following explain why this is the case.
+In the complex field, the irreps of SO(2) are given by ψkC(θ) = eikθ ∈ C with frequencies k ∈ Z. Notice that these complex irreps are indexed by positive and negative frequencies while their real counterparts, defined in Appendix F.2, only involve non-negative frequencies. As in [12] we consider complex feature fields f C : R2 → C which are transforming according to complex irreps of SO(2). A complex input field f C
+in : R2 → C of type ψnC is mapped to a complex output field foCut : R2 → C
+of type ψCm via the cross-correlation
+fC
+out = kC ? f C
+in . (48)
+with a complex filter kC : R2 → C. The (angular part of the) complete space of equivariant kernels
+between f C
+in and foCut was in [12] proven to be parameterized by
+kC(φ) = w ei(m−n)φ,
+where w ∈ C is a complex weight which scales and phase-shifts the complex exponential. We want to point out that an equivalent parametrization is given in terms of the real and imaginary parts wRe and wIm of the weight w, i.e.
+kC(φ) = wReei(m−n)φ + i wImei(m−n)φ
+= wReei(m−n)φ + wImei((m−n)φ+π/2) . (49)
+The real valued implementation of Harmonic Networks models the complex feature fields f C of type ψkC(θ) by splitting them in two real valued channels f R := (f Re, f Im)T which contain their real and
+imaginary part. The action of the complex irrep ψkC(θ) is modeled accordingly by a rotation matrix of
+the same, potentially negative22 frequency. A real valued implementation of the cross-correlation (48) is built using a real kernel k : R2 → R2×2 as specified by
+[f Re
+out
+fIm
+out
+]
+=
+[kRe −kIm
+kIm kRe
+]
+?
+[f Re
+in
+fIm
+in
+]
+.
+22This establishes an isomorphism between ψC
+k (θ) and ψR
+|k|(θ) depending on the sign of k.
+49
+
+
+The complex steerable kernel (49) is then given by
+k(φ) = wRe
+[cos ((m 9 n)φ) 9 sin ((m 9 n)φ) sin ((m 9 n)φ) cos ((m 9 n)φ)
+]
++ wIm
+[
+9 sin ((m 9 n)φ) 9 cos ((m 9 n)φ) cos ((m 9 n)φ) 9 sin ((m 9 n)φ)
+]
+= wRe ψ ((m − n)φ) + wIm ψ
+(
+(m − n)φ + π
+2
+)
+(50)
+While this implementation models the complex Harmonic Networks faithfully in real space, it does not utilize the complete SO(2)-steerable kernel space when the real feature fields are interpreted as fields transforming under the real irreps ψkR as done in our work. More specifically, the kernel space used in (50) is only 2-dimensional while our basis (24) for the same case is 4-dimensional. The additional solutions with frequency m + n are missing.
+The lower dimensionality of the complex solution space can be understood by analyzing the relationship between SO(2)’s real and complex irreps. On the complex field, the real irreps become reducible and decomposes into two 1-dimensional complex irreps with opposite frequencies:
+ψR
+k (θ) = √12
+[ 1 −i −i 1
+] [eikθ 0
+0 e−ikθ
+] √12
+[1 i i1
+]
+Indeed, SO(2) has only half as many real irreps as complex ones since positive and negative frequencies are conjugated to each other, i.e. they are equivalent up to a change of basis: ψkR(θ) =
+ξ(−1)ψR−k(θ)ξ(−1). It follows that a real valued implementation of a complex ψkC fields as a 2dimensional ψkR fields implicitly adds a complex ψC−k field. The intertwiners between two real fields
+of type ψnR and ψRm therefore do not only include the single complex intertwiner between complex
+fields of type ψnC and ψCm, but four complex intertwiners between fields of type ψC±n and ψC±m. The real parts of these intertwiners correspond to our four dimensional solution space.
+In conclusion, [12] indeed found the complete solution on the complex field. However, by implementing the network on the real field, negative frequencies are implicitly added to the feature fields which allows for our larger basis (24) of steerable kernels to be used without adding an overhead.
+G Alternative approaches to compute kernel bases and their complexities
+The main challenge of building steerable CNNs is to find the space of solutions of the kernel space constraint in Eq. 2. Several recent works tackle this problem for the very specific case of features which transform under irreducible representations of SE(3) ∼= (R3, +) o SO(3). The strategy followed in [39, 33, 20, 34] is based on well known analytical solutions and does not generalize to arbitrary representations. In contrast, [2] present a numerical algorithm to solve the kernel space constraint. While this algorithm was only applied to solve the constraints for irreps, it generalizes to arbitrary representations. However, the computational complexity of the algorithm scales unfavorably in comparison to the approach proposed in this work. We will in the following review the kernel space solution algorithm of [2] for general representations and discuss its complexity in comparison to our approach.
+The algorithm proposed in [2] is considering the same kernel space constraint
+k(gx) = ρout(g)k(x)ρ−1
+in (g) ∀g ∈ G
+as in this work. By vectorizing the kernel the constraint can be brought in the form
+vec(k) (gx) =
+(
+ρout ⊗ (ρ−1
+in
+)T )
+(g) vec(k) (x)
+= (ρout ⊗ ρin) (g) vec(k) (x) ,
+where the second step assumes the input representation to be unitary, that is, to satisfy ρ−1
+in = ρT
+in .
+A Clebsch-Gordan decomposition, i.e. a decomposition of the tensor product representation into a direct sum of irreps ψj of G, then yields23
+vec(k) (gx) = Q−1 (⊕
+J∈J ψJ
+)
+(g) Q vec(k) (x)
+23For the irreps of SO(3) it is well known that J = {|j − l|, . . . , j + l} and |J | = 2 min(j, l) + 1.
+50
+
+
+Through a change of variables η(x) := Q vec(k)(x) this simplifies to
+η(gx) =
+(⊕
+J∈J ψJ
+)
+(g)η(x)
+which, in turn, decomposes into |J | independent constraints
+ηJ (gx) = ψJ (g)ηJ (x) .
+Each of these constraints can be solved independently to find a basis for each ηJ . The kernel basis is then found by inverting the change of basis and the vectorization, i.e. by computing k(x) = unvec(Q−1η(x)).
+For the case that ρin = ψj and ρout = ψl are Wigner D-matrices, i.e. irreps of SO(3), the change of basis Q is given by the Clebsch-Gordan coefficients of SO(3). These well known solutions were used in [39, 33, 20, 34] to build the basis of steerable kernels. Conversely, the authors of [2] solve for the change of basis Q numerically. Given arbitrary unitary representations ρin and ρout the numerical algorithm solves for the change of basis in
+(ρin ⊗ ρout
+)(g) = Q−1
+( ⊕
+J ∈J
+ψJ (g)
+)
+Q ∀g ∈ G
+⇔ 0 = Q(ρin ⊗ ρout
+)(g) −
+( ⊕
+J ∈J
+ψJ (g)
+)
+Q ∀g ∈ G .
+This linear constraint on Q, which is a specific instance of the Sylvester equation, can be solved by vectorizing Q, i.e.
+[
+I ⊗ (ρin ⊗ ρout
+)(g) −
+(⊕
+J∈J ψJ
+)
+(g) ⊗ I
+]
+vec(Q) = 0 ∀g ∈ G ,
+where I is the identity matrix on Rdim(ρin⊗ρout) = Rdim(ρin) dim(ρout) and vec(Q) ∈ Rdim(ρin)2 dim(ρout)2.
+In principle there is one Sylvester equation for each group element g ∈ G, however, it is sufficient to consider the generators of G only, since the solutions found for the generators will automatically hold for all group elements. One can therefore stack the matrices
+[
+I ⊗ (ρin ⊗ ρout
+)(g) −
+( ⊕
+J∈J ψJ
+)
+(g) ⊗ I
+]
+for the generators of G into a bigger matrix and solve
+for Q as the null space of this stacked matrix. The linearly independent solutions QJ in the null space correspond to the Clebsch-Gordan coefficients for J ∈ J .
+This approach does not rely on the analytical Clebsch-Gordan coefficients, which are only known for specific groups and representations, and therefore works for any choice of representations. However, applying it naively to large representations can be extremely expensive. Specifically, computing the null space to solve the (stacked) Sylvester equation for G generators of G via a SVD, as done in [2], scales as O( dim(ρin)6 dim(ρout)6G). This is the case since the matrix which is multiplying vec(Q) is of shape dim(ρin)2 dim(ρout)2G × dim(ρin)2 dim(ρout)2. Moreover, the change of basis matrix Q itself has shape dim(ρin) dim(ρout) × dim(ρin) dim(ρout) which implies that the change of variables24 from η to k has complexity O( dim(ρin)2 dim(ρout)2). In [2] the authors only use irreducible representations which are relatively small such that the bad complexity of the algorithm is negligible.
+In comparison, the algorithm proposed in this work is based on an individual decomposition of the representations ρin and ρout into irreps and leverages the analytically derived kernel space solutions between the irreps of G ≤ O(2). The independent decomposition of the input and output representations leads to a complexity of only O(( dim(ρin)6 + dim(ρin)6)G). We further apply the input and output changes of basis Qin and Qout independently to the irreps kernel solutions κij which
+leads to a complexity of O( dim(ρin) dim(ρout)2 + dim(ρout) dim(ρin)2). The improved complexity of our implementation makes working with large representations as used in this work, for instance dim(ρrDeg20 ) = 40, possible.
+24No inversion from Q to Q−1 is necessary if the Sylvester equation is solved directly for Q−1.
+51
+
+
+H Additional information on the training setup
+layer output fields
+conv block 7 × 7 (pad 1) 16 conv block 5 × 5 (pad 2) 24 max pooling 2 × 2 24 conv block 5 × 5 (pad 2) 32 conv block 5 × 5 (pad 2) 32 max pooling 2 × 2 32 conv block 5 × 5 (pad 2) 48 conv block 5 × 5 64 invariant projection 64 global average pooling 64 fully connected 64 fully connected + softmax 10
+Table 13: Basic model architecture from which all models for the MNIST benchmarks in Tables 3 and 4 are being derived. Each convolution block includes a convolution layer, batch-normalization and a nonlinearity. The first fully connected layer is followed by batch-normalization and ELU. The width of each layer is expressed as the number of fields of a regular C16 model with approximately the same number of parameters.
+layer output fields
+conv block 9 × 9 24 conv block 7 × 7 (pad 3) 32 max pooling 2 × 2 32 conv block 7 × 7 (pad 3) 36 conv block 7 × 7 (pad 3) 36 max pooling 2 × 2 36 conv block 7 × 7 (pad 3) 64 conv block 5 × 5 96 invariant projection 96 global average pooling 96 fully connected 96 fully connected 96 fully connected + softmax 10
+Table 14: Model architecture for the final MNISTrot experiments (replicated from [7]). Each fully connected layer follows a dropout layer with p = 0.3; the first two fully connected layers are followed by batch normalization and ELU. The width of each layer is expressed in terms of regular feature fields of a C16 model.
+H.1 Benchmarking on transformed MNIST datasets
+Each model reported in Sections 3.1, 3.2 and 3.3 is derived from the architecture reported in Table 13. The width of each model’s layers is thereby scaled such that the total number of parameters is matched and the relative width of layers coincides with that reported in Table13. Training is performed with a batch size of 64 samples, using the Adam optimizer. The learning rate is initialized to 10−3 and decayed exponentially by a factor of 0.8 per epoch, starting after a burn in phase of 10 epochs. We train each model for 30 epochs and test the model which performed best on the validation set. A weight decay of 10−7 is being used for all convolutional layers and the first fully connected layer. In all experiments, we build steerable bases with Gaussian radial profiles of width σ = 0.6 for all except the outermost ring where we use σ = 0.4. We apply a strong bandlimiting policy which permits frequencies up to 0, 2, 2 for radii 0, 1, 2 in a 5×5 kernel and up to 0, 2, 3, 2 for radii 0, 1, 2, 3 in a 7×7 kernel. The strong cutoff in the rings of maximal radius is motivated by our empirical observation that these rings introduce a relatively high equivariance error for higher frequencies. This is the case since the outermost ring ranges out of the sampled kernel support. During training, data augmentation with continuous rotations and reflections is performed (if these are present in the dataset) to not disadvantage non-equivariant models. In the models using group restriction, the restriction operation is applied after the convolution layers but before batch normalization and non-linearities.
+H.2 Competitive runs on MNIST rot
+In Table 5 we report the performances of some of our best models. Our experiments are based on the best performing, C16-equivariant model of [7] which defined the state of the art on rotated MNIST at the time of writing. We replicate their model architecture, summarized in Table 14, though our models have a different frequency bandlimit and width σ for the Gaussian radial profiles as discussed in the previous subsection. As before, the table reports the width of each layer in terms of number of fields in the C16 regular model.
+As commonly done, we train our final models on the 10000 + 2000 training and validation samples. Training is performed for 40 epochs with an initial learning rate 0.015, which is being decayed by a factor of 0.8, starting after 15 epochs. As before, we use the Adam optimizer with a batch size of 64, this time using L1 and L2 regularization with a weight of 10−7. The fully connected layers are additionally regularized using dropout with a probability of p = 0.3. We are again using train time augmentation.
+52
+
+
+H.3 CIFAR experiments
+The equivariant models used in the experiments on CIFAR-10 and CIFAR-100 are adapted from the original WideResNet models by replacing conventional with G-steerable convolutions and scaling the number of feature fields such that the total number of parameters is preserved. For blocks which are equivariant under D8 or C8 we use 5 × 5 kernels instead of 3 × 3 kernels to allow for higher frequencies. All models use regular feature fields in all but the final convolution layer, which maps to a scalar field (conv2triv) to produce invariant predictions. We use a frequency cut-off of 3 times the ring’s radius, e.g. 0, 3, 6 for rings of radii 0, 1, 2. These higher bandlimits in comparison to the MNIST experiments are motivated by the fact that the corresponding bases introduce small discretization errors, which is no problem for the classification of natural images. In the contrary, this leads to the models having a strong bias towards being equivariant, but might allow them to break equivariance if necessary. The widths of the bases’ rings is chosen to be σ = 0.45 in all rings.
+The training process is the same as used for WideResNets: we train for 200 epochs with a batch size of 128. We optimize the model with SGD, using an initial learning rate of 0.1, momentum 0.9 and a weight decay of 5 · 10−4. The learning rate is decayed by a factor of 0.2 every 60 epochs. We perform a standard data augmentation with random crops, horizontal flips and normalization. No CutOut is done during the normal experiments but it is used in the AutoAugment policies.
+H.4 STL-10 experiments
+The models for our STL-10 experiments are adapted from [43]. However, according to an issue25 in the authors’ GitHub repository, the publication states some model parameters and the training setup wrongly. Our adaptations are therefore based on the setting reported on GitHub. Specifically, we use patches of 60 × 60 pixels for cutout and the stride of the first convolution layer in the first block is 2 instead of 1. Moreover, we normalize input features using CIFAR-10 statistics. Though these statistics are very close to the statistics of STL-10, they might, as the authors of [43] suggest, cause non-negligible changes in performance because of the small training set size of STL-10.
+As before, regular feature fields are used throughout the whole model except for the last convolution layer which maps to trivial fields. In the small model, which does not preserve the number of parameters but the number of channels, we still scale up the number of output channels of the very first convolution layer (before the first residual block). As the first convolution layer originally has 16 output channels and our model is initially equivariant to D8 (whose regular representation spans 16 channels), the first convolution layer would only be able to learn 1 single independent filter (repeated 16 times, rotated and reflected). Hence, we increase the number of output channels of the
+first convolution layer by the square root of the group size (√16 = 4) leading to 4 · 16 = 64 channels, i.e. 64/16 = 4 regular fields. We use a ring width of σ = 0.6 for the kernel basis except for the outermost ring where we use σ = 0.4 and use a frequency cut-off factor of 3 for the rings’ radii, i.e. cutoffs of 0, 3, 6, . . . .
+We are again exactly replicating the training process as reported in the publication [43]. Only the labeled subset of the training set is used, that is, the 100000 unlabeled training images are discarded. Training is performed for 1000 epochs with a batch size of 128, using SGD with Nesterov momentum of 0.9 and weight decay of 5 · 10−4. The learning rate is initialized to 0.1 and decayed by a factor of 5 at 300, 400, 600 and 800 epochs. During training, we perform data augmentation by zero-padding with 12 pixels and randomly cropping patches of 96 × 96 pixels, mirroring them horizontally and applying CutOut.
+In the data ablation study, reported in Figure 4, we use the same models and training procedure as in the main experiment on the full STL-10 dataset. For every single run, we generate new datasets by mixing the original training, validation and test set and sample reduced datasets such that all classes are balanced. The results are averaged over 4 runs on each of the considered training set sizes of 250, 500, 1000, 2000 or 4000. The validation and test sets contain 1000 and 8000 images, which are resampled in each run as well.
+25https://github.com/uoguelph-mlrg/Cutout/issues/2
+53
+
+
+I Additional information on the irrep models
+SO(2) models We experiment with some variants (rows 37-44) of the Harmonic Network model in row 30 of Table 3, varying in either the non-linearity or the invariant map applied. All of these models are therefore to be analyzed relative to this baseline. First, we try to use squashing nonlinearities [45] (row 37) instead of norm-ReLUs on each non-trivial irrep. This variant performs consistently worse than the original model. In the baseline variant, we generate invariant features via a convolution to scalar fields in the last layer (conv2triv). This, however, reduces the utilization of high frequency irrep fields in the penultimate layer. The reason for this is that the kernel space for mappings from high frequency- to scalar fields consists of kernels of a high angular frequency, which will be cut off by our bandlimiting. To overcome this problem, we propose to instead compute the norms of all non-trivial fields to produce invariant features. This enables us to use all irreps in the output of the last convolutional layer. However, we find that combining invariant norm mappings with norm-ReLUs does not improve on the baseline model, see row 38. In row 39 we consider a variant which applies norm-ReLUs on the direct sum of multiple non-trivial irrep fields, each with multiplicity 1, together (shared norm-ReLU), while the scalar fields are still being acted on by ELUs. This is legitimate since the direct sum of unitary representations is itself unitary. After the last convolutional layer, the invariant projection preserves the trivial fields but computes the norm of each composed field. This model significantly outperforms all previous variants on all datasets. The model in row 40 additionally merges the scalar fields to such combined fields instead of treating them independently. This architecture performs significantly worse than the previous variants.
+We further explore four different variations which are applying gated nonlinearities (rows 41-44). These models distinguish from each other by 1) their mapping to invariant features and 2) whether the gate is being applied to each non-trivial field independently or being shared between multiple non-trivial fields. We find that the second choice, i.e. sharing gates, does not significantly affect the performances (row 41 vs. 42 and 43 vs. 44). However, mapping to invariant features by taking the norm of all non-trivial fields performs consistently better than applying conv2triv. Overall, gated nonlinearities perform significantly better than any other choice of nonlinearity on the tested SO(2) irrep models.
+O(2) models Here we will give more details on the O(2)-specific operations which we introduce to improve the performance of the O(2)-equivariant models, reported in rows 45-57 of Table 3.
+• O(2)-conv2triv: As invariant map of the O(2) irrep models in rows 46-49 and 54 we are designing
+a last convolution layer which is mapping to an output representation ρout = ψO(2)
+0,0 ⊕ ψO(2)
+1,0 ,
+that is, to scalar fields f0,0 and sign-flip fields f1,0 in equal proportions. Since the latter are not invariant under reflections, we are in addition taking their absolute value. The resulting, invariant output features are then multiple fields f0,0 ⊕ |f1,0|. The motivation for not convolving to trivial representations of O(2) directly via conv2triv is that the steerable
+kernel space for mappings between irreps of O(2) does not allow for mapping between ψO(2)
+0,0 and ψO(2)
+1,0 (see Table 9), which would lead to dead neurons.
+The models in rows 50-53, 56 and 57 operate on IndO(2)
+SO(2) ψSO(2)
+k -fields whose representations are induced from the irreps of SO(2). Per definition, this representation acts on fea
+ture vectors f in Rdim(ψSO(2)
+k ) ⊗ R| O(2):SO(2)|, which we treat in the following as functions
+f : O(2)/ SO(2) → Rdim(ψSO(2)
+k ). We further identify the coset s SO(2) in the quotient space O(2)/ SO(2) by its representative R(s SO(2)) := s ∈ ({±1}, ∗) in the reflection group. Eq. 10 defines the action of the induced representation on a feature vector by
+(
+[ IndO(2)
+SO(2) ψSO(2)
+k
+](r ̃s ̃) f
+)
+(s SO(2)) := ψSO(2)
+k
+( h (r ̃s ̃R((r ̃s ̃)−1s SO(2)))) f ((r ̃s ̃)−1s SO(2))
+= ψSO(2)
+k
+( h(r ̃s)) f (s ̃s SO(2))
+=
+{ ψSO(2)
+k
+(r ̃) f (s ̃s SO(2)) for s = +1
+ψSO(2)
+k
+(r ̃−1) f (s ̃s SO(2)) for s = −1 ,
+54
+
+
+where we used Eq. 8 to compute
+h(r ̃s) := R(r ̃s SO(2))−1r ̃s = s−1r ̃s =
+{r ̃ for s = +1 r ̃−1 for s = −1 .
+Intuitively, this action describes a permutation of the subfields (indexed by s) via the reflection s ̃ and a rotation of the subfields by r ̃ and r ̃−1, respectively. Specifically, for k = 0, the induced representation is for all r ̃ instantiated by
+[ IndO(2)
+SO(2) ψSO(2)
+0
+](r ̃s ̃) =
+
+   
+   
+[1 0 01
+]
+for s ̃ = +1
+[0 1 10
+]
+for s ̃ = −1 ,
+(51)
+that is, it coincides with the regular representation of the reflection group. Similarly, for k > 0, it is for all r ̃ given by the 4 × 4 matrices
+[ IndO(2)
+SO(2) ψSO(2)
+k>0
+](r ̃s ̃) =
+
+             
+             
+
+   
+ψSO(2)
+k>0 (r ̃) 0
+0 ψSO(2)
+k>0 (−r ̃)
+
+   
+for s ̃ = +1
+
+   
+0 ψSO(2)
+k>0 (r ̃)
+ψSO(2)
+k>0 (−r ̃) 0
+
+   
+for s ̃ = −1 .
+We adapt the conv2triv and norm invariant maps, as well as the norm-ReLU and the gated nonlinearities to operate on IndO(2)
+SO(2)-fields as follows:
+• Ind-conv2triv: Instead of applying O(2)-conv2triv to compute invariant features, we apply
+convolutions to IndO(2)
+SO(2) ψSO(2)
+0 -fields which are invariant under rotations but behave like
+regular ({±1}, ∗)-fields under reflections. These fields are subsequently mapped to a scalar field via G-pooling, i.e. by taking the maximal response over the two subfields.
+• Ind-norm: An alternative invariant map is defined by computing the norms of the subfields of
+each final IndO(2)
+SO(2) ψSO(2)
+k -field and applying G-pooling over the result.
+• Ind norm-ReLU: It would be possible to apply a norm-ReLU to a IndO(2)
+SO(2) ψSO(2)
+k -field for k > 0 as a whole, that is, to compute the norm of both subfields together. Instead, we apply two individual norm-ReLUs to the subfields. Since the fields permute under reflections, we need to choose the bias parameter of the two norm-ReLUs to be equal.
+• Ind gate: Similarly, we could apply a single gate to each IndO(2)
+SO(2) ψSO(2)
+k -field. However, we apply an individual gate to each subfield. In this case it is necessary that the gates permute together with the IndO(2)
+SO(2) ψSO(2)
+k -fields to ensure equivariance. This is achieved by
+computing the gates from IndO(2)
+SO(2) ψSO(2)
+0 -fields, which contain two permuting scalar fields.
+Empirically we find that IndO(2)
+SO(2) models perform much better than pure irrep models, despite both of them being equivalent up to a change of basis. In particular, the induced representations decompose for some change of basis matrices Q0 and Q>0 into:
+IndO(2)
+SO(2) ψSO(2)
+0 = Q0
+[
+ψO(2)
+0,0 ⊕ ψO(2)
+1,0
+]
+Q−1
+0
+IndO(2)
+SO(2) ψSO(2)
+k>0 = Q>0
+[
+ψO(2)
+1,k>0 ⊕ ψO(2)
+1,k>0
+]
+Q−1
+>0
+The difference between both bases is that the induced representations disentangle the action of reflections into a permutation, while the direct sum of irreps is modeling reflections in each of its sub-vectorfields independently as an inversion of the vector direction and rotation orientation. Note the analogy to the better performance of regular representations in comparison to a direct sum of the respective irreps.
+55
+
+
+References
+[1] Taco S. Cohen and Max Welling. Steerable CNNs. In International Conference on Learning Representations (ICLR), 2017.
+[2] Maurice Weiler, Mario Geiger, Max Welling, Wouter Boomsma, and Taco S. Cohen. 3D steerable CNNs: Learning rotationally equivariant features in volumetric data. In Conference on Neural Information Processing Systems (NeurIPS), 2018.
+[3] Taco S. Cohen, Mario Geiger, and Maurice Weiler. Intertwiners between induced representations (with applications to the theory of equivariant neural networks). arXiv preprint arXiv:1803.10743, 2018.
+[4] Taco S. Cohen, Mario Geiger, and Maurice Weiler. A general theory of equivariant CNNs on homogeneous spaces. arXiv preprint arXiv:1811.02017, 2018.
+[5] Taco S. Cohen, Maurice Weiler, Berkay Kicanaoglu, and Max Welling. Gauge equivariant convolutional networks and the icosahedral CNN. In International Conference on Machine Learning (ICML), 2019.
+[6] Taco S. Cohen and Max Welling. Group equivariant convolutional networks. In International Conference on Machine Learning (ICML), 2016.
+[7] Maurice Weiler, Fred A. Hamprecht, and Martin Storath. Learning steerable filters for rotation equivariant CNNs. In Conference on Computer Vision and Pattern Recognition (CVPR), 2018.
+[8] Emiel Hoogeboom, Jorn W. T. Peters, Taco S. Cohen, and Max Welling. HexaConv. In International Conference on Learning Representations (ICLR), 2018.
+[9] Erik J. Bekkers, Maxime W Lafarge, Mitko Veta, Koen A.J. Eppenhof, Josien P.W. Pluim, and Remco Duits. Roto-translation covariant convolutional networks for medical image analysis. In International Conference on Medical Image Computing and Computer-Assisted Intervention (MICCAI), 2018.
+[10] Sander Dieleman, Jeffrey De Fauw, and Koray Kavukcuoglu. Exploiting cyclic symmetry in convolutional neural networks. In International Conference on Machine Learning (ICML), 2016.
+[11] Risi Kondor and Shubhendu Trivedi. On the generalization of equivariance and convolution in neural networks to the action of compact groups. In International Conference on Machine Learning (ICML), 2018.
+[12] Daniel E. Worrall, Stephan J. Garbin, Daniyar Turmukhambetov, and Gabriel J. Brostow. Harmonic networks: Deep translation and rotation equivariance. In Conference on Computer Vision and Pattern Recognition (CVPR), 2017.
+[13] Diego Marcos, Michele Volpi, Nikos Komodakis, and Devis Tuia. Rotation equivariant vector field networks. In International Conference on Computer Vision (ICCV), 2017.
+[14] Laurent Sifre and Stéphane Mallat. Combined scattering for rotation invariant texture analysis. In European Symposium on Artificial Neural Networks, Computational Intelligence and Machine Learning (ESANN), volume 44, pages 68–81, 2012.
+[15] Laurent Sifre and Stéphane Mallat. Rotation, scaling and deformation invariant scattering for texture discrimination. Conference on Computer Vision and Pattern Recognition (CVPR), 2013.
+[16] Joan Bruna and Stéphane Mallat. Invariant scattering convolution networks. IEEE transactions on pattern analysis and machine intelligence, 35(8):1872–1886, 2013.
+[17] Laurent Sifre and Stéphane Mallat. Rigid-motion scattering for texture classification. arXiv preprint arXiv:1403.1687, 2014.
+[18] Edouard Oyallon and Stéphane Mallat. Deep roto-translation scattering for object classification. In Conference on Computer Vision and Pattern Recognition (CVPR), 2015.
+[19] Taco S. Cohen, Mario Geiger, Jonas Köhler, and Max Welling. Spherical CNNs. In International Conference on Learning Representations (ICLR), 2018.
+[20] Risi Kondor, Zhen Lin, and Shubhendu Trivedi. Clebsch–Gordan Nets: A Fully Fourier Space Spherical Convolutional Neural Network. In Conference on Neural Information Processing Systems (NeurIPS), 2018.
+56
+
+
+[21] Carlos Esteves, Christine Allen-Blanchette, Ameesh Makadia, and Kostas Daniilidis. Learning SO(3) equivariant representations with spherical CNNs. In European Conference on Computer Vision (ECCV), 2018.
+[22] Nathanaël Perraudin, Michaël Defferrard, Tomasz Kacprzak, and Raphael Sgier. DeepSphere: Efficient spherical Convolutional Neural Network with HEALPix sampling for cosmological applications. arXiv:1810.12186 [astro-ph], 2018.
+[23] Chiyu Jiang, Jingwei Huang, Karthik Kashinath, Prabhat, Philip Marcus, and Matthias Niessner. Spherical CNNs on unstructured grids. In International Conference on Learning Representations (ICLR), 2019.
+[24] Adrien Poulenard and Maks Ovsjanikov. Multi-directional geodesic neural networks via equivariant convolution. ACM Transactions on Graphics, 2018.
+[25] Jonathan Masci, Davide Boscaini, Michael M. Bronstein, and Pierre Vandergheynst. Geodesic convolutional neural networks on Riemannian manifolds. In International Conference on Computer Vision Workshop (ICCVW), 2015.
+[26] J. Bruna, W. Zaremba, A. Szlam, and Y. LeCun. Spectral Networks and Deep Locally Connected Networks on Graphs. In International Conference on Learning Representations (ICLR), 2014.
+[27] Davide Boscaini, Jonathan Masci, Simone Melzi, Michael M. Bronstein, Umberto Castellani, and Pierre Vandergheynst. Learning class-specific descriptors for deformable shapes using localized spectral convolutional networks. Computer Graphics Forum, 2015.
+[28] Sara Sabour, Nicholas Frosst, and Geoffrey E. Hinton. Dynamic routing between capsules. In Conference on Neural Information Processing Systems (NIPS), 2017.
+[29] Jean-Pierre Serre. Linear representations of finite groups. 1977.
+[30] Nichita Diaconu and Daniel Worrall. Learning to convolve: A generalized weight-tying approach. In International Conference on Machine Learning (ICML), 2019.
+[31] Marysia Winkels and Taco S. Cohen. 3D G-CNNs for pulmonary nodule detection. In Conference on Medical Imaging with Deep Learning (MIDL), 2018.
+[32] Daniel E. Worrall and Gabriel J. Brostow. Cubenet: Equivariance to 3D rotation and translation. In European Conference on Computer Vision (ECCV), pages 585–602, 2018.
+[33] Risi Kondor. N-body networks: a covariant hierarchical neural network architecture for learning atomic potentials. arXiv preprint arXiv:1803.01588, 2018.
+[34] Brandon Anderson, Truong-Son Hy, and Risi Kondor. Cormorant: Covariant molecular neural networks. arXiv preprint arXiv:1906.04015, 2019.
+[35] Djork-Arné Clevert, Thomas Unterthiner, and Sepp Hochreiter. Fast and accurate deep network learning by exponential linear units (ELUs). In International Conference on Learning Representations (ICLR), 2016.
+[36] Diego Marcos, Michele Volpi, and Devis Tuia. Learning rotation invariant convolutional filters for texture classification. In International Conference on Pattern Recognition (ICPR), 2016.
+[37] Diego Marcos, Michele Volpi, Benjamin Kellenberger, and Devis Tuia. Land cover mapping at very high resolution with rotation equivariant CNNs: Towards small yet accurate models. ISPRS Journal of Photogrammetry and Remote Sensing, 145:96–107, 2018.
+[38] Bastiaan S. Veeling, Jasper Linmans, Jim Winkens, Taco S. Cohen, and Max Welling. Rotation equivariant CNNs for digital pathology. In International Conference on Medical Image Computing and Computer-Assisted Intervention (MICCAI), 2018.
+[39] Nathaniel Thomas, Tess Smidt, Steven M. Kearnes, Lusann Yang, Li Li, Kai Kohlhoff, and Patrick Riley. Tensor field networks: Rotation- and translation-equivariant neural networks for 3d point clouds. arXiv preprint arXiv:1802.08219, 2018.
+[40] Dmitry Laptev, Nikolay Savinov, Joachim M. Buhmann, and Marc Pollefeys. Ti-pooling: Transformation-invariant pooling for feature learning in convolutional neural networks. In Conference on Computer Vision and Pattern Recognition (CVPR), June 2016.
+[41] Sergey Zagoruyko and Nikos Komodakis. Wide residual networks. In British Machine Vision Conference (BMVC), 2016.
+57
+
+
+[42] Ekin D. Cubuk, Barret Zoph, Dandelion Mane, Vijay Vasudevan, and Quoc V. Le. Autoaugment: Learning augmentation strategies from data. In Conference on Computer Vision and Pattern Recognition (CVPR), 2019.
+[43] Terrance DeVries and Graham W. Taylor. Improved regularization of convolutional neural networks with cutout. arXiv preprint arXiv:1708.04552, 2017.
+[44] Adam Coates, Andrew Ng, and Honglak Lee. An analysis of single-layer networks in unsupervised feature learning. In International Conference on Artificial Intelligence and Statistics (AISTATS), 2011.
+[45] Geoffrey Hinton, Nicholas Frosst, and Sabour Sara. Matrix capsules with EM routing. In International Conference on Learning Representations (ICLR), 2018.
+58

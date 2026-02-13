@@ -1,0 +1,2800 @@
+Geometric Deep Learning and Equivariant Neural Networks
+Jan E. Gerken1, Jimmy Aronsson1?, Oscar Carlsson1?, Hampus Linander2,
+Fredrik Ohlsson3, Christoffer Petersson1,4 and Daniel Persson1
+1 Chalmers University of Technology, Department of Mathematical Sciences
+SE-412 96 Gothenburg, Sweden
+2 Gothenburg University, Department of Physics
+SE-412 96, Gothenburg, Sweden
+3 Umeå University, Department of Mathematics and Mathematical Statistics
+SE-901 87, Umeå, Sweden
+4 Zenseact
+SE-417 56, Gothenburg, Sweden
+? equal contribution
+Abstract. We survey the mathematical foundations of geometric deep learning, focusing on group equivariant and gauge equivariant neural networks. We develop gauge equivariant convolutional neural networks on arbitrary manifolds M using principal bundles with structure group K and equivariant maps between sections of associated vector bundles. We also discuss group equivariant neural networks for homogeneous spaces M = G/K, which are instead equivariant with respect to the global symmetry G on M. Group equivariant layers can be interpreted as intertwiners between induced representations of G, and we show their relation to gauge equivariant convolutional layers. We analyze several applications of this formalism, including semantic segmentation and object detection networks. We also discuss the case of spherical networks in great detail, corresponding to the case M = S2 = SO(3)/SO(2). Here we emphasize the use of Fourier analysis involving Wigner matrices, spherical harmonics and Clebsch–Gordan coefficients for G = SO(3), illustrating the power of representation theory for deep learning.
+E-mail address: gerken@chalmers.se, jimmyar@chalmers.se, osccarls@chalmers.se,
+hampus.linander@gu.se, fredrik.ohlsson@umu.se, christoffer.petersson@chalmers.se,
+daniel.persson@chalmers.se. Date: May 31, 2021.
+1
+arXiv:2105.13926v1 [cs.LG] 28 May 2021
+
+
+Contents
+1. Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.1 Warm up: A semantic segmentation model . . . . . . . . . . . . . . . . . . . 3
+1.2 Group equivariant convolutional neural networks . . . . . . . . . . . . . . . . 6
+1.3 Group theory properties of machine learning tasks . . . . . . . . . . . . . . . 7
+1.4 Gauge equivariant networks . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+1.5 Summary of results . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+1.6 Related literature . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+1.7 Outline of the paper . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+2. Gauge equivariant convolutional layers . . . . . . . . . . . . . . . . . . . . . 12
+2.1 Global and local symmetries . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+2.2 Motivation and intuition for the general formulation . . . . . . . . . . . . . . 14
+2.3 General formulation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+2.4 Geometric symmetries on manifolds and the frame bundle . . . . . . . . . . 19
+2.5 Explicit gauge equivariant convolution . . . . . . . . . . . . . . . . . . . . . . 20
+2.6 Examples: Gauge equivariant networks on graphs and meshes . . . . . . . . 25
+3. Group equivariant layers for homogeneous spaces . . . . . . . . . . . . . . 28
+3.1 Homogeneous spaces and bundles . . . . . . . . . . . . . . . . . . . . . . . . 28
+3.2 Group equivariant layers . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+3.3 Equivariance with respect to intensity . . . . . . . . . . . . . . . . . . . . . . 33
+4. General group equivariant convolutions . . . . . . . . . . . . . . . . . . . . . 35
+4.1 Structure of symmetric feature maps . . . . . . . . . . . . . . . . . . . . . . 35
+4.2 The kernel constraint . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36
+4.3 Transitive group actions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 37
+4.4 Semi-direct product groups . . . . . . . . . . . . . . . . . . . . . . . . . . . . 39
+4.5 Non-transitive group actions . . . . . . . . . . . . . . . . . . . . . . . . . . . 40
+5. Equivariant deep network architectures for machine learning . . . . . . . 40
+5.1 Nonlinearities and equivariance . . . . . . . . . . . . . . . . . . . . . . . . . . 40
+5.2 Semantic segmentation on S2 . . . . . . . . . . . . . . . . . . . . . . . . . . . 43
+5.3 Object detection on Z2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 43
+6. Spherical convolutions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 46
+6.1 Preliminaries . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 46
+6.2 Spherical convolutions and Fourier transforms . . . . . . . . . . . . . . . . . 47
+6.3 Decomposition into irreducible representations . . . . . . . . . . . . . . . . . 49
+6.4 Output features in SE(3) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 50
+6.5 SE(3) equivariant networks . . . . . . . . . . . . . . . . . . . . . . . . . . . . 51
+7. Conclusions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 52
+2
+
+
+Geometric Deep Learning and Equivariant Neural Networks 3
+1. Introduction
+Deep learning is an approach to machine learning that uses multiple transformation layers to
+extract hierarchical features and learn descriptive representations of the input data. These
+learned features can be applied to a wide variety of classification and regression tasks. Deep
+learning has for example been enormously successful in tasks such as computer vision, speech
+recognition and language processing. However, despite the overwhelming success of deep
+neural networks we are still at a loss for explaining exactly why deep learning works so well.
+One way to address this is to explore the underlying mathematical framework. A promising
+direction is to consider symmetries as a fundamental design principle for network architectures.
+This can be implemented by constructing deep neural networks that are compatible with a
+symmetry group G that acts transitively on the input data. This is directly relevant for
+instance in the case of spherical signals where G is a rotation group. In practical applications,
+it was found that equivariance improves per-sample efficiency, reducing the need for data
+augmentation [1]. For linear models, this has been proven mathematically [2].
+Even more generally, it is natural to consider the question of how to train neural networks in
+the case of “non-flat” data. Relevant applications include fisheye cameras [3], biomedicine [4,
+5], and cosmological data [6], just to mention a few situations where the data is naturally
+curved. Mathematically, this calls for developing a theory of deep learning on manifolds, or
+even more exotic structures, like graphs or algebraic varieties. This rapidly growing research
+field is referred to as geometric deep learning [7]. The recent book [8] gives an in-depth
+overview of geometric deep learning.
+In this introduction we shall provide a birds-eye view on the subject of geometric deep
+learning, with emphasis on the mathematical foundations. We will gradually build up the
+formalism, starting from a simple semantic segmentation model which already illustrates the
+role of symmetries in neural networks. We discuss group and gauge equivariant convolutional
+neural networks, which play a leading role in the paper. The introduction concludes with a
+summary of our main results, a survey of related literature, as well as an outline of the paper.
+1.1. Warm up: A semantic segmentation model. The basic idea of deep learning is
+that the learning process takes place in multi-layer networks known as deep neural networks
+of “artificial neurons”, where each layer receives data from the preceding layer and processes it
+before sending it to the subsequent layer. Suppose one wishes to categorize some data sample
+x according to which class y it belongs to. As a simple example, the input sample x could be
+an image and the output y could be a binary classification of whether a dog or a cat is present
+in the image. The first layers of a deep neural network would learn some basic low-level
+features, such as edges and contours, which are then transferred as input to the subsequent
+layers. These layers then learn more sophisticated high-level features, such as combinations of
+edges representing legs and ears. The learning process takes place in the sequence of hidden
+layers, until finally producing an output yˆ, to be compared with the correct image class y.
+The better the learning algorithm, the closer the neural network predictions yˆ will be to y on
+new data samples it has not trained on. In short, one wishes to minimize a loss function that
+measures the difference between the output yˆ and the class y.
+More abstractly, let us view a neural network as a nonlinear map N between a set of input
+variables X and output variables Y ⊇ N (X). Suppose one performs a transformation T of
+
+
+Geometric Deep Learning and Equivariant Neural Networks 4
+the input data. This could for instance correspond to a translation or rotation of the elements
+in X. The neural network is said to be equivariant to the transformation T if it satisfies
+N (T x) = T ′N (x) , (1.1)
+for any input element x and some transformation T ′ acting on Y . A special case of this
+is that the transformation T ′ is the identity in which case the network is simply invariant
+under the transformation, i.e. N (T x) = N (x). This is for instance the case of convolutional
+neural networks used for image classification problems, for which we have invariance with
+respect to translations of the image. A prototypical example of a problem which requires true
+equivariance is the the commonly encountered problem of semantic segmentation in computer
+vision. Intuitively, this follows since the output is a pixel-wise segmentation mask which must
+transform in the same way as the input image. In the remainder of this section we will
+therefore discuss such a model and highlight its equivariance properties in order to set the
+stage for later developments.
+An image can be viewed as a compactly supported function f : Z2 → RNin, where Z2
+represents the pixel grid and RNin the color space. For example, the case of Nin = 1
+corresponds to a gray scale image while Nin = 3 can represent a color RGB image.
+Analogously, a feature map fi associated with layer i in a CNN can be viewed as a map
+Z2 → RNi, where RNi is the space of feature representations.
+Consider a neural network N classifying each individual pixel of RGB images fin : Z2 → R3,
+supported on [0, W ] × [0, H] ⊂ Z2, into Nout classes using a convolutional neural network. Let
+the sample space of Nout classes be denoted Ω and let P (Ω) denote the space of probability
+distributions over Ω.
+The network as a whole can be viewed as a map
+N : L2(Z2, R3) → L2 (Z2, P (Ω)) , (1.2)
+where L2(X, Y ) denote the space of square integrable functions with domain X and co-domain
+Y . This class of functions ensures well-defined convolutions and the possibility to construct
+standard loss functions.
+The co-domain L2 (Z2, P (Ω)) of N is usually referred to as semantic segmentations since
+an element assigns a semantic class probability distribution to every pixel in an input image.
+For simplicity, let the model consist of two convolutional layers where the output of the
+last layer, fout, maps into an Nout-dimensional vector space, followed by a softmax operator
+to produce a probability distribution over the classes for every element in [0, W ] × [0, H]. See
+Figure 1.1 for an overview of the spaces involved for the semantic segmentation model.
+The standard 2d convolution, for example Φ1 in Figure 1.1, is given by
+[κ1 ? fin](x, y) =
+∑
+(x′,y′)∈Z2
+κ1(x′, y′)fin(x′ − x, y′ − y) . (1.3)
+This is formally a cross-correlation, but it can be transformed into a convolution by redefining
+the kernel.
+Noting that the two-dimensional translation group Z2 acts on the space of images by left
+translation
+L(x,y)fin(x′, y′) = fin(x′ − x, y′ − y) , (1.4)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 5
+fin : Z2 R3
+f2 : Z2 RN2
+f2′ : Z2 RN2
+fout : Z2 RNout
+fo′ut : Z2 P (Ω)
+Φ1 first convolution
+relu activation
+Φ2 second convolution
+softmax
+Figure 1.1. Semantic segmentation model. In the first row the name of the
+first feature map (i.e. the input image) is given by fin, it maps the domain Z2
+to RGB values and has support on [0, W ] × [0, H]. It is followed by the first
+convolution, resulting in a feature map f2 that now maps into a N2 dimensional
+space corresponding to the N2 filters of the convolution. After a point-wise
+activation the second convolution results in a feature map fout that associates
+an Nout-dimensional vector to each point in the domain. This vector is then
+mapped to a probability distribution over the Nout classes using the softmax
+operator.
+we can rewrite this convolution group theoretically as
+[κ1 ? fin](x, y) =
+∑
+(x′,y′)∈Z2
+κ1(x′, y′) [L(x,y)fin
+] (x′, y′) , (1.5)
+where κ1 ∈ L2(Z2, RN2×3) is the kernel for the convolution Φ1. In the context of convolutions
+the terms kernel and filter appear with slight variations in their precise meaning and mutual
+relationship in the literature. We will generally use them interchangeably throughout this
+paper.
+This convolution is equivariant with respect to translations (x, y) ∈ Z2, i.e.
+[κ ? (L(x,y)fin
+)] (x′, y′) = (L(x,y)[κ ? fin]) (x′, y′) . (1.6)
+The point-wise activation function and softmax operator also satisfy this property,
+[relu (L(x,y)fin
+)] (x′, y′) = relu (fin(x′ − x, y′ − y)) = L(x,y) [relu(fin)] (x′, y′) , (1.7)
+where relu(x) = max{0, x}, so that the model as a whole is equivariant under translations in
+Z2. Note that this equivariance of the model ensures that a translated image produces the
+corresponding translated segmentation,
+N (L(x,y)fin) = L(x,y)N (fin) , (1.8)
+as illustrated in Figure 1.2. The layers in this particular model turns out to be equivariant
+with respect to translations but there are many examples of non-equivariant layers such as
+max pooling. Exactly what restrictions equivariance implies for a layer in an artificial neural
+network is the topic of Sections 2 and 3.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 6
+N
+L(x,y) L(x,y)
+N
+Figure 1.2. Z2 equivariance of a semantic segmentation model classifying
+pixels into classes Ω = {road, non-road}. The network N maps input images,
+indicated by the content of the red rectangles in the left column, to semantic
+masks indicated by the corresponding content of the red rectangles in the right
+column. Image and semantic mask from [9].
+1.2. Group equivariant convolutional neural networks. Convolutional neural networks
+are ordinary feed-forward networks that make use of convolutional operations of the form (1.3).
+One of the main reasons for their power is their aforementioned translation equivariance (1.8),
+which implies that a translation of the pixels in an image produces an overall translation of the
+convolution. Since each layer is translation equivariant all representations will be translated
+when the input data is translated. Furthermore, the local support of the convolution allows
+for efficient weight sharing across the input data.
+Notice that Z2 in the semantic segmentation model is a group with respect to addition, and
+the space of feature representations RN is a vector space. It is therefore natural to generalize
+this construction by replacing Z2 with an arbitrary group G and RN with a vector space V .
+The feature map then generalizes to
+f : G → V, (1.9)
+and the convolution operation (1.3) to
+[κ ? f ](g) =
+∫
+G
+κ(g−1h)f (h)dh , (1.10)
+where dh is a left-invariant Haar measure on G. If G is a discrete group such as Z2, then dh
+becomes the counting measure and the integral reduces to a sum.
+The generalized kernel κ : G → Hom(V, W ) appearing in (1.10) is a function from the
+group to homomorphisms between V and some feature vector space W , which can in general
+be different from V . Consequently, the result of the convolution is another feature map
+[κ ? f ] : G → W , (1.11)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 7
+and in analogy with the terminology for ordinary CNNs we refer to the convolution (1.10)
+itself as a layer in the network. The general form of the convolution (1.10) is equivariant with
+respect to the left-translation by G:
+[κ ? Lhf ](g) = Lh[κ ? f ](g) , (1.12)
+motivating the term equivariant layer.
+In the convolution (1.10), the kernel κ in the integral over G is transported in the group
+using the right action of G on itself. This transport corresponds to the translation of the
+convolutional kernel in (1.3) and generalizes the weight sharing in the case of a locally
+supported kernel κ.
+In this paper we will explore the structure of group equivariant convolutional neural
+networks and their further generalizations to manifolds. A key step in this direction is to
+expose the connection with the theory of fiber bundles as well as the representation theory of
+G. To this end we shall now proceed to discuss this point of view.
+It is natural to generalize the above construction even more by introducing a choice of
+subgroup K ⊂ G for each feature map, and a choice of representation ρ of K, i.e.,
+ρ : K → GL(V ) , (1.13)
+where V is a vector space. Consider then the coset space G/K and a vector bundle E −π→ G/K
+with characteristic fiber V . Sections of E are maps s : G/K → E which locally can be
+represented by vector-valued functions
+f : G/K → V . (1.14)
+These maps can be identified with the feature maps of a group equivariant convolutional
+neural network. Indeed, in the special case when G = Z2, K is trivial and V = RN, we
+recover the ordinary feature maps f : Z2 → RN of a CNN. When the representation ρ is
+non-trivial the network is called steerable (see [10, 11]).
+As an example, consider spherical signals, i.e. the case in which the input feature map
+is defined on the two-sphere S2 and can therefore be written in the form (1.14), since
+SO(3)/SO(2) = S2 and hence G = SO(3) and K = SO(2). Consequently, feature maps
+correspond to sections f : SO(3)/SO(2) → V .
+This construction allows us to describe G-equivariant CNNs using a very general mathe
+matical framework. The space of feature maps is identified with the space of sections Γ(E),
+while maps between feature maps, which we refer to as layers, belong to the space of so called
+G-equivariant intertwiners if they are equivariant with respect to the right action of G on the
+bundle E. This implies that many properties of group equivariant CNNs can be understood
+using the representation theory of G.
+1.3. Group theory properties of machine learning tasks. After having laid out the basic
+idea of group equivariant neural networks, in this section we will make this more concrete by
+discussing the group theoretical properties of the common computer vision tasks of image
+classification, semantic segmentation and object detection.
+Let us first focus on the case of classification. In this situation the input data consists of
+color values of pixels and therefore the input feature map fin transforms under the regular
+
+
+Geometric Deep Learning and Equivariant Neural Networks 8
+representation πreg of G, i.e. as a collection of scalar fields:
+fin(x) → [πreg(g)fin](x) = fin(σ−1(g)x) , g ∈ G , (1.15)
+where σ is a representation of G that dictates the transformation of the image. In other
+words, the color channels are not mixed by the spatial transformations. However, for image
+classification the identification of images should be completely independent of how they are
+transformed. For this reason we expect the network N (fin) to be invariant under G,
+N (πreg(g)fin) = N (fin) , g ∈ G . (1.16)
+On the other hand, when doing semantic segmentation we are effectively classifying each
+individual pixel, giving a segmentation mask for the objects we wish to identify, as described
+in Section 1.1. This implies that the output features must transform in the same way as
+the input image. In this case one should not demand invariance of N , but rather non-trivial
+equivariance
+N (πreg(g)fin) = πreg(g)[N (fin)] , g ∈ G , (1.17)
+where the regular representation πreg on the right-hand side transforms the output feature map
+of the network. The group-theoretic aspects of semantic segmentation are further explored in
+Section 5.
+Object detection is a slightly more complicated task. The output in this case consists
+of bounding boxes around the objects present in the image together with class labels. We
+may view this as a generalization of the semantic segmentation, such that, for each pixel,
+we get a class probability vector p ∈ RN (one of the classes labels the background) and
+three vectors a, v1, v2 ∈ R2 that indicate the pixel-position of the upper-left corner and two
+vectors that span the parallelogram of the associated bounding box. Hence, the output is an
+object (p, a, v1, v2) ∈ RN+6 for each pixel. The first N components of the output feature map
+f : R2 → RN+4 transform as scalars as before. The three vectors a, v1, v2 on the other hand
+transform in a non-trivial two-dimensional representation ρ of G. The output feature map
+fout = N (fin) hence transforms in the representation πout according to
+(πoutfout)(x) = ρout(g)fout(σ−1(g)x) , (1.18)
+where ρout = idN ⊕ ρ ⊕ ρ ⊕ ρ. The network is then equivariant with respect to πreg in the
+input and πout in the output if
+N (πreg(g)fin) = πout(g)[N (fin)] . (1.19)
+For more details on equivariant object detection see Sections 5.3 and 6.4.
+1.4. Gauge equivariant networks. In the group equivariant networks discussed above, we
+exploited that the domain of the input feature map had global symmetries. Using inspiration
+from the physics of gauge theories and general relativity, the framework of equivariant layers
+can be extended to feature maps which are defined on a general manifold M. A manifold can
+be thought of as consisting of a union of charts, giving rise to coordinates on M, subject to
+suitable gluing conditions where the charts overlap. However, the choice of charts is arbitrary
+and tensors transform in a well-defined way under changes of charts. Such transformations
+are called gauge transformations in physics and correspond to the freedom of making local
+coordinate transformations across the manifold. Feature maps can in this context be viewed as
+
+
+Geometric Deep Learning and Equivariant Neural Networks 9
+sections of vector bundles associated to a principal bundle, called fields in physics parlance. A
+gauge equivariant network for such fields consists of layers which are equivariant with respect
+to change of coordinates in M, such that the output of the network transforms like a tensor.
+In order to realize gauge equivariant layers using convolutions, we need to shift the kernel
+across M. In general, a manifold does not have any global symmetries to utilize for this.
+Instead, one may use parallel transport to move the filter on the manifold. This transport of
+features will generically depend on the chosen path. A gauge equivariant CNN is constructed
+precisely such that it is independent of the choice of path. In other words, making a coordinate
+transformation at x ∈ M and transporting the filter to y ∈ M should give the same result as
+first transporting the filter from x to y, and then performing the coordinate transformation.
+Therefore, the resulting layers are gauge equivariant. The first steps toward a general theory
+of gauge equivariant convolutional neural networks on manifolds were taken in [12, 13].
+1.5. Summary of results. This paper aims to put geometric aspects of deep learning into a
+mathematical context. Our intended audience includes mathematicians, theoretical physicists
+as well as mathematically minded machine learning experts.
+The main contribution of this paper is to give a mathematical overview of the recent
+developments in group equivariant and gauge equivariant neural networks. We strive to
+develop the theory in a mathematical fashion, emphasizing the bundle perspective throughout.
+In contrast to most of the literature on the subject we start from the point of view of
+neural networks on arbitrary manifolds M (sometimes called “geometric deep learning”). This
+requires gauge equivariant networks which we develop using the gauge theoretic notions of
+principal bundles and associated vector bundles. Feature maps will be sections of associated
+vector bundles. These notions have been used previously in different equivariant architectures
+[8, 13, 14] and we present a unified picture. We analyze when maps between feature spaces
+are equivariant with respect to gauge transformations and define gauge equivariant layers
+accordingly in Section 2. Furthermore, we develop gauge equivariant convolutional layers for
+arbitrary principal bundles in Section 2.5 and thereby define gauge equivariant CNNs. In
+Section 2.5 we generalize the gauge equivariant convolution presented in [13] to the principal
+bundle setting.
+Different principal bundles P describe different local (gauge) symmetries. One example of
+a local symmetry is the freedom to choose a basis in each tangent space or, in other words,
+the freedom to choose local frames of the frame bundle P = LM. In this case, local gauge
+transformations transform between different bases in tangent spaces. When the manifold is a
+homogeneous space M = G/K, the global symmetry group forms a principal bundle P = G.
+Here, the local symmetry is the freedom to perform translations that do not move a given
+point, e.g. the north pole on S2 being invariant to rotations about the z-axis, but we are more
+interested in the global translation symmetry for this bundle. Building on [15], we motivate
+group equivariant networks from the viewpoint of homogeneous vector bundles in Section 3
+and connect these to the gauge equivariant networks. In Section 3.3, we discuss equivariance
+with respect to intensity; point-wise scaling of feature maps.
+Furthermore, starting from a very general setup of a symmetry group acting on functions
+defined on topological spaces, we connect and unify various equivariant convolutions that are
+available in the literature.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 10
+Having developed the mathematical framework underlying equivariant neural networks,
+we give an overview of equivariant nonlinearities and in particular extend vector field
+nonlinearities to arbitrary semi-direct product groups, cf. Proposition 5.3. We review the
+entire equivariant network architecture for semantic segmentation and object detection and
+the associated representations.
+Finally, we consider spherical networks corresponding to data defined on the two-sphere
+M = S2 = SO(3)/SO(2). For this case, we explain how convolutions can be computed in
+Fourier space and we give a detailed description of the convolution in terms of Wigner matrices
+and Clebsch-Gordan coefficients, involving in particular the decomposition of tensor products
+into irreducible representations of SO(3). This is well-known in the mathematical physics
+community but we collect and present this material in a coherent way which we found was
+lacking in the literature. We illustrate the formalism in terms of object detection for SE(3)
+(see Section 6.4).
+1.6. Related literature. The notion of geometric deep learning was first discussed in the
+seminal paper of LeCun et. al. [7]. They emphasized the need for neural networks defined
+on arbitrary data manifolds and graphs. In a different development, group equivariant
+convolutional neural networks, which incorporate global symmetries of the input data beyond
+the translational equivariance of ordinary CNNs, were proposed by Cohen and Welling [16].
+Kondor and Trivedi [17] proved that for compact groups G, a neural network architecture
+can be G-equivariant if and only if it is built out of convolutions of the form (1.10). The
+theory of equivariant neural networks on homogeneous spaces G/K was further formalized
+in [14] using the theory of vector bundles in conjunction with the representation theory of
+G. A proposal for including attention [18] into group equivariant CNNs was also put forward
+in [19]. Equivariant normalizing flows were recently constructed in [20].
+The case of neural networks on spheres has attracted considerable attention due to its
+extensive applicability. Group equivariant CNNs on S2 were studied in [21] by implementing
+efficient Fourier analysis on M = S2 and G = SO(3). Some applications instead benefit from
+equivariance with respect to azimuthal rotations, rather than arbitrary rotations in SO(3)
+[22]. One such example is the use of neural networks in self-driving cars to identify vehicles
+and other objects.
+The approach presented here follows [21] and extends the results in the reference at some
+points. The Clebsch–Gordan nets introduced in [23] have a similar structure but use as
+nonlinearities tensor products in the Fourier domain, instead of point-wise nonlinearities in the
+spatial domain. Several modifications of this approach led to a more efficient implementation
+in [24]. The constructions mentioned so far involve convolutions which map spherical features
+to features defined on SO(3). The construction in [25] on the other hand uses convolutions
+which map spherical features to spherical features, at the cost of restricting to isotropic filters.
+Isotropic filters on the sphere have also been realized by using graph convolutions in [26]. In
+[27], spin-weighted spherical harmonics are used to obtain anisotropic filters while still keeping
+the feature maps on the sphere.
+A somewhat different approach to spherical signals is taken in [28], where a linear
+combination of differential operators acting on the input signal is evaluated. Although this
+construction is not equivariant, an equivariant version has been developed in [29].
+
+
+Geometric Deep Learning and Equivariant Neural Networks 11
+An important downside to many of the approaches outlined above is their poor scaling
+behavior in the resolution of the input image. To improve on this problem, [30] introduces
+scattering networks as an equivariant preprocessing step.
+Aside from the equivariant approaches to spherical convolutions, much work has also been
+done on modifying flat convolutions in R2 to deal with the distortions in spherical data without
+imposing equivariance [3, 4, 31, 32].
+A different approach to spherical CNNs was proposed in [12], were the basic premise is to
+treat S2 as a manifold and use a gauge equivariant CNN, realized using the icosahedron as
+a discretization of the sphere. A general theory of gauge equivariant CNNs is discussed in
+[13]. Further developments include gauge CNNs on meshes and grids [33, 34] and applications
+to lattice gauge theories [35, 36]. In this paper we continue to explore the mathematical
+structures underlying gauge equivariant CNNs and clarify their relation to GCNNs.
+A further important case studied extensively in the literature are networks equivariant with
+respect to E(n) or SE(n). These networks have been applied with great success to 3d shape
+classification [10, 37], protein structure classification [10], atomic potential prediction [38] and
+medical imaging [1, 39, 40].
+The earliest papers in the direction of SE(n) equivariant network architectures extended
+classical GCNNs to 3d convolutions and discrete subgroups of SO(3) [39, 40, 41, 42].
+Our discussion of SE(n) equivariant networks is most similar to the SE(3) equivariant
+networks in [10], where an equivariance constraint on the convolution kernel of a standard
+3d convolution is solved by expanding it in spherical harmonics. A similar approach was
+used earlier in [43] to construct SE(2) equivariant networks using circular harmonics. A
+comprehensive comparison of different architectures which are equivariant with respect to
+E(2) and various subgroups was given in [11].
+Whereas the aforementioned papers specialize standard convolutions by imposing con
+straints on the filters and are therefore restricted to data on regular grids, [37, 38] operate on
+irregular point clouds and make the positions of the points part of the features. These networks
+operate on non-trivially transforming input features and also expand the convolution kernels
+into spherical harmonics but use Clebsch–Gordan coefficients to combine representations.
+So far, the applied part of the literature is mainly focused on specific groups (mostly
+rotations and translations in two and three dimensions and their subgroups). However, in the
+recent paper [44], a general approach to solve the kernel constraint for arbitrary compact
+groups is constructed by deriving a Wigner–Eckart theorem for equivariant convolution
+kernels. The implementation in [45] uses a different algorithm to solve the kernel constraint
+for matrix groups and allows to automatically construct equivariant CNN layers.
+The review [46] discusses various aspects of equivariant networks. The book [8] gives
+an exhaustive survey of many of the developments related to geometric deep learning and
+equivariant CNNs.
+1.7. Outline of the paper. Our paper is structured as follows. In Section 2 we introduce
+gauge equivariant convolutional neural networks on manifolds. We discuss global versus local
+symmetries in neural networks. Associated vector bundles are introduced and maps between
+feature spaces are defined. Gauge equivariant CNNs are constructed using principal bundles
+over the manifold. We conclude Section 2 with a discussion of some concrete examples of how
+
+
+Geometric Deep Learning and Equivariant Neural Networks 12
+gauge equivariant CNNs can be implemented for neural networks on graphs. In Section 3 we
+restrict to homogeneous spaces M = G/K and introduce homogeneous vector bundles. We
+show that when restricting to homogeneous spaces the general framework of Section 2 gives rise
+to group equivariant convolutional neural networks with respect to the global symmetry G. We
+also introduce intensity equivariance and investigate its compatibility with group equivariance.
+Still restricting to global symmetries, Section 4 explores the form of the convolutional integral
+and the kernel constraints in various cases. Here, the starting point are vector valued maps
+between arbitrary topological spaces. This allows us to investigate convolutions between non
+scalar features as well as non-transitive group actions. As an application of this we consider
+semi-direct product groups which are relevant for steerable neural networks. In Section 5 we
+assemble the pieces and discuss how one can construct equivariant deep architectures using
+our framework. To this end we begin by discussing how nonlinearities can be included in
+an equivariant setting. We further illustrate the group equivariant formalism by analyzing
+deep neural networks for semantic segmentation and object detection tasks. In Section 6 we
+provide a detailed analysis of spherical convolutions. Convolutions on S2 can be computed
+using Fourier analysis with the aid of spherical harmonics and Wigner matrices. The output of
+the network is characterized through certain tensor products which decompose into irreducible
+representations of SO(3). In the final Section 7 we offer some conclusions and suggestions for
+future work.
+2. Gauge equivariant convolutional layers
+In this section we present the structure needed to discuss local transformations and symmetries
+on general manifolds. We also discuss the gauge equivariant convolution in [13] for features
+defined on a smooth manifold M along with lifting this into the principal bundle formalism.
+We end this section by expanding on two applications of convolutions on manifolds via a
+discretization to a mesh and compare these to the convolution on the smooth manifold.
+2.1. Global and local symmetries. In physics the concept of symmetry is a central aspect
+when constructing new theories. An object is symmetric to a transformation if applying that
+transformation leaves the object as it started.
+In any theory, the relevant symmetry transformations on a space form a group K.
+When the symmetry transformations act on vectors via linear transformations, we have a
+representation of the group. This is needed since an abstract group has no canonical action
+on a vector space; to allow the action of a group K on a vector space V , one must specify
+a representation. Formally a representation is a map ρ : K → GL(dim(V ), F ) into the
+space of all invertible dim(V ) × dim(V ) matrices over a field F . Unless otherwise stated,
+we use complex representations (F = C). In contrast, real representations use F = R. The
+representation needs to preserve the group structure, i.e.
+ρ(kk′) = ρ(k)ρ(k′) , (2.1)
+for all k, k′ ∈ K. In particular, ρ(k−1) = ρ(k)−1 and ρ(e) = idV where e ∈ K is the identity
+element.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 13
+Remark 2.1. There are several ways to denote a representation and in this paper we use Vρ
+to represent the representation ρ acting on some vector space, hence Vρ and Vη will be viewed
+as two (possibly) different vector spaces acted on by ρ and η respectively.
+Returning to symmetries there exists, in brief, two types of symmetries: global and local.
+An explicit example of a global transformation of a field φ : R2 → R3 is a rotation R ∈ SO(2)
+of the domain as
+φ(x) −R→ φ′(x) = ρ(R)φ(η(R−1)x) , (2.2)
+where ρ is a representation for how SO(2) acts on R3 and η is the standard representation for
+how SO(2) acts on R2.
+Remark 2.2. Note that this transformation not only transforms the vector φ(x) at each point
+x ∈ R2, but also moves the point x itself.
+Example 2.3. If we let R ∈ SO(2) be the action of rotating with an angle R, then the
+standard representation of R would be
+η(R) =
+(
+cos(R) sin(R)
+− sin(R) cos(R)
+)
+. (2.3)
+Example 2.4. An example of a rotationally symmetric object is when φ is three scalar fields,
+i.e. ρ3(R) = 1 ⊕ 1 ⊕ 1, where each scalar field only depends on the distance from the origin.
+This yields
+φ′(x) = ρ3(R)φ(R−1x) = φ(R−1x) = φ(x) , (2.4)
+since rotation of the domain around the origin leaves distances to the origin unchanged.
+With the global transformation above we act with the same transformation on every point;
+with local transformations we are allowed to transform the object at each point differently.
+We can construct a similar explicit example of a local symmetry: Given a field φ : R2 → C
+we can define a local transformation as
+φ(x) → φ′(x) = exp(if (x))φ(x) , (2.5)
+where f : R2 → [0, 2π). This is local in the sense that at each point x the field φ is transformed
+by exp(if (x)) where f is allowed to vary over R2. We will refer to a local transformation
+as a gauge transformation. If an object is invariant under local (gauge) transformations, it
+is called gauge invariant or that it has a gauge symmetry. The group consisting of all local
+transformations is called the gauge group.
+Remark 2.5. The example of a local transformation presented in (2.5) does not move the
+base point but in general there are local transformations that move the base point; the
+main example of which is locally defined diffeomorphisms which are heavily used in general
+relativity. In this section we will only consider transformations that do not move the base
+point and gauge transformations falls in this category. For a more detailed discussion on this
+see Remark 5.3.10 in [47].
+Example 2.6. A simple example of a gauge invariant object using (2.5) is the field
+φ(x)φ(x) , (2.6)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 14
+where the bar denotes complex conjugate. This works since multiplication of complex numbers
+is commutative. This is an example of a commutative gauge symmetry.
+Note that in the above example the phase of φ at each point can be transformed arbitrarily
+without affecting the field in (2.6), hence we have a redundancy in the phase of φ. For any
+object with a gauge symmetry one can get rid of the redundancy by choosing a specific gauge.
+Example 2.7. The phase redundancy in the above example can be remedied by choosing a
+phase for each point. For example this can be done by
+φ(x) → φ′(x) = |φ(x)| = exp
+(
+− i arg (φ(x))
+)
+φ(x) . (2.7)
+Thus φ′ only takes real values at each point and since (2.6) is invariant to this transformation
+we have an equivalent object with real fields.
+To introduce equivariance, let K be a group acting on two vector spaces Vρ, Vη through
+representations ρ, η and let Φ : Vρ → Vη be a map. We say that Φ is equivariant with respect
+to K if for all k ∈ K and v ∈ Vρ,
+Φ(ρ(k)v) = η(k)Φ(v) , (2.8)
+or equivalently, with the representations left implicit, expressed Φ ◦ k = k ◦ Φ.
+2.2. Motivation and intuition for the general formulation. When a neural network
+receives some numerical input, unless specified, it does not know what basis the data is
+expressed in, be it local or global. The goal of the general formulation presented in Section 2.3
+is thus that if two numerical inputs are related by a transformation between equivalent states,
+e.g. change of basis, then the output from a layer should be related by the same transformation:
+if u = k . v then φ(u) = k . φ(v), where k. is a general action of the group element on the
+input data v; in words φ is an equivariant map. The intuition for this is that it ensures that
+there is no basis dependence in the way φ acts on data.
+To construct such a map φ we will construct objects which are gauge invariant but contain
+components that transform under gauge transformations. We then define a map Φ on those
+using φ to act on one of the components.
+Our objects will be equivalence classes consisting of two elements: an element that specifies
+which gauge the numerical values are in and one element which are the numerical values. By
+construction these will transform in “opposite” ways and hence each equivalence class is gauge
+invariant. The intuition for the first element is that it will serve as book-keeping for the
+theoretical formulation.
+The input to a neural network can then be interpreted as the numerical part of an
+equivalence class, and if two inputs are related by a gauge transformation the outputs from
+φ are also related by the same transformation. (Through whatever representation is chosen
+to act on the output space.)
+Images can be thought of as compactly supported vector valued functions on R2 (or Z2 after
+discretization) but when going to a more general surface, a smooth d-dimensional manifold,
+the image needs instead to be interpreted as a section of a fiber bundle. In this case we cannot,
+in general, have a global transformation and we really need the local gauge viewpoint.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 15
+(A) (B) (C)
+Figure 2.1. A vector field on a base space M in different local coordinates.
+The local coordinates can be viewed either as induced by the coordinate system
+u : M → R2 or as a section ω : M → P of the frame bundle P = LM that
+specifies a local basis at each point – see Section 2.3 for details. (A) The local
+basis for the vector field is at every point aligned with the standard basis in
+R2. (B) A new local basis induced by the coordinate system u′ : M → R2, or
+equivalently as a section ω′ : M → P . The transition map is either u′ ◦ u−1
+or ω′(x) = ω(x) / σ(x) where σ : M → K is a map from the base space to the
+gauge group K. (C) Here the vector field is at each point expressed in the new
+local coordinates. This illustrates that two vector fields can look very different
+when expressed in components, but when taking the local basis into account,
+they are the same.
+Example 2.8. If our image is an RGB image every pixel has a “color vector” and one could
+apply a random permutation of the color channels for each pixel. Applying a random SO(3)
+element would not quite work since each element of the “color vector” needs to lie in [0, 255]∩Z
+and under a random SO(3) element a “color vector” could be rotated outside this allowable
+space.
+Remark 2.9. As mentioned in the previous section there are local transformations that moves
+base points locally, e.g. a diffeomorphism ψ : M → M such that ψ(x) = x for some
+x ∈ M. Note that this is not the same as a local change of coordinates at each point. In
+the neighborhood, and the tangent space, of x though one can view this as a local change of
+coordinates. Hence if one transforms a feature map at each point, the transformation of each
+feature vector can be viewed as a diffeomorphism centered at that point. See Figure 2.2.
+2.3. General formulation. The construction presented here is based on the one used in [15].
+Since in the general case all transformations will be local, we need to formulate the theory in
+the language of fiber bundles. In short, a bundle E −π→ M is a triple (E, π, M) consisting of a
+total space E and a surjective continuous projection map π onto a base manifold M. Given
+a point x ∈ M, the fiber over x is π−1(x) = {v ∈ E : π(v) = x} and is denoted Ex. If for
+every x ∈ M the fibers Ex are isomorphic the bundle is called a fiber bundle. Furthermore, a
+section of a bundle E is a map σ : M → E such that π ◦ σ = idM. We will use associated,
+vector, and principal bundles and will assume a passing familiarity with these, but will for
+completeness give a short overview. For more details see [48, 49, 50].
+
+
+Geometric Deep Learning and Equivariant Neural Networks 16
+X
+x
+M
+TxM X
+x
+M
+TxM
+Figure 2.2. The manifold M has a different choice of gauge — local
+coordinates on M — at x in the left and the right figure leading to a different
+choice of basis in the corresponding tangent space TxM. This is the same
+process as in Figure 2.1 where the difference is that in this case the base space
+is curved.
+In this section we follow the construction of [15] and begin by defining a principal bundle
+encoding some symmetry group K we want to incorporate into our network:
+Definition 2.10. Let K be a Lie-group. A principal K-bundle over M is a fiber bundle
+P −π−P→ M with a fiber preserving, free and transitive right action of K on P ,
+/ : P × K → P , satisfying πP (p / k) = πP (p) , (2.9)
+and such that p / e = p for all p ∈ P where e is the identity in K. As a consequence of the
+action being free and transitive we have that Px and K are isomorphic as sets.
+Remark 2.11. Note that even though Px and K are isomorphic as sets we cannot view Px as
+a group since there is no identity in Px. To view the fiber Px as isomorphic to the group we
+need to specify p ∈ Px as a reference-point. With this we can make the following map from
+K to Px
+k 7→ p / k , (2.10)
+which is an isomorphism for each fixed p ∈ Px since the group action on the fibers is free and
+transitive. We will refer to this choice of reference point as choosing a gauge for the fiber Px.
+Given a local patch U ⊆ M, a local section ω : U → P of the principal bundle P provides an
+element ω(x) which can be used as reference point in the fiber Px, yielding a local trivialization
+U × K → P , (x, k) 7→ ω(x) / k . (2.11)
+This is called choosing a (local) gauge on the patch U ⊆ M.
+Remark 2.12. For the case when M is a surface, i.e. is of (real) dimension 2, [51] presents
+a method for assigning a gauge (basis for the tangent space) to each point. This is done by
+letting one basis vector be the gradient of some suitable scalar function on M and the other
+being the cross product of the normal at that point with the gradient. This requires M to be
+embedded in R3.
+If it is possible to choose a continuous global gauge (U = M) then the principal bundle is
+trivial since (2.11) is then a global trivialization. On the other hand, if P is non-trivial and we
+allow ω : U → P to be discontinuous we can always choose a reference-point independently
+for each fiber. Alternatively, we may choose a set of continuous sections {ωi} whose domains
+
+
+Geometric Deep Learning and Equivariant Neural Networks 17
+Ui are open subsets covering M. In the latter setting, if x ∈ Ui ∩ Uj then there is a unique
+element kx ∈ K relating the gauges ωi and ωj at x, such that ωi(x) = ωj(x) / kx.
+Remark 2.13. As stated, a principal bundle is trivial if and only if there exists a global
+continuous gauge. Consequently, even if one has a covering {Ui} of the manifold M and a
+local gauge ωi for each Ui there is no way to combine these into a global continuous gauge
+unless the principal bundle is trivial. It is, however, possible to define a global section if one
+drops the continuity condition. In this paper will not implicitly assume that a chosen gauge
+is continuous unless specified.
+Continuing in the same fashion we can view a local map σ : U ⊆ M → K as changing
+the gauge at each point, or in other words a gauge transformation. With this we now define
+associated bundles:
+Definition 2.14. Let P −π−P→ M be a principal K-bundle and let V be a vector space on
+which K acts from the left through some representation ρ
+K × V → V , k . v = ρ(k)v . (2.12)
+Now, consider the space P × V consisting of pairs (p, v) and define an equivalence relation on
+this space by
+(p, v) ∼ρ (p / k, k−1 . v) , k ∈ K . (2.13)
+Denoting the resulting quotient space P × V / ∼ρ by Eρ = P ×ρ Vρ and equipping it with
+a projection πρ : Eρ → M acting as πρ([p, v]) = πP (p) makes Eρ a fiber bundle over M
+associated to P . Moreover, πρ−1(x) is isomorphic to V and thus P ×ρ Vρ is a vector bundle
+over M. The space of sections Γ(Eρ) is a vector space with respect to the point-wise addition
+and scalar multiplication of V .
+Moving on we provide the definition of data points and feature maps in the setting of
+networks.
+Definition 2.15. We define a data point s ∈ Γ(Eρ) as a section of an associated bundle Eρ
+and a feature map f ∈ C(P ; ρ) as a map from the principal bundle to the vector space Vρ. A
+feature map should also satisfy the following equivariance condition
+k . f (p) = f (p / k−1) . (2.14)
+To connect the two notions we can use the following lemma.
+Lemma 2.16 ([49]). The linear map φρ : C(P ; ρ) → Γ(Eρ) , f 7→ sf = [π−1
+P , f ◦ π−1
+P ], is a
+vector space isomorphism.
+Remark 2.17. With the notation [π−1
+P , f ◦ π−1
+P ] we mean that when applying this to x ∈ M
+one first picks an element p ∈ π−1
+P so that sf (x) = [p, f (p)]. Note that this is well defined
+since sf (x) = [p, f (p)] where is independent of the choice of p in the fiber over x:
+[p′, f (p′)] = [p / k, f (p / k)] = [p / k, k−1 . f (p)] = [p, f (p)] . (2.15)
+Remark 2.18. To present a quick argument for this note that with the equivalence class
+structure on the associated bundle every section sf ∈ Γ(Eρ) is of the form sf (x) = [p, f (p)]
+where p ∈ π−1
+P (x) since every element in the associated bundle consists of an element from
+
+
+Geometric Deep Learning and Equivariant Neural Networks 18
+the principal bundle and a vector from a vector space. Here we use f to specify which vector
+is used.
+Before moving on to gauge equivariant layers we need to establish how a gauge transfor
+mation σ : M → K acts on the data points.
+Definition 2.19. Let k ∈ K be an element of the gauge group and [p, v] an element of the
+associated bundle Eρ = P ×ρ Vρ. Then the action of k on [p, v] is defined as
+k · [p, v] = [p / k, v] = [p, k . v] , (2.16)
+which induces an action of σ : U ⊆ M → K on sf = [·, f ] as
+(σ · sf )(x) = σ(x) · [p, f (p)] = [p, σ(x) . f (p)] = sσ.f (x) . (2.17)
+We call σ a gauge transformation. If σ is constant on U it is called a rigid gauge transformation.
+Remark 2.20. Note that (2.17) is really abuse of notation. To view σ as a map from region
+of the manifold U ⊆ M to the group K we first have to choose a gauge ω : U → P . This is
+identical to choosing a local trivialization of P and allows us to identify the fibers of P with
+K. For details on this see [47].
+With this we now define layers as map between spaces of sections of associated vector
+bundles.
+Definition 2.21. Let Eρ = P ×ρ Vρ and Eη = P ×η Vη be two associated bundles over a
+smooth manifold M. Then a layer is a map Φ : Γ(Eρ) → Γ(Eη). Moreover, Φ is gauge
+equivariant if σ ◦ Φ = Φ ◦ σ in the sense (2.17) for all gauge transformations σ.
+Remark 2.22. Since the map φπ : C(P ; π) → Γ(Eπ) is a vector space isomorphism for any
+representation π, any layer Φ : Γ(Eρ) → Γ(Eη) induces a unique map φ : C(P ; ρ) → C(P ; η)
+by φ = φη−1 ◦ Φ ◦ φρ, and vice versa; see the diagram below. We will refer to both Φ and φ as
+layers.
+Γ(Eρ) Γ(Eη)
+C(P ; ρ) C(P ; η)
+Φ
+φη−1
+φρ
+φ
+The equivariance property expressed explicitly in terms of φ, given a feature map f , is
+k . (φf )(p) = φ(k . f )(p) , (2.18)
+and since φf ∈ C(P ; η) it needs to satisfy (2.14) which results in
+(φf )(p / k−1) = φ(k . f )(p) . (2.19)
+To solve this constraint one needs to relate of φf acts on points in the principal bundle to
+how φf depends on f which is not trivial.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 19
+2.4. Geometric symmetries on manifolds and the frame bundle. A special case of
+the general structure presented above is when the gauge symmetry is a freedom to choose a
+different coordinate patch U ⊂ M around each point in the manifold M. This is also needed
+as soon as M is curved since it is impossible to impose a global consistent coordinate system
+on a general curved manifold. Because of this one is forced to work locally and use the fiber
+bundle approach.
+In this section we will work within a coordinate patch u : U → Rd around x ∈ U , and the
+i:th coordinate of x is denoted yi = ui(x) being the i:th component of the vector u ∈ Rd. A
+coordinate patch is sometimes denoted (u, U ). This coordinate chart induces a basis for the
+tangent space TxM as {∂1, . . . , ∂d} such that any vector v ∈ TxM can be written
+v=
+d
+∑
+m=1
+vm∂m = vm∂m , (2.20)
+where vm are called the components of v and we are using the Einstein summation convention
+that indices repeated upstairs and downstairs are implicitly summed over. We will use this
+convention for the rest of this section.
+Given a coordinate chart u : U → Rd around x ∈ U in which we denote coordinates yi a
+change to a different coordinate chart u′ : U → Rd where we denote coordinates y′i would be
+done through a map u′ ◦ u−1 : Rd → Rd. This map can be expressed as a matrix k−1 ∈ GL(d)
+(we use k−1 for notational reasons) and in coordinates this transformation would be
+y′n = (k−1)n
+mym , (2.21)
+where (k−1)nm should be interpreted as the element in the n:th row and m:th column. For
+a tangent vector v ∈ TxM expressed in the first coordinate chart v = vm∂m the components
+transform as the coordinates
+v′m = km
+nvn , (2.22)
+whereas the basis transforms
+∂′
+m = kn
+m∂n . (2.23)
+As a consequence the vector v is independent of the choice of coordinate chart:
+v = vm∂m = (k−1)n
+mv′mkj
+n∂′
+j = v′mkj
+n (k−1 )n
+m∂′
+j = v′mδj
+m∂′
+j = v′m∂′
+m = v′ , (2.24)
+where δnm = 1 if n = m else 0. The change of coordinates is hence a gauge symmetry as
+presented in Section 2.1 and because of this we have the freedom of choosing a local basis
+at each point in M without affecting the tangent vectors, although the components might
+change, so we need to track both the components and the gauge the vector is expressed in.
+To express this in the formalism introduced in Section 2.3, let again M be a d-dimensional
+smooth manifold and consider the frame bundle P = LM over M. The frame bundle is
+defined by its fiber LxM over a point x ∈ M as
+LxM = {(e1, . . . , ed) : (e1, . . . , ed) is a basis for TxM} ' GL(d, R) . (2.25)
+This is a principal K-bundle LM −π→ M over M with K = GL(d, R); the projection is
+defined by mapping a given frame to the point in M where it is attached. In the fundamental
+representation, the group acts from the left on the frame bundle as
+. : GL(d, R) × LM → LM , (e1, . . . , ed) / k = (km
+1em, . . . , km
+dem) . (2.26)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 20
+Hence the action performs a change of basis in the tangent space as described above. If we
+also choose a (real) representation (ρ, V ) of the general linear group, we obtain an associated
+bundle LM ×ρ V with typical fiber V as constructed in Section 2.3. Its elements [e, v] are
+equivalence classes of frames e = (e1, . . . , ed) ∈ LM and vectors v ∈ V , subject to the
+equivalence relation introduced in (2.13):
+[e, v] = [e / k, k−1 . v] = [e / k, ρ(k−1)v] . (2.27)
+The bundle associated to LM with fiber Rd over a smooth d-dimensional manifold M is
+closely related to the tangent bundle T M by the following classical result, see [48, 49] for
+more details:
+Theorem 2.23. Let ρ be the standard representation of GL(d, R) on Rd. Then the associated
+bundle LM ×ρ Rd and the tangent bundle T M are isomorphic as bundles.
+Remark 2.24. One can use the same approach to create an associated bundle which is
+isomorphic to the (p, q)-tensor bundle TqpM, for any p, q, where the tangent bundle is the
+special case (p, q) = (1, 0).
+Remark 2.25. It is not necessary to use the full general linear group as structure group. One
+can instead construct a frame bundle and associated bundles using a subgroup, such as SO(d).
+This represents the restriction to orthogonal frames on a Riemannian manifold.
+2.5. Explicit gauge equivariant convolution. Having developed the framework for gauge
+equivariant neural network layers, we will now describe how this can be used to construct
+concrete gauge equivariant convolutions. These were first developed in in [13] and we lift this
+construction to the principal bundle P .
+To begin, let P be a principal K-bundle, Eρ and Eη be two associated bundles as
+constructed in Section 2.3. Since the general layer Φ : Γ(Eρ) → Γ(Eη) induces a unique
+map φ : C(P ; ρ) → C(P ; η) we can focus on presenting a construction of the map φ. When
+constructing such a map with C(P ; η) as its co-domain it needs to respect the “equivariance”
+of the feature maps (2.14). Hence we get the following condition on φ:
+k . (φf )(p) = (φf )(p / k−1) . (2.28)
+For gauge equivariance, i.e. a gauge transformation σ : U ⊆ M → K “commuting” with φ,
+we need φ to satisfy (2.18):
+σ . φf = φ(σ . f ) , (2.29)
+where (σ . f )(p) = σ(πP (p)) . f (p).
+Equation (2.28) is a condition on how the feature map φf needs to transform when moving
+in the fiber. To move across the manifold we need the concept of geodesics and for that a
+connection on the tangent bundle T M is necessary. The intuition for a connection is that it
+designates how a tangent vector changes when moved along the manifold. The most common
+choice, if we have a (pseudo) Riemannian metric gM : T M × T M → R on M, is to induce
+a connection from the metric, called the Levi-Civita connection. This construction is the one
+we will assume here. For details see [52].
+
+
+Geometric Deep Learning and Equivariant Neural Networks 21
+Remark 2.26. The metric acts on two tangent vectors from the same tangent space. Hence
+writing gM(X, X) for X ∈ TxM is unique. If we want to reference the metric at some specific
+point we will denote this in the subscript.
+To make clear how we move on the manifold we introduce the exponential map from
+differential geometry, which lets us move around by following geodesics. The exponential
+map,
+exp : M × T M → M , (2.30)
+maps (x, X), where x ∈ M is a point and X ∈ TxM is a tangent vector, to the point γ(1)
+where γ is a geodesic such that γ(0) = x and d
+dt γ(0) = X. The exponential map is well-defined
+since every tangent vector X ∈ TxM corresponds to a unique such geodesic.
+Remark 2.27. It is common to write the exponential map exp(x, X) as expx X, which is then
+interpreted as a mapping expx : TxM → M for each fixed x ∈ M.
+Note that the exponential map defines a diffeomorphism between the subset BR = {X ∈
+TxM : √gM(X, X) < R} ⊂ TxM and the open set {y ∈ M : dgM(x, y) < R} where dgM
+is the geodesic induced distance function on M. This will later be used as our integration
+domain.
+In order to lift the convolution presented in [13] we need a notion of parallel transport in
+the principal bundle P . This will be necessary for the layer φ to actually output feature maps.
+In order to do this, we introduce vertical and horizontal directions with respect to the base
+manifold M in the tangent spaces TpP for p ∈ P .
+Definition 2.28. A connection on a principal bundle P is a smooth decomposition TpP =
+VpP ⊕ HpP , into a vertical and a horizontal subspace, which is equivariant with respect to
+the right action / of K on P .
+In particular, the connection allows us to uniquely decompose each vector X ∈ TpP as
+X = XV + XH where XV ∈ VpP and XH ∈ HpP , and provides a notion of transporting a
+point p ∈ P parallel to a curve in M.
+Definition 2.29. Let γ : [0, 1] → M be a curve and let P be a principal bundle equipped with
+a connection. The horizontal lift of γ through p ∈ π−1
+P (γ(0)) is the unique curve γp↑ : [0, 1] → P
+such that ∀t ∈ [0, 1]
+i) πP
+(
+γp↑(t)
+)
+= γ(t)
+ii) d
+dt γp↑(t) ∈ Hγp↑(t)P
+Remark 2.30. The property d
+dt γp↑(t) ∈ Hγp↑(t)P implies that the tangent to the lift γp↑ has no
+vertical component at any point along the curve.
+Given a curve γ on M connecting γ(0) = x and γ(1) = y we can now define the parallel
+transport map Tγ on P as
+Tγ : Px → Py , p 7→ γ↑
+p (1) . (2.31)
+Moreover, the map Tγ is equivariant with respect to K [49, Theorem 11.6]; that is
+Tγ(p / k) = Tγ(p) / k , ∀k ∈ K . (2.32)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 22
+Since we will only be working with geodesics and there is a bijection between geodesics through
+x ∈ M and TxM we will instead denote the parallel transport map as TX where X = d
+dt γ(0).
+The final parts we need to discuss before defining the equivariant convolutions are the
+properties of the integration region and measure.
+Lemma 2.31. Let (u, U ) be a coordinate patch around x ∈ M. The set BR = {X ∈ TxM :
+√gM(X, X) < R} ⊂ TxM and the integration measure √det(gM,x)dX are invariant under
+change of coordinates that preserve orientation.
+Remark 2.32. The above lemma abuses notation for X since X in gM(X, X) is indeed a
+tangent vector in TxM while dX = dy1 ∧ dy2 ∧ · · · ∧ dyd where yi are the coordinates
+obtained from the coordinate chart. See the previous section for more details on coordinate
+charts.
+Proof. If X = Xnen and Y = Y nen are two tangent vectors in TxM then the metric evaluated
+on these is
+gM(X, Y ) = XnY mgM(en, em) . (2.33)
+Expressing X in other coordinates X′ = (k−1)nmXmkinei and similar for Y we get that (2.33)
+transforms as
+gM(X′, Y ′) = (k−1)n
+j Xj (k−1)m
+iY igM(k`
+ne`, ko
+meo) . (2.34)
+Since gM,x is bilinear at each x ∈ M
+gM(X′, Y ′) = δl
+j Xjδm
+iY igM(el, em) = gM(X, Y ) , (2.35)
+and we are done. The invariance of √det(gM,x)dX comes from noting dX′ = det(k−1)dX
+and
+det(g′
+M,x
+) = det(gM(e′
+m, e′
+n)) = det(ki
+mkj
+ngM(ei, ej)) = det(k)2 det(gM,x) . (2.36)
+Hence,
+√
+det
+(
+g′
+M,x
+)
+dX′ =
+√
+det(k)2 det(gM,x) det(k−1)dX =
+√
+det(gM,x)dX , (2.37)
+since we have restricted GL(d, R) to those elements with positive determinant, i.e. preserve
+orientation.
+Remark 2.33. The integration measure √det(gM)dX is expressed in local coordinates but is
+an intrinsic property of the (pseudo) Riemannian manifold. It is often written as volTxM to
+be explicitly coordinate independent.
+We can now state the convolution defined in [13] as follows. Choose a local coordinate
+chart around x ∈ M and let s ∈ Γ(Eρ) be a section of an associated bundle (a data point in
+our terminology in Section 2.3). The gauge equivariant convolution is
+(Φs)(x) =
+∫
+BR
+κ(x, X)s|expx XG(x)√det(gM)dX , (2.38)
+given a convolution kernel function
+κ : M × T M → Hom(Eρ, Eη) , (2.39)
+and XG is the geometric tangent vector that corresponds to the coordinate representation X.
+Here, det(gM) is the determinant of the Riemannian metric at x, and s|expx X (x) represents
+
+
+Geometric Deep Learning and Equivariant Neural Networks 23
+the parallel transport, with respect to a connection on the associated bundle, of the element
+s(expx X) back to x along a geodesic. The convolution (2.38) is gauge equivariant if κ satisfies
+the constraint (2.42).
+Using the principle bundle construction from above, we now present the lifted version
+of (2.38).
+Definition 2.34 (Gauge equivariant convolution). Let U ⊆ M be such that x = πP (p) ∈
+BR ⊆ U and choose a gauge ω : U → PU = π−1
+P (U ). Let f ∈ C(P ; ρ) be a feature map, then
+the gauge equivariant convolution is defined as
+(φf )(p) = [κ ? f ](p) =
+∫
+BR
+κ(x, X)f (TX p)volTxM , (2.40)
+where
+κ : M × T M → Hom(Vρ, Vη) , (2.41)
+is the convolution kernel and volTxM is the volume form for TxM.
+As we will see in Theorem 2.36, the convolution (2.40) is gauge equivariant if κ satisfies
+the constraint (2.42).
+Remark 2.35. In an ordinary CNN a convolutional kernel has compact support on the image
+plane, κ : Z2 → Hom(Vin, Vout) and hence depends on its position but in this case the kernel
+depends on its position on M and a direction.
+For φ to be gauge equivariant, the kernel κ must have the following properties.
+Theorem 2.36. Let (u, U ) be a coordinate chart such that U ⊆ M is a neighborhood to
+x = πP (p) and let φ : C(P ; ρ) → C(P ; η) be defined as in (2.40). Then φ satisfies the feature
+map condition (2.28), along with the gauge equivariance condition (2.29) for all rigid gauge
+transformations σ : U → K, if
+κ(x, X′) = η(k−1)κ(x, X)ρ(k) , (2.42)
+where X′ = k . X is the transformation of tangent vectors under the gauge group.
+Proof. Choose a local coordinate chart (u, U ) and let U ⊆ M be a neighborhood to x = πP (p).
+Let further φ : C(P ; ρ) → C(P ; η) be defined in (2.40). We can then write (2.40) in the local
+chart as
+(φf )(p) =
+∫
+BR
+κ(x, X′)f (TX′
+Gp)√det(gM)dX′ . (2.43)
+Let k ∈ K be such that X′ = k . X and let σ : U → K, σ(y) = k for all y ∈ U be a rigid gauge
+transformation. Note that X′
+G = XG since the geometric vector is independent of choice of
+coordinate representation. Then the left hand side of (2.29) can be written as
+(σ . φf )(p) = σ(x) . (φf )(p) = k . (φf )(p)
+= η(k)
+∫
+BR
+κ(x, X′)f (TX′
+Gp)√det(gM)dX′. (2.44)
+Using (2.42) and a change of variables we get
+∫
+BR
+κ(x, X)ρ(k)f (TXGp)√det(gM)dX . (2.45)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 24
+From here we first prove the feature map condition and follow up with the proof of the gauge
+equivariance.
+Since f is a feature map we get ρ(k)f (TXGp) = f ((TXGp) / k−1) and using the equivariance
+of T we arrive at
+f
+((TXGp) / k−1) = f (TXG(p / k−1)) . (2.46)
+Thus,
+k . (φf )(p) = (φf )(p / k−1) , (2.47)
+which gives the feature map condition.
+For the gauge equivariance condition note that
+ρ(k)f (TXGp) = σ(x) . f (TXGp) = σ(πP (TXGp)) . f (TXGp) = (σ . f )(TXGp) , (2.48)
+using that σ is a rigid gauge transformation. Hence we arrive at
+(σ . φf )(p) = φ(σ . f )(p) , (2.49)
+proving the gauge equivariance of (2.40) for kernels which satisfy (2.42).
+Note that we use the equivariance of the parallel transport in P to get the feature map
+condition and the rigidness of σ to arrive at the gauge equivariance.
+Remark 2.37. Along the same lines, one can also prove that the convolution (2.38) is gauge
+equivariant if the kernel satisfies (2.42). The main difference is that in the general case the
+point p ∈ P , at which the feature map is evaluated, holds information about the gauge used.
+For (2.38) the choice of gauge is more implicit. For more intuition on this, see the discussion
+below.
+To get an intuition of the difference between the gauge equivariant convolution presented
+in [13] and the lifted convolution in (2.40) we first note that both require an initial choice:
+for (2.38) we need to choose a coordinate chart u around the point x ∈ U ⊆ M and for
+the lifted version we need to choose a local gauge ω : U → P around x = πP (p). When
+dealing with gauge transformations that are changes of local basis choosing a gauge and a
+local coordinate system is the same.
+Continuing, we note that applying a gauge transformation to a feature map on the principal
+bundle is the same as moving the evaluation point of the feature map along a fiber in the
+principal bundle:
+(σ . f )(p) = σ(πP (p)) . f (p) = f
+(
+p / σ(πP (p))
+)
+. (2.50)
+Since the action of the gauge group is free and transitive on the fibers of P we can interpret
+this as the feature using its evaluation point as information about what gauge it is in. Hence
+this states that the gauge group action on f amounts to evaluating f in a different gauge over
+the same point in M. Using this interpretation we get that to parallel transport a feature map
+f (TX p) designates which gauge should be used at every point and hence how f transforms
+when moved along γ. Choosing a connection on an associated bundle does the same thing:
+it prescribes how a vector changes when moved between fibers. In this sense the transport of
+a feature map on P is the same as parallel transport a vector in an associated bundle. Since
+the integration measure used in (2.38) is just a local coordinate representation of the volume
+form volTxM we have now related all components of (2.38) to our lifted version.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 25
+2.6. Examples: Gauge equivariant networks on graphs and meshes. In this section
+we will illustrate how gauge-equivariant CNNs can be implemented in practice. This will be
+done in the context of graph networks where gauge equivariance corresponds to changes of
+coordinate system in the tangent space at each point in the graph. The main references for
+this section are [43, 33, 34]. We begin by introducing some relevant background on harmonic
+networks.
+2.6.1. Harmonic networks on surfaces. Let M be a smooth manifold of real dimension 2. For
+any point x ∈ M we have the tangent space TxM ∼= R2. The main idea is to consider a
+convolution in R2 at the point x and lift it to M using the Riemann exponential mapping. As
+we identify the tangent space TxM with R2 we have a rotational ambiguity depending on the
+choice of coordinate system. This is morally the same as a “local Lorentz frame” in general
+relativity. This implies that the information content of a feature map in the neighborhood
+of a point x can be arbitrarily rotated with respect to the local coordinate system of the
+tangent space at x. We would like to have a network that is independent of this choice
+of coordinate system. Moreover, we also have a path-dependence when transporting filters
+across the manifold M. To this end we want to construct a network which is equivariant
+in the sense that the convolution at each point is equivariant with respect to an arbitrary
+choice of coordinate system in R2. Neural networks with these properties were constructed in
+[43, 34] and called harmonic networks.
+We begin by introducing standard polar coordinates in R2:
+(r, θ) ∈ R+ × [0, 2π) . (2.51)
+In order to ensure equivariance we will assume that the kernels in our network are given by
+the circular harmonics
+κm(r, θ; β) = R(r)ei(mθ+β) . (2.52)
+Here the function R : R+ → R is the radial profile of the kernel and β is a free parameter.
+The degree of rotation is encoded in m ∈ Z. The circular harmonic transforms by an overall
+phase with respect to rotations in SO(2):
+κm(r, θ − φ; β) = eimφκm(r, θ; β) . (2.53)
+Let f : M → C be a feature map. The convolution of f with κm at a point x ∈ M is
+defined by
+(κm ? f )(x) =
+∫∫
+Dx( )
+κm(r, θ; β)f (r, θ) r dr dθ . (2.54)
+The dependence on the point x on the right hand side is implicit in the choice of integration
+domain
+Dx( ) =
+{
+(r, θ) ∈ TxM
+∣ ∣
+∣ r ∈ [0, ], θ ∈ [0, 2π)
+}
+, (2.55)
+which is a disc inside the tangent space TxM.
+The group SO(2) acts on feature maps by rotations φ ∈ [0, 2π) according to the regular
+representation ρ:
+(ρ(φ)f )(r, θ) = f (r, θ − φ) . (2.56)
+Under such a rotation the convolution by κm is equivariant
+(κm ? ρ(φ)f )(x) = eimφ(κm ? f )(x) , (2.57)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 26
+as desired. Note that when m = 0 the convolution is invariant under rotations.
+Now assume that we may approximate M by a triangular mesh. This is done in order to
+facilitate the computer implementation of the network. The feature map is represented by
+a vector fi at the vertex i in the triangular mesh. This plays the role of choosing a point
+x ∈ M. Suppose we have a deep network and that we are studying the feature vector at layer
+` in the network. When needed we then decorate the feature vector with the layer ` as well
+as the degree m of rotation: f `
+i,m.
+A feature vector is parallel transported from a vertex j to vertex i along a geodesic
+connecting them. Any such parallel transport can be implemented by a rotation in the
+tangent space:
+Pj→i(f `
+j,m) = eimφji f `
+j,m , (2.58)
+where φji is the angle of rotation. We are now equipped to define the convolutional layers
+of the network. For any vertex i we denote by Ni the set of vertices that contribute to the
+convolution. In the continuous setting this corresponds to the support of the feature map f
+on M. The convolution mapping features at layer ` to features at layer ` + 1 at vertex i is
+now given by
+f `+1
+i,m+m′ =
+∑
+j∈Ni
+wj κm(rij , θij ; β)Pj→i(f `
+j,m′ ) . (2.59)
+The coefficient wj represents the approximation of the integral measure and is given by
+wj = 1
+3
+∑
+jkl
+Ajkl , (2.60)
+where Ajkl is the area of the triangle with vertices jkl. The radial function R and the phase
+eiβ are learned parameters of the network. The coordinates (rij, θij) represents the polar
+coordinates of the tangent space of every vertex j in Ni.
+Let us now verify that this is indeed the building blocks of a deep equivariant network. To
+this end we should prove that the following diagram commutes:
+f`
+i,m f ′`
+i,m
+f `+1
+i,m+m′ f ′`+1
+i,m+m′
+(2.61)
+Here, f ′ = ρ(−φ)f . The commutativity of this diagram ensures that a coordinate change in
+the tangent space commutes with the convolution. Let us now check this.
+If we rotate the coordinate system at vertex i by an angle −φ the feature vector transforms
+according to
+f`
+i,m → f ′`
+i,m = eimφf `
+i,m . (2.62)
+This coordinate transformation will affect the coordinates (rij, θij) according to
+(r′
+ij , θ′
+ij) = (rij, θij + φ) . (2.63)
+The parallel transport Pj→i of features from j to i further transforms as
+P′
+j→i = eimφPj→i . (2.64)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 27
+Using the above observations, let us now write the convolution with respect to the rotated
+coordinate system
+f ′`+1
+i,m+m′ =
+∑
+j∈Ni
+wj κm(r′
+ij , θ′
+ij; β)P ′
+j→i(f ′`
+j,m′ ) = ei(m+m′)f `+1
+i,m+m′ . (2.65)
+Thus we conclude that the diagram commutes. Note that nonlinearities can also be
+implemented in an equivariant fashion by only acting on the radial profile R(rij) but leaving
+the angular phase eiθ untouched.
+The formula (2.59) can be viewed as a discretization of the general gauge equivariant
+convolution on an arbitrary n-dimensional manifold M given in equation (2.38). The disc
+Dx( ) plays the role of the ball BR in the general formula. The combination √det(gM,x)dX
+is approximated by the weight coefficients wj in (2.59), while the coordinates X in the ball BR
+corresponds to (rij, θij) here. The parallel transport of the input feature f is implemented
+by the exponential map expx X, whose discretization is Pj→i. Thus we conclude that the
+harmonic network discussed above may be viewed as a discretized two-dimensional version of
+gauge equivariant convolutional neural networks, a fact that appears to have gone previously
+unnoticed in the literature.
+2.6.2. Gauge-equivariant mesh CNNs. A different approach to gauge equivariant networks on
+meshes was given in [33]. A mesh can be viewed as a discretization of a two-dimensional
+manifold. A mesh consists of a set of vertices, edges, and faces. One can represent the mesh
+by a graph, albeit at the expense of loosing information concerning the angle and ordering
+between incident edges. Gauge equivariant CNNs on meshes can then be modeled by graph
+CNNs with gauge equivariant kernels.
+Let M be a mesh, considered as a discretization of a two-dimensional manifold M. We
+can describe this by considering a set of vertices V in R3, together with a set of tuples F
+consisting of vertices at the corners of each face. The mesh M induces a graph G by ignoring
+the information about the coordinates of the vertices.
+We first consider graph convolutional networks. At a vertex x ∈ V the convolution between
+a feature f and a kernel K is given by
+(κ ? f )(x) = κselff (x) +
+∑
+y∈Nx
+κnbf (x) . (2.66)
+The sum runs over the set Nx of neighboring vertices to x. The maps κself, κnb ∈ RNin×Nout
+are modeling the self-interactions and nearest neighbor interactions, respectively. Notice that
+κnb is independent of y ∈ Nx and so does not distinguish between neighboring vertices. Such
+kernels are said to be isotropic (see also Remark 6.1).
+One can generalize this straightforwardly by allowing the kernel κnb to depend on the
+neighboring vertices. In order to obtain a general gauge equivariant network on M we must
+further allow for features to be parallel transported between neighboring vertices. To this end
+we introduce the matrix ρ(ky→x) ∈ RNin×Nout which transports the feature vector at y to the
+vertex x. The notation here is chosen to indicate that this is a representation ρ of the group
+element ky→x that rotates between neighboring vertices in M .
+
+
+Geometric Deep Learning and Equivariant Neural Networks 28
+Putting the pieces together we arrive at the gauge equivariant convolution on the mesh M :
+(κ ? f )(x) = κself f (x) +
+∑
+y∈Nx
+κnb(θxy)(ρ(gy→x)f )(x) , (2.67)
+where θxy is the polar coordinate of y in the tangent space TxM . Under a general rotation
+kφ by an angle φ the kernels must transform according to
+κ(θ − φ) = ρout(k−φ)κ(θ)ρin(kφ) , (2.68)
+in order for the network to be equivariant:
+(κ ? ρin(k−φ)f )(x) = ρout(k−φ)(κ ? f )(x) . (2.69)
+Let us compare this with the harmonic networks discussed in the previous section. If we
+omit the self-interaction term, the structure of the convolution is very similar. The sum
+is taken over neighboring vertices Nx, which is analogous to (2.59). The kernel κnb is a
+function of the polar coordinate θxy in the tangent space at x. The corresponding radial
+coordinate rxy is suppressed here, but obviously we can generalize to kernels of the form
+κnb(rxy, θxy). Note, however, that here we have not made any assumption on the angular
+dependence of κnb(rxy, θxy), in contrast to the circular harmonics in (2.52). Note also that the
+condition (2.68) is indeed a special case of the general kernel condition for gauge equivariance
+as given in Theorem 2.36.
+3. Group equivariant layers for homogeneous spaces
+In the previous section, we considered neural networks which process data and feature maps
+defined on general manifolds M, and studied the equivariance of those networks with respect
+to local gauge transformations. A prominent example was the local transformations of frames
+induced by a change of coordinates on M. The freedom to choose frames is a local (gauge)
+symmetry which exists in any vector bundle over the manifold M, but if M has an additional
+global (translation) symmetry, this can be exploited with great performance gains. In this
+section, we discuss group equivariant convolutional neural networks (GCNNs) [14, 16], which
+are equivariant with respect to global transformations of feature maps induced from a global
+symmetry on M. This section is largely based on [15], with a few additions: We relate
+convolutional layers in GCNNs to the gauge equivariant convolutions defined in Section 2.5,
+and we also discuss equivariance with respect to intensity and analyze its compatibility with
+group equivariance.
+3.1. Homogeneous spaces and bundles.
+3.1.1. Homogeneous spaces. A manifold M with a sufficiently high degree of symmetry gives
+rise to symmetry transformations which translate any point x ∈ M to any other point y ∈ M.
+For instance on a sphere M = S2, any point x can be rotated into any other point y; similarly,
+any point y in Euclidean space M = Rn can be reached by translation from any other point x.
+Intuitively, this means that all points on the manifold are equivalent. This idea is formalized
+in the notion of a homogeneous space.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 29
+Definition 3.1. Let G be a topological group. A topological space M is called a homogeneous
+G-space, or just a homogeneous space, if there is a continuous, transitive group action
+G × M → M , (g, x) 7→ g · x . (3.1)
+In the special case of Lie groups G and smooth manifolds M, all homogeneous G-spaces are
+diffeomorphic to a quotient space G/K, with K ≤ G a closed subgroup [53, Theorem 21.18].
+We therefore restrict attention to such quotient spaces. The elements of a homogeneous space
+M = G/K are denoted sometimes as x and sometimes as gK, depending on the context.
+Remark 3.2. For technical reasons, the Lie group G is assumed to be unimodular. This is not
+a strong assumption, since examples of such groups include all finite or (countable) discrete
+groups, all abelian or compact Lie groups, the Euclidean groups, and many others [54, 55].
+We also assume the subgroup K ≤ G to be compact - a common assumption that includes
+most homogeneous spaces of practical interest.
+Example 3.3.
+(1) Any group G is a homogeneous space over itself with respect to group multiplication.
+In this case, K is the trivial subgroup so that M = G/K = G.
+(2) In particular, the pixel lattice M = Z2 used in ordinary CNNs is a homogeneous space
+with respect to translations: G = Z2.
+(3) The n-sphere is a homogeneous space Sn = SO(n + 1)/SO(n) for all n ≥ 1. The
+special case n = 2, S2 = SO(3)/SO(2), has been extensively studied in the context of
+geometric deep learning, cf. Section 6.
+(4) Euclidean space Rn = E(n)/O(n) is homogeneous under rigid motions; combinations
+of translations and rotations which form the Euclidean group G = E(n) = Rn o O(n).
+Homogeneous G-spaces are naturally equipped with a bundle structure [56, §7.5] since G
+is decomposed into orbits of the subgroup K, which form fibers over the base manifold G/K.
+The bundle projection is given by the quotient map
+q : G → G/K , g 7→ gK , (3.2)
+which maps a group element to its equivalence class. The free right action G×K → G defined
+by right multiplication, (g, k) 7→ gk, preserves each fiber q−1(gK) and turns G into a principal
+bundle with structure group K. We can therefore view the homogeneous setting as a special
+case of the framework discussed in Section 2 with P = G and M = G/K.
+3.1.2. Homogeneous vector bundles. Consider a rotation g ∈ SO(3) of the sphere, such that
+x ∈ S2 is mapped to gx ∈ S2. Intuitively, it seems reasonable that when the sphere rotates, its
+tangent spaces rotate with it and the corresponding transformation TxS2 → TgxS2 should be
+linear, because all tangent vectors are rotated in the same way. Indeed, for any homogeneous
+space M = G/K, the differential of the left-translation map Lg on M is a linear isomorphism
+dLg : TxM → TgxM for all x ∈ M and each g ∈ G. This means that the transitive G-action
+on the homogeneous space M induces a transitive G-action on the tangent bundle T M that
+is linear on each fiber. This idea is captured in the notion of a homogeneous vector bundle.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 30
+Definition 3.4 ([57, §5.2.1]). Let M be a homogeneous G-space and let E −π→ M be a smooth
+vector bundle with fibers Ex. We say that E is homogeneous if there is a smooth left action
+G × E → E satisfying
+g · Ex = Egx , (3.3)
+and such that the induced map Lg,x : Ex → Egx is linear, for all g ∈ G, x ∈ M.
+Associated vector bundles Eρ = G ×ρ Vρ are homogeneous vector bundles with respect to
+the action G × Eρ → Eρ defined by g · [g′, v] = [gg′, v]. The induced linear maps
+Lg,x : Ex → Egx , [g′, v] 7→ [gg′, v] , (3.4)
+leave the vector inside the fiber invariant and are thus linear. Any homogeneous vector bundle
+E is isomorphic to an associated vector bundle G×ρ EK where K = eK ∈ G/K is the identity
+coset and where ρ is the representation defined by ρ(k) = Lk,K : EK → EK [57, §5.2.3].
+Remark 3.5. In this section, (ρ, Vρ) and (η, Vη) are finite-dimensional unitary representations
+of the compact subgroup K ≤ G. Unitarity is important for defining induced representations
+and, by extension, G-equivariant layers below. This is not a restriction of the theory. Indeed,
+since K is compact, unitarity of ρ (η) can be assumed without loss of generality by defining
+an appropriate inner product on Vρ (Vη) [58, Lemma 7.1.1].
+Let 〈·, ·〉ρ be an inner product that turns Vρ ' EK into a Hilbert space and makes ρ unitary.
+This inner product then induces an inner product on each fiber Ex,
+〈[g, v], [g, w]〉x = 〈v , w〉ρ, (3.5)
+which is well-defined precisely because ρ is unitary. Further consider the unique G-invariant
+measure dx on G/K such that, for all integrable functions f : G → C [58, Theorem 1.5.3],
+∫
+G
+f (g) dg =
+∫
+G/K
+∫
+K
+f (xk) dkdx . (3.6)
+We can then combine the measure dx with (3.5) to integrate the point-wise norm of a section.
+Definition 3.6. Let (ρ, Vρ) be a finite-dimensional unitary K-representation and consider
+the homogeneous vector bundle Eρ = G ×ρ Vρ.
+(1) The induced representation indG
+Kρ of G is the representation
+(indG
+K ρ(g)s)(x) = g · s(g−1x) , (3.7)
+on the complex Hilbert space of square-integrable sections
+L2(Eρ) =
+{
+s : G/K → Eρ
+∣ ∣ ∣ ∣ ∣
+∫
+G/K
+‖s(x)‖2
+x dx < ∞
+}
+. (3.8)
+(2) The induced representation IndG
+Kρ of G is the representation
+(IndG
+K ρ(g)f )(g′) = f (g−1g′) , (3.9)
+on the complex Hilbert space of square-integrable feature maps
+L2(G; ρ) =
+{
+f : G → Vρ
+∣ ∣ ∣ ∣
+∫
+G
+‖f (g)‖2
+ρ dg < ∞
+}
+. (3.10)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 31
+The linear isomorphism φρ : C(G; ρ) → Γ(Eρ), f 7→ sf extends to a unitary isomorphism
+L2(G; ρ) → L2(Eρ) that intertwines the induced representations indG
+K ρ and IndG
+K ρ. That is,
+the induced representations are unitarily equivalent and we therefore choose to identify them.
+3.2. Group equivariant layers. To summarize the previous subsection, global symmetry of
+the homogeneous space M = G/K gives rise to homogeneous vector bundles and an induced
+representation that lets us translate sections and feature maps. GCNNs are motivated by the
+idea that layers between feature maps should preserve the global translation symmetry of M.
+They do so by intertwining induced representations.
+Definition 3.7. A G-equivariant layer is a bounded linear map Φ : L2(Eρ) → L2(Eη) that
+intertwines the induced representations:
+Φ ◦ indG
+K ρ = indG
+Kη ◦ Φ . (3.11)
+That is, G-equivariant layers are elements Φ ∈ HomG(L2(Eρ), L2(Eη)).
+The unitary equivalence between indG
+K ρ and IndG
+Kρ implies that any G-equivariant layer
+Φ : L2(Eρ) → L2(Eη) induces a unique bounded linear operator φ : L2(G; ρ) → L2(G; η) such
+that Φsf = sφf , as in Section 2. This operator also intertwines the induced representations,
+φ ◦ indG
+K ρ = indG
+Kη ◦ φ , (3.12)
+hence φ ∈ HomG(L2(G; ρ), L2(G; η)). The operators φ are also called G-equivariant layers.
+As the name suggests, GCNNs generalize convolutional neural networks (G = Z2, K = {0})
+to other homogeneous spaces G/K. The next definition generalize convolutional layers (1.3)
+in this direction.
+Definition 3.8. A convolutional layer φ : L2(G; ρ) → L2(G; η) is a bounded operator
+(φf )(g) = [κ ? f ](g) =
+∫
+G
+κ(g−1g′)f (g′) dg′ , f ∈ L2(G; ρ) , (3.13)
+with an operator-valued kernel κ : G → Hom(Vρ, Vη).
+Given bases for Vρ and Vη, we can think of the kernel κ as a matrix-valued function. Each
+row in this matrix is a function κi : G → Vρ, just like the feature maps, so we can interpret
+each row as a separate filter that we convolve with respect to. This is analogous to ordinary
+CNNs in which both data and filters have the same structure as images. Furthermore, dim Vρ
+is the number of input channels and dim Vη the number of output channels, one for each filter
+κi. From this perspective, the full matrix κ is a stack of dim Vη filters and the convolutional
+layer φ computes all output-channels simultaneously.
+Convolutional layers form the backbone of GCNNs, and implementations are often based
+on these layers. Note that the kernel in a convolutional layer cannot be chosen arbitrarily but
+must satisfy certain transformation properties, to make sure that κ ? f transforms correctly.
+First of all, the requirement that κ ? f ∈ L2(G; η) implies that
+∫
+G
+η(k)κ(g)f (g) dg = η(k)[κ ? f ](e) = [κ ? f ](k−1) =
+∫
+G
+κ(kg)f (g) dg , (3.14)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 32
+which is satisfied if κ(kg) = η(k)κ(g). Moreover, unimodularity of G means that the left Haar
+measure on G is also right-invariant, so we can perform a change of variables g 7→ gk,
+∫
+G
+κ(g)f (g) dg =
+∫
+G
+κ(gk)f (gk) dg =
+∫
+G
+κ(gk)ρ(k)−1f (g) dg , (3.15)
+which indicates that κ(gk) = κ(g)ρ(k). These relations can be summarized in one equation,
+κ(kgk′) = η(k)κ(g)ρ(k′) , g ∈ G, k, k′ ∈ K , (3.16)
+which was previously discussed in [14]. A direct consequence is that κ(gk)f (gk) = κ(g)f (g) for
+all k ∈ K and each g ∈ G, so the product κf only depends on the base point x = q(g) ∈ G/K.
+The quotient integral formula (3.6) therefore implies that
+[κ ? f ](g) =
+∫
+G/K
+κ(g−1y)f (y) dy . (3.17)
+Remark 3.9. The integral (3.17) is closely related to the gauge equivariant convolution (2.40).
+First of all, homogeneous spaces M = G/K always admit Riemannian metrics gM that are
+invariant under translations [59, §2.3], see also [60]. The Riemannian volume form volM is also
+invariant, and the corresponding Riemannian volume measure is thus an invariant measure on
+M. By the quotient integral formula [58, Theorem 1.5.3], the Riemannian volume measure is
+related to dy by a positive scaling factor c > 0, so that
+∫
+M
+κ(g−1y)f (y) dy =
+∫
+M
+Lgκf volM . (3.18)
+The sliding kernel κ(g−1y) in (3.17) can be viewed as a special case of the explicitly base point
+dependent kernel κ(x, X) in (2.40), after taking into account the diffeomorphism between BR
+and {y ∈ M : dgM(x, y) < R}. We can also interpret the domain of integration as the kernel
+support. The parallel transport map TX need not be invoked here as the integrand in (3.17)
+is already defined on x ∈ G/K, without lifting to G. Finally, the relation volM|x = volTxM
+lets us rewrite (3.17), with some abuse of notation and ignoring the constant c, as
+[κ ? f ](g) =
+∫
+BR
+Lgκf volTxM , (3.19)
+which is similar to (2.40).
+Boundedness of (3.13) is guaranteed if the kernel matrix elements κij : G → C are integrable
+functions, for some choices of bases in Vρ, Vη [15].
+Theorem 3.10 ([15]). Let φ : L2(G; ρ) → L2(G; η) be a bounded linear map.
+(1) If φ is a convolutional layer, then φ is a G-equivariant layer.
+(2) If φ is a G-equivariant layer such that Im(φ) is a space of bandlimited functions, then
+φ is a convolutional layer.
+The bandlimit criteria is automatically satisfied for all finite groups and for discrete abelian
+groups such as G = Z2 [15, Corollaries 20-21]. It follows that all G-equivariant layers can be
+expressed as convolutional layers for these groups.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 33
+3.3. Equivariance with respect to intensity. In image processing tasks, a neural network
+may treat an image differently depending on the level of saturation. One way to avoid this
+is to design saturation-equivariant neural networks, or intensity-equivariant neural networks
+if we generalize beyond image data. In this section, we define this notion of equivariance and
+investigate the question of when a G-equivariant layer is also intensity-equivariant. This part
+is based on the concept of induced systems of imprimitivity in [61, §3.2].
+Mathematically, one changes the intensity of a data point s ∈ L2(Eρ) by scaling the vector
+at each point: (ψs)(x) = ψ(x)s(x) where ψ : G/K → C is a continuous function. Equivalently,
+we can scale the feature maps instead, via the mapping
+S(ψ) : L2(G; ρ) → L2(G; ρ) , (S(ψ)f )(g) = ψ(gK)f (g) . (3.20)
+For technical reasons we assume that ψ vanishes at infinity: ψ ∈ C0(G/K).
+Definition 3.11. A bounded linear map φ : L2(G; ρ) → L2(G; η) is equivariant with respect
+to intensity, or intensity-equivariant, if
+S(ψ) ◦ φ = φ ◦ S(ψ) , (3.21)
+for all ψ ∈ C0(G/K).
+Remark 3.12. The mapping (3.20) is a ∗-representation of C0(G/K) on the space L2(G; ρ),
+and intensity-equivariant maps (3.21) are intertwiners of two such representations.
+Example 3.13. Let T : Vρ → Vη be a bounded linear map that intertwines ρ and η, that is,
+T ∈ HomK(Vρ, Vη). By letting T act point-wise on feature maps f ∈ L2(G; ρ), we obtain a
+bounded linear map
+φT : L2(G; ρ) → L2(G; η) , (φT f )(g) = T (f (g)) , (3.22)
+and we observe that φT is equivariant with respect to intensity. This is because φT performs
+point-wise transformations of vectors and S performs point-wise multiplication by scalar, so
+we need only employ the linearity of T :
+(S(ψ)φT f )(g) = ψ(gK)T (f (g)) = T (ψ(gK)f (g)) = (φT S(ψ)f )(g) . (3.23)
+Note that (3.22) is also G-equivariant since its action on f (g) ∈ Vη does not depend on g ∈ G.
+Indeed,
+(φT ◦ IndG
+K ρ(g)f )(g′) = T (f (g−1g′)) = (φT f )(g−1g′) = (IndG
+K η(g) ◦ φT f )(g) . (3.24)
+It turns out that (3.22) are the only possible transformations φ : L2(G; ρ) → L2(G; η) that
+are both G-equivariant and intensity-equivariant.
+Theorem 3.14 ([61, Theorem 3.16]). Let φ : L2(G; ρ) → L2(G; η) be a G-equivariant layer.
+Then φ is intensity-equivariant if and only if φ = φT for some T ∈ HomK(Vρ, Vη).
+For some groups, this theorem exclude convolutional layers from being intensity-equivariant,
+as the following example illustrates. This means that intensity-equivariant and convolutional
+layers are two separate classes of layers for these groups.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 34
+Example 3.15. Consider the special case G = R and let K = {0} be the trivial subgroup.
+Then ρ, η are trivial representations, and assume for simplicity that dim Vρ = dim Vη = 1 so
+that L2(R; ρ) = L2(R; η) = L2(R). If we now let φ : L2(R) → L2(R) be a convolutional layer
+with some kernel κ : R → C,
+(φf )(x) = [κ ? f ](x) =
+∫∞
+−∞
+κ(y − x)f (y) dy, f ∈ L2(R) , (3.25)
+and consider an arbitrary element ψ ∈ C0(R), then
+φ(S(ψ)f )(x) =
+∫∞
+−∞
+κ(y − x)ψ(y)f (y) dy . (3.26)
+Note that the function ψ is part of the integrand, which is not the case for S(ψ)φf . This is
+essentially what prevents convolutional layers (3.25) from being intensity-equivariant.
+To see this, fix > 0 and consider the bump function ψ : R → [0, 1] defined by
+ψ (x) =
+
+ 
+ 
+exp
+(
+1− 1
+1 − (x/ )2
+)
+, x ∈ (− , )
+0, otherwise
+, (3.27)
+which is supported on the compact interval [− , ] and satisfies ψ (0) = 1. Then ψ ∈ C0(R)
+and it is clear that
+(S(ψ )φf )(0) = ψ (0)φf (0) = φf (0) . (3.28)
+Comparing (3.26) and (3.28), we see that the convolutional layer φ is intensity-equivariant
+only if
+∫∞
+−∞
+κ(y)f (y) dy = φf (0) =
+∫∞
+−∞
+κ(y)ψ (y)f (y) dy , (3.29)
+for each f ∈ L2(R). Hölder’s inequality yields the bound
+|φf (0)| ≤
+∫∞
+−∞
+|κ(y)ψ (y)f (y)| dy = ‖κψ f ‖1 ≤ ‖κψ ‖2‖f ‖2 . (3.30)
+However, because ψ ≤ 1 everywhere and vanishes outside [− , ], we have
+‖κψ ‖2
+2≤
+∫
+−
+|κ(x)|2 dx , (3.31)
+which vanishes as → 0. It follows that φf (0) = 0 for all f ∈ L2(R). This argument can be
+adapted to show that φf (x) = 0 for all x ∈ R, so we conclude that φ must vanish identically.
+In other words, there does not exist a non-zero, intensity-equivariant convolutional layer in
+the case G = R, K = {0}. This is consistent with Theorem 3.14 because if a convolutional
+layer (3.25) had been intensity-equivariant, then Theorem 3.14 would imply that φ = φT acts
+point-wise, i.e. that φf (x) ∈ C only depends on f (x) ∈ C. This would require the kernel κ
+to behave like a Dirac delta function, which is not a mathematically well-defined function.
+The conclusion would have been different, had (3.31) not vanished in the limit → 0. This
+would have required the singleton {0} to have non-zero Haar measure, which is only possible
+if the Haar measure is the counting measure, that is, if G is discrete [58, Proposition 1.4.4]. In
+that case, one could define a convolution kernel κT : G → Hom(Vρ, Vη) in terms of a Kronecker
+delta, κT (g) = δg,eT for some linear operator T ∈ HomK(Vρ, Vη). The convolutional layer
+(φf )(g) = [κT ? f ](g) =
+∫
+G
+κT (g−1g′)f (g′) dg′ = T (f (g)) , (3.32)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 35
+would then coincide with φT and intensity equivariance would be achieved.
+4. General group equivariant convolutions
+In the previous sections, we have developed a mathematical framework for the construction of
+equivariant convolutional neural networks on homogeneous spaces, starting from an abstract
+notion of principal bundles, leading to the convolutional integral (3.13). Here, we continue
+this discussion and consider various generalizations of (3.13) which could be implemented
+in a CNN. While doing so, we will reproduce various expressions for convolutions found in
+the literature. A similar overview of convolutions over feature maps and kernels defined on
+homogeneous spaces can be found in [17], however our discussion also takes non-trivial input
+and output representations into account (see also [14, 62]).
+4.1. Structure of symmetric feature maps. Let X , Y be topological spaces and V1, V2
+vector spaces. The input features are maps f1 : X → V1, the output features are maps
+f2 : Y → V2. Assume that a group G acts on all four spaces by1
+σ1(g)x , ∀x ∈ X , ρ1(g)v1 , ∀v1 ∈ V1 , (4.1)
+σ2(g)y , ∀y ∈ Y , ρ2(g)v2 , ∀v2 ∈ V2 , (4.2)
+for all g ∈ G. These actions can be combined to define a group action on the feature maps:
+[π1(g)f1](x) = ρ1(g)f1(σ−1
+1 (g)x) , (4.3)
+[π2(g)f2](y) = ρ2(g)f2(σ−1
+2 (g)y) . (4.4)
+Example 4.1 (GCNNs). In the simplest case of non-steerable GCNNs discussed above, we
+have ρ1 = ρ2 = id and the input to the first layer is defined on the homogeneous space
+X = G/K of G with respect to some subgroup K. The output of the first layer then has
+Y = G. Subsequent layers have X = Y = G. The group G acts on itself and on G/K by
+group multiplication: σ1,2(g′)g = g′g for g′ ∈ G and g ∈ G or g ∈ G/K.
+On top of this, [17] discusses also the cases of convolutions from a homogeneous space into
+itself, X = Y = G/K and of a double coset space into a homogeneous space X = H\G/K,
+Y = G/K. In all these cases, σ1,2 are given by group multiplication.2
+The representations σi, ρi arising in applications are dictated by the problem at hand. In
+the following example, we discuss some typical cases arising in computer vision.
+Example 4.2 (Typical computer vision problems). Consider the case that the input data
+of the network consists of flat images. Then, for the first layer of the network, we have
+X = R2 and V1 = RN if the image has N color channels and the input features are functions
+f1 : R2 → RN. Typical symmetry groups G of the data are rotations (SO(2)), translations
+(R2) or both (SE(2)) or finite subgroups of these. For these groups, the representation σ1 is
+1Note that as opposed to previous sections, here, we are considering representations of the entire group G, not just of a subgroup. 2Note, however, that there appear to be some mathematical inconsistencies in [17]. For example, in Case I of Section 4.1, the symmetry group acts from the right on a left quotient space, which is ill-defined. Furthermore, the choice of coset representative denoted by x ̄ is not equivariant with respect to the group action, even from the left. Similar problems arise in Case III.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 36
+the fundamental representation 2SO(2) which acts by matrix multiplication, i.e. for G = SO(2),
+we have
+σ1(φ) =
+(
+cos φ sin φ
+− sin φ cos φ
+)
+, (4.5)
+and similarly for the other groups. Since the color channels of images do not contain directional
+information, the input representation ρ1 is the trivial representation: ρ1 = idN.
+The structure of the output layer depends on the problem considered. For image
+classification, the output should be a probability distribution P (Ω) over classes Ω which
+is invariant under actions of G. In the language of this section, this would correspond to the
+domain Y of the last layer and the representations σ2 and ρ2 being trivial and V2 = P (Ω).
+The cases of semantic segmentation and object detection are discussed in detail in
+Sections 5.2 and 5.3 below.
+4.2. The kernel constraint. The integral mapping f1 to f2 is defined in terms of the kernel
+κ which is a bounded, linear-operator valued, continuous mapping
+κ : X × Y → Hom(V1, V2) . (4.6)
+In neural networks, κ additionally has local support, but we do not make this assumption
+here as the following discussion does not need it.
+In order to have an integral which is compatible with the group actions, we require X to
+have a Borel measure which is invariant under σ1, i.e.
+∫
+X
+f1(σ1(g)x)dx =
+∫
+X
+f1(x)dx, (4.7)
+for every integrable function f1 : X1 → V1 and all g ∈ G. Now, we can write the output
+features as an integral over the kernel κ and the input features,
+f2(y) = [κ · f1](y) =
+∫
+X
+κ(x, y)f1(x)dx , (4.8)
+where the matrix multiplication in the integrand is left implicit.
+We now require the map from input to output features to be equivariant with respect to
+the group actions (4.3) and (4.4), i.e. for any input function f1, we require
+[κ · π1(g)f1] = π2(g)[κ · f1] ∀g ∈ G . (4.9)
+This leads to the following
+Lemma 4.3. The transformation (4.8) is equivariant with respect to π1, π2 if the kernel
+satisfies the constraint
+κ
+(σ−1
+1 (g)x, σ−1
+2 (g)y) = ρ−1
+2 (g)κ(x, y)ρ1(g) , ∀x ∈ X , ∀y ∈ Y, ∀g ∈ G . (4.10)
+Proof. The constraint (4.10) is equivalent to
+κ
+(σ1(g)x, y)ρ1(g) = ρ2(g)κ(x, σ−1
+2 (g)y) . (4.11)
+Integrating against f1 leads to
+∫
+X
+κ
+(σ1(g)x, y)ρ1(g)f1(x)dx =
+∫
+X
+ρ2(g)κ(x, σ−1
+2 (g)y)f1(x)dx . (4.12)
+Using (4.7) on the left-hand side shows that this is equivalent to (4.9).
+
+
+Geometric Deep Learning and Equivariant Neural Networks 37
+4.3. Transitive group actions. In the formulation above, the output feature map is
+computed as a scalar product of the input feature map with a kernel which satisfies the
+constraint (4.10). In this section, we discuss how the two can be combined into one expression,
+which is the familiar convolutional integral, if the group acts transitively by σ1 on the space
+X . I.e. we assume that there exists a base point x0 ∈ X such that for any x ∈ X , there is a
+gx ∈ G with
+x = σ1(gx)x0 . (4.13)
+Defining
+κ(y) = κ(x0, y), (4.14)
+we obtain from (4.10)
+κ(x, y) = ρ2(gx)κ(σ−1
+2 (gx)y)ρ−1
+1 (gx) . (4.15)
+Plugging this into (4.8) and using (4.13) yields a convolution as summarized in the following
+proposition.
+Proposition 4.4. If G acts transitively on X , the map κ · f1 defined in (4.8) subject to the
+constraint (4.10) can be realized as the convolution
+[κ ? f1](y) =
+∫
+X
+ρ2(gx) κ(σ−1
+2 (gx)y) ρ−1
+1 (gx) f1(σ1(gx)x0) dx . (4.16)
+Since in (4.16), the integrand only depends on x through gx, we can replace the integral
+over X by an integral over G if the group element gx is unique for all x ∈ X (we can then
+identify X with G by x 7→ gx). In this is the case, the group action of G on X is called regular
+(i.e. it is transitive and free), leading to
+Proposition 4.5. If G acts regularly on X , the map κ · f1 defined in (4.8) subject to the
+constraint (4.10) can be realized as the convolution
+[κ ? f1](y) =
+∫
+G
+ρ2(g) κ(σ−1
+2 (g)y) ρ−1
+1 (g) f1(σ1(g)x0) dg , (4.17)
+where we use the Haar measure to integrate on G. Furthermore, for a regular group action,
+the group element gx in (4.15) is unique and hence the kernel κ(y) in (4.17) is unconstrained.
+Remark 4.6. If there is a subgroup K of G which stabilizes x0, i.e. σ1(h)x0 = x0 ∀h ∈ K, X
+can be identified with the homogeneous space G/K. Proposition 4.5 corresponds to K being
+trivial. As will be spelled out in detail in Section 4.4, the integral in (4.17) effectively averages
+the kernel κ over K before it is combined with f1, leading to significantly less expressive
+effective kernels. In the case of spherical convolutions, this was pointed out in [63, 21].
+Nevertheless, constructions of this form are used in the literature, cf. e.g. [25].
+To illustrate (4.17), we start by considering GCNNs as discussed in Example 4.1.
+Example 4.7. (GCNNs with non-scalar features) Consider a GCNN as discussed in Example
+4.1 above. On G, a natural reference point is the unit element e, so we set x0 = e and hence
+gx = x. Since σ1 is now a regular group action, we can use (4.17) which simplifies to
+[κ ? f ](y) =
+∫
+G
+ρ2(g)κ(σ−1
+2 (g)y)ρ−1
+1 (g)f (g)dg , (4.18)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 38
+where κ(y) is unconstrained. This is the convolution used for GCNNs if the input- and output
+features are not scalars.
+Another important special case for (4.17) is given by spherical convolutions which are widely
+studied in the literature, cf. Sections 1.6 and 6.
+Example 4.8 (Spherical convolutions). Consider an equivariant network layer with X =
+Y = G = SO(3) as used in spherical CNNs [21]. G acts on itself transitively by left
+multiplication, σi(Q)R = QR for Q, R ∈ SO(3) with base point x0 = e. Therefore, according
+to Proposition (4.17), the transformation (4.8) can be written as3
+[κ ? f1](S) =
+∫
+SO(3)
+ρ2(R)κ(R−1S)ρ−1
+1 (R)f1(R) dR , (4.19)
+where the Haar measure on SO(3) is given in terms of the Euler angles α, β, γ by
+∫
+SO(3)
+dR =
+∫ 2π
+0
+dα
+∫π
+0
+dβ sin β
+∫ 2π
+0
+dγ . (4.20)
+Instead of assuming a transitive group action on X and using this to solve the kernel
+constraint, one can also assume a transitive group action on Y and use this to solve the kernel
+constraint. Specifically, if there is a y0 ∈ Y such that for any y ∈ Y, we have a gy ∈ G
+satisfying
+y = gyy0 , (4.21)
+we can define
+κ(x) = κ(x, y0) . (4.22)
+Then, according to (4.10), the two-argument kernel is given by
+κ(x, y) = ρ2(gy)κ(σ−1
+1 (gy)x)ρ−1
+1 (gy) , (4.23)
+yielding the following
+Proposition 4.9. If G acts transitively on Y, the map κ · f1 defined in (4.8) subject to the
+constraint (4.10) can be realized as the convolution
+[κ ? f1](y) =
+∫
+X
+ρ2 (gy )κ(σ−1
+1 (gy)x)ρ−1
+1 (gy)f1(x)dx . (4.24)
+However, since the group element now depends on y instead of on the integration variable
+x, we cannot replace the integral over X by an integral over G as we did above in (4.17) and
+have to compute the group element gy for each y.4
+3In [21], the spherical convolution is defined as [κ ? f1](S) = ∫
+SO(3) κ(S−1R)f1(R) dR, which arises from our expression by ρ1,2 → id, κ(R) → κ(R−1). In the language developed below, the reference fixes a point in Y instead of X . We use a different convention here to make the relation to the general case more transparent. For applications, the distinction is irrelevant. 4In the spherical case of fixing a point in Y to solve the kernel constraint, mentioned in footnote 3, this problem does not arise: We have X = Y = G and therefore integrate over G from the beginning. Furthermore, we can choose y0 = e, so y = gy.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 39
+4.4. Semi-direct product groups. In the previous section, we considered different convo
+lutional integrals for the case that G acts transitively on X . In particular, we recovered the
+familiar integral over G in the case that G acts regularly on X . In practice however, the
+action of G on X is often transitive, but not regular. Instead, G is a semi-direct product
+group G = N o K of a normal subgroup N and a subgroup K such that N acts regularly on
+X and one can choose a base point x0 ∈ X which is stabilized by K,
+∀x ∈ X ∃!nx ∈ N s.t. x = σ1(nx)x0 and σ1(k)x0 = x0 ∀k ∈ K . (4.25)
+Again, we define
+κ(y) = κ(x0, y), (4.26)
+and use
+κ(x, y) = ρ2(nx)κ(σ−1
+2 (nx)y)ρ−1
+1 (nx), (4.27)
+to obtain the convolutional integral
+[κ ? f1](y) =
+∫
+X
+ρ2(nx)κ(σ−1
+2 (nx)y)ρ−1
+1 (nx)f1(σ1(nx)x0) dx . (4.28)
+Since N acts regularly on X , the integral over X can be replaced by an integral over N .
+However, since (4.27) only fixes an element of N but not of K, the kernel is not unconstrained
+and we have the following
+Proposition 4.10. If G = N o K is a semi-direct product group satisfying (4.25), the map
+κ · f1 defined in (4.8) subject to the constraint (4.10) can be realized as the convolution
+[κ ? f1](y) =
+∫
+N
+ρ2(n)κ(σ−1
+2 (n)y)ρ−1
+1 (n)f1(σ1(n)x0)dn , (4.29)
+where the kernel satisfies the constraint
+κ(σ2(h)y) = ρ2(h)κ(y)ρ−1
+1 (h) . (4.30)
+In practice, the constraint (4.30) restricts the expressivity of the network, as mentioned
+in Remark 4.6. To construct a network layer using (4.29) and (4.30), one identifies a basis
+of the space of solutions of (4.30), expands κ in this basis in (4.29) and trains only the
+coefficients of the expansion. A basis of solutions of (4.30) for compact groups K in terms of
+representation-theoretic quantities was given in [44].
+Example 4.11 (SE(n) equivariant CNNs). In the literature, the special case G = SE(n) =
+Rn o SO(n) and X = Y = Rn has received considerable attention due to its relevance to
+applications. Our treatment follows [10], for a brief overview of the relevant literature, see
+Section 1.6.
+In this case, Rn acts by vector addition on itself, for t ∈ Rn, σ1(t)x = σ2(t)x = x + t and
+SO(n) acts by matrix multiplication, for R ∈ SO(n), σ1(R)x = σ2(R)x = Rx. Moreover, Rn
+acts trivially on V1 and V2, i.e. ρ1(t) = ρ2(t) = id. The base point x0 is in this case the origin
+of Rn, which is left invariant by rotations. With this setup, (4.29) simplifies to
+[κ ? f1](y) =
+∫
+Rn
+κ(y − t)f1(t)dt . (4.31)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 40
+The kernel constraint (4.30) becomes
+κ(Ry) = ρ2(R)κ(y)ρ−1
+1 (R) ∀R ∈ SO(n) . (4.32)
+4.5. Non-transitive group actions. If the group action of G on X is not transitive, we
+cannot simply replace the integral over X by an integral over G as in (4.17). However, we
+can split the space X into equivalence classes under the group action by defining
+X /G = {[x0] : x0 ∈ X } where x0 ∈ X ∼ x ̃0 ∈ X ⇔ ∃ g ∈ G s.t. σ1(g)x0 = x ̃0 . (4.33)
+Within each equivalence class [x0], G acts transitively by definition. For each class we select
+an arbitrary representative as base point and define a one-argument kernel by
+κx0(y) = κ(x0, y) . (4.34)
+Using this kernel, we can write the integral (4.8) as
+[κ ? f1](y) =
+∫
+X /G
+∫
+G
+ρ2(g)κx0 (σ−1
+2 (g)y)ρ−1
+1 (g)f1(σ1(g)x0) dgdx0 . (4.35)
+Example 4.12 (SO(3) acting on R3). Consider X = R3 and G = SO(3). In this case, G does
+not act transitively on X , since SO(3) conserves the norm on R3 and integrating over G is not
+enough to cover all of X . Hence, X /G can be identified with the space R+ of norms in R3. The
+split of X into X /G and G therefore corresponds to the usual split in spherical coordinates,
+in which the integral over the radius is separate from the integral over the solid angle. In
+[64], a similar split is used, where the integral over G is realized as a graph convolution with
+isotropic kernels.
+5. Equivariant deep network architectures for machine learning
+After having defined various general convolution operators in the previous section, we now
+want to illustrate how to assemble these into an equivariant neural network architecture
+using discretized versions of the integral operators that appeared above. To this end, we will
+first discuss the crucial equivariant nonlinearities that enable the network to learn non-linear
+functions. Then, we will use two important tasks from computer vision, namely semantic
+segmentation on S2 and object detection on Z2, to show in detail what the entire equivariant
+network architecture looks like.
+5.1. Nonlinearities and equivariance. So far, we have only discussed the linear trans
+formation in the equivariant network layers. However, in order to approximate nonlinear
+functions, it is crucial to include nonlinearities into the network architecture. Of course, for the
+entire network to be equivariant with respect to group transformations, the nonlinearities must
+also be equivariant. Various equivariant nonlinearities have been discussed in the literature
+which we will review here briefly. An overview and experimental comparison of different
+nonlinearities for E(2) equivariant networks was given in [11].
+A nonlinear activation function of a neural network is a nonlinear function η which maps
+feature maps to feature maps. An equivariant nonlinearity additionally satisfies the constraint
+η[π1(g)f ] = π2(g)η(f ) , (5.1)
+where we used the notation introduced in (4.3) and (4.4).
+
+
+Geometric Deep Learning and Equivariant Neural Networks 41
+Remark 5.1 (Biases). Often, the feature map to which the nonlinearity is applied is not
+directly the output of a convolutional layer, but instead a learnable bias is added first, i.e. we
+compute η(f + b), where b : X → V1 is constant.
+The most important class of nonlinearities used in group equivariant networks act point
+wise on the input, i.e.
+(η(f ))(x) = η ̄(f (x)) , (5.2)
+for some nonlinear function η ̄ : V1 → V2. If f transforms as a scalar (i.e. ρ1,2 = id in (4.3) and
+(4.4)), then any function η ̄ can be used to construct an equivariant nonlinearity according to
+(5.2). In this case, a rectified linear unit is the most popular choice for η ̄ and was used e.g. in
+[43, 10, 21, 27], but other popular activation functions appear as well [37].
+If however the input- and output feature maps transform in non-trivial representations of
+G, η ̄ needs to satisfy
+η ̄ ◦ ρ1(g) = ρ2(g) ◦ η ̄ , ∀g ∈ G . (5.3)
+Remark 5.2. If the convolution is computed in Fourier space with limited bandwidth, point
+wise nonlinearities in position space as (5.2) break strict equivariance since they violate the
+bandlimit. The resulting networks are then only approximately group equivariant.
+In the special case that the domain of f is a finite group G and ρ1,2 are trivial, the point
+wise nonlinearity (5.2) is called regular [16]. Regular nonlinearities haven been used widely in
+the literature, e.g. [12, 21, 42, 65, 66, 67]. If the domain of the feature map is a quotient space
+G/K, [11] calls (5.2) a quotient nonlinearity. Similarly, given a non-linear function which
+satisfies (5.3) for representations ρ1,2 of the subgroup K, a nonlinearity which is equivariant
+with respect to the induced representation IndG
+K can be constructed by point-wise action on
+G/K [11]. If f is defined on a semi-direct product group N o G, all these constructions can
+be extended by acting point-wise on N .
+A nonlinearity which is equivariant with respect to a subgroup K of a semi-direct product
+group G = K n N is given by the vector field nonlinearity defined in [41]. In the reference, it
+is constructed for the cyclic rotation group K = CN < SO(2) and the group of translations
+N = R2 in two dimensions, but we generalize it here to arbitrary semi-direct product groups.
+The vector field nonlinearity maps a function on G to a function on N and is equivariant with
+respect to representations πreg and π2 defined by
+[πreg(k ̃)f1](kn) = f1(k ̃−1kn) , (5.4)
+[π2(k ̃)f2](n) = ρ2(k ̃)f2(n) , (5.5)
+for some representation ρ2 of K. It reduces the domain of the feature map by taking the
+maximum over orbits of K, akin to a subgroup maxpooling operation. However, in order to
+retain some of the information contained in the K-dependence of the feature map, it multiplies
+the maximum with an argmax over orbits of K which is used to construct a feature vector
+transforming in the representation ρ2 of K. Its equivariance is shown in the proof of the
+following
+
+
+Geometric Deep Learning and Equivariant Neural Networks 42
+Proposition 5.3 (Vector field nonlinearity). The nonlinearity η : L2(K nN, V1) → L2(N, V2)
+defined by
+[η(f )](n) = max
+k∈K (f (kn))ρ2(argmax
+k∈K
+(f (kn)))v0 , (5.6)
+where v0 ∈ V2 is some reference point, satisfies the equivariance property
+η(πreg(k)f ) = π2(k)[η(f )] , ∀k ∈ K . (5.7)
+Proof. To verify the equivariance, we act with the πreg on f , yielding
+[η(πreg(k ̃)f )](n) = max
+k∈K (f (k ̃−1kn))ρ2(argmax
+k∈K
+(f (k ̃−1kn)))v0
+= max
+k∈K (f (kn))ρ2(k ̃ argmax
+k∈K
+(f (kn)))v0 (5.8)
+= ρ2(k ̃)[η(f )](n) ,
+where we used that the maximum is invariant and the argmax equivariant with respect to
+shifts.
+Example 5.4 (Two-dimensional roto-translations). Consider the special case G = CN n R2,
+v0 = (1, 0) and ρ2 the fundamental representation of CN in R2 which was discussed in [41],
+where the vector field nonlinearity was first developed. In this case, we will denote a feature
+map on CN n R2 by a function fθ(x) where θ ∈ CN and x ∈ R2. Then, the vector field
+nonlinearity is given by
+[η(f )](x) = max
+θ∈CN
+(fθ(x))
+(
+cos(argmaxθ∈CN fθ(x))
+sin(argmaxθ∈CN fθ(x))
+)
+, (5.9)
+illustrating the origin of its name.
+If the input- and output features transform in the same unitary transformation, i.e. ρ1 =
+ρ2 = ρ and ρ(g)ρ†(g) = id for all g ∈ G, then norm nonlinearities are a widely used special
+case of (5.2). These satisfy (5.3) and are defined as
+η ̄(f (x)) = α(||f (x)||) f (x) , (5.10)
+for any nonlinear function α : R → R. Examples for α used in the literature include
+sigmoid [10], relu [43, 27], shifted soft plus [37] and swish [1]. In [35], norm nonlinearities are
+used for matrix valued feature maps with || · || = Re(tr(·)) and α = relu. A further variation
+are gated nonlinearities [10, 45] which are of the form η ̄(f (x)) = σ(s(x)) f (x) with σ the
+sigmoid function and s(x) an additional scalar feature from the previous layer.
+Instead of point-wise nonlinearities in position space, nonlinearities in Fourier space
+have also been used. These circumvent the problem mentioned in Remark 5.2 and the
+resulting networks are therefore equivariant within numerical precision. E.g. [37] uses norm
+nonlinearities of the form (5.10) in Fourier space. However, the most important nonlinearity
+in this class are tensor product nonlinearities [38, 23] which compute the tensor product of
+two Fourier components of the input feature map. They yield a feature map transforming in
+the tensor product representation which is then decomposed into irreducible representations.
+To eschew the large tensors in this process, [24, 30] introduce various refinements of this basic
+idea.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 43
+Remark 5.5 (Universality). The Fourier-space analogue of a point-wise nonlinearity in position
+space is a nonlinearity which does not mix the different Fourier components, i.e. which is of
+the form
+[η(f )]` = η ̄(f `) . (5.11)
+This is the way that norm- and gated nonlinearities have been used in [37, 10, 45]. However, as
+pointed out in [45], these nonlinearities can dramatically reduce the approximation capacity
+of the resulting equivariant networks. This problem does not exist for tensor product
+nonlinearities.
+Subgroup pooling [16, 42, 67, 39, 40] with respect to a subgroup K of G can be seen as a
+nonlinearity which does not act point-wise on f , but on orbits of K in the domain of f ,
+η(f )(gK) = η ̄(f ({gk|k ∈ K})) . (5.12)
+This breaks the symmetry group of the network from G to G/K and yields a feature map
+defined on G/K. The function η ̄ is typically an average5 or maximum of the arguments.
+5.2. Semantic segmentation on S2. After having reviewed equivariant nonlinearities, we
+can now proceed to discuss concrete equivariant network architectures. For computer vision
+tasks such as semantic segmentation and object detection, the standard flat image space of Z2
+is a homogeneous space under translation and hence falls in the class of convolutions discussed
+in Section 3. The standard convolution (1.3) is, by (3.10), the natural Z2 equivariant layer in
+this context. Let’s now take the first concrete steps into a more complex example of how the
+equivariant structure on homogeneous spaces can be applied in a more interesting setup.
+Moving to the sphere S2 provides a simple example of a non-trivial homogeneous space as
+the input manifold. As detailed in (1.2), a semantic segmentation model can now be viewed
+as a map
+N : L2(S2, R3) → L2(S2, P (Ω)) , (5.13)
+where P (Ω) is the space of probability distributions over the N classes Ω. The output features
+transform as scalars under the group action on the input manifold. In the notation of (4.3)
+and (4.4), this means that X = Y = S2, V1 = R3 and V2 = RN. The symmetry group should
+act on the output space in the same way as on the input space, i.e. σ2 = σ1. Since the output
+class labels do not carry any directional information, we have ρ2 = idN.
+Viewed as a quotient space S2 = SO(3)/SO(2), the sphere is a homogeneous space where
+each point can be associated with a particular rotation. One possible parametrization would
+be in terms of latitude (θ) and longitude (φ), i.e. the latitude specifies the angular distance
+from the north pole whereas the longitude specifies the angular distance from a meridian.
+The corresponding convolution following from (3.13) can be formulated as an integral over
+S2 using this parametrization. In practice there are much more efficient formulations using
+the spectral structure on the sphere, see Section 6 for a treatment of how convolutions can be
+performed using a Fourier decomposition.
+5.3. Object detection on Z2. If we instead stay on Z2 as the input space but let the model
+output object detections we have a non-trivial example of where the output transforms under
+the group action and where equivariance of the full model becomes relevant.
+5Of course, the average is a linear operation.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 44
+fin : Z2 R3 (fin)c
+ij
+f2 : Z2 RN2 (f2)c
+ij
+f2′ : Z2 RN2 (f2′ )c
+ij
+fout : Z2 R2 ⊕ R3 (fout)c
+ij
+Φ1 first convolution
+relu activation
+Φ2 second convolution
+Figure 5.1. Simple object detection model. In the first row the name of the
+first feature map (i.e. input image) is given by fin, it maps the domain Z2
+to RGB values. It can be represented by a rank 3 tensor (fin)c
+ij. The first
+convolution maps fin to a new feature map f2 with N2 filters giving rise to
+another rank 3 tensor. The output is a feature map Z2 → R2 ⊕ R3, where
+an element in the co-domain takes the form (x, y, w, h, c). The first part in
+the co-domain R2, represents anchor point coordinates and transforms under
+translations. The second part R3 represents the dimensions of the bounding
+box together with a confidence score, both invariant under translations.
+Figure 5.2. Objects detected by bounding boxes. A bounding box is given
+by an anchor point (x, y) together with dimensions (w, h). Image from [9].
+Let us consider a single-stage object detection model that outputs a dense map Z2 →
+R2 ⊕ R3 of candidate detection in the form (x, y, w, h, c), where (x, y) ∈ R2 corresponds to the
+anchor point of an axis aligned bounding box with dimensions (w, h). The confidence score c
+(or binary classifier) corresponds to the probability of the bounding box containing an object.6
+Figure 5.2 illustrates how the anchor point together with the dimensions form a bounding box
+used to indicate a detection. The first subspace R2 in the co-domain, corresponding to anchor
+6The dense map of candidate detections is typically filtered based on the confidence score using a method such as non-maximum suppression.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 45
+point coordinates, is identified as continuous coordinates on the input space Z2 and transforms
+under translations.
+Starting from the same example architecture as the semantic segmentation model in
+Figure 1.1, the object detection model in Figure 5.1 ends with a feature map transforming
+in the fundamental representation of the translation group Z2. Note that since the detection
+problem is formulated as a regression task, which is usually implemented using models with
+floating point arithmetic, the output naturally takes values in R rather than Z.
+As introduced in (1.5), on Z2, the convolutions are discretized to
+f2(x, y) = Φ1(fin)(x, y) = [κ1 ? fin](x, y) =
+∑
+(x′,y′)∈Z2
+L(x,y)κ1(x′, y′)fin(x′, y′) , (5.14)
+where we have specified the first layer as an illustration (cf. Figure 5.1) and κ1 is the kernel.
+Concretely on [0, W ] × [0, H] ∈ Z2 with the feature map and kernel represented as rank 3
+tensors7 this takes the form
+(f2)c
+xy =
+∑
+(x′,y′)∈Z2
+2
+∑
+c=0
+κc
+(x′−x)(y′−y)(fin)c
+x′y′ . (5.15)
+The convolution in (5.14) is equivariant with respect to translations under Z2 as shown
+in (1.6). For the nonlinearity, we can choose any of the ones discussed in Section 5.1, e.g. a
+point-wise relu,
+(f ′
+2)c
+ij = relu ((f2)c
+ij
+) . (5.16)
+Thus the model is a G-equivariant network that respects the Z2 structure of the image
+plane. Note that in contrast to the case of semantic segmentation in Section 5.2 the output
+features here transforms under the group action. If the image is translated the corresponding
+anchor points for the detections should also be translated. This equivariance is built into
+the model rather than being learned from data, as would be the case in a standard object
+detection model.
+In the notation of (4.3) and (4.4) the input and output spaces are X = Y = Z2 with
+output feature maps taking values in V2 = R2 ⊕ R3. The symmetry group G = Z2 acts by
+σ(x′,y′)(x, y) = (x + x′, y + y′) on the input and output space and by ρ(x′,y′)(x, y, w, h, c) =
+(x + x′, y + y′, w, h, c) on V2.
+The output of this model in terms of anchor points and corresponding bounding box
+dimensions is one of many possible ways to formulate the object detection task. For
+equivariance under translations this representation makes it clear that it is the position of
+the bounding box that transforms with the translation group.
+If we instead are interested in a model that is equivariant with respect to rotations of the
+image plane it is instructive to regard a model that predicts bounding boxes that are not axis
+aligned. Let the output of the new model, as in Section 1, take values in V2 = R2 ⊕ R2 ⊕ R2
+where an element (a, v1, v2) corresponds to a bounding box with one corner at a and spanned
+by the parallelogram of v1 and v2. All three output vector spaces transform in the fundamental
+representation of SO(2) so that ρ2 = 2SO(2) ⊕ 2SO(2) ⊕ 2SO(2), cf. (4.5).
+7In the sense of multidimensional arrays.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 46
+6. Spherical convolutions
+In this section, we will investigate the spherical convolutions introduced in Example 4.8 in
+more detail. Mathematically, this case is particularly interesting, because on the sphere and
+on SO(3), we can leverage the power of the rich spectral theory on the sphere in terms of
+spherical harmonics and Wigner matrices to find explicit and compact expressions for the
+convolutions. Also for practical considerations, this case is of particular importance since
+data given on a sphere arises naturally in many applications, e.g. for fisheye cameras [3],
+cosmological data [6], weather data, molecular modeling [4] or diffusion MRI [5]. To faithfully
+represent this data, equivariant convolutions are essential.
+There is a sizable literature on equivariant spherical convolutions. The approach presented
+here follows [21] and extends the results in the reference at some points. An overview of the
+existing literature in the field can be found in Section 1.6.
+6.1. Preliminaries. For spherical CNNs, the input data has the form f : S2 → RN, i.e. the
+first layer of the network has X = S2. The networks discussed here are special cases of the
+GCNNs constructed in Section 3 for which the symmetry group G is the rotation group in
+three dimensions, SO(3) and the subgroup K is either SO(2) or trivial. In this framework, we
+identify S2 with the homogeneous space G/K = SO(3)/SO(2). The first layer of the network
+has trivial K in the output, i.e. Y = SO(3) and subsequent layers have trivial K also in the
+input, i.e. X = Y = SO(3). The latter case was already discussed in Example 4.8, leading to
+(4.19).
+For the first layer, SO(3) acts by the matrix-vector product on the input space, σ1(R)x =
+Rx and as usual by group multiplication on the output, σ2(R)Q = RQ. The construction in
+[21] uses in this case the identity element in Y = SO(3) to solve the kernel constraint, leading
+to
+(κ ? f )(R) =
+∫
+S2
+ρ2(R)κ(R−1x)ρ−1
+1 (R)f (x) dx , (6.1)
+cf. (4.24). The integration measure on the sphere is given by
+∫
+S2
+dx(θ, φ) =
+∫ 2π
+0
+dφ
+∫π
+0
+dθ sin θ . (6.2)
+Note that in (6.1) we perform the integral here over the input domain X and not the symmetry
+group G since we cannot replace the integral over X by an integral over G if we use a reference
+point in Y, as mentioned above.
+Remark 6.1 (Convolutions with X = Y = S2). At first, it might seem counter-intuitive that
+the feature maps in a spherical CNN have domain SO(3) instead of S2 after the first layer.
+Hence, it is instructive to study a convolutional integral with X = Y = S2 constructed using
+the techniques of Section 4. The action of SO(3) on S2 is as above by matrix-vector product.
+We next choose an arbitrary reference point x0 on the sphere and denote by Rx the rotation
+matrix which rotates x0 into x: Rxx0 = x. Following (4.16), we can then write the convolution
+as
+[κ ? f ](y) =
+∫
+X
+ρ2(Rx)κ(R−1
+x y)ρ−1
+1 (Rx)f (x) dx . (6.3)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 47
+However, the element Rx is not unique: If Q rotates around x0, Qx0 = x0, then RxQ also
+rotates x0 into x. In fact, the symmetry group splits into a semi-direct product SO(3) = N oH
+with H = SO(2) the stabilizer of x0 and N = SO(3)/H. This special case was considered in
+Section 4.4 and we can write (6.3) as
+[κ ? f ](y) =
+∫
+SO(3)/H
+ρ2(R)κ(R−1y)ρ−1
+1 (R)f (Rx0) dR . (6.4)
+According to (4.30), the kernel κ is now not unconstrained anymore but satisfies
+κ(Qy) = ρ2(Q)κ(y)ρ−1
+1 (Q) , (6.5)
+for Q ∈ H. In particular, if the input and output features transform like scalars, ρ1 =
+ρ2 = id, (6.5) implies that the kernel is invariant under rotations around x0, i.e. isotropic,
+as was noticed also in [63]. In practice, this isotropy decreases the expressibility of the layer
+considerably.
+6.2. Spherical convolutions and Fourier transforms. The Fourier decomposition on the
+sphere and on SO(3) is well studied and can be used to find compact explicit expressions for
+the integrals defined in the previous section. To simplify some expressions, we will assume in
+this and the following section that V1,2 are vector spaces over R, so in particular ρ1,2 are real
+representations.
+A square-integrable function f : S2 → Rc can be decomposed into the spherical harmonics
+Ym` via
+f (x) =
+∞
+∑
+`=0
+`
+∑
+m=−`
+fˆ`
+mY `
+m(x) , (6.6)
+with Fourier coefficients
+fˆ`
+m=
+∫
+S2
+f (x)Ym` (x) dx , (6.7)
+since the spherical harmonics form a complete orthogonal set,
+∞
+∑
+`=0
+`
+∑
+m=−`
+Ym` (x)Y `
+m(y) = δ(x − y) , (6.8)
+∫
+S2
+Ym`11 (x)Ym`22 (x) dx = δ`1`2 δm1m2 . (6.9)
+For later convenience, we also note the following property of spherical harmonics:
+Ym` (x) = (−1)`Y `
+−m(x) . (6.10)
+In practice, one truncates the sum over ` at some finite L, the bandwidth, obtaining an
+approximation of f .
+Similarly, a square-integrable function f : SO(3) → Rc can be decomposed into Wigner
+D-matrices D`mn(R) (for a comprehensive review, see [68]) via
+f (R) =
+∞
+∑
+`=0
+`
+∑
+m,n=−`
+fˆ`
+mnD`
+mn(R) , (6.11)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 48
+with Fourier coefficients
+fˆ`
+mn = 2` + 1
+8π2
+∫
+SO(3)
+f (R)D`mn(R) dR , (6.12)
+since the Wigner matrices satisfy the orthogonality and completeness relations
+∫
+SO(3)
+D`m11n1 (R)D`m22n2 (R) dR = 8π2
+2`1 + 1 δ`1`2 δm1m2 δn1n2 (6.13)
+∞
+∑
+`=0
+`
+∑
+m,n=−`
+D`mn(Q)D`
+mn(R) = 8π2
+2` + 1 δ(R − Q) . (6.14)
+Furthermore, the Wigner D-matrices form a unitary representation of SO(3) since they satisfy
+D`
+mn(QR) =
+`
+∑
+p=−`
+D`
+mp(Q)D`
+pn(R) , (6.15)
+D`
+mn(R−1) = (D`
+mn(R))−1 = (D`
+mn(R))† = D`nm(R) . (6.16)
+Note furthermore that
+D`mn(R) = (−1)n−mD`
+−m,−n(R) . (6.17)
+The regular representation of SO(3) on spherical harmonics of order ` is given by the
+corresponding Wigner matrices:
+Y`
+m(Rx) =
+`
+∑
+n=−`
+D`mn(R)Y `
+n (x) . (6.18)
+A product of two Wigner matrices is given in terms of the Clebsch–Gordan coefficients
+CJM
+`1m1;`2m2 by
+D`m11n1 (R)D`m22n2 (R) =
+`1+`2
+∑
+J =|`1 −`2 |
+J
+∑
+M,N =−J
+CJM
+`1m1;`2m2 C JN
+`1n1;`2n2 DJ
+MN (R) . (6.19)
+We will now use these decompositions to write the convolutions (6.1) and (4.19) in the
+Fourier domain. To this end, we use Greek letters to index vectors in the spaces V1 and V2 in
+which the feature maps take values.
+Proposition 6.2. The Fourier transform of the spherical convolution (6.1) with X = S2 and
+Y = SO(3) is given by
+[( ̂κ ? f )μ]`
+mn =
+dim V2
+∑
+ν=1
+dim V1
+∑
+σ,τ =1
+∞
+∑
+`i=0
+i=1,2,3
+`i
+∑
+mi,ni=−`i i=1,2,3
+`2+`1
+∑
+J =|`2 −`1 |
+J
+∑
+M,N =−J
+CJM
+`2m2;`1n1 C JN
+`2 n2 ;`1 m1
+C `m
+JM ;`3m3 C`n
+J N ;`3n3
+(̂ ρ2,μν )`2
+m2 n2
+(̂ κνσ)`1
+m1 ̂ρ1,στ
+`3 n3 m3
+̂(fτ )`1
+n1 . (6.20)
+For ρ1 = ρ2 = id, (6.20) simplifies to
+[(̂ κ ? f )μ]`
+mn =
+dim V1
+∑
+ν=1
+(
+̂κμν )`
+n( ̂fν )`m . (6.21)
+A similar calculation can be performed for input features in SO(3) as detailed by the following
+proposition.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 49
+Proposition 6.3. The Fourier transform of the spherical convolution (4.19) with X = Y =
+SO(3) can be written in the Fourier domain as
+[(̂ κ ? f )]`
+mn = 8π2
+2` + 1
+`
+∑
+p=−`
+∞
+∑
+`i=0
+i=1,2,3
+`i
+∑
+mi,ni=−`i i=1,2,3
+`1+`2
+∑
+J =|`1 −`2 |
+J
+∑
+M,N =−J
+CJM
+`1m1;`2m2 C JN
+`1 n1 ;`2 n2
+C `m
+JM ;`3m3 C`p
+JN ;`3n3 ̂ρ2`m11n1 · ̂κ`
+pn · ̂ρ1`n22m2 · ̂f `m33n3 . (6.22)
+Here, the dot · denotes matrix multiplication in V1,2, as spelled out in (6.20).
+For ρ1 = ρ2 = id (6.22) becomes
+[(̂ κ ? f )]`
+mn = 8π2
+2` + 1
+`
+∑
+p=−`
+̂κ`
+pn · ̂f `
+mp . (6.23)
+Note that in all these expressions, the Fourier transform is done component wise with respect
+to the indices in V1,2.
+6.3. Decomposition into irreducible representations. An immediate simplification of
+(6.20) and (6.22) can be achieved by decomposing ρ1,2 into irreps of SO(3) which are given
+by the Wigner matrices DL,
+ρ(R) =
+⊕
+λ
+⊕
+μ
+Dλ(R) , (6.24)
+where μ counts the multiplicity of Dλ in ρ. Correspondingly, the spaces V1,2 are decomposed
+according to V1,2 = ⊕
+λ
+⊕
+μ V λμ
+1,2 , where V λμ
+1,2 = R2λ+1. The feature maps then carry indices
+fνλμ with λ = 0, . . . , ∞, μ = 1, . . . , ∞, ν = −λ, . . . , λ with only finitely many non-zero
+components. Using this decomposition of V1,2 the convolution (6.1) is given by
+(κ ? f )λμ
+ν (R) =
+λ
+∑
+ρ=−λ
+∞
+∑
+θ=0
+∞
+∑
+σ=1
+θ
+∑
+τ,π=−θ
+∫
+S2
+Dλ
+νρ(R)κλμ;θσ
+ρ;τ (R−1x)Dθ
+τ π(R−1)f θσ
+π (x) dx . (6.25)
+By plugging these expressions for ρ1,2, κ and f into (6.20), we obtain the following proposition.
+Proposition 6.4. The decomposition of (6.20) into representation spaces of irreducible
+representations of SO(3) is given by
+[(κ̂ ? f )νλμ]`
+mn =
+λ
+∑
+ρ=−λ
+∞
+∑
+θ=0
+∞
+∑
+σ=1
+θ
+∑
+τ,π=−θ
+∞
+∑
+j=0
+`i
+∑
+q,r=−j
+`2+j
+∑
+J =|`2 −j |
+J
+∑
+M,N =−J
+CJM
+λν ;j r C J N
+λρ;jq
+C `m
+JM ;θτ C`n
+JN;θπ( ̂κλμ;θσ
+ρ;τ )j
+q(̂fπθσ)jr . (6.26)
+Similarly, (6.22) decomposes according to
+((κ̂ ? f )νλμ)`
+mn = 8π2
+2` + 1
+λ
+∑
+ρ=−λ
+∞
+∑
+θ=0
+∞
+∑
+σ=1
+θ
+∑
+τ,π=−θ
+`
+∑
+p=−`
+∞
+∑
+j=0
+j
+∑
+q,r=−j
+λ+σ
+∑
+J =|λ−σ|
+J
+∑
+M,N =−J
+CJM
+λν;θτ CJN
+λρ;θπ
+C `m
+JM ;jqC`p
+JN;jr( ̂κλμ;θσ
+ρ;τ )`
+pn (̂fπθσ )j
+qr . (6.27)
+
+
+Geometric Deep Learning and Equivariant Neural Networks 50
+In these expressions, the Fourier transform of the convolution is given entirely in terms of
+the Fourier transforms of the kernel and the input feature map, as well as Clebsch–Gordan
+coefficients. In particular, Fourier transforms of the representation matrices ρ1,2 are trivial in
+this decomposition of the spaces V1 and V2.
+6.4. Output features in SE(3). As an example of a possible application of the techniques
+presented in this section, consider the problem of 3D object detection in pictures taken by
+fisheye cameras. These cameras have a spherical image plane and therefore, the components
+of the input feature map f transform as scalars under the regular representation (cf. (4.3)):
+[π1(R)f ](x) = f (R−1x) . (6.28)
+Since this is the transformation property considered in the context of spherical CNNs, the
+entire network can be built using the layers discussed in this section.
+As detailed in Section 5.3, for object detection, we want to identify the class, physical size,
+position and orientation for each object in the image. This can be realized by associating to
+each pixel in the output picture (which is often of lower resolution than the input) a class
+probability vector p ∈ P (Ω), a size vector s ∈ R3 containing height, width and depth of the
+object, a position vector x ∈ R3 and an orientation given by a matrix Q ∈ SO(3). Here, P (Ω)
+is the space of probability distributions in N classes as in (1.2). In the framework outlined
+above, this means that the output feature map takes values in P (Ω) ⊕ R3 ⊕ R3 ⊕ SO(3).
+If the fisheye camera rotates by R ∈ SO(3), the output features have to transform
+accordingly. In particular, since the classification and the size of the object do not depend on
+the rotation, p transforms as N scalars and s transforms as three scalars:
+ρ2(R)p = p, ρ2(R)s = s , (6.29)
+where we used the notation introduced in (4.4). The position vector x on the other hand
+transforms in the fundamental representation of SO(3)
+ρ2(R)x = R · x . (6.30)
+Finally, the rotation matrix Q transforms by a similarity transformation
+ρ2(R)Q = R · Q · RT . (6.31)
+As described above for the general case, the transformation property (6.29)–(6.31) of the
+output feature map can be decomposed into a direct sum of irreducible representations,
+labeled by an integer `. The scalar transformations of (6.29) are N + 3 copies of the ` = 0
+representation and the fundamental representation in (6.30) is the ` = 1 representation. To
+decompose the similarity transformation in (6.31), we use the following
+Proposition 6.5. Let A, B, C be arbitrary matrices and vec(M ) denote the concatenation
+of the rows of the matrix M . Then,
+vec(A · B · C) = (A ⊗ CT ) · vec(B) . (6.32)
+With this, we obtain for (6.31)
+ρ2(R) vec(Q) = (R ⊗ R) · vec(Q) , (6.33)
+i.e. Q transforms with the tensor product of two fundamental representations. According to
+(6.19), this tensor product decomposes into a direct sum of one ` = 0, one ` = 1 and one ` = 2
+
+
+Geometric Deep Learning and Equivariant Neural Networks 51
+representation. In total, the final layer of the network will therefore have (in the notation
+introduced below (6.24)) λ = 0, 1, 2, ν = −λ, . . . , λ and μ = 1, . . . , N + 4 for λ = 0, μ = 1, 2
+for λ = 1 and μ = 1 for λ = 2.
+Note that the transformation properties (6.29)–(6.31) of the output feature map are
+independent of the transformation properties of the input feature map. We have restricted
+the discussion here to fisheye cameras since, as stated above, these can be realized by the
+spherical convolutions considered in this section. For pinhole cameras on the other hand, the
+representation π1 acting on the input features will be a complicated non-linear transformation
+arising from the projection of the transformation in 3D space onto the flat image plane.
+Working out the details of this representation is an interesting direction for further research.
+6.5. SE(3) equivariant networks. The same decomposition of V1,2 into representation
+spaces of irreducible representations of SO(3), which was used in Section 6.3 can also be
+used to solve the kernel constraint (4.32) for equivariant networks of SE(3), as discussed in
+[10]. In this section, we review this construction.
+In the decomposition into irreps, the kernel constraint (4.32) reads
+κλμ;θσ
+ρ;τ (Ry) =
+λ
+∑
+ν=−λ
+θ
+∑
+π=−θ
+Dλ
+ρν (R) κλμ;θσ
+ν;π (y) Dθ
+πτ (R−1) . (6.34)
+In the following, we will use · to denote matrix multiplication in ρ, ν, π, τ and drop the
+multiplicity indices μ, σ since (6.34) is a component-wise equation with respect to the
+multiplicity.
+On the right-hand side of (6.34), SO(3) acts in a tensor product representation on the
+kernel. To make this explicit, we use the vectorization (6.32) and the unitarity of the Wigner
+matrices to rewrite (6.34) into8
+vec(κλθ(Ry)) = (Dλ(R) ⊗ Dθ(R)) · vec(κλθ(y)) . (6.35)
+Using (6.17) and (6.19), we can decompose the tensor product of the two Wigner matrices into
+a direct sum of Wigner matrices DJ with J = |λ − θ|, . . . , λ + θ. Performing the corresponding
+change of basis for vec(κλθ) leads to components vec(κλθ;J ) on which the constraint takes the
+form
+vec(κλθ;J (Ry)) = DJ (R) · vec(κλθ;J (y)) . (6.36)
+According to (6.10) and (6.18), the spherical harmonics Ym` solve this constraint and they in
+fact span the space of solutions with respect to the angular dependence of κλθ,J . Therefore,
+a general solution of (6.36) has the form
+vec(κλθ;J (y)) =
+∑
+k
+J
+∑
+m=−J
+wλθ;J
+k,m φk(||y||)Y J
+m(y) , (6.37)
+with radial basis functions φk and (trainable) coefficients w.
+As an example of an application of group equivariant network architectures, we considered
+spherical CNNs in this section, which are of great practical importance. Spherical convolutions
+serve as a good example of the Fourier perspective on group equivariant convolutions since
+8Note that there is a typo in the corresponding equation (13) in [10], where the complex conjugation is missing.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 52
+the spectral theory on the sphere and rotation group SO(3) is well-understood. Consequently,
+in Proposition 6.4, we could give explicit, yet completely general expressions for spherical
+convolutions for feature maps transforming in arbitrary representations of SO(3), given just
+in terms of Clebsch–Gordan coefficients.
+In principle, such expressions could be derived for a large class of symmetry groups. The
+foundation of this generalization was laid in [44], where it was shown how the kernel constraint
+for any compact symmetry group can be solved in terms of well-known representation
+theoretic quantities. In position space, algorithms already exist which can solve the symmetry
+constraint and generate equivariant architectures automatically [45].
+7. Conclusions
+In this paper we have reviewed the recent developments in geometric deep learning and
+presented a coherent mathematical framework for equivariant neural networks. In the process
+we have also developed the theory in various directions, in an attempt to make it more coherent
+and emphasize the geometric perspective on equivariance.
+Throughout the paper we have used the examples of equivariant semantic segmentation
+and object detection networks to illustrate equivariant CNNs. In particular, in Section 6.4
+we showed that in rotation-equivariant object detection using fisheye cameras, the input
+features transform as scalars with respect to the regular representation of R ∈ SO(3), while
+the output features take values in SE(3). It would be very interesting to generalize this to
+object detection that is equivariant with respect to SE(3) instead of SO(3). In this case,
+we would add translations of the two-dimensional image plane R2 ⊂ R3 and so the regular
+representation of SE(3) needs to be projected onto the image plane. For instance, translations
+which change the distance of the object to the image plane will be projected to scalings. If
+this is extended to pinhole cameras, the resulting group action will be highly non-linear.
+Yet another interesting open problem is the development of an unsupervised theory of
+deep learning on manifolds. This would require to develop a formalism of group equivariant
+generative networks. For example, one would like to construct group equivariant versions of
+variational autoencoders, deep Boltzmann machines and GANs (see e.g. [69]).
+As we have emphasized in this work, the feature maps in gauge equivariant CNNs can be
+viewed as sections of principal (frame) bundles, which are generally called fields in theoretical
+physics. The basic building blocks of these theories are special sections corresponding to
+irreducible representations of the gauge group; these are the elementary particles of Nature.
+It is tantalizing to speculate that this notion could also play a key role in deep learning, in the
+sense that a neural network gradually learns more and more complex feature representations
+which are built from “elementary feature types” arising from irreducible representations of the
+equivariance group.
+The concept of equivariance to symmetries has been a guiding design principle for
+theoretical physics throughout the past century. The standard model of particle physics and
+the general theory of relativity provide prime examples of this. In physics, the fundamental
+role of symmetries is related to the fact that to every (continuous) symmetry is associated
+through Noether’s theorem a conserved physical quantity. For example, equivariance with
+respect to time translations corresponds to conservation of energy during the evolution
+of a physical system. It is interesting to speculate that equivariance to global and local
+
+
+Geometric Deep Learning and Equivariant Neural Networks 53
+symmetries may play similar key roles in building neural network architectures, and that the
+associated conserved quantities can be used to understand the dynamics of the evolution of
+the network during training. Steps in this direction have been taken to examine and interpret
+the symmetries and conserved quantities associated to different gradient methods and data
+augmentation during the training of neural networks [70]. In the application of neural networks
+to model physical systems, several authors have also constructed equivariant (or invariant)
+models by incorporating equations of motion - in either the Hamiltonian or Lagrangian
+formulation of classical mechanics - to accommodate the learning of system dynamics and
+conservation laws [71, 72, 73]. Along these lines, it would be very interesting to look for the
+general analogue of Noether’s theorem in equivariant neural networks, and understand the
+importance of the corresponding conserved quantities for the dynamics of machine learning.
+We hope we have convinced the reader that geometric deep learning is an exciting
+research field with interesting connections to both mathematics and physics, as well as a
+host of promising applications in artificial intelligence, ranging from autonomous driving to
+biomedicine. Although a huge amount of progress has been made, it is fair to say that the
+field is still in its infancy. In particular, there is a need for a more foundational understanding
+of the underlying mathematical structures of neural networks in general, and equivariant
+neural networks in particular. It is our hope that this paper may serve as a bridge connecting
+mathematics with deep learning, and will provide seeds for fruitful interactions across the
+fields of machine learning, mathematics and theoretical physics.
+Acknowledgments
+We are grateful to Oleksandr Balabanov, Robert Berman, Mats Granath, Carl-Joar Karlsson,
+Klas Modin, David Müller and Christopher Zach for helpful discussions. The work of D.P.,
+J.A. and O.C. is supported by the Wallenberg AI, Autonomous Systems and Software Program
+(WASP) funded by the Knut and Alice Wallenberg Foundation. D.P. and J.G. are supported
+by the Swedish Research Council, J.G. is also supported by the Knut and Alice Wallenberg
+Foundation.
+References
+[1] P. Müller, V. Golkov, V. Tomassini, and D. Cremers, “Rotation-Equivariant Deep Learning for Diffusion
+MRI,” arXiv:2102.06942.
+[2] B. Elesedy and S. Zaidi, “Provably Strict Generalisation Benefit for Equivariant Models,”
+arXiv:2102.10333.
+[3] B. Coors, A. P. Condurache, and A. Geiger, “SphereNet: Learning spherical representations for detection and classification in omnidirectional images,” in Computer Vision – ECCV 2018, V. Ferrari, M. Hebert, C. Sminchisescu, and Y. Weiss, eds., pp. 525–541. Springer International Publishing, Cham, 2018. [4] W. Boomsma and J. Frellsen, “Spherical convolutions and their application in molecular modelling,” in Advances in Neural Information Processing Systems, I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, eds., vol. 30, pp. 3433–3443. Curran Associates, Inc., 2017.
+https:
+//proceedings.neurips.cc/paper/2017/file/1113d7a76ffceca1bb350bfe145467c6-Paper.pdf. [5] A. Elaldi, N. Dey, H. Kim, and G. Gerig, “Equivariant Spherical Deconvolution: Learning Sparse Orientation Distribution Functions from Spherical Data,” arXiv:2102.09462.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 54
+[6] N. Perraudin, M. Defferrard, T. Kacprzak, and R. Sgier, “DeepSphere: Efficient spherical Convolutional Neural Network with HEALPix sampling for cosmological applications,” Astronomy and Computing 27
+130–146, arXiv:1810.12186.
+[7] M. M. Bronstein, J. Bruna, Y. LeCun, A. Szlam, and P. Vandergheynst, “Geometric Deep Learning: Going beyond Euclidean data,”IEEE Signal Processing Magazine 34 (July, 2017) 18–42,
+arXiv:1611.08097.
+[8] M. M. Bronstein, J. Bruna, T. Cohen, and P. Veličković, “Geometric Deep Learning: Grids, Groups, Graphs, Geodesics, and Gauges,” arXiv:2104.13478. [9] M. Cordts, M. Omran, S. Ramos, T. Rehfeld, M. Enzweiler, R. Benenson, U. Franke, S. Roth, and B. Schiele, “The cityscapes dataset for semantic urban scene understanding,” in Proc. of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR). 2016.
+[10] M. Weiler, M. Geiger, M. Welling, W. Boomsma, and T. Cohen, “3D Steerable CNNs: Learning Rotationally Equivariant Features in Volumetric Data,” in Proceedings of the 32nd International
+Conference on Neural Information Processing Systems, NIPS’18, p. 10402–10413. Curran Associates Inc., Red Hook, NY, USA, 2018. arXiv:1807.02547. [11] M. Weiler and G. Cesa, “General E(2)-Equivariant Steerable CNNs,” in Advances in Neural Information Processing Systems, H. Wallach, H. Larochelle, A. Beygelzimer, F. d'Alché-Buc, E. Fox, and R. Garnett, eds., vol. 32. Curran Associates, Inc., 2019. arXiv:1911.08251. [12] T. S. Cohen, M. Weiler, B. Kicanaoglu, and M. Welling, “Gauge Equivariant Convolutional Networks and the Icosahedral CNN,” in Proceedings of the 36th International Conference on Machine Learning, K. Chaudhuri and R. Salakhutdinov, eds., vol. 97 of Proceedings of Machine Learning Research, pp. 1321–1330. PMLR, 09–15 Jun, 2019. arXiv:1902.04615. [13] M. C. N. Cheng, V. Anagiannis, M. Weiler, P. de Haan, T. S. Cohen, and M. Welling, “Covariance in Physics and Convolutional Neural Networks,” arXiv:1906.02481. [14] T. Cohen, M. Geiger, and M. Weiler, “A General Theory of Equivariant CNNs on Homogeneous Spaces,” in Advances in Neural Information Processing Systems, H. Wallach, H. Larochelle, A. Beygelzimer,
+F. d'Alché-Buc, E. Fox, and R. Garnett, eds., vol. 32. Curran Associates, Inc., 2019. arXiv:1811.02017. [15] J. Aronsson, “Homogeneous vector bundles and G-equivariant Convolutional Neural Networks,”
+arXiv:arXiv:2105.05400.
+[16] T. S. Cohen and M. Welling, “Group Equivariant Convolutional Networks,” in Proceedings of The 33rd International Conference on Machine Learning, M. F. Balcan and K. Q. Weinberger, eds., vol. 48 of Proceedings of Machine Learning Research, pp. 2990–2999. PMLR, New York, New York, USA, 20–22
+Jun, 2016. arXiv:1602.07576.
+[17] R. Kondor and S. Trivedi, “On the Generalization of Equivariance and Convolution in Neural Networks to the Action of Compact Groups,” in Proceedings of the 35th International Conference on Machine
+Learning, J. Dy and A. Krause, eds., vol. 80 of Proceedings of Machine Learning Research, pp. 2747–2755. PMLR, 10–15 Jul, 2018. arXiv:1802.03690. [18] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. Kaiser, and I. Polosukhin, “Attention Is All You Need,” in Proceedings of the 31st International Conference on Neural Information Processing Systems, NIPS’17, p. 6000–6010. Curran Associates Inc., Red Hook, NY, USA, 2017.
+arXiv:1706.03762.
+[19] D. W. Romero, E. J. Bekkers, J. M. Tomczak, and M. Hoogendoorn, “Attentive Group Equivariant Convolutional Networks,” in Proceedings of the 37th International Conference on Machine Learning, H. D. III and A. Singh, eds., vol. 119 of Proceedings of Machine Learning Research, pp. 8188–8199. PMLR, 13–18 Jul, 2020. arXiv:2002.03830. [20] V. G. Satorras, E. Hoogeboom, F. B. Fuchs, I. Posner, and M. Welling, “E(n) Equivariant Normalizing Flows for Molecule Generation in 3D,” arXiv:2105.09016. [21] T. S. Cohen, M. Geiger, J. Köhler, and M. Welling, “Spherical CNNs,” in International Conference on Learning Representations. 2018. arXiv:1801.10130.
+[22] C. Toft, G. Bökman, and F. Kahl, “Azimuthal rotational equivariance in spherical cnns,”.
+https://openreview.net/forum?id=sp3Z1jiS2vn.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 55
+[23] R. Kondor, Z. Lin, and S. Trivedi, “Clebsch-Gordan Nets: A Fully Fourier Space Spherical
+Convolutional Neural Network,” in Advances in Neural Information Processing Systems, S. Bengio, H. Wallach, H. Larochelle, K. Grauman, N. Cesa-Bianchi, and R. Garnett, eds., vol. 31. Curran Associates, Inc., Nov., 2018. arXiv:1806.09231. [24] O. J. Cobb, C. G. R. Wallis, A. N. Mavor-Parker, A. Marignier, M. A. Price, M. d’Avezac, and J. D. McEwen, “Efficient Generalized Spherical CNNs,” arXiv:2010.11661. [25] C. Esteves, C. Allen-Blanchette, A. Makadia, and K. Daniilidis, “Learning SO(3) Equivariant
+Representations with Spherical CNNs,” in Proceedings of the European Conference on Computer Vision
+(ECCV), pp. 52–68. 2018. arXiv:1711.06721.
+[26] M. Defferrard, M. Milani, F. Gusset, and N. Perraudin, “DeepSphere: A graph-based spherical CNN,” in International Conference on Learning Representations. 2020. arXiv:2012.15000.
+[27] C. Esteves, A. Makadia, and K. Daniilidis, “Spin-Weighted Spherical CNNs,” in Advances in Neural Information Processing Systems, H. Larochelle, M. Ranzato, R. Hadsell, M. F. Balcan, and H. Lin, eds., vol. 33, pp. 8614–8625. Curran Associates, Inc., Oct., 2020. arXiv:2006.10731. [28] C. M. Jiang, J. Huang, K. Kashinath, Prabhat, P. Marcus, and M. Niessner, “Spherical CNNs on Unstructured Grids,” in International Conference on Learning Representations. Sept., 2018.
+[29] Z. Shen, T. Shen, Z. Lin, and J. Ma, “PDO-eS2CNNs: Partial Differential Operator Based Equivariant Spherical CNNs,” arXiv:2104.03584.
+[30] J. D. McEwen, C. G. R. Wallis, and A. N. Mavor-Parker, “Scattering Networks on the Sphere for Scalable and Rotationally Equivariant Spherical CNNs,” arXiv:2102.02828. [31] Y.-C. Su and K. Grauman, “Learning spherical convolution for fast features from 360° Imagery,” in
+Advances in Neural Information Processing Systems, I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, eds., vol. 30. Curran Associates, Inc., 2017.
+arXiv:1708.00919.
+[32] R. Monroy, S. Lutz, T. Chalasani, and A. Smolic, “SalNet360: Saliency maps for omni-directional images with CNN,”Signal Processing: Image Communication 69 (Nov., 2018) 26–34.
+[33] P. de Haan, M. Weiler, T. Cohen, and M. Welling, “Gauge Equivariant Mesh CNNs: Anisotropic convolutions on geometric graphs,” arXiv:2003.05425. [34] R. Wiersma, E. Eisemann, and K. Hildebrandt, “CNNs on Surfaces using Rotation-Equivariant Features,”ACM Trans. Graph. 39 (July, 2020) , arXiv:2006.01570.
+https://doi.org/10.1145/3386569.3392437.
+[35] M. Favoni, A. Ipp, D. I. Müller, and D. Schuh, “Lattice gauge equivariant convolutional neural
+networks,” arXiv:2012.12901.
+[36] D. Luo, G. Carleo, B. K. Clark, and J. Stokes, “Gauge equivariant neural networks for quantum lattice gauge theories,” arXiv:2012.05232.
+[37] N. Thomas, T. Smidt, S. Kearnes, L. Yang, L. Li, K. Kohlhoff, and P. Riley, “Tensor field networks: Rotation- and translation-equivariant neural networks for 3D point clouds,” arXiv:1802.08219. [38] R. Kondor, “N-body Networks: A Covariant Hierarchical Neural Network Architecture for Learning Atomic Potentials,” arXiv:1803.01588. [39] D. Worrall and G. Brostow, “CubeNet: Equivariance to 3D Rotation and Translation,” in Proceedings of the European Conference on Computer Vision (ECCV), pp. 567–584. 2018. arXiv:1804.04458. [40] M. Winkels and T. S. Cohen, “3D G-CNNs for Pulmonary Nodule Detection,” in International conference on Medical Imaging with Deep Learning. Apr., 2018. arXiv:1804.04656.
+[41] D. Marcos, M. Volpi, N. Komodakis, and D. Tuia, “Rotation Equivariant Vector Field Networks,” in 2017 IEEE International Conference on Computer Vision (ICCV), pp. 5058–5067. Oct., 2017.
+[42] M. Weiler, F. A. Hamprecht, and M. Storath, “Learning Steerable Filters for Rotation Equivariant CNNs,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pp. 849–858. 2018. arXiv:1711.07289. [43] D. E. Worrall, S. J. Garbin, D. Turmukhambetov, and G. J. Brostow, “Harmonic Networks: Deep
+Translation and Rotation Equivariance,” in 2017 IEEE Conference on Computer Vision and Pattern
+Recognition (CVPR), pp. 7168–7177. July, 2017. arXiv:1612.04642.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 56
+[44] L. Lang and M. Weiler, “A Wigner-Eckart Theorem for Group Equivariant Convolution Kernels,”
+arXiv:2010.10952.
+[45] M. Finzi, M. Welling, and A. G. Wilson, “A Practical Method for Constructing Equivariant Multilayer Perceptrons for Arbitrary Matrix Groups,” arXiv:2104.09459. [46] C. Esteves, “Theoretical Aspects of Group Equivariant Neural Networks,” arXiv:2004.05154.
+[47] M. Hamilton, Mathematical Gauge Theory: With Applications to the Standard Model of Particle Physics. Universitext. Springer International Publishing, 2017. [48] M. Nakahara, Geometry, Topology and Physics. CRC Press, Bristol ; Philadelphia, 2 edition ed., June, 2003. [49] I. Kolar, P. W. Michor, and J. Slovak, Natural Operations in Differential Geometry. Springer, 1993rd edition ed., 1993. [50] A. Marsh, “Gauge Theories and Fiber Bundles: Definitions, Pictures, and Results,” arXiv:1607.03089. [51] S. Melzi, R. Spezialetti, F. Tombari, M. M. Bronstein, L. D. Stefano, and E. Rodola, “GFrames: Gradient-Based Local Reference Frame for 3D Shape Matching,” in 2019 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pp. 4629–4638. 2019. [52] P. Albin, “Linear Analysis on Manifolds.”
+https://faculty.math.illinois.edu/~palbin/AnalysisOnMfds/LectureNotes.pdf. [53] J. M. Lee, Introduction to Smooth Manifolds. Springer, 2013.
+[54] G. B. Folland, A course in abstract harmonic analysis. CRC press, 2016.
+[55] H. Führ, Abstract harmonic analysis of continuous wavelet transforms. Springer Science & Business Media, 2005. [56] N. Steenrod, The topology of fibre bundles. Princeton university press, 1999. [57] N. R. Wallach, Harmonic analysis on homogeneous spaces. Courier Dover Publications, 2018. [58] A. Deitmar and S. Echterhoff, Principles of harmonic analysis. Springer, 2014. [59] R. Howard, “Analysis on homogeneous spaces.”
+https://people.math.sc.edu/howard/Notes/harmonic.pdf, 1994. Accessed May 27, 2021. [60] L. Santaló, Integral geometry and geometric probability. Cambridge university press, 2004. [61] E. Kaniuth and K. F. Taylor, Induced representations of locally compact groups. Cambridge University Press, 2013. [62] T. S. Cohen, M. Geiger, and M. Weiler, “Intertwiners between Induced Representations (with Applications to the Theory of Equivariant Neural Networks),” arXiv:1803.10743. [63] A. Makadia, C. Geyer, and K. Daniilidis, “Correspondence-free Structure from Motion,” International Journal of Computer Vision 75 no. 3, 311–327.
+[64] J. Fox, B. Zhao, S. Rajamanickam, R. Ramprasad, and L. Song, “Concentric Spherical GNN for 3D Representation Learning,” arXiv:2103.10484. [65] S. Dieleman, J. D. Fauw, and K. Kavukcuoglu, “Exploiting Cyclic Symmetry in Convolutional Neural Networks,” in International Conference on Machine Learning, pp. 1889–1898. PMLR, 2016.
+arXiv:1602.02660.
+[66] E. Hoogeboom, J. W. Peters, T. S. Cohen, and M. Welling, “HexaConv,” in International Conference on Learning Representations. 2018. arXiv:1803.02108.
+[67] E. J. Bekkers, M. W. Lafarge, M. Veta, K. A. J. Eppenhof, J. P. W. Pluim, and R. Duits, “Roto-Translation Covariant Convolutional Networks for Medical Image Analysis,” in Medical Image Computing and Computer Assisted Intervention – MICCAI 2018, A. F. Frangi, J. A. Schnabel, C. Davatzikos, C. Alberola-López, and G. Fichtinger, eds., Lecture Notes in Computer Science, pp. 440–448. Springer International Publishing, 2018. [68] D. A. Varshalovich, A. N. Moskalev, and V. K. Khersonskii, Quantum Theory of Angular Momentum. WORLD SCIENTIFIC, oct, 1988. [69] N. Dey, A. Chen, and S. Ghafurian, “Group Equivariant Generative Adversarial Networks,” in International Conference on Learning Representations. May, 2021. arXiv:2005.01683. [70] G. Głuch and R. Urbanke, “Noether: The more things change, the more stay the same,”
+arXiv:2104.05508.
+
+
+Geometric Deep Learning and Equivariant Neural Networks 57
+[71] S. Greydanus, M. Dzamba, and J. Yosinski, “Hamiltonian neural networks,” in Proceedings of the
+Conference on Neural Information Processing Systems - NeurIPS 2019. June, 2019. arXiv:1906.01563. [72] P. Toth, D. J. Rezende, A. Jaegle, S. Racanière, A. Botev, and I. Higgins, “Hamiltonian generative networks,” in International Conference on Learning Representations. 2020. arXiv:1909.13789. [73] M. Cranmer, S. Greydanus, S. Hoyer, P. Battaglia, D. Spergel, and S. Ho, “Lagrangian neural
+networks,” in Proceedings of the International Conference on Learning Representations - ICLR 2020.
+March, 2020. arXiv:2003.04630.

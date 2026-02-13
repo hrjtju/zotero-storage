@@ -1,0 +1,1498 @@
+Published as a conference paper at ICLR 2021
+HYPERBOLIC NEURAL NETWORKS++
+Ryohei Shimizu1, Yusuke Mukuta1,2, Tatsuya Harada1,2 1The University of Tokyo 2RIKEN AIP
+{shimizu, mukuta, harada}@mi.t.u-tokyo.ac.jp
+ABSTRACT
+Hyperbolic spaces, which have the capacity to embed tree structures without distortion owing to their exponential volume growth, have recently been applied to machine learning to better capture the hierarchical nature of data. In this study, we generalize the fundamental components of neural networks in a single hyperbolic geometry model, namely, the Poincaré ball model. This novel methodology constructs a multinomial logistic regression, fully-connected layers, convolutional layers, and attention mechanisms under a unified mathematical interpretation, without increasing the parameters. Experiments show the superior parameter efficiency of our methods compared to conventional hyperbolic components, and stability and outperformance over their Euclidean counterparts.
+1 INTRODUCTION
+Shifting the arithmetic stage of a neural network to a non-Euclidean geometry such as a hyperbolic space is a promising way to find more suitable geometric structures for representing or processing data. Owing to its exponential growth in volume with respect to its radius (Krioukov et al., 2009; 2010), a hyperbolic space has the capacity to continuously embed tree structures with arbitrarily low distortion (Krioukov et al., 2010; Sala et al., 2018). It has been directly utilized, for instance, to visualize large taxonomic graphs (Lamping et al., 1995), to embed scale-free graphs (Blasius et al., 2018), or to learn hierarchical lexical entailments (Nickel & Kiela, 2017). Compared to the Euclidean space, a hyperbolic space shows a higher embedding accuracy under fewer dimensions in such cases.
+Because a wide variety of real-world data encompasses some type of latent hierarchical structures (Katayama & Maina, 2015; Newman, 2005; Lin & Tegmark, 2017; Krioukov et al., 2010), it has been empirically proven that a hyperbolic space is able to capture such intrinsic features through representation learning (Krioukov et al., 2010; Ganea et al., 2018b; Nickel & Kiela, 2018; Tifrea et al., 2019; Law et al., 2019; Balazevic et al., 2019; Gu et al., 2019). Motivated by such expressive characteristics, various machine learning methods, including support vector machines (Cho et al., 2019) and neural networks (Ganea et al., 2018a; Gulcehre et al., 2018; Micic & Chu, 2018; Chami et al., 2019) have derived the analogous benefits from the introduction of a hyperbolic space, aiming to improve the performance on advanced tasks beyond just representing data.
+One of the pioneers in this area is Hyperbolic Neural Networks (HNNs), which introduced an easy-to-interpret and highly analytical coordinate system of hyperbolic spaces, namely, the Poincaré ball model, with a corresponding gyrovector space to smoothly connect the fundamental functions common to neural networks into valid functions in a hyperbolic geometry (Ganea et al., 2018a). Built upon the solid foundation of HNNs, the essential components for neural networks covering the multinomial logistic regression (MLR), fully-connected (FC) layers, and Recurrent Neural Networks have been realized. In addition to the formalism, the methods for graphs (Liu et al., 2019), sequential classification (Micic & Chu, 2018), or Variational Autoencoders (Nagano et al., 2019; Mathieu et al., 2019; Ovinnikov, 2019; Skopek et al., 2020) are further constructed. Such studies have applied the Poincaré ball model as a natural and viable option in the area of deep learning.
+Despite such progress, however, there still remain some unsolved problems and uncovered regions. In terms of the network architectures, the current formulation of hyperbolic MLR (Ganea et al., 2018a) requires almost twice the number of parameters compared to its Euclidean counterpart. This makes both the training and inference costly in cases in which numerous embedded entities should be
+1
+arXiv:2006.08210v3 [cs.LG] 17 Mar 2021
+
+
+Published as a conference paper at ICLR 2021
+classified or where large hidden dimensions are employed, such as in natural language processing. The lack of convolutional layers must also be mentioned, because their application is now ubiquitous and is no longer limited to the field of computer vision.
+For the individual functions that are commonly used in machine learning, the split and concatenation of vectors have yet to be realized in a hyperbolic space in a manner that can fully exploit such space and allow sub-vectors to achieve a commutative property. Additionally, although several types of closed-form centroids in a hyperbolic space have been proposed, their geometric relationships have not yet been analyzed enough. Because a centroid operation has been utilized in many recent attention-based architectures, the theoretical background for which type of hyperbolic centroid should be used would be required in order to properly convert such operations into the hyperbolic geometry.
+Based on the previous analysis, we reconsider the flow of several extensions to bridge Euclidean operations into hyperbolic operations and construct alternative or novel methods on the Poincaré ball model. Specifically, the main contributions of this paper are summarized as follows:
+1. We reformulate a hyperbolic MLR to reduce the number of parameters to the same level as a Euclidean version while maintaining the same range of representational properties.
+2. We further exploit the knowledge of 1 as a replacement of an affine transformation and propose a novel generalization of the FC layers that can more properly make use of the hyperbolic nature compared with a previous research (Ganea et al., 2018a).
+3. We generalize the split and concatenation of coordinates to the Poincaré ball model by setting the invariance of the expected value of the vector norm as a criterion.
+4. By combining 2 and 3, we further define a novel generalization scheme of arbitrary dimensional convolutional layers in the Poincaré ball model.
+5. We prove the equivalence of the hyperbolic centroids defined in three different hyperbolic geometry models, and expand the condition of non-negative weights to entire real values. Moreover, integrating this finding and previous contributions 1, 2, and 3, we give a theoretical insight into hyperbolic attention mechanisms realized in the Poincaré ball model.
+We experimentally demonstrate the effectiveness of our methods over existing HNNs and Euclidean equivalents based on a performance test of MLR functions and experiments with Set Transformer (Lee et al., 2019) and convolutional sequence to sequence modeling (Gehring et al., 2017).1
+2 HYPERBOLIC GEOMETRY
+Riemannian geometry. An n-dimensional manifold M is an n-dimensional topological space that can be linearly approximated to an n-dimensional real space at any point x ∈ M, and each local linear space is called a tangent space TxM. A Riemannian manifold is a pairing of a differentiable manifold and a metric tensor field g as a function of each point x, which is expressed as (M, g). Here, g defines an inner product on each tangent space such that ∀u, v ∈ TxM, 〈u, v〉x = u>gxv,
+where gx is a positive definite symmetric matrix defined on TxM. The norm of a tangent vector derived from the inner product is defined as ‖v‖x = √|〈v, v〉x|. A metric tensor gx provides local
+information regarding the angle and length of the tangent vectors in TxM, which induces the global length of the curves on M through an integration. The shortest path connecting two arbitrary points on M at a constant speed is called a geodesic, the length of which becomes the distance. Along a geodesic where one of the endpoints is x, the function projecting a tangent vector v ∈ TxM as an initial velocity vector onto M is denoted as an exponential map expx, and its inverse function is called a logarithmic map logx. In addition, the concept of parallel transport Px→y : TxM → TyM is generalized to the specially conditioned unique linear isometry between two tangent spaces. For more details, please refer to Spivak (1979); Petersen et al. (2006); Andrews & Hopper (2010).
+Note that, in this study, we equate g with gx if gx is constant, and denote the Euclidean inner product,
+norm, and unit vector for any real vector u, v ∈ Rn as 〈u, v〉, ‖v‖, and [v] = v/‖v‖, respectively.
+Hyperbolic space. A hyperbolic space is a Riemannian manifold with a constant negative curvature, the coordinates of which can be represented in several isometric models. The most basic model is an
+1The code is available at https://github.com/mil-tokyo/hyperbolic_nn_plusplus.
+2
+
+
+Published as a conference paper at ICLR 2021
+n-dimensional hyperboloid model, which is a hypersurface Hcn in an (n + 1)-dimensional Minkowski
+space Rn+1
+1 composed of one time-like axis and n space-like axes. The manifolds of Poincaré ball
+model Bcn and Beltrami-Klein model Kcn are the projections of the hyperboloid model onto the different n-dimensional space-like hyperplanes, as depicted in Figure 1. For their mathematical definitions and the isometric isomorphism between their coordinates, see Appendix A.
+R
+"#
+$
+−1
+#
+%
+B!"
+K!"
+H!"
+Figure 1: Geometric relationship between Hcn, Bcn and Kcn
+depicted in Rn+1
+1.
+Poincaré ball model. The n-dimensional Poincaré ball model of a constant negative curvature −c is defined by (Bcn, gc), where Bcn =
+{x ∈ Rn | c‖x‖2 < 1} and gcx = (λcx)2In. Here, Bcn is an open
+ball of radius c− 1
+2 , and λcx = 2(1 − c‖x‖2)−1 is a conformal factor,
+which induces the inner product 〈u, v〉c
+x = (λcx)2〈u, v〉 and norm
+‖v‖cx = λcx‖v‖ for u, v ∈ TxBcn. The exponential, logarithmic
+maps and parallel transport are denoted as expcx, logc
+x and Pxc→y, respectively, as shown in Appendix C.
+To operate the coordinates as vector-like mathematical objects, the Möbius gyrovector space provides an algebra that treats them as gyrovectors, equipped with various operations including the generalized vector addition, that is, a noncommutative and non-associative binary operation called the Möbius addition ⊕c (Ungar, 2009). limc→0 ⊕c converges to + in connection with a Euclidean geometry, the curvature of which is zero. For more details, see Appendix B.
+Poincaré hyperplane. As a specific generalization of a hyperplane into Riemannian geometry, Ganea et al. (2018a) derived a Poincaré hyperplane H ̃ac,p, which is the set of all geodesics containing an
+arbitrary point p ∈ Bcn and orthogonal to an arbitrary tangent vector a ∈ TpBcn, based on the Möbius gyrovector space. As shown in Appendix C.2, they also extended the distance dc between two points
+in Bcn into the distance from a point in Bcn to a Poincaré hyperplane in a closed form expression.
+3 HYPERBOLIC NEURAL NETWORKS++
+!
+"
+#!,#
+$!,$
+(a) Reformulation in Rn
+a
+O
+qa,#
+H% a,r
+(b) Generalization to Bn
+c
+Figure 2: Whichever pair of a and p is chosen, it determines the same discriminative hyperplane. Considering one bias point qa,r per one discriminative hyperplane solves this over-parameterization.
+Aiming to overcome the difficulties discussed in Section 1, we build a novel scheme of hyperbolic neural networks in the Poincaré ball model. The core concept is re-generalization of 〈a, x〉 −b type equations with no increase in the number of parameters, which has the potential to replace any affine transformation based on the same mathematical principle. Specifically, this section starts from the reformulation of the hyperbolic MLR, from which the variants to the FC, convolutional, and multi-head attention layers are derived. Several other modifications are also proposed to support neural networks with broad architectures.
+3.1 UNIDIRECTIONAL REPARAMETERIZATION OF HYPERBOLIC MLR LAYER
+Given an input x ∈ Rn, MLR is an operation used to predict the probabilities of all target outcomes k ∈ {1, 2, ..., K} for the objective variable y as a log-linear model and is described as follows:
+p(y = k | x) ∝ exp (vk(x)) , where vk(x) = 〈ak, x〉 − bk, ak ∈ Rn, bk ∈ R. (1)
+Circumvention of the double vectorization. To generalize the linear function vk to the Poincaré
+ball model, Ganea et al. (2018a) first re-parameterized the scalar term bk as a vector pk ∈ Rn in the form 〈ak, x〉 − bk = 〈ak, −pk + x〉, where bk = 〈ak, pk〉, and then discussed the properties which must be satisfied when such vectors become Möbius gyrovectors. However, this causes an undesirable increase in the parameters from n + 1 to 2n in each class k. As illustrated in Figure 2 (a), this reformulation is redundant from the viewpoint that there exist countless choices of pk to
+determine the same discriminative hyperplane Hak,bk = {x ∈ Rn | 〈ak, x〉 − bk = 0}. Because the
+3
+
+
+Published as a conference paper at ICLR 2021
+!
+(a) expc
+0 (A logc
+0(x)) ⊕c b
+!
+(b) F c(x; Z, r) (ours)
+Figure 3: Comparison of FC layers in input spaces Bcn. The values at a certain dimension of output spaces are illustrated as contour plots. Black arrows depict the orientation parameters, and they are fixed for the comparison. Their orthogonal curves show discriminative hyperplanes where the values are zeros. As a bias parameter b or rk changes, the outline of the contour landscape in (a) remains unchanged, whereas in (b) the focused regions are dynamically squeezed according to the geodesics.
+key of this step is to replace all variables with vectors attributed to the same manifold, we introduce another scalar parameter rk ∈ R instead, which makes the bias vector qak,rk parallel to ak:
+〈ak, x〉 − bk = 〈ak, −qak,rk + x〉, where qak,rk = rk[ak] s.t. bk = rk‖ak‖. (2)
+One possible realization of pk is adopted to reduce the previously mentioned redundancies without a loss of generality or representational properties compared to the original affine transformation, and
+induces another notation: H ̄ak,rk := {x ∈ Rn | 〈ak, −qak,rk + x〉 = 0} = Hak,rk‖ak‖ . Based on distance d from a point to a hyperplane, Equation 2 can be rewritten as with Lebanon & Lafferty
+(2004) in the following form: 〈ak, −qak,rk + x〉 = sign(〈ak, −qak,rk + x〉) d(x, H ̄ak,rk )‖ak‖, which decomposes the inner product into the product of the norm of an orientation vector ak and the
+signed distance between an input vector x ∈ Rn and the hyperplane H ̄ak,rk .
+Unidirectional Poincaré MLR. Based on the observation that qak,rk starts from the origin and the
+concept of Poincaré hyperplanes, we can now generalize vk for x, qak,rk ∈ Bcn and ak ∈ Tqak,rk Bcn:
+vk(x) = sign(〈ak, c qak,rk ⊕c x〉) dc
+(x, H ̄ c
+ak ,rk
+) ‖ak‖c
+qak,rk , (3)
+where qak,rk = expc
+0(rk[ak]), H ̄ c
+ak,rk := {x ∈ Bn
+c | 〈ak, c qak,rk ⊕c x〉 = 0}, (4)
+which are shown in Figure 2 (b). Importantly, the circular reference between ak ∈ Tqak,rk Bcn and
+qak,rk can be unraveled by considering the tangent vector at the origin, zk ∈ T0Bcn, from which ak
+is parallel transported by Pxc→y : TxBcn → TyBcn described in Appendix C.3 as follows:
+ak = P c
+0→qak,rk (zk) = sech2 (√c rk
+) zk, qak,rk = expc
+0(rk[zk]) = qzk,rk . (5)
+Combining Equations 3, 5, and 23, we conclude the derivation of the unidirectional re-generalization of MLR, the parameters of which are rk ∈ R and zk ∈ T0Bcn = Rn for each class k:
+vk(x) = 2 c− 1
+2 ‖zk‖ sinh−1 (λc
+x〈√c x, [zk]〉 cosh (2√c rk
+) − (λc
+x − 1) sinh (2√c rk
+)) . (6)
+For more detailed deformation, see Appendix D.1. Note that we recover the form of the standard Euclidean MLR in limc→0 vk(x) = 4(〈ak, x〉 − bk), which is proven in Appendix D.2.
+3.2 REFORMULATING FC LAYERS TO PROPERLY EXPLOIT THE HYPERBOLIC PROPERTIES
+We next discuss the FC layers, described as a simple affine transformation y = Ax − b, in an element-wise manner with respect to the output space as yk = 〈ak, x〉 − bk, where x, ak ∈ Rn and bk ∈ R. This can be interpreted as an operation that linearly transforms the input x and treats the output score yk as the coordinate value at, or the signed distance from the hyperplane containing the
+origin and orthogonal to, the k-th axis of the output space Rm. Therefore, combining them with a generalized linear transformation, as described in Section 3.1, we can now generalize the FC layers:
+Poincaré FC layer. Given an input x ∈ Bcn, with the generalized linear transformation vk in Equation
+6 and the parameters composed of Z = {zk ∈ T0Bcn = Rn}m
+k=1, which is a generalization of A and
+r = {rk ∈ R}m
+k=1 representing the bias terms, the Poincaré FC layer outputs the following:
+y = F c(x; Z, r) := w(1 + √1 + c‖w‖2)−1, where w := (c− 1
+2 sinh (√c vk(x)))m
+k=1. (7)
+It can be proven that the signed distance from y to each Poincaré hyperplane containing the origin, and orthogonal to the k-th axis, equals vk(x), as shown in Appendix D.3, satisfying the aforementioned properties. We also recover a FC layer in limc→0 yk = 4 (〈ak, x〉 − rk ‖ak‖).
+4
+
+
+Published as a conference paper at ICLR 2021
+Comparison with a previous method. Ganea et al. (2018a) proposed a hyperbolic FC layer operating a matrix-vector multiplication in a tangent space and adding a bias through the following
+Möbius addition: y = expc0 (A logc
+0(x)) ⊕c b, which indicates that the discriminative hyperplane
+determined in T0Bcm is projected back to Bcm by the exponential map at the origin. However, such a surface is no longer a Poincaré hyperplane, except for b = 0. Moreover, the basic shape of the contour surfaces in the output space Bcm is determined only by the orientation of each row vector ak in A, whereas their norms and a bias term b contribute to the total scale and shift. Conversely, the parameters in our method cooperate to realize more various contour surfaces. Notably, discriminative hyperplanes become Poincaré hyperplanes, i.e., the set of all geodesics orthogonal to the orientation zk and containing a point expc0(rk[zk]). As shown in Figure 3, the input space Bcn is separated in a
+more meaningful manner as a hyperbolic space for each dimension of the output space Bcm.
+3.3 REGULARIZING SPLIT AND CONCATENATION
+Split and concatenation are essential operations for realizing small process branches in parallel or combining feature vectors. However, in the Poincaré ball model, merely splitting the coordinates lowers the norms of the output gyrovectors and limits the representational power, and concatenating them is invalid because the norm of the output can easily exceed the domain of the ball. One simple solution is to conduct an operation in the tangent space. The aforementioned problem regarding a split operation, however, remains. Moreover, as the number of inputs to be concatenated increases, the output gyrovector approaches the boundary of the ball even if the norm of each input is adequately small. The norm of the gyrovector is crucial in the Poincaré ball model owing to its metric. Therefore, reflecting the orientation of inputs while preserving the scale of the norm is considered to be desirable.
+Generalization criterion. In Euclidean neural networks, keeping the variance of feature vectors constant is an essential criterion (He et al., 2015). As an analogy, keeping the expected values of the norms constant is a worthy criterion in the Poincaré ball because the norm of any Möbius gyrovector is upper-bounded by the ball radius and the variance of the coordinates cannot necessarily remain intact when the dimensions in each layer vary. Such a replacement of the statistic invariance target from each coordinate to the norm is also suggested by Becigneul & Ganea (2019). To satisfy this criterion, we propose the following generalization scheme with a scalar coefficient βn = B( n
+2, 1
+2 ),
+where B indicates a beta function.
+Poincaré β-split. First, the input x ∈ Bcn is split in the tangent space with integers s.t. ∑N
+i=1 ni = n:
+x 7→ v = logc
+0(x) = (v1> ∈ Rn1 , . . . , v>
+N ∈ RnN )>. Each split tangent vector is then properly
+scaled and projected back to the Poincaré ball as follows: vi 7→ yi = expc0
+(βni βn−1vi
+).
+Poincaré β-concatenation. Likewise, the inputs {xi ∈ Bcni }N
+i=1 are first properly scaled and concatenated in the tangent space, and then projected back to the Poincaré ball in the following
+manner: xi 7→ vi = logc
+0(xi) ∈ T0Bcni , v := (βnβn−11v1>, . . . , βnβn−N1 v>
+N )> 7→ y = expc0 (v).
+We prove the previously mentioned properties under a certain assumption in Appendix D.4. One can also confirm that the Poincaré β-concatenation is the inverse function of the Poincaré β-split.
+Discussion about the concatenation. Ganea et al. (2018a) generalized a vector concatenation under the premise that the output must be followed by an FC layer, but such an assumption possibly limits its usage. Furthermore, it requires Möbius additions N −1 times sequentially due to the noncommutative and non-associative properties of the Möbius addition, which incurs a heavy computational cost and an unbalanced priority in each input gyrovector. Alternatively, our method with a pair of exponential and logarithmic maps has a lower computational cost regardless of N and treats every input fairly.
+3.4 ARBITRARY DIMENSIONAL CONVOLUTIONAL LAYER
+The activation of D-dimensional convolutional layers with kernel sizes of {Ki}D
+i=1 is generally
+described as an affine transformation yk = 〈ak, x〉 − bk for each channel k, where x ∈ RnK is an input vector per pixel, and is a concatenation of K = ∏
+i Ki feature vectors contained in a receptive field of the kernel. This notation also includes a dilated operation. It is now natural to generalize the convolutional layers with Poincaré β-concatenation and a Poincaré FC layer.
+5
+
+
+Published as a conference paper at ICLR 2021
+Poincaré convolutional layer. At each pixel in the given feature map, the gyrovectors {xs ∈ Bcn}K
+s=1
+contained in a receptive field of the kernel are concatenated into a single gyrovector x ∈ BcnK in the manner proposed in Section 3.3, which is then operated in the same way as a Poincaré FC layer.
+3.5 ANALYSIS OF HYPERBOLIC ATTENTION MECHANISMS IN THE POINCARÉ BALL MODEL
+As preparation for constructing hyperbolic attention mechanisms, it is necessary to theoretically consider the midpoint operation of multiple coordinates in a hyperbolic space. For the Poincaré ball model and Beltrami-Klein model, Ungar (2009) proposed the Möbius gyromidpoint and Einstein gyromidpoint built upon the framework of gyrovector spaces, respectively, which are represented in different coordinate systems but are geometrically the same, as shown in Appendix D.5. On the other hand, Law et al. (2019) proposed another type of hyperbolic centroid based on the minimization problem of the squared Lorentzian distance defined in the hyperboloid model. Based on the above situation, for the major concern of which formulation to utilize, we proved the following theorem.
+Theorem 1. (The equivalence of three hyperbolic midpoints) The Möbius gyromidpoint, Einstein gyromidpoint, and the centroid of the squared Lorentzian distance exactly match each other, which indicates they are the same midpoint operations projected on each manifold.
+The proofs are given in Appendix D.5 and D.6. Furthermore, based on this equivalence, we can characterize the Möbius gyromidpoint as a minimizer of the weighted sum of calibrated squared gyrometrics, which we proved in Appendix D.7.
+With Theorem 1, we can now exploit the Möbius gyromidpoint as a unified option to realize hyperbolic attention mechanisms. Moreover, we further generalized the Möbius gyromidpoint by extending the condition of non-negative weights to entire real values by regarding a negative weight as an additive
+inverse operation: The midpoint  ̄b ∈ Bcn of Möbius gyrovectors {bi ∈ Bcn}N
+i=1 with the real scalar
+weights {νi ∈ R}N
+i=1 is given by
+b ̄ =
+N
+i=1
+[bi, νi]c := 1
+2 ⊗c
+( ∑N
+i=1 νi λc
+bi bi ∑N
+i=1 |νi| (λc
+bi − 1)
+)
+, (8)
+which is shown in Appendix D.8. Note that the sum of weights does not need to be normalized to one because any scalar scale is cancelled between the numerator and denominator. On the basis of this insight, in the following, we describe the construction of a multi-head attention as a specific example, aiming at a general approach that can be applied to other arbitrary attention schemes.
+Multi-head attention. Given a source sequence S ∈ RLs×n of length Ls and target sequence
+T ∈ RLt×m of length Lt, the module first projects the target onto query Q ∈ RLt×hd and the source
+onto key K ∈ RLs×hd and value V ∈ RLs×hd with the corresponding FC layers. These are split into d-dimensional vectors of h heads, which is followed by a similarity function between Qi and Ki
+producing a weight Πi = {softmax(d− 1
+2 qti
+> K i )}Lt
+t=1 for 1 ≤ i ≤ h. The weights are utilized to
+aggregate V i into a centroid, giving Xi = ΠiV i. Finally, the features in all heads are concatenated.
+Poincaré multi-head attention. Given the source and target as sequences of gyrovectors, they are projected with three Poincaré FC layers, followed by Poincaré β-splits to produce Qi = {qti ∈
+Bcd}Lt
+t=1, Ki = {kis ∈ Bcd}Ls
+s=1 and V i = {vis ∈ Bcd}Ls
+s=1. Applying a similarity function f c and
+activation g, each weight πti,s = g(f c(qti, kis)) is obtained and the values are aggregated as follows:
+xit = 1≤s≤Ls
+[vis, πti,s
+]
+c. Finally, the features in all heads are Poincaré β-concatenated.
+For the similarity function f c, there are mainly two choices to exploit. One is the inner product in the tangent space indicated by Micic & Chu (2018), which is the naive generalization of the Euclidean version. Another choice is based on the distance of two points: f c(q, k) = −τ dc(q, k) − γ, where τ is an inverse temperature and γ is a bias parameter, which was proposed by Gulcehre et al. (2018). As for the activation g, g(x) = exp (x) is the most basic option because it turns to be a softmax operation due to the property of gyromidpoint. Gulcehre et al. (2018) also suggested g(x) = σ(x). In light of the property of the generalized gyromidpoint, g as an identity function is also exploitable.
+6
+
+
+Published as a conference paper at ICLR 2021
+Table 1: Test F1 scores for four sub-trees of the WordNet noun hierarchy. The first column indicates the number of nodes in each sub-tree for the training and test times. For each setting, we report the 95% confidence intervals for three different trials. Note that the number of parameters of the Euclidean MLR and our approach is D + 1, whereas for the MLR layer of HNNs, it is 2D.
+RootNode Model D=2 D=3 D=5 D=10
+animal.n.01 3218 / 798
+Unidirectional (ours) 60.69±4.05 67.88±1.18 86.26±4.66 99.15±0.46 HNNs 59.25±16.88 70.59±1.38 85.89±3.77 99.34±0.39 Euclidean 39.96±0.89 60.20±0.89 66.20±2.11 98.33±1.12
+group.n.01 6649 / 1727
+Unidirectional (ours) 74.27±1.50 63.90±6.46 84.36±1.79 85.60±2.75 HNNs 76.69±1.82 66.79±1.12 84.44±1.88 86.87±1.26 Euclidean 47.65±0.65 55.15±0.97 71.21±1.81 81.01±1.81
+mammal.n.01 953 / 228
+Unidirectional (ours) 63.48±3.76 94.98±3.87 99.30±0.30 99.17±1.55 HNNs 46.96±13.86 95.18±4.19 98.89±1.29 98.75±0.51 Euclidean 15.78±0.66 36.88±3.83 60.53±3.27 65.63±2.93
+location.n.01 2689 / 673
+Unidirectional (ours) 42.60±2.69 66.70±2.67 78.18±5.96 92.34±1.84 HNNs 42.57±5.03 62.21±26.44 77.26±2.02 85.14±2.86 Euclidean 34.50±0.34 31.44±0.76 63.86±2.18 82.99±3.35
+4 EXPERIMENTS
+In this section, we evaluate our methods in comparisons with HNNs and Euclidean counterparts. The implementation of hyperbolic architectures is based on the Geoopt (Kochurov et al., 2020).
+4.1 VERIFICATION OF THE MLR CLASSIFICATION CAPACITY
+We first evaluated the performance of our unidirectional Poincaré MLR on the same conditioned experiment designed for the MLR of HNNs, that is, a sub-tree classification on the Poincaré ball model. In this task, the Poincaré embeddings of the WordNet noun hierarchy (Nickel & Kiela, 2017) are utilized as the data set, which contains 82,115 nodes and 743,241 hypernymy relations. We pre-trained the Poincaré embeddings of the same dimensions as the experimental settings in HNNs, i.e., two, three, five, and ten dimensions, using the open-source implementation2 to extract several sub-trees whose root nodes are certain abstract hypernymies, e.g., animal. For each sub-tree, MLR layers learn the binary classification to predict whether each given node is included. All nodes are divided into 80% training nodes and 20% testing nodes. We trained each model for 30 epochs using Riemannian Adam (Becigneul & Ganea, 2019) with a learning rate of 0.001 and a batch size of 16.
+The F1 scores for the test sets are shown in Table 1. From the results, we can confirm the tendency of the hyperbolic MLRs to outperform the Euclidean version in all settings, which illustrates that MLR considering the hyperbolic geometry are better suited to the hyperbolic embeddings. In particular, our parameter-reduced approach obtains the same level of performance as a conventional hyperbolic MLR in a more stable training, as can be seen from the relatively narrower confidence intervals.
+4.2 AMORTIZED CLUSTERING OF MIXTURE OF GAUSSIANS WITH SET TRANSFORMERS
+For the evaluation of a Poincaré multi-head attention, we utilize Set Transformer, which we consider is a proper test case to eliminate the implicit influence of unessential operations, e.g., positional encoding. The task is an amortized clustering of a mixture of Gaussians (MoG). In each sample in a mini-batch, models take hundreds of two-dimensional points randomly generated by the same K-component MoG, and directly estimate all the parameters, i.e., the ground truth probabilities, means, and standard deviations, in a single forward step. We basically follow the model architectures and experimental settings of the official implementation3, except that we employed the hyperbolic Gaussian distribution (Ovinnikov, 2019) as well as the Euclidean distribution aiming to verify the performance of the hyperbolic architectures both for the ordinary settings and for their desirable data
+2https://github.com/facebookresearch/poincare-embeddings 3https://github.com/juho-lee/set_transformer
+7
+
+
+Published as a conference paper at ICLR 2021
+distributions. When the hyperbolic models need to deal with Euclidean coordinates, the inputs or outputs are projected by an exponential map or logarithmic map, respectively, with a scalar parameter for scaling the values to the fixed-radius Poincaré ball B1n. Note that we omit ReLU activations for our models because the hyperbolic operations are inherently non-linear. We also remove normalization layers because there does not exist enough research on the normalizing criterion in the hyperbolic space and existing methods possibly reduce the representational power of gyrovectors by neutralizing their norms. For the hyperbolic attentions, based on a preliminary experiment, we choose to utilize the distance based similarity function and exponential activation.
+Table 2: Negative log-likelihood on the test set. For each setting, we report the 95% confidence intervals for five trials. The numbers in brackets indicate the diverged trials, the final scores of which were higher than 10.0, and those trials are not accounted into the reported scores.
+Model K=4 K=5 K=6 K=7 K=8
+Gaussian distribution on Euclidean space
+Set Transformer w/o LN 1.556±0.214 (3) 1.912±0.701 (2) 2.032±0.193 (3) 5.066±5.239 (3) 2.608±N/A (4)
+Set Transformer 1.558±0.032 (0) 1.776±0.030 (0) 2.046±0.030 (0) 2.297±0.047 (0) 2.519±0.020 (0)
+Ours 1.558±0.008 (0) 1.833±0.046 (0) 2.081±0.036 (0) 2.370±0.098 (0) 2.682±0.164 (0)
+Generalized Gaussian distribution on the Poincaré ball model (Ovinnikov, 2019)
+Set Transformer 3.084±0.305 (0) 3.298±0.414 (0) 3.327±0.316 (0) 3.923±1.632 (0) 3.519±0.125 (0)
+Ours 2.920±0.029 (0) 3.087±0.014 (0) 3.252±0.037 (0) 3.375±0.033 (0) 3.462±0.013 (0)
+The results are shown in Table 2. For the Euclidean distribution, our models achieved almost the same performance as Set Transformers, while the training of those without Layer Normalization for the same conditioned comparison often failed under all settings. This result suggests the intrinsic normalization properties of our methods, which we attribute to the computation using vector norms. For the hyperbolic distribution, our models outperformed the Euclidean counterparts with an order of magnitude smaller confidence intervals, which indicates that our hyperbolic architectures are indeed suited to their assumed data distribution.
+4.3 CONVOLUTIONAL SEQUENCE TO SEQUENCE MODELING
+Finally, we experimented with the convolutional sequence-to-sequence modeling task for machine translation of WMT’17 English-German (Bojar et al., 2017). Because the architecture is composed of convolutional layers and attention layers, the hyperbolic version of which has already been verified in Section 4.2, it would provide a comparison focusing on convolutional operations. It also has a practical aspect as a task of natural language processing, in which lexical entities are known to form latent hierarchical structures. We follow the open-source implementation of Fairseq (Ott et al., 2019), where preprocessed training data contains 3.96M sentence pairs with 40K sub-word tokenization in each language. In our hyperbolic models, feature vectors are completely treated as Möbius gyrovectors because token embeddings can be learned directly on the Poincaré ball model. Note that the inputs for the sigmoid functions in Gated Linear Units are logarithmically mapped just like hyperbolic Gated Recurrent Units proposed by Ganea et al. (2018a). We train various scaled-down models to verify the representational capacity of our hyperbolic architectures, with Riemannian Adam for 100K iterations. For more implementation details, please check Appendix E.
+Table 3: BLEU-4 scores (Papineni et al., 2002) on the test sets newstest2013. The target sentences were decoded using beam search with a beam size of five. D indicates the dimensions of token embeddings and the final MLR layer.
+Model D=16 D=32 D=64 D=128 D=256
+ConvSeq2Seq 2.68 8.43 14.92 20.02 21.84 Ours 9.81 14.11 16.95 19.40 21.76
+The results are shown in Table 3. Our model demonstrates the significant improvements compared to the usual Euclidean models in the fewer dimensions, which reflects the immense embedding
+8
+
+
+Published as a conference paper at ICLR 2021
+capacity of hyperbolic spaces. On the other hand, there is no salient differences observed in higher dimensions, which implies that the Euclidean models with higher dimensions than a certain level can obtain a sufficient computational complexity through the optimization. This would fill the gap with the representational properties of hyperbolic spaces. It also implies that the proper construction of neural networks with the product space of multiple small hyperbolic spaces using our methods has the potential for the further improvements even in higher dimensional architectures.
+5 CONCLUSION
+We showed a novel generalization and construction scheme of the wide range of hyperbolic neural network architectures in the Poincaré ball model, including a parameter-reduced MLR, geodesicaware FC layers, convolutional layers, and attention mechanisms. These were achieved under a unified mathematical backbone based on the concepts of Riemannian geometry and the Möbius gyrovector space, which endow our hyperbolic architectures with theoretical consistency. Through the experiments, we verified the effectiveness of our approaches from diversified tasks and perspectives, such as an embedded sub-tree classification, amortized clustering of distributed points both on the Euclidean space and the Poincaré ball model, and neural machine translation. We hope that this study will pave the way for future research in the field of geometric deep learning.
+ACKNOWLEDGMENTS
+We would like to thank Naoyuki Gunji and Yuki Kawana from the University of Tokyo for their helpful discussions and constructive advice. We would also like to show our gratitude to Dr. Lin Gu from RIKEN AIP, Kenzo Lobos-Tsunekawa from the University of Tokyo, and Editage4 for proofreading the manuscript for English language.
+This work was partially supported by JST AIP Acceleration Research Grant Number JPMJCR20U3, JST CREST Grant Number JPMJCR2015, JSPS KAKENHI Grant Number JP19H01115, and Basic Research Grant (Super AI) of Institute for AI and Beyond of the University of Tokyo.
+REFERENCES
+Ben Andrews and Christopher Hopper. The Ricci flow in Riemannian geometry: a complete proof of the differentiable 1/4-pinching sphere theorem. Springer, 2010.
+Ivana Balazevic, Carl Allen, and Timothy Hospedales. Multi-relational Poincaré Graph Embeddings. In Advances in Neural Information Processing Systems 32, pp. 4463–4473. Curran Associates, Inc., 2019.
+Gary Becigneul and Octavian-Eugen Ganea. Riemannian Adaptive Optimization Methods. In International Conference on Learning Representations, 2019.
+Thomas Blasius, Tobias Friedrich, Anton Krohmer, Soren Laue, Anton Krohmer, Soren Laue, Tobias Friedrich, and Thomas Blasius. Efficient Embedding of Scale-Free Graphs in the Hyperbolic Plane. IEEE/ACM Trans. Netw., 26(2):920–933, April 2018. ISSN 1063-6692. doi: 10.1109/TNET.2018. 2810186.
+Ond rej Bojar, Rajen Chatterjee, Christian Federmann, Yvette Graham, Barry Haddow, Shujian Huang, Matthias Huck, Philipp Koehn, Qun Liu, Varvara Logacheva, Christof Monz, Matteo Negri, Matt Post, Raphael Rubino, Lucia Specia, and Marco Turchi. Findings of the 2017 Conference on Machine Translation (WMT17). In Proceedings of the Second Conference on Machine Translation, Volume 2: Shared Task Papers, pp. 169–214, Copenhagen, Denmark, September 2017. Association for Computational Linguistics.
+Ines Chami, Zhitao Ying, Christopher Ré, and Jure Leskovec. Hyperbolic Graph Convolutional Neural Networks. In Advances in Neural Information Processing Systems 32, pp. 4868–4879. Curran Associates, Inc., 2019.
+4http://www.editage.com
+9
+
+
+Published as a conference paper at ICLR 2021
+Hyunghoon Cho, Benjamin DeMeo, Jian Peng, and Bonnie Berger. Large-Margin Classification in Hyperbolic Space. In Proceedings of Machine Learning Research, volume 89 of Proceedings of Machine Learning Research, pp. 1832–1840. PMLR, 16–18 Apr 2019.
+Octavian Ganea, Gary Becigneul, and Thomas Hofmann. Hyperbolic Neural Networks. In Advances in Neural Information Processing Systems 31, pp. 5345–5355. Curran Associates, Inc., 2018a.
+Octavian-Eugen Ganea, Gary Bécigneul, and Thomas Hofmann. Hyperbolic Entailment Cones for Learning Hierarchical Embeddings. In ICML, 2018b.
+Jonas Gehring, Michael Auli, David Grangier, Denis Yarats, and Yann N. Dauphin. Convolutional Sequence to Sequence Learning. In Doina Precup and Yee Whye Teh (eds.), Proceedings of the 34th International Conference on Machine Learning, volume 70 of Proceedings of Machine Learning Research, pp. 1243–1252, International Convention Centre, Sydney, Australia, 06–11 Aug 2017. PMLR.
+Albert Gu, Frederic Sala, Beliz Gunel, and Christopher Ré. Learning Mixed-Curvature Representations in Product Spaces. In International Conference on Learning Representations, 2019.
+Caglar Gulcehre, Misha Denil, Mateusz Malinowski, Ali Razavi, Razvan Pascanu, Karl Moritz Hermann, Peter Battaglia, Victor Bapst, David Raposo, Adam Santoro, and Nando de Freitas. Hyperbolic Attention Networks. arXiv preprint arXiv:1805.09786, 2018.
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Delving Deep into Rectifiers: Surpassing Human-Level Performance on ImageNet Classification. In Proceedings of the IEEE international conference on computer vision, pp. 1026–1034, 2015.
+Kaoru Katayama and Ernest Weke Maina. Indexing Method for Hierarchical Graphs based on Relation among Interlacing Sequences of Eigenvalues. Journal of Information Processing, 23(2): 210–220, 2015. doi: 10.2197/ipsjjip.23.210.
+Max Kochurov, Rasul Karimov, and Sergei Kozlukov. Geoopt: Riemannian Optimization in PyTorch. arXiv preprint arXiv:2005.02819, 2020.
+Dmitri Krioukov, Fragkiskos Papadopoulos, Amin Vahdat, and Marián Boguná. Curvature and temperature of complex networks. Physical Review E, 80(3):035101, 2009.
+Dmitri Krioukov, Fragkiskos Papadopoulos, Maksim Kitsak, Amin Vahdat, and Marián Boguná. Hyperbolic geometry of complex networks. Physical Review E, 82(3):036106, 2010.
+John Lamping, Ramana Rao, and Peter Pirolli. A Focus+Context Technique Based on Hyperbolic Geometry for Visualizing Large Hierarchies. In Proceedings of the SIGCHI Conference on Human Factors in Computing Systems, CHI ’95, pp. 401–408, New York, NY, USA, 1995. ACM Press/Addison-Wesley Publishing Co. ISBN 0-201-84705-1. doi: 10.1145/223904.223956.
+Marc Law, Renjie Liao, Jake Snell, and Richard Zemel. Lorentzian Distance Learning for Hyperbolic Representations. In Proceedings of the 36th International Conference on Machine Learning, volume 97 of Proceedings of Machine Learning Research, pp. 3672–3681, Long Beach, California, USA, 09–15 Jun 2019. PMLR.
+Guy Lebanon and John Lafferty. Hyperplane Margin Classifiers on the Multinomial Manifold. In Proceedings of the Twenty-First International Conference on Machine Learning, ICML ’04, pp. 66. Association for Computing Machinery, 2004.
+Juho Lee, Yoonho Lee, Jungtaek Kim, Adam Kosiorek, Seungjin Choi, and Yee Whye Teh. Set Transformer: A Framework for Attention-based Permutation-Invariant Neural Networks. In Kamalika Chaudhuri and Ruslan Salakhutdinov (eds.), Proceedings of the 36th International Conference on Machine Learning, volume 97 of Proceedings of Machine Learning Research, pp. 3744–3753, Long Beach, California, USA, 09–15 Jun 2019. PMLR.
+Henry W Lin and Max Tegmark. Critical Behavior in Physics and Probabilistic Formal Languages. Entropy, 19(7):299, 2017.
+10
+
+
+Published as a conference paper at ICLR 2021
+Qi Liu, Maximilian Nickel, and Douwe Kiela. Hyperbolic Graph Neural Networks. In Advances in Neural Information Processing Systems 32, pp. 8230–8241. Curran Associates, Inc., 2019.
+Emile Mathieu, Charline Le Lan, Chris J. Maddison, Ryota Tomioka, and Yee Whye Teh. Continuous Hierarchical Representations with Poincaré Variational Auto-Encoders. In Advances in Neural Information Processing Systems 32, pp. 12565–12576. Curran Associates, Inc., 2019.
+Marko Valentin Micic and Hugo Chu. Hyperbolic Deep Learning for Chinese Natural Language Understanding. arXiv preprint arXiv:1812.10408, 2018.
+Yoshihiro Nagano, Shoichiro Yamaguchi, Yasuhiro Fujita, and Masanori Koyama. A Wrapped Normal Distribution on Hyperbolic Space for Gradient-Based Learning. In ICML, 2019.
+Mark EJ Newman. Power laws, Pareto distributions and Zipf’s law. Contemporary physics, 46(5): 323–351, 2005.
+Maximilian Nickel and Douwe Kiela. Learning Continuous Hierarchies in the Lorentz Model of Hyperbolic Geometry. In ICML, 2018.
+Maximillian Nickel and Douwe Kiela. Poincaré Embeddings for Learning Hierarchical Representations. In Advances in Neural Information Processing Systems 30, pp. 6338–6347. Curran Associates, Inc., 2017.
+Myle Ott, Sergey Edunov, Alexei Baevski, Angela Fan, Sam Gross, Nathan Ng, David Grangier, and Michael Auli. FAIRSEQ: A Fast, Extensible Toolkit for Sequence Modeling. In Proceedings of NAACL-HLT 2019: Demonstrations, 2019.
+Ivan Ovinnikov. Poincaré Wasserstein Autoencoder. arXiv preprint arXiv:1901.01427, 2019.
+Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. BLEU: a method for automatic evaluation of machine translation. In Proceedings of the 40th annual meeting on association for computational linguistics, pp. 311–318. Association for Computational Linguistics, 2002.
+Peter Petersen, S Axler, and KA Ribet. Riemannian Geometry, volume 171. Springer, 2006.
+Frederic Sala, Chris De Sa, Albert Gu, and Christopher Re. Representation Tradeoffs for Hyperbolic Embeddings. In Proceedings of the 35th International Conference on Machine Learning, volume 80 of Proceedings of Machine Learning Research, pp. 4460–4469, Stockholmsmässan, Stockholm Sweden, 10–15 Jul 2018. PMLR.
+Ondrej Skopek, Octavian-Eugen Ganea, and Gary Bécigneul. Mixed-curvature Variational Autoencoders. In International Conference on Learning Representations, 2020.
+Michael Spivak. A Comprehensive Introduction to Differential Geometry. Publish or Perish, 1979.
+A. Tifrea, G. Becigneul, and O.-E. Ganea. Poincaré GloVe: Hyperbolic Word Embeddings. In 7th International Conference on Learning Representations (ICLR), May 2019.
+Abraham Ungar. Gyrovector Spaces And Their Differential Geometry. Nonlinear Functional Analysis and Applications, 10, 01 2005.
+Abraham Ungar. Einstein’s Special Relativity: The Hyperbolic Geometric Viewpoint. PIRT Conference Proceedings, 02 2013.
+Abraham A Ungar. Hyperbolic Trigonometry and its Application in the Poincaré Ball Model of Hyperbolic Geometry. Computers & Mathematics with Applications, 41(1-2):135–147, 2001.
+Abraham A Ungar. Analytic Hyperbolic Geometry and Albert Einstein’s Special Theory of Relativity. World Scientific, 2008.
+Abraham A Ungar. Beyond the Einstein Addition Law and its Gyroscopic Thomas precession: The Theory of Gyrogroups and Gyrovector Spaces, volume 117. Springer Science & Business Media, 2012.
+Abraham Albert Ungar. A Gyrovector Space Approach to Hyperbolic Geometry. Synthesis Lectures on Mathematics and Statistics, 1(1):1–194, 2009.
+11
+
+
+Published as a conference paper at ICLR 2021
+A HYPERBOLIC GEOMETRY
+In this section, we review the definition of the hyperbolic geometry models other than the Poincaré ball model and the relationships between their coordinates.
+Hyperboloid model. The n-dimensional hyperboloid model is a hypersurface in an (n + 1)dimensional Minkowski space Rn+1
+1 , which is equipped with an inner product 〈x, y〉L = x>gLy for
+∀x, y ∈ Rn+1
+1 , where gL = diag(−1, 1n>). Given a constant negative curvature −c, the manifold of
+the hyperboloid model is defined by Hcn = {x = (x0, . . . , xn)> ∈ Rn+1
+1 | c〈x, x〉L = −1, x0 > 0}.
+Note that, in this standard (n + 1)-dimensional coordinate system, the metric tensor as a positive definite matrix for the n-dimensional hyperboloid manifold cannot be defined. Instead, when the hyperboloid model is represented in a specific n-dimensional coordinates, e.g., hyperbolic polar coordinates, then its metric tensor has the corresponding representation as the n-dimensional positive definite matrix.
+Isometric isomorphism with the Poincaré ball model. The bijection between an arbitrary point h = (z, k>)> ∈ Hcn and its unique corresponding point b ∈ Bcn, depicted in Figure 1, is given by the following:
+Hn
+c → Bn
+c : b = b (h) = k
+1 + √cz , (9)
+Bn
+c → Hn
+c : h = h (b) = (z (b) , k (b)) =
+( √1c
+1 + c‖b‖2
+1 − c‖b‖2 , 2b
+1 − c‖b‖2
+)
+. (10)
+Beltrami-Klein model. The n-dimensional Beltrami-Klein model of a constant negative curvature −c is defined by (Kcn, ˆgc), where Kcn = {x ∈ Rn | c‖x‖2 < 1} and gˆcx = (1 − c‖x‖2)−1In + (1 −
+c‖x‖2)−2xx>. Here, Kcn is an open ball of radius 1/√c.
+Isometric isomorphism with the Poincaré ball model. The bijection between an arbitrary point n ∈ Kcn and its unique corresponding point b ∈ Bcn, depicted in Figure 1, is given by the following:
+Kn
+c → Bn
+c : b = b (n) = n
+1 + √1 − c‖n‖2 , (11)
+Bn
+c → Kn
+c : n = n (b) = 2b
+1 + c‖b‖2 . (12)
+B MÖBIUS GYROVECTOR SPACE
+In this section, we briefly introduce the concept of the Möbius gyrovector space, which is a specific type of gyrovector spaces. For a rigorous theoretical and detailed mathematical background of this system, please refer to Ungar (2005; 2009; 2001; 2012).
+A gyrovector space is an algebraic structure that endows the points in a hyperbolic space with vector-like properties based on a special concept called a gyrogroup. This gyrogroup is similar to ordinary vector spaces that provides a Euclidean space with the well-known vector operations based on the notion of groups. As a particular example in physics, this helps to understand the mathematical structure of the Einstein’s theory of special relativity where no possible velocity vectors including the sum of velocities in an arbitrary additive order can exceed the speed of light (Ungar, 2008; 2013). Because hyperbolic geometry has several isometric models, a gyrovector space also has some variants where the Möbius gyrovector space is a variant for the Poincaré ball model.
+As an abstract mathematical system, a gyrovector space is constructed through the following steps: (1) Start from a set G. (2) With a certain binary operation ⊕, create a tuple called a groupoid, or magma (G, ⊕). (3) Based on five axioms, define a specific type of magma as a gyrogroup. These axioms include several important properties of gyrovector spaces, such as the left gyroassociative law and an operator called a gyrator gyr : G × G → Aut(G, ⊕), which generates an automorphism Aut(G, ⊕) 3 gyr[x, y] : G → G given by z 7→ gyr[x, y]z, called a gyration, from two arbitrary points x and y ∈ G. The notion of the gyrocommutative law and gyrogroup cooperation are given in this step. (4) Adding ten more axioms related to the statements about a real inner product space and a scalar multiplication ⊗, the gyrovector space (G, ⊕, ⊗) is thus defined.
+12
+
+
+Published as a conference paper at ICLR 2021
+Some of the important properties of a gyrovector space are listed below. Here, x, y, z ∈ G.
+Gyroassociative laws. Although the binary operation ⊕ is not necessarily associative in general, it obeys the left gyroassociative law x ⊕ (y ⊕ z) = (x ⊕ y) ⊕ gyr[x, y]z and right gyroassociative law (x ⊕ y) ⊕ z = x ⊕ (y ⊕ gyr[y, x]z). These equations also provide a general closed-form expression of the gyrations: gyr[x, y]z = (x ⊕ y) ⊕ (x ⊕ (y ⊕ z)).
+Cases in which gyrations become identity maps. If at least one element for gyr is 0 ∈ G, the gyrations become an identity map I: gyr[x, 0] = gyr[0, x] = I. With the loop properties of the gyrations given by gyr[x, y] = gyr[x ⊕ y, y] = gyr[x, y ⊕ x], many other cases can be also derived.
+Gyrocommutative law. Although a binary operation ⊕ is not necessarily commutative in general, if it obeys the equation x ⊕ y = gyr[x, y](y ⊕ x), the gyrogroup is called gyrocommutative.
+Gyrogroup cooperation. Regarding ⊕ as the primal binary addition, the second binary addition in G is defined as the gyrogroup cooperation , which is given by x y = x ⊕ gyr[x, y]y. This has duality symmetries with the first binary operation ⊕, such that x ⊕ y = x gyr[x, y]y. In addition, corresponding to the left cancellation law x ⊕ (x ⊕ y) = y inherent in ⊕, the gyrogroup cooperation induces two types of the right cancellation laws: (x ⊕ y) y = (x y) y = x.
+In this formalism, the Möbius gyrovector space is then defined as (Bcn, ⊕c, ⊗c), where Bcn is as previously introduced in Section 2, and ⊕c and ⊗c are as shown in the following subsections.
+B.1 MÖBIUS ADDITION
+In the Möbius gyrovector space, the primary binary operation is denoted as the Möbius addition ⊕c : Bcn × Bcn → Bcn, which is a noncommutaive and nonassociative addition, given by the following:
+x ⊕c y =
+(1 + 2c〈x, y〉 + c‖y‖2) x + (1 − c‖x‖2) y
+1 + 2c〈x, y〉 + c2‖x‖2‖y‖2 , x c y = x ⊕c (−y). (13)
+B.2 MÖBIUS GYRATOR
+The expression of gyrations in the Möbius gyrovector space can be expanded using the equation of the Möbius addition ⊕c, which is described by Ungar (2009) as follows:
+gyr[x, y] : z 7→ z − 2c
+(c〈x, z〉‖y‖2 − 〈y, z〉 (1 + 2c〈x, y〉)) x + (c〈y, z〉‖x‖2 + 〈x, z〉) y
+1 + 2c〈x, y〉 + c2‖x‖2‖y‖2 . (14)
+By writing down all the special operators ⊕c for the gyrovectors in Bcn into the normal vector operations, the expression of the gyrations can be now seen as a general function for the any real vector z ∈ Rn. Indeed, gyrations are extended to invertible linear maps of Rn (Ungar, 2009).
+The Möbius gyrator endows the Möbius gyrovector space with a gyrocommutative nature.
+B.3 MÖBIUS COADDITION
+The gyrogroup cooperation in the Möbius gyrovector space is called the Möbius coaddition, and is given by the following:
+x c y = x ⊕c gyr[x, cy]y =
+(1 − c‖y‖2) x + (1 − c‖x‖2) y
+1 − c2‖x‖2‖y‖2 .
+With the gamma factor γx = (√1 − c‖x‖2)−1 for x ∈ Bcn, this is also described in the following manner:
+x c y = γ2xx + γy2 y
+γ2x + γy2 − 1 . (15)
+Note that the Möbius coaddition is not associative but is commutative.
+13
+
+
+Published as a conference paper at ICLR 2021
+B.4 MÖBIUS SCALAR MULTIPLICATION
+The Möbius scalar multiplication for x ∈ Bcn and r ∈ R is given by the following:
+r ⊗c x = √1c tanh−1 (r tanh (√c ‖x‖)) [x] = expc
+0 (r logc
+0 (x)). (16)
+In terms of the Riemannian geometry, the Möbius scalar multiplication adjusts the distance of x from
+the origin by the scalar multiplier r. The expressions of the logarithmic map logc
+x and distance in the Möbius gyrovector space are described in the following subsections.
+C POINCARÉ BALL MODEL
+Owing to the algebraic structure provided by the Möbius gyrovector space, many properties related to the geometry of the Poincaré ball model can be described in implementation-friendly closed-form expressions.
+C.1 EXPONENTIAL AND LOGARITHMIC MAPS
+The exponential map expcx : TxBcn → Bcn is described in (Ganea et al., 2018a, Lemma 2) as follows:
+expc
+x (v) = x ⊕c
+√1c tanh
+( √cλcx‖v‖ 2
+)
+[v], ∀x ∈ Bn
+c , v ∈ TxBn
+c . (17)
+The logarithmic map logc
+x = (expcx)−1 : Bcn → TxBcn is also given by the following:
+logc
+x (y) = √c2λcx
+tanh−1 (√c‖ c x ⊕c y‖) [ cx ⊕c y], ∀x, y ∈ Bn
+c . (18)
+C.2 DISTANCE
+C.2.1 POINCARÉ DISTANCE BETWEEN TWO ARBITRARY POINTS
+The distance function dc is originally and preliminary defined as a binary operation for indicating the
+distance between two arbitrary points x, y ∈ Bcn. Based on the notion of the Möbius addition, the
+distance dc : Bcn × Bcn → R is succinctly described as follows:
+dc (x, y) = √2c tanh−1 (√c‖ c x ⊕c y‖) = ‖ logc
+x (y)‖c
+x. (19)
+Despite the noncommutative aspect of the Möbius addition ⊕c, this distance function in Equation 19 becomes commutative thanks to the commutative aspect of the Euclidean norm of the Möbius addition, which is expressed as follows:
+‖x ⊕c y‖ =
+√
+‖x‖2 + 2〈x, y〉 + ‖y‖2
+1 + 2c〈x, y〉 + c2‖x‖2‖y‖2 , ∀ x, y ∈ Bn
+c . (20)
+C.2.2 DISTANCE FROM A POINT TO POINCARÉ HYPERPLANE
+In the Euclidean geometry, the generalized concept of two-dimensional plane to a higher dimensional space Rn is a hyperplane containing an arbitrary point p ∈ Rn and is the set of all straight lines orthogonal to an arbitrary orientation vector a ∈ Rn. Because straight lines in Euclidean spaces are geodesics in terms of the Riemannian geometry, a hyperplane can be generalized as another Riemannian manifold Mn such that the hyperplane contains an arbitrary point p ∈ Mn and is the set of all geodesics orthogonal to an arbitrary orientation vector at p, namely, the tangent vector a ∈ TpMn. This concept in the Poincaré ball model has been rigorously defined in (Ganea et al.,
+2018a, Definition 3.1) for p ∈ Bcn, a ∈ TpBcn as follows:
+H ̃ c
+a,p = {x ∈ Bn
+c | 〈logc
+p (x), a〉c
+p = 0} = expc
+p
+(
+{a}⊥)
+(21)
+= {x ∈ Bn
+c | 〈 cp ⊕c x, a〉 = 0}. (22)
+14
+
+
+Published as a conference paper at ICLR 2021
+Note that {a}⊥ is the set of all tangent vectors at p and orthogonal to a.
+Ganea et al. (2018a) have proven the closed-form description of the distance from a point x ∈ Bcn
+to an arbitrary Poincaré hyperplane H ̃ac,p by considering the minimum distance between x and any
+point in H ̃ac,p:
+dc
+(
+x, H ̃ c
+a,p
+)
+:= inf
+w∈H ̃ ca,p
+dc (x, w) = √1c sinh−1
+( 2√c|〈 cp ⊕c x, a〉| (1 − c‖ c p ⊕c x‖2) ‖a‖
+)
+. (23)
+C.3 PARALLEL TRANSPORT
+The concept of a parallel transport is traditionally derived from differential geometry. In the hyperbolic geometry, the gyrovector space provides the algebra to formulate the parallel transport of a gyrovector (Ungar, 2012). When a gyrovector cx ⊕c w ∈ Bcn rooted at a point x ∈ Bcn is transported parallel
+to another gyrovector cy ⊕c z ∈ Bcn rooted at a point y ∈ Bcn along a geodesic connecting x and y, the equation below is satisfied:
+cy ⊕c z = gyr[y, cx] ( cx ⊕c w) . (24)
+Because the exponential map in the Poincaré ball model is a bijective function, the parallel transported gyrovectors w and z can be regarded as the exponential mapped tangent vectors v ∈ TxBcn rooted at
+x and u ∈ TyBcn rooted at y, respectively, that is,
+cy ⊕c expc
+y (u) = gyr[y, cx] ( cx ⊕c expc
+x (v)) . (25)
+With Equations 17 and 18 and the properties of the Möbius gyration described in Appendix B, a succinct expression of the tangent parallel transport Pxc→y : TxBcn → TyBcn can be obtained as follows:
+Pc
+x→y(v) := u = λcx
+λcy
+gyr[y, cx]v. (26)
+Note that, in a special case in which x = 0 and v ∈ T0Bcn, this equation is simplified as follows:
+Pc
+0→y(v) = λc0
+λcy
+v = (1 − c‖y‖2) v. (27)
+One can confirm that Equation 26 deserves to be called a parallel transport in terms of the differential or Riemannian geometry by checking the covariant derivative associated with the Levi-Civita connection of Pxc→y along a tangent vector field γ ̇ (t) on a smooth curve γ(t) from x to y vanishes to 0.
+D SUPPLEMENTAL PROOFS FOR PROPOSED METHODS
+D.1 FINAL DEFORMATION OF THE PROPOSED UNIDIRECTIONAL POINCARÉ MLR
+Proof. First, we clarify the relation between the Poincaré hyperplane H ̃ac,p, described in Appendix
+C.2.2, and the variants H ̄ac,r introduced in Section 3.1:
+H ̄ c
+a,r = H ̃ c
+a,qak,rk . (28)
+We then start the derivation of Equation 6 from the variables ak and qak,rk described in Section 3.1. Following Equation 28 and the concept of the distance from a point to a Poincaré hyperplane described in Equation 23, the generalized MLR score function vk in Equation 3 can be written as follows:
+vk(x) =
+λcqak,rk ‖ak‖
+√c sinh−1
+( 2√c〈 cqak,rk ⊕c x, ak〉
+(1 − c‖ c qak,rk ⊕c x‖2) ‖ak‖
+)
+, ∀x ∈ Bn
+c . (29)
+With Equation 20, we obtain
+‖ c qak,rk ⊕c x‖2 = ‖x‖2 − 2〈x, qak,rk 〉 + ‖qak,rk ‖2
+1 − 2c〈x, qak,rk 〉 + c2‖x‖2‖qak,rk ‖2 . (30)
+15
+
+
+Published as a conference paper at ICLR 2021
+Therefore, we can expand the term inside the sinh−1 function in Equation 29 in the following manner:
+2√c〈 cqak,rk ⊕c x, ak〉
+(1 − c‖ c qak,rk ⊕c x‖2) ‖ak‖
+= 2√c
+‖ak ‖
+−
+(1 − 2c〈x, qak,rk 〉 + c‖x‖2) 〈qak,rk , ak〉 + (1 − c‖qak,rk ‖2) 〈x, ak〉
+1 − 2c〈x, qak,rk 〉 + c2‖x‖2‖qak,rk ‖2 − c (‖x‖2 − 2〈x, qak,rk 〉 + ‖qak,rk ‖2) (31)
+= 2√c − (1 − 2c〈x, qak,rk 〉 + c‖x‖2) 〈qak,rk , [ak]〉 + (1 − c‖qak,rk ‖2) 〈x, [ak]〉
+1 − c‖qak,rk ‖2 − c‖x‖2 + c2‖x‖2‖qak,rk ‖2 (32)
+=2
+1 − c‖x‖2
+(
+−
+√c (1 − 2c〈x, qak,rk 〉 + c‖x‖2) 〈qak,rk , [ak]〉
+1 − c‖qak,rk ‖2 + √c〈x, [ak]〉
+)
+. (33)
+With Equations 5 and 17, the term in the outer brackets in Equation 33 can be further expanded into the form using rk and zk described in Section 3.1:
+−
+√c (1 − 2c〈x, qak,rk 〉 + c‖x‖2) 〈qak,rk , [ak]〉
+1 − c‖qak,rk ‖2 + √c〈x, [ak]〉
+=−
+(1 − 2√c tanh (√c rk) 〈x, [zk]〉 + c‖x‖2) tanh (√c rk)
+1 − tanh2 (√c rk) + √c〈x, [zk]〉 (34)
+= − (1 + c‖x‖2) sinh (√c rk
+) cosh (√c rk
+) + √c〈x, [zk]〉 (1 + 2 sinh2 (√c rk
+)) (35)
+= − 1 + c‖x‖2
+2 sinh (2√c rk
+) + √c〈x, [zk]〉 cosh (2√c rk
+) . (36)
+In addition, we can also expand the term outside the sinh−1 function in Equation 29 using Equations 5 and 17 as follows:
+λcqak,rk ‖ak‖
+√c = 2 ‖ak‖
+√c (1 − c‖qak,rk ‖2) = 2 ∥
+∥sech2 (√c rk) zk
+∥ ∥
+√c (1 − tanh2 (√c rk)) = 2 ‖zk‖
+√c . (37)
+Combining Equations 29, 33, 36, and 37, we finally conclude the proof through the following:
+vk(x) = 2‖zk‖
+√c sinh−1
+( 2√c〈x, [zk]〉
+1 − c‖x‖2 cosh (2√c rk
+) − 1 + c‖x‖2
+1 − c‖x‖2 sinh (2√c rk
+)
+)
+(38)
+= 2‖zk‖
+√c sinh−1 (λc
+x〈√c x, [zk]〉 cosh (2√c rk
+) − (λc
+x − 1) sinh (2√c rk
+)) . (39)
+D.2 CONVERGENCE PROOF OF UNIDIRECTIONAL POINCARÉ MLR TO EUCLIDEAN MLR
+Proof. For the intended proof, we first introduce the following proposition:
+Proposition 1. For x 6= 0, sinh(x) over x converges to 1 in the limit x → 0:
+xli→m0
+sinh(x)
+x = 1. (40)
+Proof. The result can be obtained based on the definition of the differentiation of a scalar function:
+xli→m0
+sinh(x)
+x = xli→m0
+ex − e−x
+2x = 1
+2 xli→m0
+( ex − 1
+x + e−x − 1
+−x
+)
+(41)
+= xli→m0
+ex − e0
+x = dex
+dx
+∣ ∣ ∣
+∣x=0
+= 1. (42)
+From Proposition 1, we derive the following two propositions.
+16
+
+
+Published as a conference paper at ICLR 2021
+Proposition 2. For t ∈ R, x 6= 0, sinh(tx) over x converges to t in the limit x → 0:
+xli→m0
+sinh(tx)
+x = t. (43)
+Proof. We divide this proof into two cases:
+xli→m0
+sinh(tx)
+x=
+
+
+
+0 = t (t = 0)
+t tlxi→ m0
+sinh(tx)
+tx = t (t 6= 0, Proposition 1) . (44)
+Proposition 3. For t ∈ R, x 6= 0, sinh−1(tx) over x converges to t in the limit x → 0:
+xli→m0
+sinh−1(tx)
+x = t. (45)
+Proof. We can directly utilize Proposition 1 as follows:
+xli→m0
+sinh−1(tx)
+x = sli→m0
+ts
+sinh(s) (s = sinh−1(tx)) (46)
+= t sli→m0
+( sinh(s) s
+)−1
+= t (Proposition 1). (47)
+With Propositions 2 and 3, we can now take the limit of Equation 6 as follows:
+cli→m0 vk(x)
+= cli→m0
+2‖zk ‖
+√c sinh−1
+( 2√c〈x, [zk]〉
+1 − c‖x‖2 cosh (2√c rk
+) − 1 + c‖x‖2
+1 − c‖x‖2 sinh (2√c rk
+)
+)
+(48)
+= cli→m0
+2‖zk ‖
+√c sinh−1
+(√c
+( 2〈x, [zk]〉
+1 − c‖x‖2 cosh (2√c rk
+) − 1 + c‖x‖2
+1 − c‖x‖2
+sinh (2√c rk)
+√c
+))
+(49)
+= 2 ‖zk‖ (2〈x, [zk]〉 − 2rk) = 4 (〈x, zk〉 − rk ‖zk‖) . (50)
+Moreover, with Equation 5, we can confirm that zk matches ak in the limit c → 0:
+cli→m0 ak = cli→m0 sech2 (√c rk
+) zk = cli→m0
+1
+cosh2 (√c rk) zk = zk. (51)
+Combining it with Equations 2 and 50, we finally conclude the proof as follows:
+cli→m0 vk(x) = 4 (〈x, ak〉 − rk ‖ak‖) = 4 (〈ak, x〉 − bk) , where bk := rk ‖ak‖ . (52)
+Here, the factor 4 is derived from the squared conformal factor (λ0x)2 degenerating into a constant
+value. This corresponds to the fact that the Poincaré ball model Bcn converges to the Euclidean space
+Rn in the limit c → 0 except for the same multiplier cli→m0(λcx)2 = 4 owing to its metric tensor.
+D.3 PROOF OF THE PROPERTIES OF OUTPUT COORDINATES OF POINCARÉ FC LAYER
+Proof. To check the properties of the Poincaré FC layer described in Section 3.2, we first clarify the Poincaré hyperplane containing the origin and orthogonal to the k-th axis in Bcm. The k-th axis is a geodesic passing through the origin and any point on it except the origin has a non-zero element in only the k-th coordinates. Therefore, an arbitrary point x ∈ Bcm along the k-th axis can be written as follows:
+x = re(k), where e(k) = (δik)m
+i=1 , r ∈
+(
+− √1c , √1c
+)
+⊂ R, (53)
+which is as intuitive as in a Euclidean space. Specifically, r = 0 represents the origin.
+We can then easily describe the intended Poincaré hyperplane as follows:
+17
+
+
+Published as a conference paper at ICLR 2021
+Definition 1. (Poincaré hyperplane containing the origin and orthogonal to the k-th axis)
+H ̄ c
+e(k),0 = {x = (x1, x2, . . . , xm)> ∈ Bm
+c | 〈e(k), x〉 = xk = 0}, (54)
+which is also intuitively obtained.
+With Definition 1, the preparation for constructing y in Equation 7 is complete.
+Derivation of y. Let x ∈ Bcn and y = (y1, y2, . . . , ym)> ∈ Bcm be the input and output of the Poincaré FC layer, respectively. Below, we start the proof with the score functions vk(x) for
+∀k = {1, 2, . . . , m} already obtained in the same way as in Equation 6.
+To endow y the properties described in Section 3.2, i.e., the signed distance from y to each Poincaré hyperplane containing the origin and orthogonal to the k-th axis is equal to vk(x), we generate a
+simultaneous equation for ∀k as follows:
+dc
+(
+y, H ̄ c
+e(k) ,0
+)
+= vk(x). (55)
+With Equations 54 and 28 and the notion of the distance from a point to a Poincaré hyperplane described in Equation 23, these equations are expanded as follows:
+√1c sinh−1
+( 2√c yk 1 − c‖y‖2
+)
+= vk(x). (56)
+Therefore, we obtain the following notation of the coordinates:
+yk = 1 − c‖y‖2
+2√c sinh (√c vk(x)) , ∀k. (57)
+When considering the Euclidean norm of y using Equation 57, the equation for ‖y‖ can be derived as follows:
+‖y‖ = 1 − c‖y‖2
+2√c
+√ √ √ √
+m
+∑
+k=1
+sinh2 (√c vk(x)). (58)
+This can be succinctly rewritten as
+‖y‖ = 1 − c‖y‖2
+2 ‖w‖ , where w =
+( √1c sinh (√c vk(x))
+)m
+k=1
+. (59)
+By solving this quadratic equation, the closed form of ‖y‖ is obtained through the following:
+‖y‖ = − 1
+c ‖w‖ +
+√
+1
+c2‖w‖2 + 1
+c . (60)
+Substituting Equations 59 and 60 for Equation 57 leads to Equation 7 in the notation of the coordinates:
+yk =
+√1 + c‖w‖2 − 1
+c‖w‖2 wk = wk
+1 + √1 + c‖w‖2 , ∀k. (61)
+Confirmation of the existence of y. Finally, we conclude the proof by checking that y is always within the domain of the Poincaré ball Bcm = {y ∈ Rm | c‖y‖2 < 1}:
+1 − c‖y‖2 =
+2
+(√1 + c‖w‖2 − 1
+)
+c‖w‖2 > 0. (62)
+18
+
+
+Published as a conference paper at ICLR 2021
+D.4 PROOF OF THE PROPERTIES OF POINCARÉ β-SPLIT AND β-CONCATENATION
+In this section, we prove the properties of the Poincaré β-split and the Poincaré β-concatenation described in Section 3.3. The Poincaré ball model is different from Euclidean neural networks, on the simple calculation of the expected value and the variance of a particular value related to a feature vector or weight matrix owing to the linearity in their operations. In the Poincaré ball model, calculating such values without any postulate for the probabilistic distribution that the feature gyrovectors or tangent vectors follow is difficult owing to the nonlinear transformations in the exponential and logarithmic maps. Thus, we first make the following naive assumption:
+Assumption 1. Each coordinate of an n-dimensional tangent vector in T0Bcn follows a normal
+distribution centered at zero with a certain variance σ2
+n
+c.
+The reasons why we assume the distribution on the tangent space rather than on the Poincaré ball model itself are as follows:
+1. It is improper to assume a continuous and smooth distribution onto the space with an upperbounded radius because there must be no probability density on or outside the boundary. The rough idea of discontinuing such probabilities outside the domain of the Poincaré ball and discretely taking only the inside into account seems to lack rationality.
+2. One simple way to avoid the above issue is to apply a uniform distribution from zero to the ball radius based on the norm of the gyrovector. However, there is no guarantee that such constancy in the distribution can be realized on a complexly curved geometric structure of the Poincaré ball model.
+3. Conversely, a tangent space is a linear space that is attached to the manifold and can be treated as an ordinary vector space.
+4. The Poincaré ball model is conformal to the Euclidean space, i.e., preserving the same angles, and at the origin, the gyrovectors having the same norms are projected onto the tangent vectors which also have the same norms with their angles unchanged.
+5. In Euclidean neural networks, the normal distribution is one of the most popularly considered priors. The multivariate normal distribution is occasionally approximated as an independent and identically distributed distribution for easier calculation.
+Because the Poincaré β-split and the Poincaré β-concatenation are inverse functions to each other, it is sufficient to prove the properties of either one of these operations. Here, we show a proof for the Poincaré β-concatenation. Recalling that βn = B( n
+2, 1
+2 ) and considering the following:
+Poincaré β-concatenation. The input gyrovectors {xi ∈ Bcni }N
+i=1 are first scaled by certain coefficients and concatenated in the tangent space, and then projected back to the Poincaré ball as follows:
+xi 7→ vi = logc
+0(xi) ∈ T0Bcni , v :=
+( βn
+βn1
+v>
+1 , . . . , βn
+βnN
+v>
+N
+)>
+7→ y = expc
+0 (v) ∈ Bn
+c . (63)
+Proof. At first, we consider the expected value of the norm of each tangent vector vi, which is the
+target of the Poincaré β-concatenation. Because the value ti := c‖vi‖2
+σ2ni
+follows a χ2 distribution
+based on Assumption 1, the expected value of ‖vi‖ can be obtained as follows:
+E[‖vi‖] = 1
+2 ni
+2 Γ ( ni
+2
+)
+∫∞
+0
+‖vi‖ e− ti
+2t
+ni
+2 −1
+i dti (64)
+= σni
+2 ni
+2 Γ ( ni
+2
+) √c
+∫∞
+0
+e− ti
+2t
+ni −1 2
+i dti (65)
+= 2 ni+1
+2 Γ ( ni+1
+2
+)
+2
+ni
+2 Γ ( ni
+2
+)
+σ√nci (66)
+=
+√ 2π c
+σni
+B
+( ni
+2,1
+2
+) (67)
+19
+
+
+Published as a conference paper at ICLR 2021
+=
+√ 2π c
+σni
+βni
+. (68)
+Therefore, when the norm of each input tangent vector vi is kept the same by the former part of neural networks before applying this operation, the standard deviation σni must be expressed as follows:
+σni = Cβni , where C = const. (69)
+In addition, using Equation 63, the squared norm of the Poincaré β-concatenated tangent vector v is obtained as follows:
+‖v‖2 =
+N
+∑
+i=1
+( βn
+βni
+)2
+‖vi‖2 =
+N
+∑
+i=1
+βn2 c
+c‖vi‖2
+σ2ni
+C2 = βn2 C2
+c
+N
+∑
+i=1
+ti. (70)
+This leads the value t := c‖v‖2
+σ2n , where σn = Cβn, which is expressed as follows:
+t=
+N
+∑
+i=1
+ti. (71)
+Here, t also follows a χ2 distribution, and the expected value of the norm of v is obtained as follows:
+E[‖v‖] = 1
+2n
+2 Γ(n
+2
+)
+∫∞
+0
+‖v‖ e− t
+2 tn
+2 −1dt =
+√ 2π c
+σn
+βn
+=
+√ 2π
+c C, (72)
+which is the same as the norms of the input tangent vectors. This indicates that each coordinate of v
+follows a normal distribution centered at zero with a variance σ2
+n
+c , satisfying the Assumption 1.
+Based on the results above, the expected value of the norm of each input gyrovector xi is expressed by the following:
+E[‖xi‖] =
+∫∞
+0
+‖xi‖ 1
+2 ni
+2 Γ ( ni
+2
+) e− ti
+2t
+ni
+2 −1
+i dti (73)
+=1
+2 ni
+2 Γ ( ni
+2
+)
+∫∞
+0
+√1c tanh (√c ‖vi‖) e− ti
+2t
+ni
+2 −1
+i dti (74)
+=1
+2 ni
+2 Γ ( ni
+2
+) √c
+∫∞
+0
+tanh (σni
+√ti
+) e− ti
+2t
+ni
+2 −1
+i dti (75)
+=1
+2 ni
+2 Γ ( ni
+2
+) √c
+∫∞
+0
+∞
+∑
+j=1
+22j (22j − 1) B2j
+(σni
+√ti
+)2j−1
+(2j)! e− ti
+2t
+ni
+2 −1
+i dti (76)
+=1
+2 ni
+2 Γ ( ni
+2
+) √c
+∞
+∑
+j=1
+22j (22j − 1) B2j σ2j−1
+ni
+(2j)!
+∫∞
+0
+e− ti
+2t
+ni −3
+2 +j
+i dti (77)
+=1
+2 ni
+2 Γ ( ni
+2
+) √c
+∞
+∑
+j=1
+22j (22j − 1) B2j σ2j−1
+ni
+(2j)! 2j+ ni−1
+2Γ
+(
+j + ni − 1
+2
+)
+(78)
+= √1c
+∞
+∑
+j=1
+22j (22j − 1) B2j
+(2j)!
+(√2πC
+)2j−1 Γ ( ni
+2
+)2j−2
+Γ
+( ni+1 2
+)2j−1 Γ
+(
+j + ni − 1
+2
+)
+. (79)
+Note that, for the calculation between Equations 75 and 76, we utilize the Taylor series expansion of tanh for a real value. Furthermore, considering the Laurent series expansion at infinity, we can obtain the following expressions:
+Γ
+(
+j + ni − 1
+2
+)
+= (2e)− ni
+2 nj+ ni
+2 i
+(
+2
+3
+2 −j √π
+ni
++O
+(1
+n2
+i
+)
+)
+, (80)
+Γ
+( ni+1 2
+)
+Γ
+( ni 2
+)2 = (2e)
+ni
+2 n2− ni
+2 i
+(1
+2
+3 2
+√πni
++O
+(1
+n2
+i
+))
+. (81)
+20
+
+
+Published as a conference paper at ICLR 2021
+Therefore, in the general cases in which ni 1, we can obtain the following approximation:
+Γ
+( ni 2
+)2j−2
+Γ
+( ni+1 2
+)2j−1 Γ
+(
+j + ni − 1
+2
+)
+=Γ
+(
+j + ni − 1
+2
+) Γ ( ni+1
+2
+)
+Γ
+( ni 2
+)2
+(
+Γ
+( ni 2
+)
+Γ
+( ni+1 2
+)
+)2j
+(82)
+' (2e)
+ni
+2 − ni
+2 23
+2 −j √π
+2
+3 2
+√π nj+ ni
+2 − ni
+2 +2−2 i
+(
+Γ
+( ni 2
+)
+Γ
+( ni+1 2
+)
+)2j
+(83)
+= 2−j nj
+i
+(
+Γ
+( ni 2
+)
+Γ
+( ni+1 2
+)
+)2j
+(84)
+' 2−j nj
+i
+
+
+√π (2e)− ni
+2n
+ni −1 2 i
+√π (2e)− ni+1
+2 (ni + 1) ni
+2
+
+
+2j
+(85)
+= 2−j nj
+i
+
+(2e) 1
+2n
+ni −1 2 i
+(ni + 1) ni
+2
+
+
+2j
+(86)
+= 2−j nj
+i (2e)j nj(ni−1)
+i
+(ni + 1)jni (87)
+= ej
+( ni ni + 1
+)nij
+(88)
+' eje−j (89)
+= 1. (90)
+Note that, for the calculation between Equations 84 and 85, we utilize Stirling’s approximation, i.e.,
+Γ(z) '
+√
+2π z
+(z e
+)z. In addition, we utilize the definition of Napier’s constant for the approximation
+between Equations 88 and 89, i.e., limx→∞(1 + 1
+x )x = e.
+Combining Equations 79 and 90, the expected value of ‖xi‖ can be approximately expressed by the following:
+E[‖xi‖] ' √1c
+∞
+∑
+j=1
+22j (22j − 1) B2j
+(2j)!
+(√2πC
+)2j−1
+(91)
+= √1c tanh
+(√2πC
+)
+(92)
+= √1c tanh (√c E[‖vi‖]) . (93)
+In the same way, the expected value of the Poincaré β-concatenated gyrovector x is obtained by the following:
+E[‖x‖] ' √1c tanh
+(√2πC
+)
+(94)
+= √1c tanh (√c E[‖v‖]) , (95)
+which concludes the proof.
+21
+
+
+Published as a conference paper at ICLR 2021
+D.5 THE MÖBIUS GYROMIDPOINT AND THE EINSTEIN GYROMIDPOINT
+Einstein gyromidpoint. In the Beltrami-Klein model, the midpoint  ̄n ∈ Kcn among {ni ∈ Kcn}N
+i=1
+and the non-negative scalar weights {νi ∈ R+}N
+i=1 is given as follows:
+ ̄n =
+N
+∑
+i=1
+νiγini
+N
+∑
+i=1
+νiγi
+, where γi = 1
+√1 − c‖ni‖2 . (96)
+This operation is called the Einstein gyromidpoint (Ungar, 2009).
+Based on the above, we prove the equivalence of the Möbius gyromidpoint and Einstein gyromidpoint.
+Proof. Let the points {bi ∈ Bcn}N
+i=1 correspond to {ni ∈ Kcn}N
+i=1, respectively, i.e., bi is a projection of ni to the Poincaré ball model using Equation 11. From Equations 12 and 96, we obtain the following:
+γi = 1
+√1 − c‖ni‖2 = 1 + c‖bi‖2
+1 − c‖bi‖2 . (97)
+Substituting Equations 12 and 97 for Equation 96 leads to the representation of the Einstein midpoint using the coordinates in the Poincaré ball model:
+ ̄n =
+N
+∑
+i=1
+νi
+2bi
+1 − c‖bi‖2
+N
+∑
+i=1
+νi
+1 + c‖bi‖2 1 − c‖bi‖2
+=
+N
+∑
+i=1
+νiλc
+bi bi
+N
+∑
+i=1
+νi
+(λc
+bi − 1)
+. (98)
+Therefore, the point  ̄b ∈ Bcn, which is a projection of  ̄n to the Poincaré ball model using Equation 11, is expressed in the following manner:
+b ̄ = b
+1 + √1 − c‖b‖2 = 1
+2 ⊗c b, where b =  ̄n =
+N
+∑
+i=1
+νiλc
+bi bi
+N
+∑
+i=1
+νi
+(λc
+bi − 1)
+. (99)
+This concludes the proof.
+D.6 MÖBIUS GYROMIDPOINT AND CENTROID OF SQUARED LORENTZIAN DISTANCE
+Weighted centroid in the hyperboloid model (Law et al., 2019). With a Lorentzian norm |‖x‖L| = √|〈x, x〉L| = √|‖x‖2
+L| for x ∈ Rn+1
+1 , the center of mass  ̄h ∈ Hcn among {hi = (zi, k>
+i )> ∈ Hcn}N
+i=1 and the non-negative scalar weights {νi ∈ R+}N
+i=1 is given as follows:
+ ̄h = h
+√c|‖h‖L| , where h =
+N
+∑
+i=1
+νihi. (100)
+This is based on the minimization problem of the weighted sum of squared Lorentzian distances expressed as follows:
+ ̄h = arg min
+ ̃h
+N
+∑
+i=1
+νi‖hi −  ̃h‖2
+L. (101)
+In the following, we prove the equivalence of the Möbius gyromidpoint and the weighted centroid in the hyperboloid model.
+22
+
+
+Published as a conference paper at ICLR 2021
+Proof. Expanding Equation 100 with the coordinates, we obtain the following:
+ ̄h = √1c
+(N ∑
+i=1
+νizi,
+N
+∑
+i=1
+νik>
+i
+)>
+√ √ √ √
+(N ∑
+i=1
+νizi
+)2
+−
+∥ ∥ ∥ ∥ ∥
+N
+∑
+i=1
+νiki
+∥ ∥ ∥ ∥ ∥
+2 . (102)
+The point b ̄ ∈ Bcn, which is a projection of  ̄h to the Poincaré ball model using Equation 9, is expressed in the following manner:
+ ̄b = √1c
+N
+∑
+i=1
+νiki
+√ √ √ √
+(N ∑
+i=1
+νizi
+)2
+−
+∥ ∥ ∥ ∥ ∥
+N
+∑
+i=1
+νiki
+∥ ∥ ∥ ∥ ∥
+2
++
+N
+∑
+i=1
+νizi
+. (103)
+Dividing both the numerator and denominator by ∑
+i νizi, this can be rewritten as follows:
+b ̄ = b
+1 + √1 − c‖b‖2 = 1
+2 ⊗c b, where b := √1c
+N
+∑
+i=1
+νiki
+N
+∑
+i=1
+νizi
+. (104)
+Next, considering the points {bi ∈ Bcn}N
+i=1, which also correspond to {hi}N
+i=1, respectively, we can transform the expression of b into an expression with only the coordinates in the Poincaré ball model:
+b=2
+N
+∑
+i=1
+νi
+bi
+1 − c‖bi‖2
+N
+∑
+i=1
+νi
+1 + c‖bi‖2 1 − c‖bi‖2
+=
+N
+∑
+i=1
+νiλc
+bi bi
+N
+∑
+i=1
+νi
+(λc
+bi − 1)
+. (105)
+This concludes the proof.
+D.7 MÖBIUS GYROMIDPOINT AS A SOLUTION OF THE MINIMIZATION PROBLEM
+The discovery of the equivalence between the weighted centroid in the hyperboloid model and the Möbius gyromidpoint enables us to discuss what the Möbius gyromidpoint is a minimizer of. In the following, we prove that the Möbius gyromidpoint can be regarded as a minimizer of the weighted sum of calibrated squared gyrometrics.
+Theorem 2. The Möbius gyromidpoint is a solution of the minimization problem of the weighted sum of calibrated squared gyrometrics, which is expressed as follows:
+b ̄ = arg min
+b ̃
+N
+∑
+i=1
+νi λc
+c ̃b⊕cbi ‖ c b ̃ ⊕c bi‖2. (106)
+Each ‖ c b ̄ ⊕c bi‖ indicates the norm of the respective gyrovector bi viewed from the Möbius
+gyromidpoint b ̄, which equals the gyrodistance of  ̄b to bi and is also called a gyrometric (Ungar,
+2009). In addition, each λc
+c ̄b⊕cbi is a conformal factor of the metric tensor of the Poincaré ball model for such a gyrovector. Therefore, the minimization objective in Equation 106 can be interpreted as the weighted sum of squared gyrometrics, each of which is calibrated by a scaling factor at the respective point.
+23
+
+
+Published as a conference paper at ICLR 2021
+Proof. Let the point b ̄ ∈ Bcn be a projection of the weighted centroid  ̄h ∈ Hcn. With Equation 101 and the notation of Equation 10, we obtain the following straightforward expression:
+b ̄ = arg min
+ ̃b
+N
+∑
+i=1
+νi‖hi − h(b ̃)‖2
+L. (107)
+Expanding Equation 107 with the coordinates, we obtain the following:
+ ̄b = arg min
+ ̃b
+−2
+N
+∑
+i=1
+νi
+(1
+c − ziz(b ̃) + 〈hi, h(b ̃)〉
+)
+(108)
+= arg min
+ ̃b
+N
+∑
+i=1
+νi
+(
+−1
+c + ziz(b ̃) − 〈hi, h(b ̃)〉
+)
+. (109)
+Considering the points {bi ∈ Bcn}N
+i=1, which correspond to {hi}N
+i=1, respectively, we can transform Equation 109 into an expression with only the coordinates in the Poincaré ball model:
+ ̄b = arg min
+ ̃b
+N
+∑
+i=1
+νi
+(
+−1
+c+1
+c
+1 + c‖bi‖2 1 − c‖bi‖2
+1 + c‖b ̃‖2
+1 − c‖b ̃‖2 − 〈 2bi
+1 − c‖bi‖2 , 2b ̃
+1 − c‖ ̃b‖2 〉
+)
+(110)
+= arg min
+ ̃b
+N
+∑
+i=1
+2νi‖bi −  ̃b‖2
+(1 − c‖bi‖2)(1 − c‖b ̃‖2) (111)
+= arg min
+ ̃b
+N
+∑
+i=1
+2νi‖ c b ̃ ⊕c bi‖2
+1 − c‖ c b ̃ ⊕c bi‖2 (112)
+= arg min
+ ̃b
+N
+∑
+i=1
+νi λc
+cb ̃⊕cbi ‖ c  ̃b ⊕c bi‖2. (113)
+This concludes the proof.
+D.8 WEIGHT GENERALIZATION OF THE MÖBIUS GYROMIDPOINT
+As mentioned in Section 3.5, we extend the condition of the weights of the Möbius gyromidpoint to all real values {νi ∈ R}N
+i=1 by regarding a negative weight as an additive inverse operation, that is, regarding any pair (νi, bi) as (|νi|, sign(νi)bi):
+N
+∑
+i=1
+|νi| λc
+sign(νi)bi sign(νi)bi
+N
+∑
+i=1
+|νi|
+(
+λc
+sign(νi)bi − 1
+)
+=
+N
+∑
+i=1
+νiλc
+bi bi
+N
+∑
+i=1
+|νi| (λc
+bi − 1)
+. (114)
+E IMPLEMENTATION DETAILS
+E.1 PARAMETER INITIALIZATION
+Unidirectional Poincaré MLR. When the dimensions of the input gyrovector is n, each element of the weight parameter Z is initialized by a normal distribution centered at zero with a standard deviation n− 1
+2 . The bias parameter r is initialized as a zero vector.
+Poincaré FC layer. When the dimensions of the input gyrovector and the output gyrovector are n and m, respectively, each element of the weight parameter Z is initialized by a normal distribution centered at zero with a standard deviation (2nm)− 1
+2 . The bias parameter r is initialized as a zero vector.
+24
+
+
+Published as a conference paper at ICLR 2021
+Poincaré convolutional layer. When the dimensions of the input gyrovector and the output gyrovector are n and m, respectively, and the total kernel size is K, each element of the weight parameter Z is initialized by a normal distribution centered at zero with a standard deviation (2nKm)− 1
+2 . The bias parameter r is initialized as a zero vector.
+Embedding on the Poincaré ball model. As mentioned by Ganea et al. (2018a), we confirmed the tendency of the parameters in the Poincaré ball model to adjust their angles at the first phase of the training before increasing their norms. In addition, we consider that, due to the exponentially growing distance metric of the hyperbolic space, the farther a gyrovector parameter is placed from the origin, the more costly it moves such a point to another point through the optimization. Therefore, the embedding parameters on the Poincaré ball model should be initialized with a particular small gain E, given as a hyperparameter, aiming to accelerate such an adjustment and make the later
+optimization smooth. We set the value E to be 10−2 in the experiment in Section 4.3.
+E.2 HYPERPARAMETERS OF THE EXPERIMENT IN SECTION 4.2
+Optimization. We used the Riemannian Adam optimizer with β1 = 0.9, β2 = 0.999 and = 10−8
+for both of the Euclidean and our hyperbolic architectures. The learning rate η was set to 10−3.
+E.3 HYPERPARAMETERS OF THE EXPERIMENT IN SECTION 4.3
+Model architectures. Let D be the dimension of the source and target token embeddings. Each model for the experiment in Section 4.3 has the encoder and decoder, both of which are composed of five convolutional layers with a kernel size of three and a channel size of D, five convolutional layers with a kernel size of three and a channel size of 2D, and two convolutional layers with a kernel size of one and a channel size of 4D. The output feature maps of the last convolutional layer in the encoder are projected into D-dimensional feature maps. They are utilized as the key for the encoder-decoder attentions. Likewise, the output feature maps of the last convolutional layer in the decoder are projected into D-dimensional feature maps for the final token classification.
+Training. In each iteration of the training phase, we fed each model a mini-batch containing approximately 10,000 tokens at most. In this setting, the batch size, or the number of the sentence pairs in a mini-batch, dynamically changes.
+As a loss function, we utilized the cross entropy function with a label smoothing of 0.1.
+Optimization. We used the Riemannian Adam optimizer with β1 = 0.9, β2 = 0.98 and = 10−9 for both of the Euclidean and our hyperbolic architectures. For the scheduling of the learning rate η, we linearly increased the learning rate for the first 4000 iterations as a warm-up, and utilized the inverse square root decay with respect to the number of iterations t thereafter as η = (Dt)− 1
+2.
+25

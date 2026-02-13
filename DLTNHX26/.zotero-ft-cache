@@ -1,0 +1,59 @@
+Skip to main content
+Computer Science > Computation and Language
+arXiv:2501.06425 (cs)
+[Submitted on 11 Jan 2025]
+Tensor Product Attention Is All You Need
+Yifan Zhang, Yifeng Liu, Huizhuo Yuan, Zhen Qin, Yang Yuan, Quanquan Gu, Andrew Chi-Chih Yao
+View PDF
+HTML (experimental)
+Scaling language models to handle longer input sequences typically necessitates large key-value (KV) caches, resulting in substantial memory overhead during inference. In this paper, we propose Tensor Product Attention (TPA), a novel attention mechanism that uses tensor decompositions to represent queries, keys, and values compactly, significantly shrinking KV cache size at inference time. By factorizing these representations into contextual low-rank components (contextual factorization) and seamlessly integrating with RoPE, TPA achieves improved model quality alongside memory efficiency. Based on TPA, we introduce the Tensor ProducT ATTenTion Transformer (T6), a new model architecture for sequence modeling. Through extensive empirical evaluation of language modeling tasks, we demonstrate that T6 exceeds the performance of standard Transformer baselines including MHA, MQA, GQA, and MLA across various metrics, including perplexity and a range of renowned evaluation benchmarks. Notably, TPAs memory efficiency enables the processing of significantly longer sequences under fixed resource constraints, addressing a critical scalability challenge in modern language models. The code is available at this https URL.
+Comments:	23 pages, 5 figures
+Subjects:	Computation and Language (cs.CL); Artificial Intelligence (cs.AI); Machine Learning (cs.LG)
+Cite as:	arXiv:2501.06425 [cs.CL]
+ 	(or arXiv:2501.06425v1 [cs.CL] for this version)
+ 	
+https://doi.org/10.48550/arXiv.2501.06425
+Focus to learn more
+Submission history
+From: Yifan Zhang [view email]
+[v1] Sat, 11 Jan 2025 03:37:10 UTC (1,505 KB)
+
+Access Paper:
+View PDFHTML (experimental)TeX SourceOther Formats
+view license
+Current browse context: cs.CL
+< prev next >
+
+newrecent2025-01
+Change to browse by: cs cs.AI cs.LG
+References & Citations
+NASA ADS
+Google Scholar
+Semantic Scholar
+Export BibTeX Citation
+Bookmark
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer (What is the Explorer?)
+Connected Papers Toggle
+Connected Papers (What is Connected Papers?)
+Litmaps Toggle
+Litmaps (What is Litmaps?)
+scite.ai Toggle
+scite Smart Citations (What are Smart Citations?)
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax (What is MathJax?)
+About
+Help
+Contact
+Subscribe
+Copyright
+Privacy Policy
+Web Accessibility Assistance
+
+arXiv Operational Status 
+Get status notifications via email or slack

@@ -1,0 +1,3138 @@
+Causal Machine Learning for Cost-Effective Allocation of Development Aid
+
+arXiv:2401.16986v2 [stat.ML] 31 Jan 2024
+
+Milan Kuzmanovic
+ETH Zurich Zurich, Switzerland
+Tobias Hatt
+ETH Zurich Zurich, Switzerland
+ABSTRACT
+The Sustainable Development Goals (SDGs) of the United Nations provide a blueprint of a better future by “leaving no one behind”, and, to achieve the SDGs by 2030, poor countries require immense volumes of development aid. In this paper, we develop a causal machine learning framework for predicting heterogeneous treatment effects of aid disbursements to inform effective aid allocation. Specifically, our framework comprises three components: (i) a balancing autoencoder that uses representation learning to embed high-dimensional country characteristics while addressing treatment selection bias; (ii) a counterfactual generator to compute counterfactual outcomes for varying aid volumes to address small sample-size settings; and (iii) an inference model that is used to predict heterogeneous treatment–response curves. We demonstrate the effectiveness of our framework using data with official development aid earmarked to end HIV/AIDS in 105 countries, amounting to more than USD 5.2 billion. For this, we first show that our framework successfully computes heterogeneous treatment–response curves using semi-synthetic data. Then, we demonstrate our framework using real-world HIV data. Our framework points to large opportunities for a more effective aid allocation, suggesting that the total number of new HIV infections could be reduced by up to 3.3% (∼50,000 cases) compared to the current allocation practice.
+CCS CONCEPTS
+• Applied computing → Life and medical sciences; • Information systems → Data mining; • Computing methodologies → Causal reasoning and diagnostics.
+KEYWORDS
+causal machine learning, heterogeneous treatment effects, treatment effect estimation, development aid, medicine
+1 INTRODUCTION
+The Sustainable Development Goals (SDGs) by the United Nations define a global framework to achieve a better and more sustainable future for the people and the planet [46]. The SDGs list various targets that should be met by 2030 (e.g., ending the HIV/AIDS epidemic, eliminating hunger). Here, a central principle of the SDGs is that of “leaving no one behind”: it is the unequivocal aim of the United Nations to improve conditions for all parts of society and across all countries, including developing countries [48].
+
+Dennis Frauen
+Munich Center for Machine Learning & LMU Munich Munich, Germany
+Stefan Feuerriegel
+Munich Center for Machine Learning & LMU Munich Munich, Germany
+An important driver of progress towards the SDGs, especially for developing countries, is the provision of development aid [34, 45]. Development aid, also called official development assistance (ODA), supports developing countries through various activities funded by donor institutions (e.g., foreign governments, national development agencies, development banks, philanthropic organizations). ODA pools immense financial resources from donor institutions worldwide. For instance, in 2021, ODA amounted to USD 178.9 billion [35]. However, current aid allocation practices mostly rely on human judgment and decision heuristics [33, 37, 43], and can thus result in inefficient allocation [17]. Given that ODA budgets are limited, as well as current challenges (e.g., the war in Ukraine, climate change, etc.), a cost-efficient use of development aid is of great need.
+In this paper, we aim to predict the effectiveness of development aid, so that practitioners can then identify cost-effective allocations. For this, we develop a novel, causal machine learning framework for predicting the effect of aid disbursements on SDG outcomes called CG-CT (counterfactual generator for continuous treatments). Specifically, we predict heterogeneous treatment effects of aid disbursements as a continuous treatment while additionally controlling for various confounders. Our framework is different from existing methods and carefully tailored to our setting. Specifically, our CG-CT is designed to simultaneously address continuous treatments, high-dimensional covariates (country characteristics), treatment selection bias, and small sample-size settings. This allows us to predict the heterogeneous aid effect across different countries, that is, individualized treatment–response curves. In our setting, we also refer to the latter as aid–response curves. Further, our framework is data-efficient: the different components operate on a low-dimensional covariate space and polynomial regression together with data augmentation. This is a crucial difference of our framework from common baselines that build upon neural networks (e.g., [6, 40]).
+We show the effectiveness of our CG-CT in various experiments. For this, we use data from a collaboration with the Organisation for Economic Co-operation and Development (OECD), an intergovernmental organization tasked with monitoring and coordinating the development aid activities of different donors. For our experiments, we focus on official development aid earmarked to end HIV/AIDS in 105 countries. This choice is motivated by the fact that (i) the HIV epidemic is a major cause of death [44, 49, 53], and (ii) ODA committed to ending HIV/AIDS pools extensive resources (e.g.,
+
+Kuzmanovic, et al.
+
+more than USD 106 billion since 2002) [36]. The results demonstrate the potential of our machine learning framework to inform more effective aid allocations for achieving progress towards the SDGs.
+Our main contributions are as follows:1
+(1) We study the problem of predicting heterogeneous treatment effects of development aid on SDG outcomes, thereby informing the effective allocation of development aid.
+(2) We develop a novel causal machine learning framework (CG-CT) for this purpose. We further show that state-of-the-art methods are outperformed by our CG-CT.
+(3) We demonstrate our CG-CT framework using real-world data from the HIV epidemic, where it pinpoints a large potential for reducing the number of new HIV infections over current practice.
+2 RELATED WORK
+Development aid: To inform aid allocations, the effectiveness of aid has been subject to extensive analyses (see Supplement A for details). One literature stream builds upon experiments (e.g., [12, 13]). However, experiments involving development aid are costly and limited to micro-level analyses (e.g., a small geographic area and not across multiple countries). A different literature stream uses observational data (e.g., [7, 31]), yet these works make strong modeling assumptions (e.g., the treatment effect is linear in the aid volume, the effectiveness of aid cannot vary across countries but the effectiveness is instead identical for all countries, etc.). Moreover, the true treatment effect is typically underestimated due to the nature of the modeling approach [7, 31], and, therefore, estimates can merely serve as a lower bound. Importantly, all of the above works estimate the average effect of aid across countries but without considering the heterogeneity in the aid effect across countries. However, to inform aid allocations of decision-makers, methods are needed to predict the heterogeneous treatment effect of aid for a specific country of interest.
+To predict the treatment effect of aid under between-country heterogeneity, existing research has also applied standard machine learning methods (e.g., LASSO regression [22]). Here, the benefit of machine learning is that it should generalize well across multiple countries and thus also allow for accurate predictions of treatment effects for out-of-sample data points. Yet, standard machine learning methods can give unreliable predictions of treatment effects in the presence of treatment selection bias [41]. For example, if wealthy countries generally receive low volumes of development aid, predicting the treatment effect of large aid volumes for wealthy countries might be unreliable due to the limited number of data points. Hence, treatment selection bias can create covariate shifts in the observational data that preclude reliable estimation of treatment effects in some covariate domains. Such covariate shifts are also present in our data around development aid and macroeconomic variables (see Supplement G for an analysis of aid-dependent covariate shifts). To address this issue, we develop a tailored causal machine learning framework for predicting heterogeneous treatment effects of development aid under treatment selection bias.
+1Data and code that supports the findings of our study is made publicly available via a GitHub repository at: https://github.com/mkuzma96/SDG_aid
+
+Causal machine learning: Recent advances in machine learning allow for predicting heterogeneous treatment effects from observational data [1, 2]. This has, among others, enabled new applications in health (e.g., [28, 30]). Here, the prime focus is to reliably predict treatment effects despite different challenges (e.g., confounding bias, treatment selection bias). This is also the reason why naïve methods (e.g., standard machine learning models) for predicting treatment effects can be unreliable [41].
+As an example, let us assume that economic activity positively affects an SDG outcome, but negatively affects the volume of received aid. Then, failing to control for GDP (gross domestic product) per capita when predicting the effect of aid on the SDG outcome could lead to the wrong conclusion that a smaller volume of aid improves the SDG outcome (an instance of confounding bias). Moreover, even if we control for GDP per capita, observational data is likely to have a limited number of observations of large aid volumes in wealthy countries, thus precluding reliable estimation of treatment effects of large aid volumes for wealthy countries (an instance of treatment selection bias). To this end, it is crucial to address these problems when predicting treatment effects.
+To predict heterogeneous treatment effects, many custom methods based on machine learning have been proposed for binary treatments (such as, e.g., causal forests) [1, 3, 19, 24, 41, 55]. In contrast, we are interested in predicting the effect of continuous treatments, which is also known as predicting a heterogeneous doseresponse curve (in our setting, we call it later treatment-response curve or aid-response curve). However, there are only a few works for continuous treatments and heterogeneous treatment effects (e.g., generalized propensity score (GPS), DRNet, SCIGAN) [6, 20, 40]. Importantly, all of these methods have caveats when simultaneously addressing continuous treatments, high-dimensional covariates, treatment selection bias, and small sample-size settings (see the overview in Supplement B).
+3 METHODS
+3.1 Problem setup
+We consider the following cross-sectional setting with 𝑖 = 1, . . . , 𝑛 countries. (1) Let 𝑌𝑖 ∈ Y ⊆ R denote the outcome in country 𝑖. In our case, this is the relative reduction in the HIV infection rate compared to the previous year. However, without loss of generality, one could also use our framework for other SDG outcomes (e.g., prevalence of undernourishment, human poverty indices, tuberculosis incidence). (2) Let 𝐴𝑖 ∈ A ⊆ R+ denote the continuous treatment, which, in our case, is the volume of development aid that is allocated to a country. (3) Let 𝑋𝑖 ∈ X ⊆ R𝑝 refer to the additional covariates that capture country characteristics and act as potential confounders. To make inferences, we have access to observational data on past aid disbursements earmarked to the SDG outcome (here: HIV infection rate). We refer to the observational data by D = {(𝑦𝑖, 𝑎𝑖, 𝑥𝑖 )}𝑛𝑖=1. For brevity, we omit the index 𝑖 unless explicitly needed.
+We formalize our task using the Rubin-Neyman potential outcomes framework [39]. Specifically, we define outcomes as follows. For every treatment 𝑎 ∈ A, we denote the potential outcome by 𝑌 (𝑎) ∈ Y. It gives the SDG outcome if, hypothetically, aid volume 𝑎 would have been allocated to a country. However, the fundamental
+
+Causal Machine Learning for Cost-Effective Allocation of Development Aid
+
+problem of causal inference is that we observe only one potential outcome; that is, the observational data includes only one 𝑌 (𝑎) for a single value 𝐴 = 𝑎. In terms of terminology, the observed outcome is also called the factual outcome, while all other unobserved potential outcomes are called counterfactual outcomes. Note that, in our setting with continuous treatments, we have infinitely many counterfactual outcomes. The causal structure of our problem setup is shown in Figure 1.
+
+X2 X1
+
+X3
+
+...
+
+Xp
+
+A
+
+Y
+
+Figure 1: Causal structure of our problem setup.
+
+Our aim is to predict the heterogeneous treatment effect, i.e., the
+
+expected potential outcome for a given treatment value conditioned
+
+on covariates. Formally, the heterogeneous treatment effect is defined
+
+by
+
+𝜇 (𝑎, 𝑥) := E [ 𝑌 (𝑎) | 𝑋 = 𝑥 ],
+
+(1)
+
+where 𝑥 is the given value for the covariates. We further introduce the so-called treatment–response curve: it refers to the function 𝜇 (𝑎, 𝑥) for varying volumes of development aid, 𝑎, while the country characteristics, 𝑥, are kept fixed. In our case, we also call it “aid–response curve”. In order to unbiasedly estimate 𝜇 (𝑎, 𝑥) from observational data D, we make the following assumptions to ensure identifiability of the treatment effects.
+Assumptions. (i) Consistency: 𝑌 = 𝑌 (𝑎) if 𝐴 = 𝑎; (ii) Positivity: 0 < 𝑝 (𝐴 = 𝑎 | 𝑋 = 𝑥) < 1, ∀𝑎 ∈ A, if 𝑝 (𝑥) > 0; (iii) Ignorability: 𝑌 (𝑎) ⊥⊥ 𝐴 | 𝑋 = 𝑥 , ∀𝑎 ∈ A.
+The above assumptions are the standard for identifiability of treatment effects from observational data [21, 38] . Consistency from Assumption (i) ensures that the observed outcomes are realizations of potential outcomes given observed treatment. Positivity from Assumption (ii) ensures that all treatments are possible on the entire covariate space. Ignorability from Assumption (iii) is often referred to as “no hidden confounders” assumption, meaning that all variables that affect both treatment 𝐴 and potential outcomes 𝑌 (𝑎) are measured in the covariates 𝑋 . Under Assumptions (i)–(iii), we have that 𝜇 (𝑎, 𝑥) := E [ 𝑌 (𝑎) | 𝑋 = 𝑥 ] = E [ 𝑌 | 𝐴 = 𝑎, 𝑋 = 𝑥 ]. Hence, we can estimate 𝜇 (𝑎, 𝑥) from observational data D by learning a function 𝑓 : A × X → Y using machine learning. (In the supplements, we provide several secondary analyses where we provide empirical results to validate the above assumptions.)
+Our task is subject to three main challenges, which we briefly summarize in the following. (1) There is a comparatively large set of country characteristics that we need to control for in order to adjust for confounding. However, as a result, having a high-dimensional covariate space leads to higher estimation variance (see Supplement C for an overview of all control variables). (2) Treatment selection bias can be present in observational data, which means that treatment–response estimates in some covariate domains might be unreliable due to a limited number of observed data points (see Supplement G for an analysis of covariate distributions for different development aid volumes). (3) There is only a comparatively small set of countries receiving aid because of which the sample size 𝑛 with observed outcomes is naturally small. To obtain reliable
+
+estimates despite the aforementioned challenges, we develop a tailored method in the following called counterfactual generator for continuous treatments (CG-CT).
+3.2 Data
+We use the following data: (1) Outcome variable 𝑌 represents the relative reduction in the HIV infection rate (i.e., the annual number of new infections per 1,000 uninfected in the population) compared to the previous year. The data are obtained from UN SDG indicator database [50]. (2) Treatment 𝐴 represents the official development aid volume in USD millions per annum earmarked to end HIV in each country. The data are obtained from OECD CRS database [36]. (3) Covariates 𝑋 represent control variables that capture different country characteristics with regard to socioeconomic, macroeconomic, and health-related dimensions. Examples are: gross domestic product (GDP) per capita, GDP growth, population size, maternal mortality, infant mortality, school enrollment, etc. The complete list of covariates is given in Supplement C. The data are obtained from the World Bank database [54].
+We use the data from 105 countries that are recipients of development aid earmarked towards ending the HIV epidemic. The sample covers a population of more than 4.3 billion people (around half of the world’s population). We predict the country-specific aid–response curves for the year 2017. The reason is that some of the data are made public by international organizations only with a time lag after the actual data collection (e.g., maternal mortality). For learning, we use data from the previous year, that is, 2016. This ensures that all performance evaluations are conducted using out-of-sample observations from 2017. Later, we also conduct robustness checks with other time frames in Supplement M.
+3.3 Causal machine learning framework
+To learn treatment–response curves for our HIV setting, we develop the following causal machine learning framework which we call counterfactual generator for continuous treatments (CG-CT). CG-CT is tailored so that it can handle continuous treatments and deal with the unique challenges of our problem setup (i.e., high-dimensional covariates in the form of country characteristics, treatment selection bias, small sample size). CG-CT comprises three components: (1) a balancing autoencoder aimed at embedding high-dimensional country characteristics while simultaneously addressing treatment selection bias; (2) a counterfactual generator to compute counterfactual outcomes for varying volumes of aid to address the small sample-size setting; and (3) an inference model which is a (causal) machine learning model used to predict treatment–response curves from observational data. The idea behind components (1) and (2) is to perform a data augmentation that generates synthetic data points under our causal graph, which, in turn, helps in predicting the treatment–response curves in component (3), despite the small sample-size setting. Below, we present the three components of our CG-CT (see Figure 2). Pseudocode is in Supplement E. Component (1): Balancing autoencoder. The balancing autoencoder maps the original high-dimensional covariate space X ∈ R𝑝 onto a representation space Z ∈ R𝑟 with 𝑟 < 𝑝. The aim is to: (i) reduce the dimension of the covariate space while preserving ignorability (i.e., confounder control), and (ii) address treatment selection bias. For
+
+Y1 A1
+
+X1
+
+Y2 A2
+
+X2
+
+^
+
+Y1 A1
+
+Z^ 1
+
+Y2 A2
+
+Z^ 2
+
+~
+
+Y1 A1
+
+Z^ 1
+
+Y2 A2
+
+Z^ 2
+
+Treatment-response curve
+
+1
+
+2
+
+3
+
+Yn An
+
+Xn
+
+GRL
+
+A^
+
+X
+
+z^
+
+^
+X
+
+Yn An
+
+Z^ n
+
+Amin
+
+Amax
+
+~
+
+~
+
+Ai,1
+
+Ai,2
+
+~
+Ai,m
+
+A
+
+Z^
+
+w* i,1 ~
+Yi,1
+
+w* i,2
+
+w* i,m
+
+Y
+
+~
+
+~
+
+Yi,2
+
+Yi,m
+
+Yn An
+
+Z^ n
+
+~~
+Y A 1,1 1,1
+
+Z^ 1
+
+~~
+Y A 1,2 1,2
+
+Z^ 1
+
+~~
+Y A n,m n,m
+
+Z^ n
+
+X Covariates (macro indicators)
+^
+Z Representation A Treatment (development aid) Y Outcome (SDG target)
+~
+A Random treatment w* Optimal weights Y~ Counterfactual outcome GRL Gradient reversal layer
+
+1 Balancing autoencoder 2 Counterfactual generator 3 Inference model
+Figure 2: Overview of our machine learning framework.
+
+this, we use representation learning [4] to learn a representation 𝜙 : X → Z that preserves the original covariate information in a lower-dimensional space while being non-predictive of the treatment 𝐴. Therefore, we learn our balancing autoencoder by minimizing the loss function
+
+L
+
+=
+
+1
+
+𝑁
+∑︁
+
+1
+
+𝑛𝑝
+
+𝑥𝑖 − 𝑥ˆ𝑖
+
+2 2
+
+−𝜃
+
+1
+
+𝑁
+∑︁
+
+𝑛
+
+𝑎𝑖 − 𝑎ˆ𝑖
+
+2
+2,
+
+(2)
+
+𝑖 =1
+
+𝑖 =1
+
+= L𝑥
+
+= L𝑎
+
+where L𝑥 is the reconstruction loss (i.e., the mean squared error in predicting covariates 𝑋 using the representation 𝑍 ) with 𝑥ˆ𝑖 = 𝑔𝑥 (𝑧ˆ𝑖 ) and 𝑔𝑥 : Z → X (i.e., 𝑔𝑥 is the inverse of 𝜙), L𝑎 is treatment prediction loss (i.e., the mean squared error in predicting the treatment 𝐴 using the representation 𝑍 ) with 𝑎ˆ𝑖 = 𝑔𝑎 (𝑧ˆ𝑖 ) and 𝑔𝑎 : Z → A, 𝑝 is the dimension of the covariate space, and 𝜃 > 0 is a trade-off parameter. We discuss both the reconstruction loss and the treatment prediction loss in the following.
+The reconstruction loss L𝑥 enforces the invertibility of the representation that would allow to reconstruct the original covariates from the representation. When 𝜙 is an invertible mapping, then the ignorability assumption holds with respect to the representation as well, i.e., 𝑌 (𝑎) ⊥⊥ 𝐴 | 𝑋 =⇒ 𝑌 (𝑎) ⊥⊥ 𝐴 | 𝑍 = 𝜙 (𝑋 ) (see [56]). Hence, enforcing invertibility is important because it ensures that the original covariate information is preserved in a way that the representation can be used to control for confounding.
+The treatment prediction loss L𝑎 (with a negative sign) aims to reduce treatment selection bias by ensuring that the learned representation of covariates is not predictive of the treatment. In the presence of treatment selection bias, there can be a strong dependence between covariates and treatment. This often results in having covariate domains where certain levels of treatment are rarely observed in observational data, which means that heterogeneous treatment effects cannot be reliably estimated in these domains. One approach to deal with this problem is to learn a balanced representation of covariates that is not predictive of the treatment, thereby removing the association between treatment and the respective representation of covariates. This domain adaptation technique was applied for categorical treatments, with treatment prediction loss being cross-entropy loss (see [5]). While previous work was focused on binary and not continuous treatments, it has been shown that domain adaptation for continuously indexed domains can be implemented via an 𝐿2-loss [52]. Hence, we implement a similar domain adaptation approach as in [5], i.e., using
+
+Kuzmanovic, et al.
+
+adversarial learning with gradient reversal layer (GRL) [16], but
+
+adapt it to our setting with continuous treatment where our L𝑎 is
+set to the 𝐿2-loss. Thus, the balancing autoencoder produces a low-rank represen-
+tation of covariates 𝑍ˆ = 𝜙ˆ(𝑋 ) (where 𝜙ˆ is the representation 𝜙
+
+learned from data) which aims to (i) preserve the original covari-
+
+ate information by minimizing the reconstruction loss L𝑥 , and (ii) remove the association between covariates and treatment by maximizing treatment prediction loss L𝑎. This allows us to use 𝑍ˆ as control variables to adjust for confounding while simultaneously
+
+addressing treatment selection bias.
+
+Component (2): Counterfactual generator. The counterfactual gener-
+
+ator computes counterfactual outcomes for varying treatments and
+
+covariates (i.e., for varying aid volumes and varying country char-
+
+acteristics). Here, the aim is to address the missing counterfactual
+
+outcomes in observational data and improve the predictions by
+
+combining the observational data with additional counterfactual
+
+outcomes. Our approach for counterfactual generation is motivated
+
+by results from earlier research in machine learning [6]. However,
+
+different from [6], we refrain from using a generative adversarial
+
+network (GAN), due to the small sample size and the poor fit as a
+
+result; instead, we develop a custom approach.
+
+We compute the counterfactual outcomes by weighting data
+
+points from the observational data. Specifically, for a given treatment 𝑎˜, covariate representation 𝑧ˆ, and data Dˆ = {(𝑦𝑖, 𝑎𝑖, 𝑧ˆ𝑖 )}𝑛𝑖=1 (i.e., the observational data D after applying the balancing autoen-
+
+coder), we compute the optimal weights by solving the following
+
+optimization problem
+
+𝑛
+
+∗
+𝑤
+
+=
+
+arg
+
+min
+
+∑︁
+
+𝑧ˆ − 𝑍ˆm𝑇 at 𝑤
+
+2 2
+
++
+
+𝛼
+
+∥𝑤 ∥𝑠
+
+s.t.
+
+𝑇
+𝐴vec
+
+𝑤
+
+=
+
+𝑎˜,
+
+(3)
+
+𝑤 ∈R𝑛 𝑖=1
+
+where 𝑍ˆmat is an 𝑛 × 𝑟 matrix with rows being covariate representations from the observational data 𝑧ˆ1, . . . , 𝑧ˆ𝑛, 𝐴vec is a vector of treatments 𝑎1, . . . , 𝑎𝑛 from the observational data, and 𝑠 is the order of the norm (here: 𝑠 = 1). After computing optimal weights 𝑤∗,
+
+these are then used to compute the counterfactual outcome 𝑦˜ for
+
+treatment 𝑎˜ and covariate representation 𝑧ˆ by weighting outcome values from the observational data, i.e., 𝑦˜ = 𝑌v𝑇ec 𝑤∗.
+The idea behind the counterfactual generator is to reweight
+
+the observational data to create a “synthetic twin” of a data point
+
+(𝑦𝑖, 𝑎𝑖, 𝑧ˆ𝑖 ) under our causal graph. In our CG-CT, a synthetic twin then has the following two properties: (i) the treatment of the syn-
+
+thetic twin equals some desired treatment 𝑎˜ for which we want
+
+to generate the counterfactual outcome; and (ii) the covariate rep-
+
+resentation of the synthetic twin 𝑧˜ should resemble the covariate
+
+representation 𝑧ˆ𝑖 of the data point (while addressing treatment
+
+selection
+
+bias).
+
+By
+
+computing
+
+∗
+𝑤
+
+using
+
+the
+
+observational
+
+data
+
+and
+
+Eq. (3), we generate the synthetic twin (𝑦˜, 𝑎˜, 𝑧˜). Then, since the
+
+synthetic twin and the data point ideally differ only with respect to
+
+the value of the treatment, we can use the outcome of the twin 𝑦˜
+
+as a prediction for the counterfactual outcome for the data point
+
+with covariate representation 𝑧ˆ𝑖 if the treatment value was 𝑎˜. As such, we can add the data point (𝑦˜, 𝑎˜, 𝑧ˆ𝑖 ) and increase the size of our observational data.
+
+The benefit of generating counterfactual outcomes is that we
+
+gain access to additional (counterfactual) outcome–treatment pairs,
+
+which can improve precision in predicting treatment–response
+
+Causal Machine Learning for Cost-Effective Allocation of Development Aid
+
+curves. Notwithstanding, counterfactual generation procedure can-
+
+not provide ground-truth counterfactual outcomes, but rather pre-
+
+dictions of counterfactual outcomes based on the observational
+
+data. Hence, to achieve performance gains, the counterfactual gen-
+
+erator has to be sufficiently precise such that the error reduction
+
+when predicting treatment–response curves with additional coun-
+
+terfactual data outweighs the error in predicting counterfactual
+
+outcomes during counterfactual generation.
+
+We implement the counterfactual generator by generating 𝑚
+
+counterfactual outcome–treatment pairs for each data point in
+
+the observational data. Specifically, for each country 𝑖, with corre-
+
+sponding covariate representation 𝑧ˆ𝑖 , we first sample 𝑚 treatment
+
+values {𝑎˜𝑖 𝑗 }𝑚𝑗=1 uniformly from the interval [𝐴min, 𝐴max]. Then,
+
+for each treatment 𝑎˜𝑖 𝑗 and corresponding 𝑧ˆ𝑖 , we compute the op-
+
+timal
+
+weights
+
+∗
+𝑤
+
+using the observational data and Eq. (3), and,
+
+𝑖𝑗
+
+then, we generate the counterfactual outcome 𝑦˜𝑖 𝑗 . As a result, the
+
+counterfactual generator is used to augment the observational data
+
+with 𝑚 · 𝑛 counterfactual outcome–treatment pairs to improve the
+
+precision in predicting treatment–response curves.
+
+Component (3): Inference model. The inference model is used to pre-
+
+dict treatment–response curves from given data by learning a func-
+
+tion 𝑓 : A × Z → Y. This is the final step in CG-CT after applying
+
+the balancing autoencoder and the counterfactual generator to the
+
+observational data. In principle, any machine learning regression
+
+method can be used as an inference model; however, our focus is
+
+on the prediction of treatment effects of a continuous treatment.
+
+Hence, as inference model, we use a model from the causal machine
+
+learning literature that is aimed at predicting the effect of a continu-
+
+ous treatment, namely, the generalized propensity score (GPS) [20].
+
+We have chosen the GPS as we expect it to be more robust in small
+
+sample size settings due to its parsimonious structure as compared
+
+to deep learning-based causal machine learning methods (e.g., the
+
+dose-response network (DRNet) [40]). We later evaluate other in-
+
+ference models in Supplement L and thereby confirm empirically
+
+that our choice of the GPS is preferred.
+
+The GPS involves a two-step estimation procedure. In the first
+
+step, the conditional distribution of the treatment given covariates
+
+(in our case, it is the covariate representation, as the inference
+
+model is applied after the balancing autoencoder) is modeled under
+
+the assumption of a Gaussian distribution, i.e.,
+
+𝐴𝑖 | 𝑍𝑖 ∼ 𝑁 (𝛽0 + 𝛽1𝑍1𝑖 + . . . + 𝛽𝑟 𝑍𝑟𝑖 ; 𝜎2),
+
+(4)
+
+where 𝑟 is the size of the covariate representation space. Once the estimates 𝛽ˆ0, 𝛽ˆ1, . . . , 𝛽ˆ𝑟 , 𝜎ˆ are obtained (e.g., via maximum likelihood estimation), they are used to compute the estimates of GPS
+
+as follows:
+
+𝑅ˆ𝑖 = √ 1 exp 2𝜋 𝜎ˆ 2
+
+−
+
+1 2𝜎ˆ 2
+
+𝐴𝑖 − 𝛽ˆ0 − 𝛽ˆ1𝑍𝑖1 − . . . − 𝛽ˆ𝑟 𝑍𝑖𝑟
+
+2
+
+.
+
+(5)
+
+In the second step, the heterogeneous treatment–response curves are estimated by using a 2nd-degree polynomial regression given
+
+by
+
+𝑌𝑖 = 𝛼0 + 𝛼1𝐴𝑖 + 𝛼2𝐴𝑖2 + 𝛼3𝑅𝑖 + 𝛼4𝑅𝑖2 + 𝛼5𝐴𝑖 𝑅𝑖 .
+
+(6)
+
+Hence, the full GPS model is estimated by obtaining parameter estimates 𝛽ˆGPS = (𝛽ˆ0, 𝛽ˆ1, . . . , 𝛽ˆ𝑟 ), 𝜎ˆGPS and 𝛼ˆGPS = (𝛼ˆ0, 𝛼ˆ1, . . . , 𝛼ˆ5).
+Why is the GPS able to predict treatment–response curves in
+small sample-size settings? Recall that the GPS is highly parsimonious: the first step has 𝑟 + 2 parameters, and the second step has 6
+
+parameters, which amounts to only 𝑟 +8 parameters to be estimated. In our case, we have 𝑝 = 14 covariates, and the covariate representation space 𝑟 is lower than 𝑝 by construction (see the range for the representation layer size of CG-CT in Supplement F). Hence, the GPS can be estimated well in our setting. This is a crucial difference of our framework from common baselines that build upon neural networks or other machine learning models (e.g., [6, 40]).
+
+3.4 Experimental details
+
+Semi-synthetic data. To assess the effectiveness of our CG-CT in
+predicting treatment–response curves, we need to evaluate prediction performance on counterfactual outcomes (and not only on factual outcomes). Because counterfactual outcomes are unobservable in the real-world data, we follow common practice in machine learning [6, 40] and make use of semi-synthetic data where “groundtruth” counterfactual outcomes are known. Formally, we simulate semi-synthetic data as given in Supplement D. Baselines. We use the following baselines: (i) linear model (LM) of varying order with regularization term (i.e., linear regression, LASSO regression, or ridge regression); (ii) artificial neural network (ANN) for non-linearities; (iii) generalized propensity score (GPS) [20]; (iv) dose-response networks (DRNet) [40]; and (v) SCIGAN [6].
+Baselines (i)–(ii) are standard machine learning models. While they are applicable to our setting, these baselines are not tailored for treatment effect estimation and, therefore, do not address causal aspects such as treatment selection bias. Baselines (iii)–(v) are from the causal machine learning literature representing state-of-theart benchmarks focused on predicting the effect of continuous treatment. Of note, there are other methods that deal with treatment effect estimation (e.g., causal forests), yet with a focus on binary and not on continuous treatments [1, 3, 19, 24, 41, 55]. Hence, these methods are not applicable to our setting. Performance metrics. In our experiments, we evaluate the perfor-
+
+mance of CG-CT in two ways: (i) counterfactual outcome pre-
+
+diction using semi-synthetic data, i.e., performance in predicting
+
+treatment–response curves; and (ii) factual outcome prediction
+
+using real-world data.
+
+For (i), we follow prior literature [40] and use the mean integrated
+
+squared error (MISE) given by
+
+1
+
+𝑛
+∑︁
+
+∫
+
+𝐴max
+
+MISE =
+
+𝑦𝑖 (𝑎) − 𝑦ˆ𝑖 (𝑎) 2 d𝑎,
+
+(7)
+
+𝑛
+𝑖 =1
+
+𝑎=𝐴min
+
+where 𝑦𝑖 (𝑎) is the respective outcome given aid volume 𝑎, 𝑦ˆ𝑖 (𝑎) is the predicted outcome given aid volume 𝑎, and the interval
+
+[𝐴min, 𝐴max] is the observed interval of development aid in realworld data. The MISE has the advantage that we benchmark the
+
+performance across a range of different aid volumes [𝐴min, 𝐴max]. Formally, we compute the inner integral of MISE using Romberg
+
+integration with 64 equally spaced samples of development aid on
+
+the interval [𝐴min, 𝐴max]. For (ii), we use the root mean squared error. Note that we use
+
+the RMSE for real-world data (as opposed to the MISE), since the
+
+performance must be computed using a single outcome (as opposed
+
+to the complete treatment–response curve).
+
+Implementation. We used Python 3.7 and PyTorch 1.7. The training
+
+is done in batches for a given number of epochs. We use Adam [26]
+
+Kuzmanovic, et al.
+
+with learning rate 𝜂 for optimization. Hyperparameter tuning is performed via cross-validation with 80/20 split (see Supplement F for details). The performance is reported as mean ± standard deviation (averaged over 10 runs). Decision-making problem. In order to understand the potential down-
+stream impact of our framework and how it can support aid allocation in practice, we introduce the following decision-making problem. We study a hypothetical setting where an aid allocation under budget constraints should be identified that minimizes the total annual number of new HIV infections across countries. The idea is that such an analysis should identify countries in need of development aid to not fall behind. Reassuringly, we emphasize that the suggested allocation should not be interpreted as an optimal allocation due to various idiosyncrasies in practice, but rather as illustrative for how our framework can help decision-making in identifying needs and funding gaps.
+Formally, we solve the following decision-making problem:
+
+𝑛
+
+𝑛
+
+[𝑎1, . . . , 𝑎𝑛]∗ = arg min ∑︁
+
+1 − 𝑦ˆ𝑖 (𝑎𝑖, 𝑥𝑖 )
+
+𝑟𝑖 𝑝𝑖
+
+s.t.
+
+∑︁ 𝑎𝑖 ≤ 𝐵,
+
+𝑎𝑖 ∈ [0,𝐿] 𝑖=1
+
+𝑖 =1
+
+𝑖 =1,...,𝑛
+
+where 𝐿 is the bound for aid allocation to a single country, 𝑦ˆ𝑖 (𝑎𝑖, 𝑥𝑖 ) is the predicted relative reduction in the HIV infection rate (predicted by our CG-CT for given aid volume 𝑎𝑖 and given country characteristics 𝑥𝑖 ), 𝑟𝑖 is the HIV infection rate for a given country from the previous year, 𝑝𝑖 is the population size in a given country, and 𝐵 is the available budget. In our analysis, we set 𝐵 to the total observed volume of aid allocated in the current year. We bound the disbursement, 𝑎𝑖 for 𝑖 = 1, . . . , 𝑛, to a single country to the range [0, 𝐿] with 𝐿 = 𝐴max + 𝜎ˆ𝐴, where 𝐴max is the maximal value of observed aid for a single country, and 𝜎ˆ𝐴 is the estimated standard deviation for the aid variable 𝐴. We do this to prevent overly large extrapolation when providing estimates of aid effects using 𝑦ˆ𝑖 (𝑎𝑖, 𝑥𝑖 ). In our implementation, we solve the optimization problem using sequential least squares programming [27].
+
+4 RESULTS
+4.1 Results for semi-synthetic data
+We make a few important observations based on the results of our experiments with semi-synthetic data (see Figure 3a). First, CG-CT is the best-performing method in predicting treatment–response curves. We observe that the square root of MISE for the best baseline (GPS) is 0.205 ± 0.000. In contrast, for our CG-CT, it is 0.158 ± 0.024. Hence, our method reduces the prediction error by at least 23% compared to the baselines. This shows that our CG-CT is a superior method for predicting heterogeneous treatment–response curves in our HIV setting. Second, we observe a large estimation error and a large variance for SCIGAN (i.e., 11.443 ± 9.303), which is a state-of-the-art method that has been shown to have superior performance over both DRNet and GPS [6]. However, SCIGAN is based on generative adversarial networks (GANs), which may have poor fit in small sample size settings. Given that in our case, we have a sample of 105 countries (and thus much smaller than experiments in [6]), it is not surprising that SCIGAN has challenges in our HIV setting.
+
+4.2 Results for real-world data
+We now apply our machine learning framework CG-CT to realworld HIV data. Here, the main purpose is to demonstrate the applicability of our method (rather than performance benchmarking). The reason is that ground-truth treatment effects are absent in real-world data, and, therefore, the performance in predicting treatment–response curves can no longer be evaluated.
+We compare our CG-CT against baselines that produce treatment effects, i.e., GPS, DRNet, and SCIGAN (see Figure 3b). This was done intentionally to prevent the advantages of more flexible methods that directly optimize their performance against factual outcome prediction and, thus, to ensure a fair comparison. Importantly, our results confirm that the baselines for predicting treatment-response curves are consistently outperformed by our CG-CT. In particular, we show an improvement of at least 5% in RMSE. We again observe a large RMSE for SCIGAN along with a large variance (i.e., 3.430 ± 2.393), which can be attributed to challenges of fitting a GAN in a small sample setting.
+We also report the performance of standard machine learning methods in the following. However, these have the advantage of being designed for factual outcome prediction (whereas our method is designed for predicting treatment effects), and, therefore, we expect our CG-CT to achieve a somewhat similar performance. Here, the RMSE for the standard machine learning baselines is 0.078 ± 0.000 (for LM) and 0.083 ± 0.003 (for ANN). Our CG-CT achieves 0.076 ± 0.002, which is an improvement of 2.56%. Hence, our framework outperforms the standard machine learning baselines as well.
+We use CG-CT to predict aid–response curves for different countries in 2017 (see Figure 3c). The aid–response curves can be used by public decision-makers to answer ‘what if?’ questions; that is, how potential changes in aid volumes would change the expected reduction in HIV infection rates. Overall, we see a clear pattern: development aid is predicted to have a positive effect on the reduction in HIV infection rates. This is expected as such a relation was empirically confirmed in retrospective studies [31]. Importantly, however, we observe considerable between-country heterogeneity in the predicted aid–response curves. For example, the observed aid for Mozambique (in orange) is USD 402 million, and the expected reduction in HIV infection rate predicted by our CG-CT is 6.94%. Here, an increase in development aid of USD 50 million would result in expected reduction in the HIV infection rate by 7.76%. In contrast, the observed aid for Congo (in red) is USD 145 million, and the expected reduction in the HIV infection rate predicted by our CG-CT is 4.15%. Here, an increase in development aid of USD 50 million would result in expected reduction in the HIV infection rate by 4.29%. Hence, an increase in development aid by USD 50 million is predicted to have a stronger impact in Mozambique than in Congo. Moreover, we note that our predicted aid–response curves predict a reduction in HIV infection rates even in the absence of aid, albeit of different magnitude across countries. This can be expected as reductions can also be driven by country characteristics and other trends (e.g., domestic financing to end the HIV epidemic, growing disease awareness, etc.). In sum, the aid–response curves may help public decision-makers when allocating aid by informing them about the expected effect of a particular aid allocation on HIV infection rates across countries.
+
+Causal Machine Learning for Cost-Effective Allocation of Development Aid
+
+(a)
+
+(b)
+
+3.43
+
+MISE Relative reduction in HIV infection rate (in %)
+
+11.443
+
+0.25 0.20 0.15 0.10
+(c)
+
+SCIGAN
+
+0.281 0.234
+0.205
+
+DRNet
+
+GPS
+
+ANN
+
+0.209 0.158
+LM CG-CT (ours)
+
+RMSE
+
+0.09 0.08 0.07 0.06 SCIGAN
+
+0.098 DRNet
+
+16
+
+14
+
+10
+
+6
+
+12 10
+
+8
+
+4
+
+8
+
+6
+
+2
+
+6
+
+4
+
+450 500 550 600 650 300 350 400 450 500 0 0
+
+7
+
+6
+
+6 5
+
+6
+
+4
+
+4
+
+4
+
+3
+
+2
+
+2
+
+2
+
+1
+
+50 100 150 200 250 0
+
+50 100
+
+0
+
+Development aid (in USD millions)
+
+50 100 150 50 100 150 200
+
+0.08
+
+0.076
+
+GPS CG-CT (ours)
+
+South Africa Mozambique Burundi Congo, Dem. Rep. India Indonesia Observed aid
+
+Figure 3: Results for predicted aid–response curves. (a) Results from the experiments with semi-synthetic data. (b) Results from the experiments with real-world data. (c) Predictions for aid–response curves in six example countries. The predicted aid–response curves for the remaining countries are provided in Supplement O. Vertical dashed line denotes the actual volume of development aid as observed in 2017. The 𝑥-axis is set to 𝐴obs ± 𝜎ˆ𝐴 (with a cut-off at zero to prevent negative values for Burundi and India), where 𝐴obs is the observed development aid and 𝜎ˆ𝐴 is the estimated standard deviation of development aid in 2017.
+
+4.3 Potential for more effective aid allocation
+We now provide insights into how our framework can inform the decision-making around aid allocation. Our decision-making problem seeks to determine an aid allocation that minimizes the total annual number of new HIV infections across all countries under a budget constraint (see Methods for details). Here, we use the predicted aid–response curves as input, which provide predictions of the expected reduction in the HIV infection rate compared to the previous year for a given aid volume and given country characteristics. We use real-world HIV data from the year 2017. Specifically, to limit the overall available volume of development aid, we set the budget constraint to the observed total volume of aid allocated in the year 2017. For evaluation, we compare (i) the expected annual number of new HIV infections under our suggested allocation against (ii) the expected annual number of new HIV infections under current allocation practice. To account for variation, we report bootstrapped [14] confidence intervals.
+Our results (see Figure 4a) show that the expected number of new HIV infections under the current allocation is 1.49 ± 0.02 million. For our suggested allocation, the expected number of new HIV infections is 1.44 ± 0.04 million. The reduction amounts to 3.3% ± 1.8%. This corresponds to ∼50,000 fewer cases (i.e., 48,925 ± 26,779). As a robustness check for our modeling, we note that the expected number of new HIV infections predicted by our framework for the observed aid allocation (i.e., 1.49 million new HIV infections) matches the actual number of new HIV infections observed in the data (Figure 4a, gray dotted line). This again corroborates that our framework provides precise outcome predictions.
+
+HIV infections worldwide (in millions)
+
+We further compare aid volumes under current aid allocation vs. the allocation suggested by our CG-CT (see Figure 4b). Importantly, our framework identifies countries with higher needs for aid than before. For example, our framework suggests increasing aid for Zambia by USD 366 million and for Nigeria by USD 329 million. Overall, our framework suggests increasing aid disbursements in several countries in Southeast Africa (e.g., South Africa, Mozambique, Tanzania, Zambia). Furthermore, our machine learning framework targets more aid towards non-African countries, which have previously not received large amounts of aid in the past despite having a comparatively large annual number of new HIV infections (e.g., India, Brazil). In sum, our findings demonstrate the effectiveness of our CG-CT to inform cost-efficient allocation of development aid that maximizes progress towards ending the HIV epidemic.
+
+Suggested vs. observed aid (in USD millions)
+
+(a)
+1.55
+
+(b)
+>300
+
+200
+
+1.50 Observed: 1.49
+
+1.49
+
+100
+
+3.3%
+
+1.45
+
+(~50,000 cases) 1.44
+
+0
+
+-100
+
+1.40
+
+-200
+
+<-300
+
+1.35
+
+Current allocation
+
+Suggested allocation
+
+Figure 4: Suggested vs. current aid allocation. (a) Reduction in the expected number of new HIV infections worldwide under the suggested allocation vs. the current allocation of development aid. (b) Change in the aid volume between the suggested and the current aid allocation (in USD millions). Gray: countries that were not aid recipients in 2017.
+
+4.4 Robustness checks
+In order to further validate our CG-CT, we perform several additional analyses. (1) We visually inspect the covariate representations learned by the balancing autoencoder using t-SNE [51] and isomap [42]. The visualizations are shown in Supplement H. We observe that the balancing autoencoder induces homogeneity of the covariate representation with respect to treatments, thereby successfully addressing treatment selection bias. (2) We perform a sensitivity analysis of our CG-CT with respect to the balancing parameter 𝜃 (from the balancing autoencoder) and the number of generated counterfactual outcomes per country 𝑚 (from the counterfactual generator). We observe that the results remain robust when varying these hyperparameters (see Supplement K). (3) We examine how CG-CT behaves when other (causal) machine learning methods (i.e., LM, ANN, DRNet) are used as the inference model instead of GPS. Here, we find that our CG-CT leads to consistent performance improvements over the baselines across different inference models (see Supplement L). Moreover, the results show that the choice of GPS is preferred. (4) We perform an ablation study where we toggle the balancing autoencoder and the counterfactual generator on/off. We observe that the performance gains by our CG-CT are a result of combining the balancing autoencoder with the counterfactual generator (see Supplement L). This demonstrates the importance of our methodological innovations. (5) We repeat the ablation study with other inference models for which we now toggle the balancing autoencoder and the counterfactual generator on/off. Again, we
+
+see clear performance improvements when combining both components (see Supplement L). This confirms that balancing autoencoder and counterfactual generator are important for obtaining precise treatment–response curves in our setting.
+We perform several analyses to examine the validity of the underlying assumptions for identifiability of treatment effects, namely, positivity and ignorability, as well as the robustness to the potential violation of the latter. (1) We first show the estimated probability of aid volumes for different countries, where we observe that the range of aid volumes over which we optimize allocation does not lead to severe extrapolation (see Supplement I). (2) We examine the robustness of the predicted treatment effect of aid when adding other covariates that were not included in country characteristics. Here, we focus on past values of development aid, past values of HIV infection rate, past aid volumes of neighboring countries, and past HIV infection rates of neighboring countries, which allows us to control for additional temporal dynamics and spillover effects between countries. We find that the effect remains robust, indicating that our set of country characteristics is sufficient to address potential confounding effects of these covariates (see Supplement I). (3) We perform a causal sensitivity analysis to check the robustness of our method regarding violations of the ignorability assumption, that is, unobserved confounding. We use a state-of-the-art method [23] to check that our predicted treatment–response curves remain stable under small violations of the ignorability assumption (see Supplement J). In other words, even in a hypothetical case of unobserved confounding, our results remain robust, and one cannot explain away the predicted treatment effect.
+To show robustness of our results in a different time frame, we perform an analysis where we use HIV data from the year 2015 for learning and from the year 2016 for evaluation. We observe that the conclusions of our analysis remain consistent and that the baselines are outperformed by our CG-CT (see Supplement M). We also experimented with multi-year data for learning; however, this did not lead to significant out-of-sample performance improvements. Here, one explanation is that allocation practices are subject to changes over time (e.g., changes in priorities, changes in programs, funding mix) [57].
+5 DISCUSSION
+Strengths: Our data-efficient CG-CT is tailored to our setting where it offers several strengths for predicting heterogeneous treatment effects. While there are numerous methods in the literature for binary treatments (e.g., causal forests) [1, 3, 19, 24, 41, 55], there are comparatively few for continuous treatments [6, 20, 40]. Different from existing methods, our CG-CT is designed to simultaneously address continuous treatments, high-dimensional covariates (country characteristics), treatment selection bias, and a small sample-size setting. Here, our framework shows a superior performance in predicting aid–response curves. For example, in our experiments with semi-synthetic data, our CG-CT outperforms both standard machine learning methods (i.e., the linear model and the artificial neural network) and common baselines for predicting heterogeneous treatment–response curves [6, 20, 40] by at least 23%. Our ablation studies (see Supplement L) show that our performance improvements are largely attributed to our combination of the balancing autoencoder and the counterfactual generator
+
+Kuzmanovic, et al.
+as effective levers to address the above challenges. Finally, our framework is data-efficient: the different components operate on a low-dimensional covariate space and polynomial regression together with data augmentation. This is a crucial difference of our framework from common baselines that build upon neural networks (e.g., [6, 40]). To this end, we foresee future applications of our CG-CT in other decision-making settings.
+Limitations: As any other work, ours is not free of limitations, which provide interesting opportunities for future research. First, the standard challenge when predicting treatment effects from observational data is that counterfactual outcomes are not observable [39]. This is not unique to our framework but is inherent to essentially all methods from the literature [6, 40], which then make mathematical assumptions to infer treatment effects. Second, there are other factors that may drive aid allocations in practice (e.g., political aims, sanctions). Nevertheless, our framework is useful in such situations as it promotes transparency by informing about needs and funding gaps. This is especially relevant as development financing transitions towards bilateral negotiations about aid volumes between donors and recipients. Finally, we emphasize that our objective is not to coordinate aid disbursements at the level of individual funding bodies. This would require a tactical model to account for operational constraints, expertise, coordination, and other idiosyncratic aspects of individual aid activities, because of which such a model would not be meaningful in practice. Instead, we fulfill a direct need in practice [37] by informing allocations of development aid on a global scale.
+Impact: Our framework shows large untapped potential for making progress towards ending the HIV epidemic through costefficient aid allocation. Of note, our framework is not only applicable to the HIV epidemic but essentially to all other SDG targets (see Supplement N for examples). Thereby, our work supports public decision-makers in making important progress towards the SDGs. This is especially relevant due to ongoing challenges (e.g., the war in Ukraine, global warming, etc.), necessitating a more cost-efficient use of resources.
+Deployment: The current framework presented in this paper is the result of a collaboration with the Organisation for Economic Co-operation and Development (OECD), an intergovernmental organization coordinating development aid activities of different donors. The SDG Financing Lab of the OECD has been tasked with developing dashboards around machine learning models, such as ours, that make data-driven insights available to decision-makers. Here, we report performance based on computational experiments (rather than from post-launch) due to two reasons. (i) Aid allocation follows a multi-year process from goal setting to shifting funding, so that real-world evidence on SDG outcomes is only available with a significant delay. (ii) Aid allocation follows a human-in-the-loop process, making it difficult to use post-launch data to isolate human judgment from the recommendations of our framework. Hence, we opted for a numerical evaluation to offer timely results and demonstrate broad applicability.
+
+Causal Machine Learning for Cost-Effective Allocation of Development Aid
+REFERENCES
+[1] Alaa, Ahmed M. and van der Schaar, Mihaela. 2017. Bayesian inference of individualized treatment effects using multi-task Gaussian processes. Advances in Neural Information Processing Systems (2017).
+[2] Alaa, Ahmed M. and van der Schaar, Mihaela. 2018. Limits of estimating heterogeneous treatment effects: Guidelines for practical algorithm design. International Conference on Machine Learning (2018).
+[3] Susan Athey, Julie Tibshirani, and Stefan Wager. 2019. Generalized random forests. The Annals of Statistics 47, 2 (2019), 1148–1178.
+[4] Bengio, Yoshua and Courville, Aaron and Vincent, Pascal. 2013. Representation learning: A review and new perspectives. IEEE Transactions on Pattern Analysis and Machine Intelligence (2013).
+[5] Ioana Bica, Alaa, Ahmed, M., James Jordon, and Mihaela van der Schaar. 2020. Estimating counterfactual treatment outcomes over time through adversarially balanced representations. International Conference on Learning Representations (2020).
+[6] Ioana Bica, James Jordon, and Mihaela van der Schaar. 2020. Estimating the effects of continuous-valued interventions using generative adversarial networks. Advances in Neural Information Processing Systems (2020).
+[7] Kassandra Birchler and Katharina Michaelowa. 2016. Making aid work for education in developing countries: An analysis of aid effectiveness for primary education coverage and quality. International Journal of Educational Development 48 (2016), 37–52.
+[8] Victor Chernozhukov, Denis Chetverikov, Mert Demirer, Esther Duflo, Christian Hansen, Whitney Newey, and James Robins. 2018. Double/debiased machine learning for treatment and structural parameters. The Econometrics Journal 21, 1 (2018), C1–C68.
+[9] Kyle Colangelo and Ying-Ying Lee. 2022. Double debiased machine learning nonparametric inference with continuous treatments. arXiv:2004.03036 (2022).
+[10] Alicia Curth and Mihaela van der Schaar. 2021. Nonparametric estimation of heterogeneous treatment effects: From theory to learning algorithms. 24th International Conference on Artificial Intelligence and Statistics (2021).
+[11] Hristos Doucouliagos and Martin Paldam. 2009. The aid effectiveness literature: The sad results of 40 years of research. Journal of Economic Surveys 23, 3 (2009), 433–461.
+[12] Esther Duflo, Pascaline Dupas, Michael Kremer, and Samuel Sinei. 2006. Education and HIV/AIDS prevention: Evidence from a randomized evaluation in Western Kenya. (The World Bank) (2006).
+[13] Duflo, Esther, and Michael Kremer. 2003. Use of randomization in the evaluation of development effectiveness. World Bank Operations Evaluation Department (OED) Conference on Evaluation and Development Effectiveness 15 (2003).
+[14] Bradley Efron. 1992. Bootstrap methods: Another look at the jackknife. In Breakthroughs in Statistics. Springer, New York, 569–593.
+[15] Dylan J. Foster and Vasilis Syrgkanis. 2019. Orthogonal statistical learning. arXiv:1901.09036 (2019).
+[16] Yaroslav Ganin, Evgeniya Ustinova, Hana Ajakan, Pascal Germain, Hugo Larochelle, François Laviolette, Mario Marchand, and Victor Lempitsky. 2016. Domain-adversarial training of neural networks. The Journal of Machine Learning Research 17, 1 (2016), 2096–2030.
+[17] Global Burden of Disease Health Financing Collaborator Network. 2020. Health sector spending and spending on HIV/AIDS, tuberculosis, and malaria, and development assistance for health: progress towards Sustainable Development Goal 3. The Lancet 396, 10252 (2020), 693–724.
+[18] Henrik Hansen and Finn Tarp. 2000. Aid effectiveness disputed. Journal of International Development 12, 3 (2000), 375–398.
+[19] Hatt, Tobias and Feuerriegel, Stefan. 2021. Estimating average treatment effects via orthogonal regularization. ACM International Conference on Information & Knowledge Management (2021).
+[20] Keisuke Hirano and Guido W. Imbens. 2004. The propensity score with continuous treatments. In Applied Bayesian Modeling and Causal Inference from Incomplete-Data Perspectives. John Wiley & Sons, Ltd, Chichester, UK, 73–84.
+[21] Guido Imbens and Donald B. Rubin. 2015. Casual inference for statistics, social, and biomedical sciences: An introduction. Cambridge University Press, New York.
+[22] Johannes Jakubik and Stefan Feuerriegel. 2022. Data-driven allocation of development aid toward Sustainable Development Goals: Evidence from HIV/AIDS. Production and Operations Management 31, 6 (2022), 2739–2756.
+[23] Andrew Jesson, Alyson Douglas, Peter Manshausen, Nicolai Meinshausen, Philip Stier, Yarin Gal, and Uri Shalit. 2022. Scalable sensitivity and uncertainty analysis for causal-effect estimates of continuous-valued interventions. In NeurIPS.
+[24] Johansson, Fredrik and Shalit, Uri and Sontag, David. 2016. Learning representations for counterfactual inference. International Conference on Machine Learning (2016).
+[25] Edward H. Kennedy, Zongming Ma, Matthew D. McHugh, and Dylan S. Small. 2017. Nonparametric methods for doubly robust estimation of continuous treatment effects. Journal of the Royal Statistical Society: Series B (Statistical Methodology) 79, 4 (2017), 1229–1245.
+
+[26] Diederik P. Kingma and Jimmy Ba. 2015. Adam: A Method for Stochastic Opti-
+
+mization. International Conference on Learning Representations (2015).
+
+[27] Dieter Kraft. 1988. A software package for sequential quadratic programming.
+
+German Aerospace Center – Institute for Flight Mechanics (1988).
+
+[28] Mathias Kraus, Stefan Feuerriegel, and Maytal Saar-Tsechansky. 2023. Data-
+
+driven allocation of preventive care with application to diabetes mellitus type II.
+
+Manufacturing & Service Operations Management (2023).
+
+[29] Lensink, Robert and Morrissey, Oliver. 2000. Aid instability as a measure of
+
+uncertainty and the positive impact of aid on growth. The Journal of Development
+
+Studies 36, 3 (2000), 31–49.
+
+[30] Ruoqi Liu, Lai Wei, and Ping Zhang. 2021. A deep learning framework for drug
+
+repurposing via emulating clinical trials on real-world patient data. Nature
+
+Machine Intelligence 3, 1 (2021), 68–75.
+
+[31] Musharavati Ephraim Munyanyi, Sefa Awaworyi Churchill, and Ahmed Skali.
+
+2020. Foreign Aid and Development Goals: Revisiting the Evidence. In Moving
+
+from the Millennium to the Sustainable Development Goals, Jenner and Awaworyi
+
+Churchill (Eds.). Springer, Singapore, 181–197.
+
+[32] Lizhen Nie, Mao Ye, Qiang Liu, and Dan Nicolae. 2021. VCNet and functional
+
+targeted regularization for learning causal effects of continuous treatments.
+
+International Conference on Learning Representations (2021).
+
+[33] OECD. 2009. Managing Aid: Practices of DAC Member Countries. https://www.
+
+oecd.org/dac/peer- reviews/managingaidpracticesofdacmembercountries.htm
+
+[34] OECD. 2018. Development Co-operation Report 2018: Joining Forces to Leave No
+
+One Behind. https://www.oecd.org/social/development-co-operation-report-
+
+20747721.htm
+
+[35] OECD. 2021. Official Development Assistance (ODA).
+
+https:
+
+//www.oecd.org/dac/financing- sustainable- development/development-
+
+finance- standards/official- development- assistance.htm
+
+[36] OECD. 2023. Creditor Reporting System (CRS). https://stats.oecd.org/Index.
+
+aspx?DataSetCode=crs1
+
+[37] OECD. 2023. The SDG Financing Lab. https://sdg-financing-lab.oecd.org/about
+
+[38] Judea Pearl. 2009. Causality: Models, Reasoning, and Inference (2 ed.). Cambridge
+
+University Press, Cambridge.
+
+[39] Rubin, Donald B. 2005. Causal Inference Using Potential Outcomes: Design,
+
+Modeling, Decisions. Journal of the American Statistical Association 100, 469
+
+(2005), 322–331.
+
+[40] Patrick Schwab, Lorenz Linhardt, Stefan Bauer, Joachim M. Buhmann, and Walter
+
+Karlen. 2020. Learning counterfactual representations for estimating individual
+
+dose-response curves. Proceedings of the AAAI Conference on Artificial Intelligence
+
+(2020).
+
+[41] Uri Shalit, Fredrik D. Johansson, and David Sontag. 2017. Estimating individual
+
+treatment effect: generalization bounds and algorithms. International Conference
+
+on Machine Learning (2017). http://proceedings.mlr.press/v70/shalit17a.html
+
+[42] Tenenbaum, Joshua B. and Silva, Vin de and Langford, John C. 2000. A global
+
+geometric framework for nonlinear dimensionality reduction. Science 290, 5500
+
+(2000), 2319–2323.
+
+[43] Malte Toetzke, Nicolas Banholzer, and Stefan Feuerriegel. 2022. Monitoring
+
+global development aid with machine learning. Nature Sustainability 5 (2022),
+
+533–541.
+
+[44] UNAIDS. 2023. Global HIV & AIDS statistics: Fact sheet. https://www.unaids.
+
+org/en/resources/fact- sheet
+
+[45] United Nations. 2014. World Investment Report 2014: Investing in the SDGs: an
+
+action plan. https://unctad.org/system/files/official-document/wir2014_en.pdf
+
+[46] United Nations. 2015. Take Action for the Sustainable Development Goals.
+
+https://www.un.org/sustainabledevelopment/sustainable- development- goals/
+
+[47] United Nations. 2017. SDG Indicators. https://unstats.un.org/sdgs/indicators/
+
+indicators- list/
+
+[48] United Nations. 2018. The Sustainable Development Goals Report. https:
+
+//unstats.un.org/sdgs/report/2018/
+
+[49] United Nations. 2023. Goal 3: Ensure healthy lives and promote well-being for
+
+all at all ages. https://www.un.org/sustainabledevelopment/health/
+
+[50] United Nations. 2023. SDG Indicators Database. https://unstats.un.org/sdgs/
+
+dataportal/database
+
+[51] G. E. van der Maaten L. J. P. and Hinton. 2008. Visualizing data using t-SNE.
+
+Journal of Machine Learning Research 9, 11 (2008), 2579–2605.
+
+[52] Hao Wang and He, Hao and Katabi, Dina. 2020. Continuously indexed domain
+
+adaptation. International Conference on Machine Learning (2020).
+
+[53] WHO. 2020. The top 10 causes of death. https://www.who.int/news-room/fact-
+
+sheets/detail/the- top- 10- causes- of- death
+
+[54] World Bank. 2023. World Bank Open Data. https://data.worldbank.org/
+
+[55] Yoon, Jinsung and Jordon, James and van der Schaar, Mihaela. 2018. GANITE:
+
+Estimation of individualized treatment effects using generative adversarial nets.
+
+International Conference on Learning Representations (2018).
+
+[56] Yao Zhang, Alexis Bellot, and Mihaela van der Schaar. 2020. Learning Over-
+
+lapping Representations for the Estimation of Individualized Treatment Effects.
+
+International Conference on Artificial Intelligence and Statistics (2020).
+
+[57] Carlos Ávila, Dejan Loncar, Peter Amico, and Paul de Lay. 2013. Determinants of government HIV/AIDS financing: a 10-year trend analysis from 125 low- and middle-income countries. BMC Public Health 13 (2013), 673.
+A BACKGROUND ON MODELING AID EFFECTIVENESS
+Extensive work has focused on analyzing the effectiveness of development aid on macroeconomic growth [11, 18, 29]. Even other works study the link between development aid on specific SDG outcomes. For example, the authors in [7] examine the effect of education aid on primary education using generalized method of moments regression. [31] estimate the effectiveness of development aid on 8 SDG outcomes (i.e., poverty ratio, extreme hunger, school enrollment, HIV prevalence, gender parity at school, access to water, child mortality, and maternal mortality) using a panel fixed effects regression. Yet, as we detail below, a novel methodological approach is needed for our task.
+Previously, different methodological approaches have been applied in order to study the effectiveness of development aid. Several works draw upon field experiments (e.g., [12, 13]). Here, the objective is to provide confirmatory evidence whether there is indeed a causal effect (and of what magnitude) and thus to understand whether aid was generally effective. However, experiments involving development aid are costly and limited to micro-level analyses, that is, the sample is designed for a small geographic area and not across multiple countries, as needed for our task. Furthermore, standard randomized controlled trials with two treatment arms would be limited to binary treatments and not treatment-response curves and, without additional assumptions, estimates are limited to average effects and not heterogeneous effects.
+Others works use observational data (e.g., [7, 31]). Yet, these works typically make strong modeling assumptions. First, they assume that the effect is linear in the aid volume. Second, the true treatment effect is typically underestimated due to the nature of the modeling approach, and, hence, the estimate is merely a lower bound. Third, the aforementioned works assume that the effectiveness of aid cannot vary across countries but that the effectiveness is instead identical for all countries. As such, these works estimate the average effect of aid and not the heterogeneous effect of aid. To address this, we develop a tailored method for predicting betweencountry heterogeneity in treatment–response curves. Importantly, we use machine learning to avoid overfitting and thus to generate predictions that generalize well across countries.
+To support decision-making, one needs to answer the question “if volume 𝑎 is spent on development aid, what would be the most likely outcome on the SDGs?”. To the best of our knowledge, one work [22] uses traditional machine learning for that purpose, where the authors combine LASSO regression with mathematical optimization to inform the optimal allocation of development aid. We have included the method in [22] as a baseline. Throughout our manuscript, we refer to it as linear model (LM) where we vary order and regularization term (i.e., linear regression, LASSO regression, or ridge regression). Different from the LM, our framework is designed as a more flexible, non-linear approach. On top of that, the LM suffers from an important limitation: it is based on traditional machine learning, and not causal machine learning. In particular,
+
+Kuzmanovic, et al.
+this method does not account for treatment selection bias, and, as a result, it may give unreliable predictions of treatment effect.
+To address the above limitations, a tailored machine learning framework is needed in order to provide more reliable predictions of heterogeneous aid–response curves. Across all of our experiments, we find robust evidence that this baseline is outperformed by our proposed machine learning framework. Thereby, we address that the question “if volume 𝑎 is spent on development aid, what would be the most likely outcome on the SDGs?” is inherently linked to counterfactual inference where hypothetical questions are answered with regard to which outcome to expect. In order to generalize well across countries, our framework further makes extensive use of recent innovations in statistics and machine learning.
+B COMPARISON WITH EXISTING METHODS FOR TREATMENT EFFECT ESTIMATION
+Here, we briefly review existing methods for treatment effect estimation and point to salient differences between them and our CG-CT.
+Methods for binary treatments: Prior literature on counterfactual inference makes nowadays increasing use of machine learning. This then allows to predict heterogeneous treatment effects. Here, prior literature has been strongly focused on the setting with binary treatments [1, 3, 19, 24, 41, 55]. However, this is different from our work where we have continuous treatments.
+Methods for continuous treatments: There are comparatively few methods that consider continuous treatments [6, 20, 40]. Here, key methods are as follows:
+• Generalized propensity score (GPS) [20]. The GPS is a twostep estimation procedure. In the first step, conditional distribution of treatment given covariates is modeled under Gaussian distribution assumption. The estimated parameters are then used to compute the estimate for GPS. In the second step, conditional distribution of outcome given treatment and GPS is modeled as 2nd-degree polynomial regression with an interaction term between treatment and GPS.
+• Dose-response network (DRNet) [40]. To predict heterogeneous treatment–response curves, DRNet provides a multilayer neural network with a shared representation, multiple treatment “heads” (for each possible treatment), and multiple dosage “heads” within each treatment “head” (for splitting respective dosage interval of each treatment). The aim of the architecture with multiple treatment and dosage “heads” is to avoid treatment and dosage information being lost within representation layers of the neural network.
+• SCIGAN [6]. SCIGAN is a method based on generative adversarial network (GAN). SCIGAN is motivated by the work of [55] where counterfactual generator is used to generate potential outcomes of different treatment assignments. In particular, SCIGAN uses the generator which takes observed data (i.e., observed outcome, treatment, dosage, and covariates), random treatment, random dosage, and random noise to generate a potential outcome for a random
+
+Causal Machine Learning for Cost-Effective Allocation of Development Aid
+treatment and dosage (sampled uniformly from given treatments and dosages). The aim of the generator is to produce potential outcomes that ‘fool’ the discriminator which discriminates between outcomes of observed treatment and dosage (i.e., the factual outcome), and outcomes of random treatments and dosages (i.e., counterfactual outcomes). Once the counterfactual generator is trained, an inference network (i.e., an artificial neural network) that predictes heterogeneous treatment–response curves is trained on combined original and generated data. • Methods based on (semiparametric) statistical theory [9, 15, 25, 32]. There are several methods for obtaining asymptotic (large-sample) convergence guarantees and valid confidence intervals. Here, methods roughly fall into two main categories: (i) methods based on the efficient influence function of the dose-response curve, and (ii) methods based on Neyman orthogonal losses (double machine learning). In the context of (i), influence function-based methods aim at correcting for asymptotic plugin bias that occurs from estimation errors in the nuisance functions. Examples include the estimator proposed in [25], which performs a pseudooutcome regression, and VCNet [32], which employs a functional targeted regularization. However, existing methods from (i) only consider average but not individualized doseresponse functions. In the context of (ii), double machine learning-based methods such as [15] and [9] construct Neyman orthogonal loss functions, yet which are locally insensitive to small estimation errors in the nuisance functions. These methods rely on sample splitting to guarantee fast (asymptotic) convergence rates [8]. Due to these characteristics, we found them not to be effective for our work and instead opt for our machine learning framework called CG-CT.
+Note that both DRNet and SCIGAN are designed for multiple treatments and a dosage interval for each treatment. However, since we only have one treatment (i.e., development aid), we have implemented DRNet without multiple treatment “heads”, and SCIGAN without treatment discriminator.
+Differences to our work: In comparison with the above methods, our CG-CT offers three key advantages in our HIV setting. (1) Our balancing autoencoder uses adversarial learning to learn a representation that is not predictive of the treatment (thereby addressing treatment selection bias) while simultaneously reducing the dimension of covariate space that we use to control for confounding. Removing selection bias is especially important in our high-dimensional and low sample setting, which is not accounted for by other baselines. In particular, semiparametric theory-based methods rely on sample splitting to provide guarantees for asymptotic convergence rates [8, 15], but sample splitting may harm the estimation performance in low sample settings [10]. (2) SCIGAN as a GAN-based method requires a comparatively large data sample to provide a good fit. This is evidenced by poor performance of SCIGAN in our HIV setting. Hence, our novel counterfactual generator offers a better solution for generating counterfactual outcomes in small sample settings. (3) Our choice of the inference model to be GPS over more complex models (e.g., DRNet) has proven to be more
+
+robust in a small sample size setting. This is expected given that DRNet also has a rather large model architecture because of shared representation and multiple dosage “heads” that require more data for a good fit.
+
+C OVERVIEW OF MODEL VARIABLES
+Ending the HIV epidemic is an important target of the SDG framework (Goal 3, Target 3.3.1) [47]. In 2017, there were 35.9 million people living with HIV globally, with 1.7 million new infections and 800,000 HIV-related deaths [44]. Moreover, HIV has caused more than 40 million deaths since the beginning of the epidemic [44], and it continues to be one of the leading causes of death, especially in low-income countries [53]. Overall, large HIV infection rates (i.e., the annual number of new HIV infections per 1,000 uninfected people in the population) are observed in Southern and Eastern Africa (see Figure S1a). Countries with a particularly large number of new HIV infections per year are, for example, South Africa (∼337,000), Mozambique (∼125,000), Tanzania (∼100,000), Nigeria (∼94,000) and Zambia (∼73,000) (see Figure S1a, subplot). To this end, the HIV epidemic presents a major threat to global public health.
+
+HIV infection rate
+
+(a)
+>6
+
+5
+
+4
+
+3
+
+HIV infections (in 1000s)
+
+2
+300
+
+200
+
+100
+
+1
+
+0 SAofruictha Mozamb. Tanzania Nigeria Zambia
+0
+
+Development aid (in USD millions)
+
+(b)
+
+500
+
+400
+
+300
+
+600 400 200
+0 Kenya SAofruictha TanzaniaMozamb. Uganda
+
+200 100 0
+
+Development aid (in USD millions)
+
+Figure S1: Overview of HIV infections and aid disbursements. (a) HIV infection rate (i.e., the annual number of new HIV infections per 1,000 uninfected people in the population) per country in 2017. The subplot in the bottom-left corner shows five countries with the largest number of new HIV infections in 2017. (b) Volume of HIV development aid in USD millions, in 2017. The subplot in the bottom-left corner shows five countries that were the largest recipients of development aid earmarked to end the HIV epidemic in 2017. Gray: countries that were not aid recipients in 2017.
+Development aid is important for achieving the goal of ending the HIV epidemic, especially in developing countries that have limited domestic financing. In 2017, development aid committed to
+
+Kuzmanovic, et al.
+
+ending the HIV epidemic amounted to more than USD 5.2 billion. Large volumes of aid were allocated to African countries (see Figure S1b). In particular, countries such as Kenya (USD 560 million), South Africa (USD 530 million), and Tanzania (USD 482 million) have received particularly large aid volumes (see Figure S1b, subplot).
+Table S1 lists all variables that are used in our analysis: (i) the outcome variable, (ii) the treatment variable, and (iii) the country characteristics as covariates. Here, we have intentionally included a wide range of socioeconomic, macroeconomic, and health-related country characteristics in order to control for potential confounding when predicting the aid–response curves. The choice for most of the covariates (e.g., GDP per capita, population, school enrollment, etc.) was motivated by previous work on aid effectiveness [7, 22, 31].
+Table S1: Overview of model variables. The variables are grouped by: relative reduction in HIV infection rate (outcome), development aid (treatment), and country characteristics (covariates). Reported are also summary statistics (SD: standard deviation). GDP per capita is reported as purchasing power parity (PPP) adjusted values.
+
+Variable Outcome variable Relative reduction in HIV infection rate (in %) Treatment variable Development aid (in USD millions) Country characteristics GDP per capita PPP (in USD thousands) GDP growth (in %) Foreign direct investment (in USD billions) Consumer price index - inflation (in %) Unemployment (in %) Population (in millions) Fertility (number of births per woman) Maternal mortality (number of deaths per 100,000 live births) Infant mortality (number of deaths per 1,000 live births) Life expectancy (in years) School enrolment ratio (primary education) Prevalence of undernourishment (in % of population) Access to electricity (in % of population) Incidence of tuberculosis (number of cases per 100,000 people)
+
+Mean
+3.26
+50.121
+8.87 3.81 3.29 7.75 7.83 41.66 3.25 241.21 30.95 68.50 1.04 13.91 73.83 162.29
+
+SD
+7.85
+112.858
+6.79 3.53 8.75 18.72 6.23 135.75 1.33 259.08 20.36 6.90 0.13 11.65 29.83 158.96
+
+Median
+2.94
+6.348
+7.26 3.82 0.89 4.38 5.65 11.98 2.85 144.00 26.60 69.51 1.03 9.10 90.30 99.00
+
+Min
+−50.00
+0.003
+0.77 −5.07 −7.40 −1.54
+0.14 0.38 1.26 2.00 2.70 52.95 0.68 2.50 4.20 5.20
+
+Max
+17.30
+559.897
+30.45 26.68 68.89 187.85 27.04 1338.68 7.00 1150.00 87.30 79.91 1.45 58.70 100.00 738.00
+
+The above data have a small ratio of missing values (around 3.5%), mostly present in a few country characteristics (e.g., school enrollment, inflation). We imputed the missing values using the 𝑘-nearest neighbors algorithm. Furthermore, due to varying scales in country characteristics, we standardize the covariate data prior to the analysis using a min-max scaler (i.e., scale the data to [0, 1] interval by deducting the minimal value and, subsequently, dividing by the difference between the maximal and the minimal value).
+D SEMI-SYNTHETIC DATA
+In order to assess the effectiveness of our CG-CT in predicting treatment–response curves, we need to evaluate prediction performance on counterfactual outcomes (and not only on factual outcomes). Because counterfactual outcomes are unobservable in the real-world data, we follow common practice in machine learning [6, 40] and make use of semi-synthetic data where “groundtruth” counterfactual outcomes are known. Formally, we simulate semi-synthetic data where covariates, treatment, and relationships between variables are based on the real-world data in order to reflect our HIV setting. We simulate: (i) semi-synthetic data with simulated outcomes based on real-world HIV data in year 2016 (used
+
+for learning); and (ii) semi-synthetic data with simulated outcomes based on real-world HIV data in year 2017 (used for evaluation).
+Formally, we proceed as follows. First, using real-world HIV data in year 2016, we compute the parameters in a linear regression of relative reduction in HIV infection rate (our outcome) on development aid (our treatment) and country characteristics (our covariates), including interaction terms between development aid and country characteristics. The estimated parameters (intercept 𝑐ˆ, treatment effect 𝛼ˆ, covariates effects 𝛽ˆ1, . . . , 𝛽ˆ𝑝 , and interaction effects 𝛾ˆ1, . . . , 𝛾ˆ𝑝 ) are used as ground-truth effects. We then leverage the respective ground-truth effects to compute the “pseudo-mean” of an outcome for each country 𝑖 = 1, . . . , 𝑛 via
+
+𝑝
+
+𝜇𝑖
+
+∑︁ = 𝑐ˆ + 𝛼ˆ 𝑎𝑖 +
+
+𝛽ˆ𝑗 𝑥𝑖 𝑗 + 𝛾ˆ𝑗 𝑎𝑖 𝑗 𝑥𝑖 𝑗
+
+.
+
+(8)
+
+𝑗 =1
+
+We normalize the pseudo-means {𝜇𝑖 }𝑛𝑖=1 using a min-max scaler and thereby obtain {𝜇ˆ𝑖 }𝑛𝑖=1. Afterwards, we induce a non-linearity by taking the square root, i.e., 𝜇˜𝑖 = √︁𝜇ˆ𝑖 . Finally, we simulate the outcomes via
+
+𝑦˜𝑖 = 𝜇˜𝑖 + 𝜖𝑖,
+
+(9)
+
+where 𝜖𝑖 ∼ 𝑁 (0, 0.012) is Gaussian noise. Depending on whether we use the semi-synthetic data for learn-
+ing or evaluation, we make the following adaptations. For semisynthetic data (i) that we use for learning, we simulate 105 data points (for 105 countries with respective covariates/country characteristics) with factual outcomes that are simulated as above by using the observed volumes of development aid (treatment). For semi-synthetic data (ii) that we use for evaluation, we simulate counterfactual outcomes by using varying volumes of development aid on the observed interval [𝐴min, 𝐴max] instead of observed treatment 𝑎𝑖 in Eq. (8) and without noise 𝜖𝑖 . Because there are infinitely many counterfactual outcomes that constitute a treatment– response curve for a continuous treatment, we simulate outcomes for 64 equally spaced aid volumes on the interval [𝐴min, 𝐴max], which are then used for evaluation (see below). As a result, the dataset for evaluation counts 64 · 105 data points. In sum, the aforementioned procedure allows us to simulate ground-truth treatment– response curves that we use to evaluate the performance of our CG-CT.
+The above procedure for obtaining semi-synthetic data is designed to reflect the real-world setting of allocating aid earmarked to end the HIV epidemic. Importantly, we retain the following main characteristics of the real-world data: (i) the same covariates; (ii) the same sample size; (iii) the same treatment interval; and (iv) groundtruth effects that are based on estimates of treatment effects from real-world HIV data and thus reflect observed relationships (here, the linear regression coefficients are used as proxies). We add nonlinearity as we expect that ground-truth effects of aid in real-world HIV settings are characterized by non-linearities [22].
+
+E PSEUDOCODE
+CG-CT combines the above three components – i.e., the balancing autoencoder, the counterfactual generator, and the inference model – in order to provide predictions of treatment–response
+
+Causal Machine Learning for Cost-Effective Allocation of Development Aid
+
+curves. The learning algorithm for our CG-CT is given in Algo-
+
+rithm 1. First, the balancing autoencoder is applied to the observational data D = {(𝑦𝑖, 𝑎𝑖, 𝑥𝑖 )}𝑛𝑖=1 to obtain Dˆ = {(𝑦𝑖, 𝑎𝑖, 𝑧ˆ𝑖 )}𝑛𝑖=1. Then, by using the counterfactual generator with Dˆ , we generate
+
+additional 𝑚 outcome–treatment pairs for each 𝑧ˆ𝑖 , thus adding
+
+𝑚 · 𝑛 new data points that represent counterfactual outcomes
+
+(i.e., the synthetic twins). This provides the final data that is used
+
+for predicting treatment–response curves, i.e., D˜ = (𝑦𝑖, 𝑎𝑖, 𝑧ˆ𝑖 ) ∪
+
+({𝑦˜𝑖 𝑗 , 𝑎˜𝑖 𝑗 }𝑚𝑗=1, 𝑧ˆ𝑖 )
+
+𝑛 𝑖 =1
+
+.
+
+In
+
+the
+
+third
+
+step,
+
+we
+
+use
+
+the
+
+inference
+
+model
+
+(i.e., GPS) to predict treatment–response curves from data D˜ . For
+
+computational reasons, Algorithm 1 makes use of batch learning
+
+for a given number of epochs.
+
+Algorithm 1 Learning algorithm for CG-CT
+
+Input: Data D = { (𝑦𝑖 , 𝑎𝑖 , 𝑥𝑖 ) }𝑖𝑛=1; loss functions L, L𝑥 , and L𝑎 ; hyperparameters 𝜂, 𝜃 , 𝑟 , 𝑚, 𝛼, and 𝑠; network architecture with weights 𝑊𝜙 , 𝑊𝑔𝑥 , 𝑊𝑔𝑎
+Output: Optimal representation 𝜙∗ with weights 𝑊 ∗ , and estimated weights of the GPS model 𝜙
+𝛽ˆGPS, 𝛼ˆGPS, and 𝜎ˆGPS
+
+1: repeat
+
+⊲ Component 1: Balancing autoencoder
+
+2: Randomly sample mini-batch of size 𝑏 from D
+
+𝑏
+
+3:
+
+Compute 𝑔1
+
+=
+
+∇𝑊𝜙
+
+1 𝑏
+
+𝑖 =1
+
+L𝑥
+
+(𝑔𝑥
+
+(𝜙 (𝑥𝑖 ) ), 𝑥𝑖 )
+
+4:
+
+Compute 𝑔2
+
+=
+
+∇𝑊𝜙
+
+1 𝑏
+
+𝑏 𝑖 =1
+
+L𝑎
+
+(𝑔𝑎
+
+(𝜙 (𝑥𝑖 ) ), 𝑎𝑖
+
+)
+
+𝑏
+
+5:
+
+Compute 𝑔3
+
+=
+
+∇𝑊𝑔𝑥
+
+1 𝑏
+
+L𝑥 (𝑔𝑥 (𝜙 (𝑥𝑖 ) ), 𝑥𝑖 ) 𝑖 =1
+
+𝑏
+
+6:
+
+Compute 𝑔4
+
+=
+
+∇𝑊𝑔𝑎
+
+1 𝑏
+
+𝑖 =1
+
+L𝑎 (𝑔𝑎 (𝜙 (𝑥𝑖 ) ), 𝑎𝑖
+
+)
+
+7: Update weights
+
+𝑊𝜙 ← 𝑊𝜙 − 𝜂 (𝑔1 − 𝜃𝑔2 ),
+
+𝑊𝑔𝑥 ← 𝑊𝑔𝑥 − 𝜂 𝑔3,
+
+𝑊𝑔𝑎 ← 𝑊𝑔𝑎 − 𝜂 𝜃𝑔4
+
+8: until convergence 9: Output the optimal representation 𝜙∗ with weights 𝑊 ∗
+𝜙
+
+10:
+
+Use 𝑊 ∗ 𝜙
+
+to
+
+embed
+
+covariates in
+
+D,
+
+and
+
+obtain
+
+Dˆ
+
+=
+
+{ (𝑦𝑖 , 𝑎𝑖 , 𝑧ˆ𝑖 ) }𝑖𝑛=1
+
+with 𝑧ˆ𝑖
+
+=
+
+𝜙∗ (𝑥𝑖 )
+
+11: for (𝑦𝑖 , 𝑎𝑖 , 𝑧ˆ𝑖 ) ∈ Dˆ do
+
+⊲ Component 2: Counterfactual generator
+
+12: Randomly sample 𝑚 treatment values {𝑎˜𝑖 𝑗 }𝑚𝑗=1 uniformly from the interval
+
+[𝐴min, 𝐴max ]
+
+13: for 𝑗 = 1, . . . , 𝑚 do
+
+14:
+
+Compute
+
+𝑤∗ 𝑖𝑗
+
+using
+
+Eq. (3)
+
+for 𝑥
+
+=
+
+𝑧ˆ𝑖
+
+and 𝑎˜
+
+= 𝑎˜𝑖 𝑗
+
+15:
+
+Compute 𝑦˜𝑖 𝑗
+
+=
+
+𝑌v𝑇ec
+
+𝑤∗ 𝑖𝑗
+
+16: end for
+
+17: return { (𝑦˜𝑖 𝑗 , 𝑎˜𝑖 𝑗 ) }𝑚𝑗=1
+
+18: end for
+
+19:
+
+return counterfactual outcomes
+
+( {𝑦˜𝑖 𝑗 , 𝑎˜𝑖 𝑗 }𝑚𝑗=1, 𝑧ˆ𝑖 )
+
+𝑛 𝑖 =1
+
+20:
+
+Add
+
+( {𝑦˜𝑖 𝑗 , 𝑎˜𝑖 𝑗 }𝑚𝑗=1, 𝑧ˆ𝑖 )
+
+𝑛 𝑖 =1
+
+to
+
+Dˆ ,
+
+and
+
+obtain
+
+D˜
+
+=
+
+Dˆ
+
+∪
+
+( {𝑦˜𝑖 𝑗 , 𝑎˜𝑖 𝑗 }𝑚𝑗=1, 𝑧ˆ𝑖 )
+
+𝑛 𝑖 =1
+
+21: Estimate the GPS model on D˜ as in [20]
+
+⊲ Component 3: Inference model
+
+22: Output the estimated coefficients of the GPS model: 𝛽ˆGPS, 𝜎ˆGPS, and 𝛼ˆGPS
+
+F HYPERPARAMETER TUNING
+To ensure a fair comparison, we use the same training procedure and hyperparameter tuning (where applicable) for both CG-CT and the baselines. In particular, the GPS baseline is identical to the GPS inside our CG-CT; that is, they both build upon the same polynomial regression. Hence, this has an important implication: all performance improvements of CG-CT over GPS must be attributed to the fact that our CG-CT handles the data in a better way (i.e., by addressing high-dimensional covariates and treatment selection
+
+bias). This is further confirmed empirically in our ablation studies in Supplement L, where we combine the balancing autoencoder and the counterfactual generator with other inference models. Therein, we demonstrate that our CG-CT achieves consistent performance gains across all inference models.
+Hyperparameters are tuned via cross-validation with a 80/20 split. Table S2 shows the list of hyperparameters of both our CG-CT and the baselines. The hyperparameters and ranges for the baselines (i.e., a linear model (LM) and an artificial neural network (ANN)) are standard. For dose-response network (DRNet) and SCIGAN, we have used similar hyperparameters as proposed in [6, 40]; however, we adjusted some of the ranges to accommodate the much smaller sample size in our study (i.e., the layer size and batch size are adjusted based on the number of observations 𝑛). Also, we vary additional hyperparameters such as learning rate and dropout rate.
+Importantly, when implementing CG-CT with baselines as inference models (in our main analysis and in Supplement L), we use the same hyperparameter tuning for the inference model as for the respective baseline. This ensures fair comparison between the CG-CT and the baselines.
+
+Table S2: Hyperparameters and search ranges for CG-CT and baselines.
+
+Method Linear model (LM) Artificial neural network (ANN) Generalized propensity score (GPS) [20] Dose–response network (DRNet) [40]
+SCIGAN [6]
+CG-CT
+
+Hyperparameter Order Regularization Layer size Learning rate Dropout rate Number of epochs Batch size — Layer size Representation layer size Learning rate Dropout rate Number of epochs Batch size Number of dosage intervals (E) Layer size Learning rate Dropout rate Number of epochs Batch size Number of dosage samples Factual loss trade-off (𝜆) Layer size Representation layer size Learning rate Dropout rate Number of epochs Batch size Balancing parameter (𝜃 ) Regularization penalty (𝛼) Number of dosage samples (𝑚)
+
+Search range 0, 1, 2 0.05, 0.1, 0.5, 1, 5 53, 27, 14 0.001, 0.0005, 0.0001 0, 0.1, 0.2 100, 200, 300 22, 11, 6
+— 53, 27, 14 22, 11, 6 0.001, 0.0005, 0.0001 0, 0.1, 0.2 100, 200, 300 22, 11, 6 5 53, 27, 14 0.001, 0.0005, 0.0001 0, 0.1, 0.2 100, 200, 300 22, 11, 6 3, 5, 7 1 14, 10, 7 10, 7, 4 0.001, 0.0005, 0.0001 0, 0.1, 0.2 100, 200, 300 22, 11, 6 0.05, 0.1, 0.5, 1, 5 0.05, 0.1, 0.5, 1, 5 3, 5, 7
+
+G COVARIATE DISTRIBUTIONS FOR
+
+DIFFERENT DEVELOPMENT AID VOLUMES
+
+Here, we analyze the distribution of covariates (i.e., country charac-
+
+teristics that we control for) for different volumes of development
+
+aid in order to asses the presence of treatment-dependent covariate
+
+shifts in the observational data. Given that our treatment variable
+
+is continuous, we split our data in three groups (low, medium, and
+
+high) by using the empirical distribution of the observed develop-
+
+ment aid and the respective quantiles such that each group has the
+
+same probability mass. Hence, the group with (i) low volume of
+
+development aid contains all observations where development aid
+
+was
+
+below
+
+the
+
+1 3
+
+−quantile;
+
+the
+
+group
+
+with
+
+(ii)
+
+medium
+
+volume
+
+of
+
+Kuzmanovic, et al.
+
+development aid contains all observations where development aid
+
+was
+
+between
+
+the
+
+1 3
+
+−quantile
+
+and
+
+the
+
+2 3
+
+−quantile;
+
+and
+
+the
+
+group
+
+with (iii) high volume of development aid contains all observations
+
+where
+
+development
+
+aid
+
+was
+
+above
+
+the
+
+2 3
+
+−quantile.
+
+Table S3 shows the mean and the standard deviation for each
+
+covariate across three treatment groups, i.e., low, medium, and high
+
+volume of development aid. We observe that treatment-dependent
+
+covariate shifts are present in the observational data, particularly
+
+among wealth indicators (e.g., GDP per capita, access to electricity)
+
+and health indicators (e.g., maternal mortality, infant mortality,
+
+life expectancy). Therefore, addressing the treatment selection bias
+
+through, e.g., the use of our balancing autoencoder, is crucial to
+
+ensure a reliable predictions of the heterogeneous treatment effect
+
+of development aid.
+
+(a)
+20 15 10 5 0 5 10 15 20
+10
+
+5
+
+0
+
+5
+
+10
+
+(b)
+
+1.5
+
+1.0
+
+0.5
+
+0.0
+
+0.5
+
+1
+
+0
+
+1
+
+2
+
+12.5
+
+10.0
+
+7.5
+
+5.0
+
+2.5
+
+0.0
+
+2.5
+
+5.0
+
+7.5 20
+
+15
+
+10
+
+5
+
+0
+
+5
+
+10 15
+
+0.10 0.05 0.00 0.05 0.10
+0.2 0.1 0.0 0.1 0.2 0.3 0.4
+
+Table S3: Analysis of covariate distributions for different volumes of development aid. Reported are the summary statistics for the covariates in terms of the mean and the standard deviation (SD: standard deviation). The summary statistics are arranged across three treatment groups depending on the volume of development aid, i.e., low, medium, and high.
+
+Treatment group Development aid range (in USD millions) Covariates GDP per capita PPP (in USD thousands) GDP growth (in %) Foreign direct investment (in USD billions) Consumer price index - inflation (in %) Unemployment (in %) Population (in millions) Fertility (number of births per woman) Maternal mortality (number of deaths per 100,000 live births) Infant mortality (number of deaths per 1,000 live births) Life expectancy (in years) School enrolment ratio (primary education) Prevalence of undernourishment (in % of population) Access to electricity (in % of population) Incidence of tuberculosis (number of cases per 100,000 people)
+
+Low [0.003 − 2.649]
+Mean ± SD 14.13 ± 6.60 3.69 ± 4.77 3.40 ± 6.26 5.34 ± 5.84 8.76 ± 5.85 18.98 ± 28.40 2.46 ± 0.76 80.77 ± 72.43 17.91 ± 12.54 73.49 ± 4.25 1.02 ± 0.09 9.13 ± 8.43 94.55 ± 9.58 92.58 ± 133.42
+
+Medium [2.649 − 15.301]
+Mean ± SD 7.34 ± 5.83 3.70 ± 2.73 3.57 ± 11.57 5.20 ± 5.68 7.23 ± 5.48 29.39 ± 49.55 3.38 ± 1.45 263.71 ± 285.31 30.89 ± 20.86 68.74 ± 6.52 0.99 ± 0.12 14.64 ± 13.13 74.32 ± 29.98 133.27 ± 122.45
+
+High [15.301 − 559.897]
+Mean ± SD 5.15 ± 4.27 4.05 ± 2.79 2.90 ± 7.78 12.71 ± 31.11 7.50 ± 7.28 76.61 ± 226.20 3.92 ± 1.27 379.14 ± 268.43 44.04 ± 18.01 63.25 ± 5.59 1.09 ± 0.15 17.94 ± 11.45 52.62 ± 28.76 261.03 ± 169.08
+
+H VISUALIZATION OF BALANCING REPRESENTATION
+We now provide explanatory insights into how the balancing representation in our CG-CT works. To this end, we plot the covariates for the country characteristics with vs. without balancing representation (i.e, with vs. without applying the balancing autoencoder in CG-CT).
+Figure S2 shows 2D representations of covariates using t-SNE [51] (Figure S2a) and isomap [42] (Figure S2b). We illustrate representations in 2D for the original covariates (left) and for the balanced representation of covariates learned by the balancing autoencoder (right). We examine whether the balancing autoencoder induces treatment balance in the covariate representations. For this, we split the data in two treatment groups by median (shown in Figure S2 as red and blue).
+Overall, we observe that the balancing autoencoder produces more homogeneous covariate representation with respect to treatment as compared to original covariates, thereby successfully addressing treatment selection bias.
+
+Figure S2: Illustration of balancing representations for country characteristics (covariates). We visualize the representations of covariates in 2D across different treatment groups, which we color in red and blue (by splitting the original treatment according to whether the value is above or below the median). On the left, we show original covariates and, on the right, the balanced representation of covariates obtained using the balancing autoencoder. In (a), we use t-SNE, and, in (b), we use isomap for visualization.
+I EXAMINING THE VALIDITY OF UNDERLYING ASSUMPTIONS
+Here, we conduct additional analyses to examine the validity of the underlying assumptions for identifiability of treatment effects, namely, positivity and ignorability.
+Positivity assumption: The positivity assumption states that, for any covariates 𝑋 = 𝑥, the probability of treatment 𝐴 = 𝑎 is positive for every 𝑎 ∈ A. Formally, we have,
+0 < 𝑝 (𝐴 = 𝑎 | 𝑋 = 𝑥) < 1, ∀𝑎 ∈ A, if 𝑝 (𝑥) > 0. (10)
+Validating whether the positivity assumption holds is generally impossible in real-world applications. However, we can use observational data to examine whether the probability estimates of a treatment given covariates lie in the range in which we predict the treatment effect, and should thus ensure reliable decisions. In our downstream decision-making problem where we optimize aid allocation, the range of aid volumes that we consider (i.e., the treatment) can vary from zero to 𝐴max + 𝜎ˆ𝐴, where 𝐴max is the maximal value of observed aid for a single country, and 𝜎ˆ𝐴 is the estimated standard deviation for the aid variable 𝐴. Now, we examine the estimated probability of development aid over this range for six example countries that we have in the main paper. For this, we use a simple linear regression model to estimate the conditional mean of development aid given covariates and the standard deviation of the error term under a Gaussian distribution. We use the year 2016 for estimating the respective moments of the Gaussian distribution, and the year 2017 for evaluating the estimated probability curves.
+
+Causal Machine Learning for Cost-Effective Allocation of Development Aid
+
+Density
+
+The estimated probability curves in Fig. S3 show that aid values over the given range are plausible for different countries, meaning that severe extrapolation is unlikely when predicting aid effects over this range. Hence, it is reasonable to expect that the positivity assumption is fulfilled.
+
+0.004 0.003 0.002 0.001 0.000
+0
+0.004 0.003 0.002 0.001 0.000
+0
+
+0.004
+
+0.003
+
+0.002
+
+0.001
+
+0.000
+
+200 400 600
+
+0
+
+0.004
+
+0.003
+
+0.002
+
+0.001
+
+0.000
+
+200 400 600
+
+0
+
+0.004
+
+0.004
+
+0.003
+
+0.003
+
+0.002
+
+0.002
+
+0.001
+
+0.001
+
+0.000
+
+200 400 600
+
+0
+
+0.000
+
+200 400 600
+
+0
+
+Development aid (in USD millions)
+
+200 400 600 200 400 600
+
+South Africa Mozambique Burundi Congo, Dem. Rep. India Indonesia
+
+Figure S3: Estimated probability curves of development aid given country characteristics for the six example countries as in the results of the main paper: South Africa, Mozambique, Burundi, Congo, India, and Indonesia. The 𝑥-axis is set to range [0, 𝐴max + 𝜎ˆ𝐴], where 𝐴max is the maximal observed development aid and 𝜎ˆ𝐴 is the estimated standard deviation of development aid in 2017.
+Ignorability assumption: The ignorability assumption states that potential outcomes 𝑌 (𝑎) are independent of the treatment variable 𝐴 given covariates 𝑋 , for every 𝑎 ∈ A. In other words, all variables that affect both treatment 𝐴 and potential outcomes 𝑌 (𝑎) are measured as part of the covariates 𝑋 . Therefore, ignorability is also referred to as “no hidden confounders” assumption. Formally, we have
+𝑌 (𝑎) ⊥⊥ 𝐴 | 𝑋 = 𝑥 ∀𝑎 ∈ A.
+Validating whether ignorability assumption holds is generally impossible in practice. This is a widespread problem in causal inference when predicting treatment effects from observational data. However, we can examine the robustness of the treatment effect estimate when adding additional variables regarding country characteristics in order to observe whether these variables are potentially hidden confounders or whether the results are robust. Specifically, we examine whether the aid effect coefficients 𝛼1, 𝛼2, and 𝛼5 from the final stage of the GPS model change when a variable is added to country characteristics. To this end, we first estimate the probability density of estimates of these coefficients (i.e., 𝛼ˆ1, 𝛼ˆ2, and 𝛼ˆ5) from our main analysis (i.e., when using only country characteristics as covariates) by performing the estimation over 10 runs. Then, we estimate the same coefficient when we add a new variable to the country characteristics and examine whether the estimated coefficients that represent the aid effect changes substantially. Here, we perform the analysis with the following additional variables: (i) past aid volume of a country from a year before; (ii) mean past aid volume of neighbor countries from a year before; (iii) past HIV infection rate in a country from a year before; and (iv) mean past HIV infection rate of neighbor countries from a year before. Thereby, we control for potential temporal dynamics and/or spillover effects across countries, which may be additionally relevant. The results
+
+in Fig. S4 show that predicted aid effect remain robust when adding any of these four covariates. This demonstrates that our set of country characteristics is sufficient to address potential confounding effects of these covariates. In the following section, we additionally provide a causal sensitivity analysis which shows that, even in the presence of unobserved confoudning, our results remain robust.
+(a)
+
+Density
+
+0.0005 0.0000 0.0005 0.0010 1
+(b)
+
+2
+
+10
+
+1 1e 26
+
+2
+
+0.2 0.1 0.0 5
+
+Density
+
+0.0005 0.0000 0.0005 0.0010 1
+(c)
+
+2
+
+10 2
+
+1 1e 26
+
+0.2 0.1 0.0 5
+
+Density
+
+0.0005 0.0000 0.0005 0.0010 1
+(d)
+
+2
+
+10 2
+
+1 1e 26
+
+0.2 0.1 0.0 5
+
+Density
+
+0.0005 0.0000 0.0005 0.0010 1
+
+2
+
+10 2
+
+1 1e 26
+
+0.2 0.1 0.0 5
+
+Figure S4: Robustness of predicted aid effect when adding additional control variables. Shown are the estimated density of aid effect coefficients 𝛼ˆ1, 𝛼ˆ2 and 𝛼ˆ5 from the main analysis (i.e., when using only country characteristics as covariates) over 10 runs (blue area), and the observed value of the respective coefficient when adding an additional control variable (dashed black line). Here, we compare: (a) adding past aid volume of a country, (b) adding mean past aid volume of neighbor countries, (c) adding past HIV infection rate of a country, and (d) adding mean past HIV infection rate of neighbor countries.
+
+J SENSITIVITY ANALYSIS FOR UNOBSERVED CONFOUNDING
+We perform a sensitivity analysis of our results with respect to possible violations of the ignorability assumption. Thereby, we demonstrate that our results are robust to a certain level of unobserved confounding. To do so, we leverage recent advances in sensitivity analysis and use the method from Jesson et al. [23], which is state-of-the-art for continuous treatment. Jesson et al. use a continuous marginal sensitivity model (CMSM) that relaxes the ignorability assumption and then derive bounds around the treatment–response curve. For potential unobserved confounders 𝑈 , the CMSM [23] assumes
+
+1 Γ
+
+≤
+
+𝑓 (𝑎 | 𝑥, 𝑢) 𝑓 (𝑎 | 𝑥)
+
+≤ Γ,
+
+(11)
+
+where 𝑓 (𝑎 | 𝑥, 𝑢) and 𝑓 (𝑎 | 𝑥) denote the conditional densities of the random variable 𝐴 given 𝑋 = 𝑥, 𝑈 = 𝑢, or 𝑋 = 𝑥, respectively. Here, the sensitivity parameter Γ controls the strength of allowed unobserved confounding.
+To apply the method from [23], we need to predict the treatment– response curve E[𝑌 | 𝐴 = 𝑎, 𝑋 = 𝑥] and the conditional outcome distribution 𝑝 (𝑌 = 𝑦 | 𝐴 = 𝑎, 𝑋 = 𝑥), which we model as a normal distribution with mean equal to E[𝑌 | 𝐴 = 𝑎, 𝑋 = 𝑥] and constant variance. We use CG-CT to predict the treatment–response curve. We use different values of Γ that are informed by domain knowledge in that already several of the observed country covariates such as GDP, population size, etc. are known, important drivers of HIV infection rates. The results are shown in Fig. S5 and confirm that our predicted treatment–response curves remain stable under small violations of the ignorability assumption. Crucially, unobserved confounding even up to Γ = 1.25 cannot explain away our predicted treatment effect.
+
+Relative reduction in HIV infection rate (in %)
+
+17.5
+
+10
+
+15.0
+
+12.5
+
+8
+
+12.5
+
+10.0
+
+6
+
+10.0
+
+7.5
+
+4
+
+7.5
+
+5.0
+
+2
+
+5.0
+
+2.5
+
+0
+
+2.5
+
+450 500 550 600 650 0.0 300 350 400 450 500
+
+2 0
+
+10
+
+10
+
+8
+
+8
+
+8
+
+6
+
+6
+
+6
+
+4
+
+4
+
+4
+
+2
+
+2
+
+2
+
+0
+
+0
+
+0
+
+2 50 100 150 200 250 2 0
+
+50 100
+
+2 0
+
+Development aid (in USD millions)
+
+50 100 150 50 100 150 200
+
+= 1.25 = 1.5 South Africa Mozambique Burundi Congo, Dem. Rep. India Indonesia
+
+Figure S5: Bounds on predicted treatment–response curves for the six example countries as in the results of the main paper: South Africa, Mozambique, Burundi, Congo, India, and Indonesia. Vertical dashed line denotes the actual volume of development aid as observed in 2017. The 𝑥-axis is set to 𝐴obs ± 𝜎ˆ𝐴 (with a cut-off at zero to prevent negative values for Burundi and India), where 𝐴obs is the observed development aid and 𝜎ˆ𝐴 is the estimated standard deviation of development aid in 2017. Shown are the predicted treatment– response curve (colored line) and sensitivity bounds for two levels of the strength of allowed unobserved confounding Γ (dashed black lines).
+
+Kuzmanovic, et al.
+
+K SENSITIVITY ANALYSIS FOR HYPERPARAMETERS
+As a sensitivity analysis, we evaluate the performance of our CG-CT in predicting treatment–response curves when varying hyperparameters. Here, our intention is to show that the performance remains at a similar level across various choices, which thereby adds to the robustness of our proposed method. Specifically, we vary two hyperparameters: the balancing parameter 𝜃 (in Figure S6a), and the number of generated counterfactual outcomes 𝑚 (in Figure S6b). The results show that the performance of our CG-CT remains robust with respect to both hyperparameters.
+(a)
+0.5
+
+0.4
+
+0.3
+
+RMSE
+
+0.2
+
+0.1
+
+0.0
+
+0
+
+1
+
+Balanc2ing autoencode3r parameter 4
+
+5
+
+6
+
+(b)
+
+0.5
+
+0.4
+
+0.3
+
+RMSE
+
+0.2
+
+0.1
+
+0.0 0
+
+1
+
+2 Counte3rfactual gen4erator param5eter m 6
+
+7
+
+8
+
+Figure S6: Sensitivity analysis to different hyperparameters. We visualize the performance of our CG-CT in predicting treatment–response curves using semi-synthetic data when varying the following two hyperparameters: in (a) the balancing parameter 𝜃 , and in (b) the number of counterfactual outcomes generated per data point 𝑚. We observe that the performance remains robust with respect to these two hyperparameters. Whiskers show the standard deviation estimates over 10 runs.
+
+L SENSITIVITY ANALYSIS FOR CG-CT COMPONENTS
+We now assess the contribution of different components in our CG-CT to the overall performance. To this end, we perform experiments (i) where we use other inference models, (ii) where we toggle the balancing autoencoder and the counterfactual generator on/off, and (iii) where we repeat the previous ablation study with other inference models. Hyperparameter tuning was done following the
+
+Causal Machine Learning for Cost-Effective Allocation of Development Aid
+above for all experiments to allow for a fair comparison. The results are shown in Table S4. We discuss the findings in the following.
+For (i), we vary the inference models as follows: dose-responsenetwork (DRNet) [40], artificial neural network (ANN), linear model (LM), and generalized propensity score (GPS) [20]. The latter is used in our main analysis as it is the default in our CG-CT. The rationale was that it has a fairly parsimonious structure, which reduces the risk of overfitting while it offers the flexibility to handle various degrees of nonlinearities. We find that our CG-CT also works with other inference models. In fact, it consistently outperforms the baselines from the main paper, regardless of the underlying inference model. This thus confirms that our methodological innovations achieve consistent performance gains. Moreover, we find that our preferred choice for the inference model (GPS) as implemented in CG-CT is beneficial: it offers a superior performance with comparatively small variance.
+For (ii), we toggle the balancing autoencoder and the counterfactual generator on/off. Here, we find that the performance gains are a result of combining both the balancing autoencoder and the counterfactual generator (as implemented in CG-CT). We also performed ablation studies with both components separately (i.e., only the balancing autoencoder or only the counterfactual generator). However, the experiments with just one of the two components did not lead to performance improvements in our CG-CT. Hence, the combination of both the balancing autoencoder and the counterfactual generator is important for achieving a state-of-the-art performance.
+For (iii), we repeat the above ablation studies with other inference models. Here, we confirm that performance gains are achieved when combining both the balancing autoencoder and the counterfactual generator (whereas having only one of the two does not lead to performance improvements). Therefore, we find that our methodological innovations (i.e., the combination of both the balancing autoencoder and the counterfactual generator) leads to consistent improvements across all inference models. This corroborates the robustness of our contributions and shows the value of our methodological innovation for other inference methods.
+
+Table S4: Sensitivity analysis for model components. We show the results of experiments with semi-synthetic data with different inference models and with different model components. We report square root of the mean integrated squared error (mean ± standard deviation averaged over 10 runs). Specifically, we vary the model components as follows: (i) without the balancing autoencoder and without the counterfactual generator (Base); (ii) only with the balancing autoencoder (BAE); (iii) only with the counterfactual generator (CF-GEN); and (iv) with both the balancing autoencoder and the counterfactual generator (CG-CT).
+
+Base BAE CF-GEN CG-CT
+
+DRNet 0.281 ± 0.043 0.303 ± 0.062 0.230 ± 0.032 0.181 ± 0.048
+
+Lower = better
+
+Inference models
+
+ANN
+
+LM
+
+0.234 ± 0.030 0.209 ± 0.000
+
+0.319 ± 0.105 0.192 ± 0.017
+
+0.176 ± 0.021 0.246 ± 0.003
+
+0.173 ± 0.018 0.159 ± 0.042
+
+GPS 0.205 ± 0.000 0.214 ± 0.009 0.210 ± 0.003 0.158 ± 0.024
+
+M EXPERIMENTS WITH OTHER TIME FRAMES
+
+In our main analysis, we use HIV data from the year 2016 for learning, and the data from the year 2017 for evaluation. Here, we show robustness of our results in a different time frame, where we use HIV data from the year 2015 for learning and data from the year 2016 for evaluation. We run experiments with both semi-synthetic and real-world data, with the same baselines, performance metrics, and semi-synthetic data generation procedure as in our main analysis. Our results (in Table S5) show that our conclusions from the main analysis remain unchanged, i.e., our CG-CT offers state-ofthe-art performance in experiments with both semi-synthetic and real-world data.
+Reassuringly, we remind that we also experimented with multiyear data for learning; however, this did not led to significant out-ofsample performance improvements. Here, one explanation is that allocation practices are subject to changes over time (e.g., changes in priorities, changes in programs, funding mix) [57].
+
+Table S5: Results of experiments with other time frames. We show the results of experiments with semi-synthetic and real-world data when using the year 2015 for learning, and the year 2016 for evaluation. For experiments with semisynthetic data, we report the square root of the mean integrated squared error, and for experiments with real-world data, we report the root mean squared error (mean ± standard deviation averaged over 10 runs).
+
+Data
+Semi-synthetic Real-world Lower = better
+
+SCIGAN 8.425 ± 3.629 2.397 ± 2.336
+
+DRNet 0.255 ± 0.046 0.109 ± 0.019
+
+Method
+
+GPS
+
+ANN
+
+0.187 ± 0.000 0.221 ± 0.042
+
+0.090 ± 0.000 0.098 ± 0.010
+
+LM 0.237 ± 0.000 0.087 ± 0.000
+
+CG-CT 0.173 ± 0.023 0.087 ± 0.002
+
+N EXPERIMENTS WITH A DIFFERENT SDG OUTCOME
+
+Here, we show the applicability of our machine learning framework CG-CT in experiments with another SDG outcome. Specifically, to end hunger, we focus on the prevalence of undernourishment (Goal 2, Target 2.1.1) [47]. Hence, in this analysis, we have the following variables: (i) the outcome variable is the relative reduction in the prevalence of undernourishment (measured as percentage of the population); (ii) the treatment variable is the official development aid volume in USD millions per year earmarked to end hunger in each country; and (iii) the country characteristics as covariates. We use the same country characteristics as in our main analysis with HIV infection rates (except that we omitted the prevalence of undernourishment, since it is the outcome in the following analysis). We run the same experiments as in our main analysis, i.e., with both semi-synthetic and real-world data. We again use the same baselines, performance metrics, and semi-synthetic data generation procedure.
+Our results (in Table S6) show that our CG-CT provides state-ofthe-art performance in experiments with both semi-synthetic and real-world data. Thereby, we demonstrate the applicability of our machine learning framework to other SDG targets. Altogether, this confirms the large potential of our machine learning framework to predict reliable heterogeneous treatment effects of development aid on different SDG outcomes, thereby promoting progress towards achieving the SDGs by the year 2030.
+
+Table S6: Results of experiments with a different SDG outcome. We show the results of experiments with semisynthetic and real-world data for a different outcome variable, i.e., the prevalence of undernourishment. For experiments with semi-synthetic data, we report the square root of the mean integrated squared error, and for experiments with real-world data, we report the root mean squared error (mean ± standard deviation averaged over 10 runs).
+
+Data
+Semi-synthetic Real-world Lower = better
+
+SCIGAN 24.937 ± 16.205 5.722 ± 5.795
+
+DRNet 2.489 ± 1.869 0.150 ± 0.084
+
+Method
+
+GPS
+
+ANN
+
+0.449 ± 0.000 0.261 ± 0.106
+
+0.059 ± 0.000 0.061 ± 0.011
+
+LM 0.196 ± 0.000 0.057 ± 0.000
+
+CG-CT 0.163 ± 0.010 0.057 ± 0.000
+
+O PREDICTED AID–RESPONSE CURVES FOR DIFFERENT COUNTRIES IN 2017
+
+Here, we show the predicted aid–response curves for all remaining countries that are not shown in the main paper. The vertical dashed line denotes the actual volume of development aid as observed in 2017. The 𝑥-axis is set to 𝐴obs ± 𝜎ˆ𝐴 (with a cut-off at zero to prevent negative values), where 𝐴obs is the observed development aid and 𝜎ˆ𝐴 is the estimated standard deviation of development aid in 2017. Shown are both point predictions (thick line) and the standard deviation over 10 runs (shaded area).
+
+Relative reduction in HIV infection rate (in %)
+
+6
+
+6
+
+6
+
+4
+
+4
+
+4
+
+2
+
+2
+
+2
+
+00
+
+50
+
+100
+
+0 0 25 50 75 100 0 0 25 50 75 100
+
+6
+
+6
+
+6
+
+4
+
+4
+
+4
+
+2
+
+2
+
+2
+
+00
+
+50 100
+
+0 0 25 50 75 100 0 0 25 50 75 100
+
+7
+
+6
+
+6
+
+6
+
+5
+
+4
+
+4
+
+4
+
+3
+
+2
+
+2
+
+2
+
+1
+
+00
+
+50
+
+100
+
+00
+
+50
+
+100
+
+0 25 50 75 100
+
+Development aid (in USD millions)
+
+Afghanistan Albania Algeria Angola Argentina Armenia Azerbaijan Belarus Belize Observed aid
+
+Relative reduction in HIV infection rate (in %)
+
+7
+
+6
+
+6
+
+6
+
+5
+
+4
+
+4
+
+4
+
+3
+
+2
+
+2
+
+2
+
+1
+
+00
+
+50
+
+100
+
+0 0 25 50 75 100
+
+0
+
+6
+
+6
+
+6
+
+4
+
+4
+
+4
+
+2
+
+2
+
+2
+
+00
+
+50 100 150 0 0
+
+50
+
+100
+
+00
+
+7
+
+7
+
+6
+
+6
+
+6
+
+5
+
+5
+
+4
+
+4
+
+4
+
+3
+
+2
+
+1
+
+0
+
+50 100
+
+3
+
+2
+
+2
+
+1
+
+0 0 50 100 150 200
+
+0
+
+Development aid (in USD millions)
+
+50
+
+100
+
+50
+
+100
+
+50
+
+100
+
+Benin Bhutan Bolivia Botswana Brazil Burkina Faso Cambodia Cameroon Chad Observed aid
+
+Relative reduction in HIV infection rate (in %)
+
+Relative reduction in HIV infection rate (in %)
+
+Relative reduction in HIV infection rate (in %)
+
+Kuzmanovic, et al.
+
+6
+
+6
+
+4
+
+4
+
+2
+
+2
+
+0 0 25 50 75 100 0 0
+
+6 4 2
+
+50
+
+100
+
+0 25 50 75 100
+
+6
+
+6
+
+6
+
+4
+
+4
+
+4
+
+2
+
+2
+
+2
+
+00
+
+50
+
+100
+
+0 0 25 50 75 100
+
+50 100 150 200 250
+
+6
+
+6
+
+6
+
+4
+
+4
+
+4
+
+2
+
+2
+
+2
+
+0
+
+50
+
+100
+
+00
+
+50
+
+100
+
+00
+
+50 100
+
+Development aid (in USD millions)
+
+Chile Colombia Comoros Congo, Rep. Costa Rica Cote d'Ivoire Cuba Djibouti Dominican Republic Observed aid
+
+7 6 5 4 3 2 1
+
+0 25 50 75 100
+
+7
+
+6
+
+5
+
+4
+
+3
+
+2
+
+1
+
+0
+
+50
+
+100
+
+7
+
+6
+
+6
+
+5
+
+4
+
+4
+
+3
+
+2
+
+2
+
+1
+
+0 25 50 75 100
+
+0
+
+50
+
+100
+
+6
+
+8
+
+4
+
+6
+
+4 2
+
+2
+
+0 0 50 100 150 200
+
+150 200 250 300 350
+
+6
+
+6
+
+6
+
+4
+
+4
+
+4
+
+2
+
+2
+
+2
+
+0 0 25 50 75 100 0 0 25 50 75 100
+
+0
+
+50
+
+100
+
+Development aid (in USD millions)
+
+Ecuador Egypt, Arab Rep. El Salvador Eritrea Eswatini Ethiopia Fiji Gabon Gambia, The Observed aid
+
+7
+
+6
+
+6
+
+6
+
+5
+
+4
+
+4
+
+4
+
+3
+
+2
+
+2
+
+2
+
+1
+
+00
+
+50
+
+100
+
+0 50 100 150
+
+0
+
+6
+
+6
+
+4
+
+4
+
+2
+
+2
+
+00
+
+50
+
+100
+
+00
+
+7
+
+6
+
+6
+
+5
+
+4
+
+4
+
+3
+
+2
+
+2
+
+1 0 0 50 100 150 200 0
+
+6
+
+4
+
+2
+
+50
+
+100
+
+00
+
+6
+
+4
+
+2
+
+50
+
+100
+
+00
+
+Development aid (in USD millions)
+
+50
+
+100
+
+50
+
+100
+
+50
+
+100
+
+Georgia Ghana Guatemala Guinea-Bissau Guinea Guyana Haiti Honduras Iran, Islamic Rep. Observed aid
+
+Causal Machine Learning for Cost-Effective Allocation of Development Aid
+
+Relative reduction in HIV infection rate (in %)
+
+6
+
+6
+
+6
+
+4
+
+4
+
+4
+
+2
+
+2
+
+2
+
+00
+
+50
+
+100
+
+0 0 25 50 75 100 0 0
+
+16
+
+7
+
+7
+
+14
+
+6
+
+6
+
+12
+
+5 4
+
+5 4
+
+10
+
+3
+
+3
+
+8
+
+2
+
+2
+
+6
+
+1
+
+1
+
+450 500 550 600 650
+
+0 25 50 75 100
+
+0
+
+6
+
+6
+
+6
+
+4
+
+4
+
+4
+
+2
+
+2
+
+2
+
+0 0 25 50 75 100 0 0 50 100 150
+
+00
+
+Development aid (in USD millions)
+
+50
+
+100
+
+50
+
+100
+
+50
+
+100
+
+Jamaica Jordan Kazakhstan Kenya Kyrgyz Republic Lao PDR Lebanon Lesotho Liberia Observed aid
+
+Relative reduction in HIV infection rate (in %)
+
+6
+
+6
+
+5
+
+4
+
+4
+
+3
+
+2
+
+2
+
+1
+
+0 0 25 50 75 100 0 0
+
+7
+
+6
+
+6
+
+5
+
+4
+
+4
+
+3
+
+2
+
+2
+
+1
+
+0 0 25 50 75 100
+
+0
+
+50
+
+100
+
+50 100
+
+6 4 2 0 0 50 100 150 200
+
+6
+
+4
+
+2
+
+00
+
+50
+
+100
+
+6
+
+6
+
+4
+
+4
+
+2
+
+2
+
+0 0 25 50 75 100 0 0
+
+6
+
+4
+
+2
+
+50
+
+100
+
+00
+
+50
+
+100
+
+Development aid (in USD millions)
+
+Libya Madagascar Malawi Malaysia Mali Mauritius Mexico Moldova Mongolia Observed aid
+
+Relative reduction in HIV infection rate (in %)
+
+6
+
+6
+
+6
+
+4
+
+4
+
+4
+
+2
+
+2
+
+2
+
+0
+
+50
+
+100
+
+0 0 50 100 150 200 0 0
+
+50
+
+100
+
+7 6
+
+7 6
+
+10
+
+5
+
+5
+
+8
+
+4 3
+
+4 3
+
+6
+
+2
+
+2
+
+4
+
+1
+
+1
+
+2
+
+0
+
+50
+
+100
+
+0
+
+50
+
+100
+
+250 300 350 400 450
+
+7
+
+6
+
+6
+
+6
+
+5
+
+4
+
+4
+
+4
+
+3
+
+2
+
+2
+
+2
+
+1
+
+0
+
+50
+
+100
+
+0 0 25 50 75 100 0 0
+
+50
+
+100
+
+Development aid (in USD millions)
+
+Morocco Namibia Nepal Nicaragua Niger Nigeria Pakistan Panama Papua New Guinea Observed aid
+
+Relative reduction in HIV infection rate (in %)
+
+Relative reduction in HIV infection rate (in %)
+
+Relative reduction in HIV infection rate (in %)
+
+6
+
+6
+
+6
+
+4
+
+4
+
+2
+
+2
+
+00
+
+50
+
+100
+
+0
+
+7
+
+6
+
+6
+
+5
+
+4
+
+4
+
+3
+
+2
+
+2
+
+1
+
+0 0 50 100 150 200
+
+0
+
+6
+
+6
+
+4
+
+4
+
+2
+
+2
+
+00
+
+50
+
+100
+
+00
+
+4 2
+
+50
+
+100
+
+0
+
+50
+
+100
+
+6
+
+4
+
+2
+
+50
+
+100
+
+50
+
+100
+
+0 0 25 50 75 100
+7 6 5 4 3 2 1
+0 50 100 150
+
+Development aid (in USD millions)
+
+Paraguay Peru Philippines Rwanda Senegal Serbia Sierra Leone Somalia South Sudan Observed aid
+
+6
+
+6
+
+6
+
+4
+
+4
+
+4
+
+2
+
+2
+
+2
+
+0
+
+50
+
+100
+
+7
+
+6
+
+5
+
+4
+
+3
+
+2
+
+1
+
+0
+
+50
+
+100
+
+7
+
+6 5
+
+4
+
+3 2
+
+1
+
+0 25 50 75 100
+
+0
+
+50
+
+100
+
+0 0 25 50 75 100
+
+12
+
+6
+
+10
+
+4
+
+8
+
+6
+
+2
+
+4 400 450 500 550 600 0 0 25 50 75 100
+
+6
+
+6
+
+4
+
+4
+
+2
+
+2
+
+00
+
+50
+
+100
+
+00
+
+50
+
+100
+
+Development aid (in USD millions)
+
+Sri Lanka Sudan Suriname Tajikistan Tanzania Thailand Timor-Leste Togo Tunisia Observed aid
+
+10
+
+6
+
+6
+
+8
+
+4
+
+4
+
+6
+
+4
+
+2
+
+2
+
+300 350 400 450 500 0 0
+
+50 100 150 0 0 25 50 75 100
+
+7
+
+7
+
+6
+
+6
+
+6
+
+5
+
+5
+
+4
+
+4
+
+4
+
+3
+
+3
+
+2
+
+2
+
+2
+
+1
+
+1
+
+0
+
+50
+
+100
+
+0 0 25 50 75 100
+
+0 50 100 150
+
+10 6
+
+8
+
+8
+
+4
+
+6
+
+6
+
+2
+
+4
+
+4
+
+0 0 25 50 75 100
+
+2 200 250 300 350 400
+
+2 100 150 200 250 300
+
+Development aid (in USD millions)
+
+Uganda Ukraine Uruguay Uzbekistan Venezuela, RB Vietnam Yemen, Rep. Zambia Zimbabwe Observed aid
+

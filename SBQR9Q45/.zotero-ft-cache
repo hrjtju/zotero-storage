@@ -1,0 +1,936 @@
+Hyperbolic Geometry of Complex Networks
+Dmitri Krioukov,1 Fragkiskos Papadopoulos,2 Maksim Kitsak,1 Amin Vahdat,3 and Mari ́an Bogun ̃ ́a4
+1Cooperative Association for Internet Data Analysis (CAIDA), University of California, San Diego (UCSD), La Jolla, CA 92093, USA 2Department of Electrical and Computer Engineering, University of Cyprus, Kallipoleos 75, Nicosia 1678, Cyprus 3Department of Computer Science and Engineering, University of California, San Diego (UCSD), La Jolla, CA 92093, USA 4Departament de Fı ́sica Fonamental, Universitat de Barcelona, Martı ́ i Franqu`es 1, 08028 Barcelona, Spain
+We develop a geometric framework to study the structure and function of complex networks. We assume that hyperbolic geometry underlies these networks, and we show that with this assumption, heterogeneous degree distributions and strong clustering in complex networks emerge naturally as simple reflections of the negative curvature and metric property of the underlying hyperbolic geometry. Conversely, we show that if a network has some metric structure, and if the network degree distribution is heterogeneous, then the network has an effective hyperbolic geometry underneath. We then establish a mapping between our geometric framework and statistical mechanics of complex networks. This mapping interprets edges in a network as non-interacting fermions whose energies are hyperbolic distances between nodes, while the auxiliary fields coupled to edges are linear functions of these energies or distances. The geometric network ensemble subsumes the standard configuration model and classical random graphs as two limiting cases with degenerate geometric structures. Finally, we show that targeted transport processes without global topology knowledge, made possible by our geometric framework, are maximally efficient, according to all efficiency measures, in networks with strongest heterogeneity and clustering, and that this efficiency is remarkably robust with respect to even catastrophic disturbances and damages to the network structure.
+PACS numbers: 89.75.Hc; 02.40.-k; 67.85.Lm; 89.75.Fb
+I. INTRODUCTION
+Geometry has a proven history of success, helping to make impressive advances in diverse fields of science, when a geometric fabric underlying a complex problem or phenomenon is identified. Examples can be found everywhere. Perhaps the most famous one is general relativity, interpreting gravitation as a curved geometry. Quite a contrasting example comes from the complexity theory in computer science, where apparently intractable computational problems suddenly find near optimal solutions as soon as a geometric underpinning of the problem is discovered [2], leading to viable practical applications [3]. Yet another example is the recent conjecture by Palmer [4] suggesting that many “mysteries” of quantum mechanics can be resolved by the assumption that a hidden fractal geometry underlies the universe.
+Inspired by these observations, and following [5], we develop here a geometric framework to study the structure and function of complex networks [6, 7]. We begin with the assumption that hyperbolic geometry underlies these networks. Although difficult to visualize, hyperbolic geometry, briefly reviewed in Section II, is by no means anything exotic. In fact it is the geometry of the world we live in. Indeed, the relativistic Minkowski spacetime is hyperbolic, and so is the anti-de Sitter space [8–10]. On the other hand, hyperbolic spaces can be thought of as smooth versions of trees abstracting the hierarchical organization of complex networks [11], a key observation providing a high-level rationale, Sec
+tion III, for our hyperbolic hidden space assumption. In Section IV we show that from this assumption, two common properties of complex network topologies emerge naturally. Namely, heterogeneous degree distributions and strong clustering appear, in the simplest possible settings, as natural reflections of the basic properties of underlying hyperbolic geometry. The exponent of the power-law degree distribution, for example, turns out to be a function of the hyperbolic space curvature. Fortunately, unlike in [4], for instance, we can directly verify our assumption. In Section V we consider the converse problem, and show that if a network has some metric structure—tests for its presence are described in [12]and if the network’s degree distribution is heterogeneous, then the network does have an effective hyperbolic geometry underneath. Many different pieces start coming together in Section VI, where we show that the ensembles of networks in our framework can be analyzed using standard tools in statistical mechanics. Hyperbolic distances between nodes appear as energies of corresponding edges distributed according to Fermi-Dirac statistics. In this interpretation, auxiliary fields, which have been considered as opaque variables in the standard exponential graph formalism [13–17], turn out to be linear functions of underlying distances between nodes. The chemical potential, Boltzmann constant, etc., also find their lucid geometric interpretations, while temperature appears as a natural parameter controlling clustering in the network. The network ensemble exhibits a phase transition at a specific value of temperature, caused
+arXiv:1006.5169v2 [cond-mat.stat-mech] 10 Sep 2010
+
+
+2
+L1
+L2
+L2
+L1
+L3
+L3
+AB
+C
+P1P2P3 P1
+P2
+P3
+ab
+c
+(a) (b) (c)
+FIG. 1: (Color online) Poincare ́ disk model. In (a), L1,2,3 and P1,2,3 are examples of hyperbolic lines. Lines L1,2,3 intersect to form triangle ABC. The sum of its angles a + b + c < π. As opposed to Euclidean geometry, there are infinitely many lines (examples are P1,2,3) that are parallel to line L1 and go through a point C that does not belong to L1. In (b), a {7, 3}-tessellation of the hyperbolic plane by equilateral triangles, and the dual {3, 7}-tessellation by regular heptagons are shown. All triangles and heptagons are of the same hyperbolic size but the size of their Euclidean representations exponentially decreases as a function of the distance from the center, while their number exponentially increases. In (c), the exponentially increasing number of men illustrates the exponential expansion of hyperbolic space. The Poincar ́e tool [1] is used to construct a {7, 7}-tessellation of the hyperbolic plane, rendering a fragment of The Vitruvian Man by Leonardo da Vinci.
+as usual—by a non-analyticity of the partition function. This phase transition separates two regimes in the ensemble, cold and hot. Complex networks belong to the cold regime, while in the hot regime, the standard configuration model [18] and classical random graphs [19] turn out to be two limiting cases with degenerate geometric structures, Section IX. Sections VII and VIII analyze the degree distribution and clustering as functions of temperature in the two regimes. Finally, in Section X, we shift our attention to network function. Specifically, we analyze the network efficiency with respect to targeted communication or transport processes without global topology knowledge, made possible by our geometric approach. We find that such processes in networks with strong heterogeneity and clustering, guided by the underlying hyperbolic space, achieve the best possible efficiency according to all measures, and that this efficiency is remarkably robust with respect to even catastrophic levels of network damage. This finding demonstrates that complex networks have the optimal structure, allowing for routing with minimal overhead approaching its theoretical lower bounds, a notoriously difficult longstanding problem in routing theory, proven unsolvable for general graphs [20].
+II. HYPERBOLIC GEOMETRY
+In this section we review the basic facts about hyperbolic geometry. More detailed accounts can be found in [21–27]. There are only three types of isotropic spaces: Eu
+clidean (flat), spherical (positively curved), and hyperbolic (negatively curved). Hyperbolic spaces of constant curvature are difficult to envisage because they cannot be isometrically embedded into any Euclidean space. The reason is, informally, that the former are “larger” and have more “space” than the latter. Because of the fundamental difficulties in representing spaces of constant negative curvature as subsets of Euclidean spaces, there are not one but many equivalent models of hyperbolic spaces. Each model emphasizes different aspects of hyperbolic geometry, but no model simultaneously represents all of its properties. In special relativity, for example, the hyperboloid model is commonly used, where the hyperbolic space is represented by a hyperboloid. Its two different projections to disks orthogonal to the main axis of the hyperboloid yield the Klein and Poincar ́e unit disk models. In the latter model, the whole infinite hyperbolic plane H2, i.e., the two-dimensional hyperbolic space of constant curvature −1, is represented by the interior of the Euclidean disk of radius 1, see Fig. 1. The boundary of the disk, i.e., the circle S1, is not a part of the hyperbolic plane, but represents its infinitely remote points, called boundary at infinity ∂H2. Any symmetry transformation on H2 translates to a symmetry on ∂H2, and vice versa, a cornerstone of the anti-de Sitter space/conformal field theory correspondence [8–10], where quantum gravity on an anti-de Sitter space is equivalent to a quantum field theory without gravity on the conformal boundary of the space. Hyperbolic geodesic lines in the Poincar ́e model, i.e., shortest paths between two points at the boundary, are disk diameters and arcs of Euclidean circles intersect
+
+
+3
+ing the boundary perpendicularly. The model is conformal, meaning that Euclidean angles between hyperbolic lines in the model are equal to their hyperbolic values, which is not true with respect to distances or areas. Euclidean and hyperbolic distances, re and rh, from the disk center, or the origin of the hyperbolic plane, are related by
+re = tanh rh
+2 . (1)
+The model is generalizable for any dimension d > 2, in which case Hd is represented by the interior of the unit ball whose boundary Sd−1 is the boundary at infinity ∂Hd. The model is related via the stereographic projection to another popular model—the upper half-space model—where Hd is represented by a “half” of Rd span by vectors x = (x1, x2, . . . , xd) with xd > 0. The bound
+ary at infinity ∂Hd in this case is the hyperplane xd = 0
+instead of Sd−1. Essentially any d-dimensional space X with a (d − 1)-dimensional boundary can be equipped with a hyperbolic metric structure, with the X’s boundary playing the role of the boundary at infinity ∂X. Given the abundance of hyperbolic space representations, we are free to choose any of those, e.g., the one most convenient for our purposes. Unless mentioned otherwise, we use the native representation in the rest of the paper. In this representation, all distance variables have their true hyperbolic values. In polar coordinates, for example, the radial coordinate r of a point is equal to its hyperbolic distance from the origin. That is, instead of (1), we have
+r ≡ rh = re. (2)
+A key property of hyperbolic spaces is that they expand faster than Euclidean spaces. Specifically, while Euclidean spaces expand polynomially, hyperbolic spaces expand exponentially. In the two-dimensional hyperbolic space Hζ2 of constant curvature K = −ζ2 < 0, ζ > 0, for
+example, the length of the circle and the area of the disk of hyperbolic radius r are
+L(r) = 2π sinh ζr, (3) A(r) = 2π(cosh ζr − 1), (4)
+both growing as eζr with r. The hyperbolic distance x between two points at polar coordinates (r, θ) and (r′, θ′) is given by the hyperbolic law of cosines
+cosh ζx = cosh ζr cosh ζr′ − sinh ζr sinh ζr′ cos ∆θ, (5)
+where ∆θ = π − |π − |θ − θ′|| is the angle between the points. Equations (3-5) converge to their familiar Euclidean analogs at ζ → 0. For sufficiently large ζr, ζr′,
+and ∆θ > 2√e−2ζr + e−2ζr′ , the hyperbolic distance x is closely approximated by
+x = r + r′ + 2
+ζ ln sin ∆θ
+2 ≈ r + r′ + 2
+ζ ln ∆θ
+2 . (6)
+TABLE I: Characteristic properties of Euclidean, spherical, and hyperbolic geometries. Parallel lines is the number of lines that are parallel to a line and that go through a point not belonging to this line, and ζ = √|K|.
+Property Euclidean Spherical Hyperbolic
+Curvature K 0 > 0 < 0
+Parallel lines 1 0 ∞
+Triangles are normal thick thin
+Shape of triangles
+Sum of 4 angles π > π < π
+Circle length 2πr 2π sin ζr 2π sinh ζr
+Disk area 2πr2/2 2π(1 − cos ζr) 2π(cosh ζr − 1)
+That is, the distance between two points is approximately the sum of their radial coordinates, minus some ∆θdependent correction, which goes to zero at ζ → ∞. Hyperbolic spaces are similar to trees. In a b-ary tree (a tree with branching factor b), the analogies of the circle length or disk area are the number of nodes at distance exactly r or not more than r hops from the root. These numbers are (b + 1)br−1 and [(b + 1)br − 2]/(b − 1), both growing as br with r. We thus see that the metric structures of Hζ2 and b-ary trees are the same if ζ = ln b: in
+both cases circle lengths and disk areas grow as eζr. In other words, from the purely metric perspective, Hl2n b
+and b-ary trees are equivalent. Informally, trees can therefore be thought of as “discrete hyperbolic spaces.” Formally, trees, even infinite ones, allow nearly isometric embeddings into hyperbolic spaces. For example, any tessellation of the hyperbolic plane (see Fig. 1) naturally defines isometric embeddings for a class of trees formed by certain subsets of polygon sides. For comparison, trees do not generally embed into Euclidean spaces. Informally, trees need an exponential amount of space for branching, and only hyperbolic geometry has it. Table I collects these and other characteristic properties of hyperbolic geometry and juxtaposes them against the corresponding properties of Euclidean and spherical geometries.
+III. TOPOLOGICAL HETEROGENEITY VERSUS GEOMETRICAL HYPERBOLICITY
+In this section we make high-level observations suggesting the existence of intrinsic connections between hyperbolic geometry and the topology of complex networks. Complex networks connect distinguishable, heterogeneous elements abstracted as nodes. Understood broadly, this heterogeneity implies that there is at least some taxonomy of elements, meaning that all nodes can be somehow classified. In most general settings, this classification implies that nodes can be split in large groups consisting of smaller subgroups, which in turn consist of even
+
+
+4
+smaller subsubgroups, and so on. The relationships between such groups and subgroups can be approximated by tree-like structures, sometimes called dendrograms, which represent hidden hierarchies in networks [11]. But as discussed in the previous section, the metric structures of trees and hyperbolic spaces are the same. We emphasize that we do not assume that the node classification hierarchy among a particular dimension is strictly a tree, but that it is approximately a tree. As soon as it is at least approximately a tree, it is negatively curved [27]. This argument obviously applies only to a snapshot of a network taken at some moment of time. A logical question is how these taxonomies emerge. Clearly, when a network begins to form, the node classification is degenerate, but as more and more nodes join the network and evolve in it, they tend to diversify and specialize, thus deepening their classification hierarchy. The distance between nodes in such hierarchies is then a rough approximation of node similarity, and the more similar a pair of nodes, the more likely they are connected.
+We consider several examples suggesting that these general observations apply to different real networks. Social networks form the most straightforward class of examples, where network community structures [28, 29] represent hidden hierarchies [30]. More concretely, in paper citation networks, the underlying geometries can approximately be the relationships between scientific subject categories, and the closer the subjects of two papers, the more similar they are, and the more likely they cite each other [31, 32]. Classifications of web pages (or more specifically, of the Wikipedia pages [33, 34]) also show the same effect: the more similar a pair of web pages, the more likely that there is a hyperlink between them [35]. In biology, the distance between two species on the phylogenetic tree is a widely used measure of similarity between the species [36]. Note that this example emphasizes both the existing taxonomy of elements and their evolution. The evolution of the Internet is yet another paradigmatic example. In the beginning, there were only a couple of computers connected to each other, but then the network grew [37] splitting into a collection of independently administered networks, called autonomous systems (ASs), whose number and diversity have been growing fast [38]. Currently, ASs can be classified based on their geographic position and coverage, size, number and type of customers, business role, and many other factors [38, 39].
+The general observation that the metric structure of node similarity distances is hyperbolic follows from the mathematical fact illustrated in Fig. 2. We assume there that a point in R2 represents an abstract node attribute or characteristic, while a Euclidean disk in R2 represents a collection of all the attributes for a given node in the network. The network itself is not shown. Instead we visualize a hidden hierarchy arising from the overlapping disks. The more two disks overlap, the more similar the sets of characteristics of the two corresponding nodes, that is, the more similar the nodes themselves. But the
+R2
+H3
+FIG. 2: Mapping between disks in the Euclidean plane R2 and points in the Poincar ́e half-space model of the threedimensional hyperbolic space H3 [21]. The x, y-coordinates of disks in R2 are the x, y-coordinates of the corresponding points in H3. The z-coordinates of these points in H3 are the radii of the corresponding disks. This mapping represents the tree-like hierarchy among the disks. Two points in H3 are connected by a solid link if one of the corresponding disks is the minimum-size disk that fully contains the other disk. This hierarchy is not perfect; thus, the tree structure is approximate. The darkest disk in the middle partially overlaps with three other disks at different levels of the hierarchy. Two points in H3 are connected by a dashed link if the corresponding disks partially overlap. These links add cycles to the tree. The shown structure is thus not strictly a tree, but it is hyperbolic [27].
+mapping between disks R2 and nodes in H3 in Fig. 2 is such that the more the two disks overlap, the hyperbolically closer are the corresponding two nodes. Formally, if the ratio of the disks’ radii r, r′ is bounded by a constant C, 1/C 6 r/r′ 6 C, and the Euclidean distance between their centers is bounded by Cr, then the hyperbolic distance between the corresponding nodes in H3 is bounded by some constant C′, which depends only on C, and not on the disk radii or center locations [27]. The converse is also true. Therefore, the distances between nodes based on similarity of their attributes can be mapped to distances in a hyperbolic space, assuming that node attributes possess some metric structure (R2 in the above example) in the first place.
+IV. HYPERBOLIC GEOMETRY YIELDS HETEROGENEOUS TOPOLOGY
+We now put the intuitive considerations in the previous section to qualitative grounds. We want to see what network topologies emerge in the simplest possible settings involving hyperbolic geometry.
+
+
+5
+y
+FIG. 3: The expected degree of a node at point X located at distance r from the origin O is proportional to the area of the dark-shaded intersection S(r) of the two disks of radius R. The first disk, centered at O, contains all the nodes, distributed within it with a uniform density. The second disk, centered at X, is defined by the connection probability p(x), which is either 1 or 0 depending on whether the distance x from X is less or greater than R. The node at X is connected to all the nodes lying in the dark-shaded intersection area S(r).
+A. Uniform node density at curvature K = −1
+Since the one-dimensional hyperbolic space H1 does not exist, the simplest hyperbolic space is the hyperbolic plane H2 discussed in Section II. The simplest way to place N 1 nodes on the hyperbolic plane is to distribute them uniformly over a disk of radius R 1, where R abstracts the depth of the hidden tree-like hierarchy. We will see below that R is a growing function of N , reflecting the intuition in Section III that the network hierarchy deepens with network growth. The hyperbolically uniform node density implies that we assign the angular coordinates θ ∈ [0, 2π] to nodes with the uniform density ρ(θ) = 1/(2π), while according to Eqs. (3,4) with ζ = 1, the density for the radial coordinate r ∈ [0, R] is exponential
+ρ(r) = sinh r
+cosh R − 1 ≈ er−R ∼ er. (7)
+To form a network, we need to connect each pair of nodes with some probability, which can depend only on hyperbolic distances x between nodes. The simplest connection probability function is
+p(x) = Θ(R − x), (8)
+where Θ(x) is the Heaviside step function. We will justify and relax this choice in Section VI. This connection probability means that we connect a pair of nodes by a link only if the hyperbolic distance (5) between them is x 6 R.
+The network is now formed, and we can analyze its topological properties. We are first interested in the most basic one, the degree distribution P (k), to com
+pute which we have to calculate the average degree k ̄(r) of nodes located at distance r from the origin. Since
+the node density is uniform, k ̄(r) is proportional to the area A(r) of the intersection S(r) of the two disks shown
+in Fig. 3. Specifically, k ̄(r) = δA(r) with node density δ = N/[2π(cosh R − 1)]. The area element dA in polar coordinates (y, θ) is dA = sinh y dydθ, cf. Eqs. (3,4) with ζ = 1. Therefore, the intersection area A(r) = ∫∫
+S(r) dA
+is given by the following integration illustrated in Fig. 3
+A(r) = 2
+∫ R−r
+0
+sinh y dy
+∫π
+0
+dθ + 2
+∫R
+R−r
+sinh y dy
+∫ θy
+0
+dθ
+= 2π[cosh(R − r) − 1] + 2
+∫R
+R−r
+θy sinh y dy, (9)
+where θy ∈ [0, π] is given by the hyperbolic law of cosines (5) for the triangle 4OXY in Fig. 3
+cosh R = cosh r cosh y − sinh r sinh y cos θy. (10)
+Solving the last equation for θy and substituting the result into (9) yields the exact expression for A(r) and con
+sequently for the average degree k ̄(r)
+k ̄(r) = N
+2π(cosh R − 1)
+{
+2π(cosh R − 1) − 2 cosh R
+(
+arcsin tanh(r/2)
+tanh R + arctan cosh R sinh(r/2)
+√sinh(R + r/2) sinh(R − r/2)
+)
++ arctan (cosh R + cosh r)√cosh 2R − cosh r
+√2(sinh2 R − cosh R − cosh r) sinh(r/2) − arctan (cosh R − cosh r)√cosh 2R − cosh r
+√2(sinh2 R + cosh R − cosh r) sinh(r/2)
+}
+, (11)
+which perfectly matches simulations in Fig. 4. For large R this terse exact expression is closely approximated by
+k ̄(r) = N
+{4
+π e−r/2 −
+(4
+π −1
+)
+e−r
+}
+≈4
+π N e−r/2, (12)
+where the last approximation holds for large r. The average degree in the network is then
+k ̄ =
+∫R
+0
+ρ(r)k ̄(r)dr ≈ 8
+π N e−R/2, (13)
+
+
+6
+0 5 10 15
+100
+101
+102
+103
+104
+r
+1
+ ̄
+k(r)
+Simulation Theory
+FIG. 4: (Color online) Average degree at distance r from the origin for a network with N = 10000 and R = 16.55.
+from which we conclude that if we want to generate an
+N -node network with a target average degree k ̄ we have
+to select the disk radius R = 2 ln[8N/(πk ̄)]. We see that R scales with N as R ∼ ln N , i.e., the same way as the depth of a balanced tree with its size. We also observe that by fixing
+N = ν eR/2, (14)
+we gain control over the average degree in a network via
+parameter ν = πk ̄/8, using which we rewrite (12) as
+k ̄(r) = k ̄
+2 e(R−r)/2 ∼ e−r/2. (15)
+To finish computing the degree distribution P (k) we treat the radial coordinate r as a hidden variable in the
+terminology of [40], yielding P (k) = ∫ R
+0 g(k|r)ρ(r) dr,
+where the propagator g(k|r) is the conditional probability that a node with hidden variable r has degree k. For sparse networks this propagator is Poissonian [40],
+g(k|r) = e−k ̄(r)k ̄(r)k/k!, using which we finally obtain
+P (k) = 2
+( k ̄
+2
+)2 Γ(k − 2, k ̄/2)
+k! ∼ k−3. (16)
+That is, the node degree distribution is a power law. This result is remarkable as we have done nothing to enforce this power law. Network heterogeneity has naturally emerged as a direct consequence of the basic properties of hyperbolic geometry underlying the network. Indeed, the observed power law is a combination of two exponentials [41], node density ρ(r) in (7) and average
+degree k ̄(r) in (15), both reflecting the exponential expansion of space in hyperbolic geometry discussed in Section II.
+B. Quasi-uniform node density at arbitrary negative curvature
+We next relax two constraints in the model. The first constraint is that the node density is exactly uniform. We let it be quasi-uniform,
+ρ(r) = α sinh αr
+cosh αR − 1 ≈ α eα(r−R) ∼ eαr, (17)
+that is, exponential with exponent α > 0. In terms of the analogy with trees in Sections II,III, this relaxation is equivalent to assuming that the hidden tree-like hierarchy has the average branching factor b = eα. Second, we let the curvature of the hyperbolic space be any K = −ζ2 with ζ > 0. The node density is exactly uniform now only if α = ζ.
+The exact expression for the average degree k ̄(r) of nodes at distance r from the origin is the same as before,
+k ̄(r) = N
+2π
+∫∫
+S(r)
+ρ(y) dydθ (18)
+=N
+{
+∫ R−r
+0
+ρ(y) dy + 1
+π
+∫R
+R−r
+ρ(y)θy dy
+}
+,
+but we cannot compute it exactly to yield an answer analogous to (11). However, approximations are easy. The main approximation deals with the angle θy in Fig. 3. Instead of (10), we now have according to (5)
+cosh ζR = cosh ζr cosh ζy − sinh ζr sinh ζy cos θy, (19)
+which for large R, r, and y yields θy = 2eζ(R−r−y)/2.
+Substituting this θy in the integral for k ̄(r) (18), using there the approximate expression for ρ(y) in (17), and introducing notation ξ = (α/ζ)/(α/ζ − 1/2), we obtain
+k ̄(r) = N
+{2
+π ξe−ζr/2 −
+(2
+πξ −1
+)
+e−αr
+}
+(20)
+=
+
+ 
+ 
+N (2ξ/π)e−ζr/2 if α > ζ/2, N (1 + ζr/π)e−ζr/2 if α → ζ/2, N (1 − 2ξ/π)e−αr if α < ζ/2.
+(21)
+The average degree k ̄ in the whole network is now
+k ̄ = 2
+π ξ2N
+{
+e−ζR/2 + e−αR
+[
+αR
+2
+(
+π 4
+(ζ
+α
+)2
+− (π − 1) ζ
+α + (π − 2)
+)
+−1
+]}
+, (22)
+
+
+7
+and its limit at α → ζ/2 is well defined,
+k ̄ −−−−→
+α→ζ/2 N ζ
+2R
+(
+1+ ζ
+2π R
+)
+e−ζR/2. (23)
+If α/ζ > 1/2, we can neglect the second term in (22), leading to
+k ̄ = 2
+π ξ2N e−ζR/2. (24)
+That is, the condition controlling the average degree in the network changes from (14) to
+N = ν eζR/2, (25)
+where the control parameter ν = πk ̄/(2ξ2). This control is the less accurate, the closer the α to ζ/2. Indeed, as α approaches ζ/2, the relative contribution to the total average degree coming from the second term in (22) increases. In particular, if α/ζ = 1/2, then ξ is undefined,
+meaning that ν can no longer be πk ̄/(2ξ2). If instead of
+solving Eq. (23) to find radius R for given N and k ̄, we fix R according to (25) with some ν ≡ ν0, then similar to [42], the average degree in (23) will grow polylogarithmically with the networks size,
+k ̄ = ν0 ln N
+ν0
+(
+1+ 1
+π ln N
+ν0
+)
+. (26)
+If we neglect the second terms in (22,20) at α/ζ > 1/2, then using (25), we rewrite (20) as
+k ̄(r) = k ̄
+ξ eζ(R−r)/2 ∼ e−ζr/2. (27)
+That is, somewhat surprisingly, the scaling of the aver
+age degree k ̄(r) with radius r does not depend on the exponent α > ζ/2 of the node density. Proceeding as in Section IV A, the degree distribution P (k) for α > ζ/2 is then
+P (k) = 2 α
+ζ
+( k ̄
+ξ
+)2α/ζ Γ(k − 2α/ζ, k ̄/ξ)
+k! ∼ k−(2α/ζ+1).
+(28) For arbitrary values of α/ζ > 0 the degree distribution scales as
+P (k) ∼ k−γ, with γ =
+{2 α
+ζ + 1 if α
+ζ >1
+2, 2 if α
+ζ 61
+2 . (29)
+We observe that the node density exponent α and the space curvature ζ affect the heterogeneity of network topology, parameterized by γ, only via their ratio α/ζ. This result is intuitively expected in view of the analogy to trees discussed in Sections II,III, since a tree with branching factor b = eα is metrically equivalent to the two-dimensional hyperbolic space with curvature K = −α2. In other words, the branching factor of a tree
+and the curvature of a hyperbolic space are two different measures of the same metric property—how fast the space expands. Result (29) states then that the topology of networks built on top of these metric structures depends only on the appropriate normalization, α/ζ, between the two measures. The H2 model described so far has thus only two parameters, α/ζ > 1/2 and ν > 0, controlling the degree distribution shape and average degree. The model produces scale-free networks with any power-law degree distribution exponent γ = 2α/ζ + 1 > 2. The uniform node density in the hyperbolic space corresponds to α = ζ, and results in γ = 3, i.e., the same exponent as in the original preferential attachment model [43]. Since ξ = (α/ζ)/(α/ζ − 1/2) = (γ − 1)/(γ − 2), the average degree of nodes at distance r from the origin (27), and
+the total average degree in the network k ̄ = 2νξ2/π are
+k ̄(r) = k ̄ γ − 2
+γ − 1 eζ(R−r)/2, (30)
+k ̄ = ν 2
+π
+(γ − 1 γ−2
+)2
+. (31)
+A sample network is visualized in Fig. 5.
+V. HETEROGENEOUS TOPOLOGY IMPLIES HYPERBOLIC GEOMETRY
+In the previous section, we have shown that networks constructed over hyperbolic spaces naturally possess heterogeneous scale-free degree distributions. In this section we show the converse. Assuming that a scale-free network has some metric structure underneath, we show that metric distances can be naturally rescaled such that the resulting metric space is hyperbolic. To accomplish this task we use the S1 model from [12] where the underlying metric structure is abstracted by the simplest possible compact metric space, circle S1. This model generates networks as follows. First, N nodes are placed, uniformly distributed, on a circle of radius N/(2π) so that the node density on the circle is fixed to 1. Then each node is assigned its expected degree, which is a random variable κ drawn from the continuous power-law distribution
+ρ(κ) = κγ−1
+0 (γ − 1)κ−γ, κ ≥ κ0, (32)
+where γ > 2 is the target degree distribution exponent, and κ0 is the minimum expected degree. Finally, each
+node pair with expected degrees (κ, κ′) and angular coordinates (θ, θ′) located at distance d = N ∆θ/(2π) over the circle (∆θ = π − |π − |θ − θ′||) is connected with probability p ̃(χ), which can be any integrable function of
+χ= d
+μκκ′ , (33)
+where μ > 0 is the parameter controlling the average degree in the network. This form of the argument of the
+
+
+8
+FIG. 5: (Color online) A modeled network with N = 740 nodes, power-law exponent γ = 2.2, and average degree k ̄ = 5 embedded in the hyperbolic disk of curvature K = −1 and radius R = 15.5 centered at the origin shown by the cross. For visualization purposes, we use the native hyperbolic space representation (2). Therefore, the shown network occupies a small part of the whole hyperbolic plane in Fig. 1. The shaded areas show two hyperbolic disks of radius R centered at the circled nodes located at distances r = 10.6 (upper node) and r = 5.0 (lower node) from the origin. The shapes of these disks are defined by (5) with ζ = 1, and according to the model, the circled nodes are connected to all the nodes lying within their disks, as indicated by the thick links. In particular, the two circled nodes lie within each other’s disks. The peculiar shape of these disks shows that the hyperbolic distance between any two points other than the origin is not equal to the Euclidean distance between them. In particular, the farther away from the origin are the two nodes, located at the same Euclidean distance in the tangential direction, the longer is the hyperbolic distance between them, which explains why peripheral nodes are not connected to each other, and why a majority of links appear radially oriented.
+connection probability function is the only requirement
+to ensure that the average degree k ̄(κ) of nodes with expected degree κ in the constructed network is indeed pro
+portional to κ, specifically k ̄(κ)/k ̄ = κ/κ ̄, where k ̄ is the average degree in the network as before, and
+ ̄κ =
+∫∞
+κ0
+κρ(κ)dκ = κ0
+γ−1
+γ − 2 . (34)
+Due to this proportionality, the degree distribution in the network is indeed power-law distributed with exponent γ. To see that condition (33) ensures k ̄(κ)/k ̄ = κ/ ̄κ, set
+θ = 0 without loss of generality, let I = ∫ ∞
+0 p ̃(χ) dχ, and
+observe that [40]
+k ̄(κ) = N
+2π
+∫∫
+ρ(κ′)p ̃(χ)dκ′dθ′
+= 2μκ
+∫∞
+κ0
+κ′ρ(κ′)dκ′
+∫ N/(2μκκ′)
+0
+p ̃(χ)dχ
+= 2μI  ̄κκ. (35)
+Since
+k ̄ =
+∫
+k ̄(κ)ρ(κ)dκ = 2μI  ̄κ2, (36)
+we conclude that k ̄(κ) = κk ̄/ ̄κ, and confirm that μ controls the average degree in the network. We also note that κ0 is a dumb parameter, which can be set to
+κ0 = k ̄(γ − 2)/(γ − 1) leading to k ̄(κ) = κ.
+We now establish the equivalence between this S1 model and the H2 model described in the previous section. To do so, we need to find a change of variables from κ, expected degree of a node, to r, its radial coordinate on a disk of radius R, such that if variable κ is power-law distributed according to (32), then after this κ-to-r change of variables, variable r is exponentially distributed according to (17). The change of variables that accomplishes this task is
+κ = κ0eζ(R−r)/2, (37)
+where ζ > 0 is a parameter defining α in (17) after this change of variables. The resulting value of α is α = ζ(γ − 1)/2, which is the same relationship among α, ζ, and γ as in (29). In other words, after the κ-to-r mapping above, the nodes get distributed on the disk as in the H2 model, suggesting that parameter ζ is actually the space curvature. To check if it is indeed the case, and if the two models are indeed equivalent, we have to verify that the pairs of nodes connected or disconnected in the S1 model with expected degree κ mapped to radial coordinate r correspond to, respectively, connected or disconnected nodes in the native H2 model. That is, we have to demonstrate that the connection probabilities in the two models are consistent, p(x) = p ̃(χ). To show this we first fix the disk radius R to its value in the H2 model (25), and then observe that if we set
+ν = πμκ20, yielding k ̄ = νI 2
+π
+(γ − 1 γ−2
+)2
+, (38)
+then the change of variables (37) maps the argument χ of the connection probability in the S1 model (33) to
+χ = eζ(x−R)/2, (39)
+where x is equal to the second approximation of the hyperbolic distance in (6). Therefore, the connection probability p(x) in the H2 model is approximately equal to the connection probability p ̃(eζ(x−R)/2) in the S1 model. In
+
+
+9
+particular, the step function connection probability (8) in the H2 model corresponds to
+p ̃(χ) = Θ(1 − χ) (40)
+in the S1 model. The integral I of this connection prob
+ability is obviously 1, so that the k ̄ vs μ relationship (36) in the S1 model becomes k ̄ = 2μ [κ0(γ − 1)/(γ − 2)]2,
+which is consistent with the condition ν = πμκ20 (38)
+given the k ̄.vs.ν relationship in the H2 model (31). As the final consistency check, we observe that the substitution of the κ-to-r mapping (37) into the proportionality
+k ̄(κ) = κk ̄/ ̄κ in the S1 model yields (30) in the H2 model.
+That is, the average degrees k ̄(r) of nodes with radial coordinate r in the S1 and H2 models are the same. The two models are thus equivalent, and with the appropriate choice of parameters, generate statistically the same ensembles of networks, which one can confirm in simulations. In this section the network metric structure has been modeled the simplest way, by circle S1 = ∂H2, which by no means is the only possibility for the hyperbolic space boundary ∂X, see Section II. Therefore, the established equivalence between the S1 and H2 models suggests that as soon as a heterogeneous network has some metric structure induced by distances d on ∂X, this metric structure can be rescaled by node degrees κ to become hyperbolic, using appropriate modifications of (33,39). The heterogeneous degree distribution effectively adds an additional dimension to ∂X (the radial dimension in the S1 = ∂H2 case), such that the resulting space X (H2 in the considered case) is hyperbolic, a mechanism conceptually similar to how time in special relativity, or gravity in [8–10] makes the higher-dimensional (time)space hyperbolic. In other words, hyperbolic geometry naturally emerges from network heterogeneity, the same way as network heterogeneity emerges from hyperbolic geometry in the previous section.
+VI. HYPERBOLIC GEOMETRY VERSUS STATISTICAL MECHANICS
+In this section we relax the final constraint in the model that the connection probability is a step function, and provide a statistical mechanics interpretation of the resulting network ensemble. Since p ̃(χ) can be any integrable function in the S1 version of the model, p(x) can be any function in the H2 version. Given this freedom, we consider the following family of connection probability functions,
+p(x) = 1
+eβ(ζ/2)(x−R) + 1 = 1
+χβ + 1 = p ̃(χ), (41)
+parameterized by β > 0. The p ̃(χ) function is integrable for any β > 1,
+I=
+∫∞
+0
+p ̃(χ) dχ =
+(β
+π sin π
+β
+)−1
+. (42)
+However, we will not restrict β > 1, and will also consider β ∈ [0, 1). The main motivation for the connection probability choice (41) is that it casts the ensemble of graphs in the model to exponential random graphs [13–17]. Exponential random graphs are maximally random graphs subjected to specific constraints, each constraint associated with an auxiliary field or Lagrangian multiplier in the standard entropy maximization approach, commonly used in statistical mechanics. Each graph G in the ensemble has probability weight P (G) = e−H(G)/Z, where H(G) is the graph Hamiltonian, and Z = ∑
+G e−H(G)
+is the partition function. For example, the ensemble of graphs in the configuration model, i.e., graphs with a given degree sequence {ki}, is defined by Hamiltonian H(G) = ∑
+i ωiki = ∑
+ij ωiaij = ∑
+i<j (ωi + ωj )aij ,
+where ωi are the auxiliary fields coupled to nodes i, and {aij} is G’s adjacency matrix. A natural generalization of this ensemble [14] is given by the Hamiltonian H(G) = ∑
+i<j ωijaij in which the auxiliary fields are
+coupled not to nodes i but to links ij. The partition function is then
+Z =∏
+i<j
+(1 + e−ωij ) , (43)
+and the probability of link existence between nodes i and j is given by [14]
+pij = − ∂ ln Z
+∂ωij
+=1
+eωij + 1 . (44)
+The connection probability (41) thus interprets the auxiliary fields ωij in this ensemble as a linear function of hyperbolic distances xij between nodes in the ensemble of graphs generated by our model,
+ωij = β ζ
+2 (xij − R), (45)
+which makes the two ensembles identical. The connection probability (41) is nothing but the Fermi-Dirac distribution. It appears because we allow only one link between a pair of nodes. If we allowed multiple links, or if we considered weighted networks, the resulting link statistics would be Bose-Einstein [14, 15]. Hyperbolic distances x in (41) can now be interpreted as energies of fermionic links, whereas hyperbolic disk radius R is the chemical potential, 2/ζ is the Boltzmann constant, and β = 1/T is the inverse temperature. The ensemble is grand canonical with the number of particles or links M fixed on average. The standard definition of the chemical potential is then
+M=
+(N
+2
+) ∫ 2R
+0
+g(x)p(x) dx, (46)
+where g(x) is the degeneracy of energy level x. In our case, g(x) is the probability that two nodes are located
+
+
+10
+at distance x from each other. We can compute this probability to yield
+g(x) = ζ
+π
+(γ − 1 γ−2
+)2
+eζ(x−2R)/2+(a + bx) eα(x−2R), (47)
+where a, b are some constants, and γ = 2α/ζ + 1. Sub
+stituting this g(x) in definition (46), using M = k ̄N/2 there, and keeping the leading terms, we get
+k ̄ = N
+[
+I2
+π
+(γ − 1 γ−2
+)2
+e−ζR/2 + e−βζR/2
+(1 − β)c
+]
+, (48)
+where c is another constant which we determine in the next section. If β > 1, we neglect the second term above, and observe that the standard definition of the chemical potential in statistical mechanics (46) yields the same result as (25), obtained using purely geometric arguments. The same observation applies for the parameter ν = N e−ζR/2 that we get from (48): it is the same as in (36) with μ = ν/(πκ20) and κ ̄ in (34), or as in (31) if
+temperature T = 0, so that I = 1. At T = 0 the system is in the ground, most degenerate state, and all M links occupy the lowest energy levels until all of them are filled. In this ground state, Fermi distribution (41) converges to the step function (8), which a posteriori justifies our choice there. At higher temperatures the fermionic particles start populating higher energy states, and at T = 1 we have a phase transition caused by the divergence of p ̃(χ) leading to a discontinuity of the partition function (43). This discontinuity is due to the discontinuity of the chemical potential R. We see from (48,42) that R diverges as ∼ − ln(β − 1) at β → 1+. If β < 1, then the second term in (48) is the leading term, and instead of (25) we have
+N = k ̄(1 − β)c eβζR/2, (49)
+so that at β → 1−, the chemical potential R diverges as ∼ − ln(1−β). We investigate what effect this phase transition has on network topology in the next two sections.
+VII. DEGREE DISTRIBUTION AT NON-ZERO TEMPERATURE
+A. β > 1
+Since the connection probability p ̃(χ) in (41) is integrable in this cold regime, we immediately conclude that the degree distribution is the same power law as at the zero temperature, while the average degree is
+k ̄ = 2μIκ ̄2 (36) with I in (42). In view of the equivalence between the S1 and H2 models established in Section V, the power-law exponent γ > 2 is related to the H2 model parameters ζ > 0 and α > ζ/2 via γ = 2α/ζ + 1, as at T = 0. The chemical potential is R = (2/ζ) ln(N/ν) with ν = πμκ20 (25,38).
+B. β < 1
+In this hot regime, the connection probability p ̃(χ) diverges, and we have to renormalize its integral I = ∫ p ̃(χ)dχ. Specifically, instead of integrating to infinity as in (35), we have to explicitly cut off the integration at the maximum value of χmax = N/(2μκκ′).
+The exact value of ∫ χmax
+0 p ̃(χ)dχ with p ̃(χ) in (41) is
+2H1(1, β−1; 1+β−1; −χβmax)χmax, where 2H1 is the Gauss
+hypergeometric function. The leading term of this product for large χmax and β ∈ [0, 1) is χ1−β
+max/(1 − β), substi
+tuting which into the expression for the average degree in the S1 model (35) we get
+k ̄(κ)
+〈k〉 = κβ
+〈κβ〉 , (50)
+〈k〉 ≡ k ̄ = (2μ)β〈κβ〉2 N 1−β
+1 − β , (51)
+〈κβ〉 =
+∫∞
+κ0
+κβρ(κ)dκ = κβ
+0
+γ ̃ − 1
+γ ̃ − β − 1 , (52)
+where γ ̃ is the input value of the γ-parameter in the S1 model, i.e., the distribution of the hidden variable κ is
+ρ(κ) = κγ ̃−1
+0 (γ ̃ − 1)κ−γ ̃. We introduce a new notation
+for this parameter to differentiate it from the value of power-law exponent γ in generated networks, which is different from γ ̃ in this hot regime. Indeed, since the
+average degree k ̄(κ) of nodes with hidden variable κ is no longer proportional to κ but to κβ (50), the degree distribution in the modeled networks is
+P (k) ∼ k−γ, with γ = (γ ̃ − 1)T + 1. (53)
+The mapping to the H2 model is achieved via the same change of variables (37), and by requiring that χ = eζ(x−R)/2. Performing this change of variables, and noticing that (γ ̃ − 1)/(γ ̃ − β − 1) = (γ − 1)/(γ − 2), we obtain the following key relationships in the H2 model:
+γ = 2α
+ζ T + 1, γ ̃ = 2 α
+ζ + 1, (54)
+k ̄(r) = k ̄ γ − 2
+γ − 1 eβζ(R−r)/2, (55)
+k ̄ = ν
+1−β
+(2
+π
+)β ( γ − 1
+γ−2
+)2
+, (56)
+N = ν eβζR/2, ν = (πμκ20
+)β N 1−β. (57)
+The last two equations fill in the c coefficient in the expression for the chemical potential (49).
+Finally, we note that in the hot regime the admissible range of input parameters controlling the degree distribution exponent γ is γ ̃ > β + 1 (S1) or α > βζ/2 (H2), both yielding γ > 2.
+
+
+11
+0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+ ̄c
+T
+γ=2.2; simulations γ=2.2; theory γ=2.5; simulations γ=2.5; theory γ=3.0; simulations γ=3.0; theory
+γ=3.0
+γ=2.5
+γ=2.2
+FIG. 6: (Color online) Average clustering c ̄ as a function of temperature T = 1/β ∈ [0, 1). The simulation results are averaged across 100 networks with average degree k ̄ = 6 and N = 105 nodes each. The average clustering is calculated excluding nodes of degree 1. The theoretical results are ob
+tained via the numerical integration of c ̄ = ∫ ∞
+κ0 c ̄(κ)ρ(κ)dκ with c ̄(κ) given by Eq. (59). The stronger disagreement between simulations and theory for smaller values of γ is due to the increasingly pronounced finite-size effects [44].
+VIII. CLUSTERING AS A FUNCTION OF TEMPERATURE
+A. β > 1
+In the cold regime, the average clustering c ̄ is a decreasing function of temperature, see Fig. 6. Clustering is maximized at T = 0, and it gradually, almost linearly, decreases to zero at the phase transition point T = 1.
+Unfortunately, c ̄ cannot be computed analytically, but some estimates for specific values of β are possible. The average clustering c ̄(κ) of nodes with expected degree κ in the S1 model is the probability that two nodes with expected degrees and angular coordinates (κ′, θ′) and (κ′′, θ′′), both connected to node with (κ, 0) (we set θ = 0 without loss of generality), are connected to each other. Introducing notations for the three rescaled distances χ′ = N θ′/(2πμκκ′), χ′′ = N θ′′/(2πμκκ′′), and χ = N ∆θ/(2πμκ′κ′′), where ∆θ = |θ′ − θ′′|, this probability is given by [40]
+c ̄(κ) =
+(N
+k ̄(κ)
+)2 ∫ ∫ ∞
+κ0
+dκ′dκ′′ρ(κ′)ρ(κ′′)
+×
+∫∫ π
+−π
+dθ′dθ′′p ̃(χ′)p ̃(χ′′)p ̃(χ). (58)
+Changing the integration variables from θ′ and θ′′ to χ′ and χ′′ in the second integral, extending the integration limits to infinity, and using the expression for the average
+χ'
+χ''
+1
+1 -1
+-1
+|χ'|<1 |χ''|<1
+κ|χ'/κ''-χ''/κ'|<1
+κ''/κ
+-κ''/κ
+-κ'/κ
+κ'/κ
+FIG. 7: (Color online) The inner integral in (59) at the zero temperature is the dark shaded area in the center.
+degree in the model (35), yield
+c ̄(κ) = 1
+(2I  ̄κ)2
+∫∫ ∞
+κ0
+dκ′dκ′′κ′ρ(κ′)κ′′ρ(κ′′) (59)
+×
+∫∫ ∞
+−∞
+dχ′dχ′′p ̃(|χ′|)p ̃(|χ′′|)p ̃
+(
+κ
+∣ ∣ ∣ ∣
+χ′
+κ′′ − χ′′
+κ′
+∣ ∣ ∣ ∣
+)
+.
+At T = 0, I = 1, while p ̃(χ) → Θ(1 − χ). Therefore, the inner integral in the last expression reduces to the area of the intersection of the square defined in the (χ′, χ′′) coordinates by {|χ′| < 1; |χ′′| < 1}, and the stripe κ|χ′/κ′′ − χ′′/κ′| < 1, see Fig. 7. For small κ, the stripe is so wide for almost any combination of (κ′, κ′′) that it fully contains the square, whose area is 4, so that c ̄(κ0) ≈ 1 proving that clustering is maximized at the zero temperature. Recall that clustering cannot be 1 for all node degrees because of structural constraints [45]. For arbitrary values of κ, the exact expression for the intersection area involves cumbersome combinatorial conditions for the mutual relationship among κ, κ′, and κ′′, which make taking the outer integral in (59) problematic. However one can check that for large κ, c ̄(κ) = g(γ)κ0/κ, where g(γ) is a decreasing function of γ. For any other values of T ∈ (0, 1), the inner integral in (59) can be taken by residues, but the number of poles depends on β = 1/T . At β = 2, for example, the inner integral is π2κ′κ′′/(κκ′ + κκ′′ + κ′κ′′), so that for γ = 3 we have the exact expression for c ̄(κ)
+c ̄(κ) = κ0{(2κ + κ0) ln(2κ + κ0) − 2(κ + κ0) ln(κ + κ0) + κ0 ln κ0}/κ2, (60)
+and c ̄(κ0) = ln(27/16) = 0.52, while c ̄(κ) = (ln 4)κ0/κ for large κ. For other values of γ, one can show that c ̄(κ) = g ̃(γ)κ0/κ, where g ̃(γ) is also a decreasing function of γ. In other words, the degree-dependent clustering c ̄(κ) decays with κ as ∼ κ−1, an effect that was considered as
+
+
+12
+a signature of the hierarchical organization of complex networks [46, 47].
+B. β < 1
+In the hot regime, temperature has no effect on clustering, which is always zero for large networks. This effect can be confirmed in simulations, and seen analytically. Indeed, observe that in view of (5052), the θ-to-χ change of variables, turning (58) into (59), now yields the pre-factor in the latter equal to
+[
+(μκ)1−β (1 − β) / (2β〈κβ〉N 1−β)
+]2 instead of 1/(2I  ̄κ)2.
+This new pre-factor is obviously zero in the thermodynamic limit.
+IX. CONNECTION TO THE CONFIGURATION MODEL AND CLASSICAL RANDOM GRAPHS
+Since clustering does not depend on temperature in the hot regime, while the power-law exponent (54) depends on temperature via the ratio T /ζ, we can let T → ∞ and ζ → ∞, but fix their ratio to be a new parameter η = ζ/T . With this parameter the key equations (54,56,57) in the H2 model become
+γ = 2α
+η + 1, k ̄ = ν
+(γ − 1 γ−2
+)2
+, N = ν eηR/2. (61)
+But since curvature ζ = ∞, the last ∆θ-dependent term in the expression for the hyperbolic distance (6) is zero. Since this term reflects the presence of the metric structure in the network, its disappearance effectively destroys this structure. More formally, the network metric structure becomes degenerate, because the hyperbolic distance xij between a pair of nodes i and j reduces to the sum of their radial coordinates, xij = ri + rj, as a result of which the auxiliary fields (45) decouple, ωij = ωi + ωj, where ωi = η(ri − R/2)/2. Therefore, the probability pij of the existence of link ij in (44) depends now only on
+the product of i, j’s expected degrees k ̄(ri), k ̄(rj) given
+by (55), pij = [k ̄(ri)k ̄(rj)]/[k ̄N ], so that the network ensemble becomes the ensemble of networks in the configuration model, i.e., the ensemble of graphs with given expected degrees [18]. Alternatively, we can keep both α and ζ finite while heating the networks up by increasing T → ∞. In this
+case, Eqs. (54-57) converge to γ → ∞, k ̄(r) → k ̄, k ̄ → ν, and R → ∞, while the Fermi-Dirac connection proba
+bility (41) becomes uniform p(x) → p = k ̄/N . That is, all nodes get uniformly distributed on the boundary at infinity ∂H2, and each pair of nodes is connected with the same probability p, independent of their distances. We note that the distance between two points i, j ∈ ∂H2 with angular coordinates θi, θj is xij = sin(∆θij/2) [26]
+compare with (6) in H2 and with xij = ri+rj in the other
+TABLE II: Network properties in the model—average degree k ̄, power-law exponent γ, and average clustering c ̄—and the model parameters controlling these properties, with references to the corresponding equations.
+Property Cold regime Hot regime
+S1 H2 S1 H2
+k ̄ μ (36) ν (38) μ (51) ν (56)
+γ γ (32) α/ζ (29) γ ̃ (53) α/ζ (54)
+c ̄ β = 1/T (Fig. 6) 0
+limiting case, the configuration model. The limiting degree distribution is Poissonian (γ → ∞), and the network ensemble converges to the ensemble of classical random
+graphs GN,p with a given average degree k ̄ = pN [19]. The network in this case loses not only its metric structure, but also its hierarchical heterogeneous organization. Here, we finish the description and analysis of our geometric model of complex networks. To summarize, the model can produce scale-free networks with any average
+degree k ̄, power-law exponent γ > 2, and average clustering c ̄, controlled, respectively, by parameters (γ, μ, β) and (α/ζ, ν, β) in the S1 and H2 formulations of the model, see Table II. In Fig. 8 we observe a good match between the basic topological properties of the real Internet and a synthetic network generated by the H2 model with an appropriate choice of parameters in the cold regime. In the hot regime the model subsumes the standard configuration model and classical random graphs as two different limiting cases with degenerate geometric structures.
+X. EFFICIENCY OF GREEDY NAVIGATION IN MODELED NETWORKS
+In this section we shift our attention from the analysis of the structure of complex networks in our model to the analysis of their function. Specifically, we are interested in their navigation efficiency. One important function that many real networks perform is to transport information or other media. Examples include the Internet, brain, or signaling, regulatory, and metabolic networks. The information transport in these networks is not akin to diffusion. Instead information must be delivered to specific destinations, such as specific hosts in the Internet, neuron groups in the brain, or genes and proteins in regulatory networks. In the latter case, for example, the network reacts to an increased concentration of some sugar by expressing not all but very specific proteins, the ones responsible for digesting this sugar. At the same time the nodes in the network are not aware of the global network structure, so that the questions we face are if paths to specific destinations in the network can be found without such global topology knowledge, and how optimal these paths can be. The salient feature of our model is that it allows one to study the efficiency of such path finding without global
+
+
+13
+100 101 102 103 104
+1 0 -9
+1 0 -6
+1 0 -3
+100
+k
+P (k )
+In te rn e t M odel T h e o ry
+γ=2.1
+(a )
+100 101 102 103 104
+101
+102
+103
+k nn(k )
+(b )
+In te rn e t M odel
+k 100 101 102 103 104
+1 0 -3
+1 0 -2
+1 0 -1
+100
+(c )
+1 /k
+k
+c (k )
+In te rn e t M odel T h e o ry
+FIG. 8: (Color online) The Internet as seen by the CAIDA’s Archipelago Measurement Infrastructure [48] vs. a network in the H2 model with α = 0.55, ζ = 1, and β = 2. (a) The degree distributions P (k) in both networks are power laws with exponent
+γ = 2.1. The theoretical curve is given by (28). (b) The average nearest neighbor degrees k ̄nn(k). (c) The degree-dependent clustering. The theoretical curve is obtained by a numerical estimate of the outer integral in (59). The inner integral is π2κ′κ′′/(κκ′ + κκ′′ + κ′κ′′) at β = 2. The numerical integration is performed by summation over the node degrees k in the modeled network, i.e., ∫ dκ ρ(κ) → ∑
+k P (k), and by mapping κ’s to k’s via κ = k ̄κ/k ̄. Random graphs capturing the three metrics in (a-c) reproduce also many other important structural properties of the Internet [49].
+knowledge, because our networks have underlying geometry which enables greedy forwarding (GF). Since each node in the network has its address, i.e., coordinates in the underlying hyperbolic space, a node can compute the distances between each of its neighbors in the network, and the destination whose coordinates are written in the information packet, or encoded in the signal. GF then accounts to forwarding the information to the node’s neighbor closest to the destination in the hyperbolic space. Since each node knows only its own address, the addresses of its neighbors, and the destination address of the packet, no node has any global knowledge of the network structure. We report simulation results for two forms of GF, original GF (OGF) and modified GF (MGF). The OGF algorithm drops the packet if the current node is a local minimum, meaning that it does not have any neighbor closer to the destination than itself. The MGF algorithm excludes the current node from any distance comparisons, and finds the neighbor closest to the destination. The packet is dropped only if this neighbor is the same as the packet’s previously visited node. These GF processes can be very inefficient. They can often get stuck at local minima, or even if they succeed reaching the destination, they can travel along paths much longer than the optimal shortest paths available in the network. Furthermore, even if they are efficient in static networks, their efficiencies can quickly deteriorate in the presence of network topology dynamics, e.g., they can be vulnerable with respect to network damage. To estimate the GF efficiency in static networks, we compute the following metrics: (i) the percentage of successful paths, ps, which is the proportion of paths that
+reach their destinations; (ii) the average hop-length  ̄h of successful paths; and (iii) the average and maximum stretch of successful paths. We consider three types of stretch. The first stretch is the standard hop stretch defined as the ratio between the hop-lengths of greedy
+paths and the corresponding shortest paths in the graph. We denote its average and maximum by s1 and max(s1). The optimal paths have stretch equal to 1. The other two stretches are hyperbolic. They measure the deviation of the hyperbolic length, traveled by a packet along either the greedy or shortest path, from the hyperbolic distance between the source and destination. Formally, let (s, t) be a source-destination pair and let s = h0, h1, ..., hτ = t be the greedy or shortest path between s and t, and τ its hop length. Further, let xi, i = 1...τ , be the hyperbolic distance between hi and hi−1. The hyperbolic stretch is the ratio ∑
+i xi/xst, where xst is the hyperbolic distance
+between s and t. For greedy paths, we denote the average and maximum of this stretch by s2 and max(s2); for shortest paths those are denotes by s3 and max(s3). The lower these two stretches, the closer the greedy and shortest paths stay to the hyperbolic geodesics, and the more congruent we say the network topology is with the underlying geometry. We first focus on static networks, where the network topology does not change, and then emulate the network topology dynamics by randomly removing one or more links from the topology. For each generated network instance, we extract the giant connected component (GCC), and perform GF between 104 random sourcedestination pairs belonging to the GCC. All the metrics converge after approximately 103 source-destination pairs, but we evaluate an order of magnitude more combinations for more reliable results. The network size is
+N = 104, and the average degree is k ̄ = 6.5 in all the experiments, while temperature T = 0 only in the following two subsections.
+A. Static networks
+Figure 9 shows the results for static networks, averaged, for each γ, over five network instances. We see
+
+
+14
+2 2.2 2.4 2.6 2.8 3
+0.9
+0.92
+0.94
+0.96
+0.98
+1
+γ
+ps
+OGF MGF
+(a)Success ratio
+2 2.2 2.4 2.6 2.8 3
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+γ
+ ̄
+h
+OGF MGF
+(b)Average hop-length
+2 2.2 2.4 2.6 2.8 3
+1
+1.5
+2
+2.5
+3
+3.5
+γ
+Average stretch
+s1 (OGF)
+s1 (MGF)
+s2 (OGF)
+s2 (MGF)
+s3 (OGF)
+s3 (MGF)
+(c)Average stretch
+2 2.2 2.4 2.6 2.8 3
+1
+3
+5
+7
+9
+11
+γ
+Maximum stretch
+max(s1) (OGF)
+max(s1) (MGF)
+max(s2) (OGF)
+max(s2) (MGF)
+max(s3) (OGF)
+max(s3) (MGF)
+(d)Maximum stretch
+FIG. 9: (Color online) Greedy forwarding in static networks.
+that the success ratio ps increases and path length  ̄h and all the stretches decrease as we decrease γ to 2. Remarkably, for γ = 2.1, e.g., equal to the γ observed in the Internet, OGF and MGF yield ps = 99.92% and ps = 99.99%, with the OGF’s maximum stretch of 1, meaning that all greedy paths are shortest paths. Interestingly, the hyperbolic stretch of shortest paths (s3 and max(s3)) is slightly worse (larger) than of greedy paths (s2 and max(s2)), which allows us to informally say that for small γ’s, greedy paths are “shorter than shortest” as they are shortest hop-wise, but GF tends to select among many shortest paths those of least hyperbolic stretch. In summary, GF is exceptionally efficient in static networks, especially for the small γ’s observed in the vast majority of complex networks, including the Internet. The GF efficiency is maximized in this case, and the two algorithms exhibit almost the best possible performance, with reachability reaching almost 100%, and all greedy paths being optimal (shortest).
+B. Dynamic networks
+We next look at the GF performance in dynamic networks with link failures. For each γ, we randomly select a network instance from above and remove one or more random links in it. We consider the following two linkfailure scenarios. In Scenario 1 we remove a percentage pr, ranging from 0% to 30%, of all links in the network, compute the new GCC, and for all source-destination pairs remaining in it, we recompute the new success ratio psnew, and the average and maximum stretch s1new and
+max(s1new). In Scenario 2 we provide a finer-grain view
+focusing on paths that used a removed link. We remove
+0 0.05 0.1 0.15 0.2 0.25 0.3
+0.6
+0.7
+0.8
+0.9
+1
+pr
+pnew
+s
+γ = 2.1 (OGF) γ = 2.1 (MGF) γ = 2.6 (OGF) γ = 2.6 (MGF) γ = 2.8 (OGF) γ = 2.8 (MGF)
+(a)Success ratio in Scenario 1
+0 0.05 0.1 0.15 0.2 0.25 0.3
+1
+1.02
+1.04
+1.06
+1.08
+1.1
+pr
+snew
+1
+γ = 2.1 (OGF) γ = 2.1 (MGF) γ = 2.6 (OGF) γ = 2.6 (MGF) γ = 2.8 (OGF) γ = 2.8 (MGF)
+(b)Stretch in Scenario 1
+2 2.2 2.4 2.6 2.8 3
+0.75
+0.8
+0.85
+0.9
+0.95
+1
+γ
+pls
+OGF MGF
+(c)Success ratio in Scenario 2
+2 2.2 2.4 2.6 2.8 3
+1
+1.1
+1.2
+1.3
+1.4
+1.5
+γ
+Stretch
+sl1 (OGF) sl1 (MGF) max(sl1) (OGF) max(sl1) (MGF)
+(d)Stretch in Scenario 2
+FIG. 10: (Color online) Greedy forwarding in dynamic networks.
+one link from the network, compute the new GCC, and for the source-destination pairs that are still in it, we find the percentage pls of successful paths, only among those
+previously successful paths that traversed the removed link. For these still-successful paths, we also compute the new average and maximum stretch sl1 and max(sl1).
+We then repeat the procedure for 1000 random links, and report the average values for pls and sl1, and the maximum
+value for max(sl1).
+Figure 10 presents the results. We see that for small γ’s, the success ratio psnew remains remarkably high, for
+all meaningful values of pr. For example, MGF on net
+works with γ = 2.1 and pr 6 10%, yields psnew > 99%.
+The simultaneous failure of 10% of the links in a network such as the Internet is a rare catastrophe, but even after such a catastrophe the success ratio in our synthetic networks is above 99%. The average stretch s1new slightly
+increases as we increase pr, but remains quite low. We
+do not show max(s1new) to avoid clutter. For γ = 2.1,
+max(s1new) 6 2. The percentage pls of MGF paths that
+used a removed link and that found a by-pass after its removal is also remarkably close to 100% for small γ’s. The average stretch sl1 in Scenario 2 also remains low, be
+low 1.1, and the maximum stretch max(sl1) never exceeds
+1.5.
+In summary, GF is not only efficient in static networks, but its efficiency is also robust in the presence of network topology dynamics. In particular, for small γ’s matching those found in real networks such as the Internet, GF maintains remarkably high reachability and low stretch, even after catastrophic damages to the network.
+
+
+15
+0 0.2 0.4 0.6 0.8 1
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+1
+T
+ps
+OGF MGF
+(a)Success ratio
+0 0.2 0.4 0.6 0.8 1
+3
+3.2
+3.4
+3.6
+3.8
+T
+ ̄
+h
+OGF MGF
+(b)Average hop-length
+0 0.2 0.4 0.6 0.8 1
+1
+1.5
+2
+2.5
+3
+3.5
+4
+T
+1
+Average stretch
+s1 (OGF)
+s1 (MGF)
+s2 (OGF)
+s2 (MGF)
+s3 (OGF)
+s3 (MGF)
+(c)Average stretch
+0 0.2 0.4 0.6 0.8 1
+1
+3
+5
+7
+9
+11
+13
+T
+1
+Maximum stretch
+max(s1) (OGF)
+1
+max(s1) (MGF)
+1
+max(s2) (OGF)
+max(s2) (MGF)
+max(s3) (OGF)
+max(s3) (MGF)
+(d)Maximum stretch
+FIG. 11: (Color online) Greedy forwarding as a function of temperature T .
+C. Role of clustering
+Next we fix γ = 2.1, and investigate the GF performance as a function of temperature in Fig. 11. The picture is qualitatively similar to Fig. 9. The GF efficiency is the better, the smaller is the temperature, i.e., the stronger the clustering, see Fig. 6. At zero temperature where clustering is maximized, GF demonstrates the best possible performance, as discussed in Section X A.
+D. Random graphs
+Finally, we look at the GF performance in the configuration model and classical random graphs, which are two different degenerate cases with zero clustering in our geometric network ensemble, see Section IX. To test the configuration model, we fix α = 1/2, so that γ = 1/η + 1, compute distances between nodes i, j according to xij = ri +rj, and show the results in Fig. 12. We observe that the GF efficiency is poor in this case. The success ratio ps never exceeds 40%, and drops to below 10% for large γ’s. This poor performance is expected. Indeed, since xij = ri + rj, GF reduces to following the node degree gradient. Each node just forwards the packet to its highest-degree neighbor h since this neighbor has the smallest radial coordinate rh, thus minimizing the distance to the destination. If during this process the packet reaches the highest-degree hub in the network core, without visiting a node directly connected to the destination, then it gets stuck at this hub, because no angular coordinates instructing in what direction to exit the core are any longer available—a problem, which
+2 2.2 2.4 2.6 2.8 3
+0
+0.1
+0.2
+0.3
+0.4
+γ
+ps
+OGF MGF
+(a)Success ratio
+2 2.2 2.4 2.6 2.8 3
+2.5
+3
+3.5
+4
+4.5
+γ
+ ̄
+h
+OGF MGF
+(b)Average hop-length
+2 2.2 2.4 2.6 2.8 3
+1
+1.5
+2
+2.5
+3
+3.5
+4
+γ
+Average stretch
+s1 (OGF)
+1
+s1 (MGF)
+1
+s2 (OGF)
+s2 (MGF)
+s3 (OGF)
+s3 (MGF)
+(c)Average stretch
+2 2.2 2.4 2.6 2.8 3
+0
+2
+4
+6
+8
+10
+12
+14
+16
+γ
+Maximum stretch
+max(s1) (OGF)
+1
+max(s1) (MGF)
+1
+max(s2) (OGF)
+1
+max(s2) (MGF)
+1
+max(s3) (OGF)
+1
+max(s3) (MGF)
+1
+(d)Maximum stretch
+FIG. 12: (Color online) Greedy forwarding in the configuration model.
+does not admit a simple and efficient solution [50]. To test classical random graphs, we assign to nodes their angular coordinates θ uniformly distributed on [0, 2π], connect each node pair with the same proba
+bility p = k ̄N , and compute distances according to xij = sin(∆θij/2). Greedy forwarding is extremely inefficient in this case. The OGF and MGF average success ratios ps are 0.17% and 0.21%. In summary, the hierarchical organization (heterogeneous degree distribution) and metric structure (strong clustering) in the network are both critically important for network navigability.
+E. Why hierarchical structure and strong clustering ensure efficient navigation
+We have seen that more heterogeneous networks (smaller γ) with stronger clustering (smaller T ) are more navigable. Here, we explain why it is the case. We first recall that the congruency, measured by the hyperbolic stretch, between the network topology and hyperbolic geometry is the stronger, the smaller are the γ and T , see Figs. 9,11. To visualize this effect, we draw in Fig. 13(a) a couple of GF paths and their corresponding hyperbolic geodesics. We see that the lengths of the latter are indeed dominated by the sums of the radial coordinates of the source and destination, minus some ∆θdependent corrections (6). This domination of the radial direction shapes the following hierarchical path pattern of the hyperbolic geodesics, as well as of the corresponding GF paths: (i) zoom-out from the network periphery to the core, moving to increasingly higher-degree nodes, that is, nodes covering increasingly wider areas by their
+
+
+16
+(a)
+θ∼κκ′/N
+r
+N∼eζR/2
+r′
+κ∼eζ(R−r)/2
+κ′∼eζ(R−r′)/2
+R
+(b) (c)
+FIG. 13: (Color online) (a) Two greedy paths, which are also shortest paths (s1 = 1), from the source at the top to two destinations are shown by the solid arrows. The dashed curves are the hyperbolic geodesics between the same source and destinations. The hyperbolic stretches s2 = s3 of the left and right paths are 1.51 and 1.68. (b) The inner triangular shape (green) shows the angular sector θ that the outer shape (red), which is the hyperbolic disk of radius R centered at the circled point located at distance r from the crossed origin, cuts out off the dashed circle of radius r′ centered at the origin. The expected node degrees at r and r′ are κ and κ′. (c) The circled node is an example of a bridge node. It is connected to all nodes in its hyperbolic disk of radius R (the outer shape (red)), including all nodes with expected degrees exceeding a certain threshold, or, equivalently, to all nodes with radial coordinates below a certain threshold, shown by the innermost disk (green) whose radius is R − r, where r is the radial coordinate of the circled node.
+connections, see Fig. 5; (ii) turn in the core to the direction of the destination; and finally (iii) zoom-in onto it, moving to lower-degree nodes. This path pattern is exactly the pattern of hierarchical paths in [51]. A path is called hierarchical in [51] if it consists of two segments: first, a segment of nodes with increasing degrees, and then a segment of nodes with decreasing degrees. As shown in [51] (see Fig. 2(a) there), the percentage of shortest paths that are also hierarchical approaches 100% with γ → 2. Remarkably, this hieratical path pattern also characterizes the policy-compliant paths followed by information packets in the Internet [52, 53]. Since the GF paths, also the shortest paths in the network, follow the shortest geodesic paths in the hyperbolic space, the resulting hyperbolic stretch is small. Thanks to strong clustering, the network has many partially disjoint paths between the same source and destination, which all follow the same hierarchical pattern. Therefore, even if some paths are damaged by link failures, other congruent paths remain, and GF can still find them using the same hyperbolic geodesic direction, which explains the high robustness of network navigability with respect to network damage. As clustering weakens, not only the path diversity in the network decreases, but also the network metric structure deteriorates, since the edge existence probability (41) depends less and less on the hyperbolic distance between nodes. In the extreme case of classical random graphs, for example, the connection probability does not depend on this distance at all. As a result, the congruency between network topology and underlying geometry evaporates.
+Heterogeneity is another key element responsible for high navigability. This heterogeneity is nothing but a reflection of the hierarchical, tree-like structure of the underlying hyperbolic space. Indeed, its hierarchical structure manifests itself in the hierarchy of node degrees, and in the degree-dependent amount of space that nodes cover by their connections. As Fig. 5 shows, nodes of higher degrees, closer to the top of the hierarchy, cover wider areas with their connections. To quantify, at T = 0 the angular sector θ(κ, κ′) that nodes with expected degree κ cover by their connections to nodes with expected degree κ′, see Fig. 13(b), is θ(κ, κ′) = 4πμκκ′/N . This degree-dependent hierarchy of space coverage makes the hierarchical zooming-out/zooming-in path pattern possible and successful.
+Finally, the stronger the heterogeneity, the more bridges are in the network, where by bridges we mean nodes that connect to all nodes with expected degrees exceeding a certain threshold, an example is shown in Fig. 13(c). This threshold is given by the equation θ(κ, κ′) = 2π, yielding that a node with expected degree κ is connected to all nodes with expected degrees κ′ > N/(2μκ). However such κ′-degree nodes may not exist in the network, as the required κ′ may exceed the maximum expected degree κmax = κ0N 1/(γ−1) [44]. Re
+quiring κ′ < κmax leads to κ > N (γ−2)/(γ−1)/(2μκ0). That is, only such κ-degree nodes are expected to be bridges. The equation for the expected bridge existence is then κ < κmax, yielding N (γ−3)/(γ−1)/(2μκ20) < 1.
+That is, bridges exist in any sufficiently large network with γ < 3—the smaller the γ is, the more bridges and
+
+
+17
+the longer they are—while networks with γ > 3 have no bridges. The role of bridges in the network core is straightforward: as soon as GF reaches a bridge, it can cross the entire network, in any direction, at one hop [54]. Without bridges, GF is doomed to wander along the network periphery, endangered by getting lost there at any hop. The GF success ratio in networks with γ > 3 deteriorates to zero in the thermodynamic limit [55].
+XI. CONCLUSION
+We have developed a framework to study the structure and function of complex networks in purely geometric terms. In this framework, two common properties of complex network topologies, strong heterogeneity and clustering, turn out to be simple reflections of the basic properties of an underlying hyperbolic geometry. Heterogeneity, measured in terms of the power-law degree distribution exponent, is a function of the negative curvature of the hyperbolic space, while clustering reflects its metric property. Conversely, a heterogeneous network with a metric structure has an effective hyperbolic geometry underneath. This finding sheds light on self-similarity in complex networks [12]. The network renormalization procedure considered in [12]—throwing out nodes of degrees exceeding a certain threshold—is equivalent to contracting the radius of the hyperbolic disk where all nodes reside. This contraction is a homothety along the radial direction, which is a symmetry transformation of the hyperbolic space, and self-similarity of hyperbolic spaces with respect to such homothetic transformations has been formally defined and studied [26]. Self-similarity of complex networks thus appears as a reflection of selfsimilarity of hyperbolic geometry, or as the invariance with respect to symmetry transformations in the underlying space. The developed framework establishes a clear connection between statistical mechanics and hyperbolic geometry of complex networks. The collection of edges in a network, for example, can be treated as a system of noninteracting fermions whose energies are the hyperbolic distances between nodes. This geometric interpretation may lead to further developments applying the standard tools of statistical mechanics to network analysis. The network ensemble in our framework subsumes the standard configuration model and classical random graphs as two limiting cases with degenerate geometric structures. The hyperbolic distance between two nodes (6) delicately combines their radial and angular coordinates. In the configuration model, the distance degenerates to the sum of radial coordinates only, destroying the network metric structure. In classical random graphs, on the contrary, there is no radial distance dependence. The connection probability between nodes does not depend on any distances at all. As a result, not only the metric structure of a network but also its
+hierarchical heterogeneity gets completely destroyed. We have shown that both these properties, strong clustering and hierarchical heterogeneous organization, are critically important for navigability, which is the network efficiency with respect to targeted transport processes without global knowledge. Such processes are impossible without auxiliary metric spaces since global knowledge of network topology would be unavoidable in that case. The developed framework not only provides a set of tools to study these processes, but also explains why and how strong clustering and hierarchical network organization makes them efficient. We have observed that the strongest clustering and strongest heterogeneity, often found in real networks, lead to optimal navigability. The transport efficiency is the best possible in this case, according to all efficiency measures. Yet more remarkable is that this efficiency is extremely robust with respect to even catastrophic disturbances and damages to the network structure. Complex networks thus appear to have the optimal structure to route information or other media through their topological fabric. No complicated and artificial routing schemes or constructions, impossible in nature anyway, turn out to be needed to route information optimally through a complex network. Its geometric underpinning drastically simplifies the routing function, making efficient the “dumb” strategy of transmitting information in the right hyperbolic direction toward the destination. Does signaling in real networks, such as cell signaling pathways or the brain, follow hyperbolic geodesics, and if it does then what network perturbations might break this signaling, potentially causing (lethal) diseases? To answer these questions, one has first to map a real network to its underlying space, finding the coordinates for each node. In our recent work to reduce the routing complexity in the Internet [56], we map the Internet to its hyperbolic space using statistical inference methods. These methods work well, but require substantial manual intervention, and do not scale to large networks. An interesting open problem is thus to find constructive mapping methods, e.g., deriving the underlying distances between nodes from their similarity measures based on node attributes and annotations in a given network.
+Acknowledgments
+We thank A. Goltsev, S. Dorogovtsev, A. Samukhin, F. Bonahon, E. Jonckheere, R. Pastor-Satorras, A. Baronchelli, M. Newman, J. Kleinberg, Z. Toroczkai, F. Menczer, A. Clauset, V. Cerf, D. Clark, K. Fall, kc claffy, B. Huffaker, Y. Hyun, A. Vardy, V. Astakhov, A. Aranovich, and others for many useful discussions and suggestions. This work was supported by NSF Grants No. CNS-0964236, CNS-0722070, CNS-0434996; DHS Grant No. N66001-08-C-2029; DGES Grant No. FIS200766485-C02-02; and by Cisco Systems.
+
+
+18
+[1] B. Horne, Poincar ́e, http://poincare.sourceforge.net/.
+[2] M. X. Goemans and D. P. Williamson, J ACM 42, 1115 (1995). [3] X. Dimitropoulos, D. Krioukov, B. Huffaker, kc claffy, and G. Riley, in Proceedings of the 4th International Workshop on Experimental and Efficient Algorithms (WEA 2005), Santorini Island, Greece, May 10-13, 2005, edited by S. E. Nikoletseas (Springer, 2005), vol. 3503 of Lecture Notes in Computer Science, pp. 113–125, ISBN 3-540-25920-1. [4] T. N. Palmer, P R Soc A 465, 3165 (2009). [5] D. Krioukov, F. Papadopoulos, A. Vahdat, and M. Bogun ̃ ́a, Phys Rev E 80, 035101(R) (2009). [6] M. E. J. Newman, Networks: An Introduction (Oxford University Press, Oxford, 2010). [7] S. N. Dorogovtsev, Lectures on Complex Networks (Oxford University Press, Oxford, 2010). [8] J. Maldacena, Int J Theor Phys 38, 1113 (1999). [9] S. S. Gubser, I. R. Klebanov, and A. M. Polyakov, Phys Lett B 428, 105 (1998). [10] E. Witten, Adv Theor Math Phys 2, 253 (1998). [11] A. Clauset, C. Moore, and M. E. J. Newman, Nature 453, 98 (2008). [12] M.  ́A. Serrano, D. Krioukov, and M. Bogun ̃ ́a, Phys Rev Lett 100, 078701 (2008). [13] S. N. Dorogovtsev, J. F. F. Mendes, and A. N. Samukhin, Nucl Phys B 666, 396 (2003). [14] J. Park and M. E. J. Newman, Phys Rev E 70, 066117 (2004). [15] D. Garlaschelli and M. Loffredo, Phys Rev Lett 102, 038701 (2009). [16] K. Anand and G. Bianconi, Phys Rev E 80, 045102(R) (2009). [17] G. Bianconi, Phys Rev E 79, 036114 (2009). [18] F. Chung and L. Lu, Proc Natl Acad Sci USA 99, 15879 (2002). [19] P. Erdo ̋s and A. Re ́nyi, Publ Math 6, 290 (1959).
+[20] A. Korman and D. Peleg, in Proceedings of the 33rd International Colloquium on Automata, Languages and Programming (ICALP 2006), Venice, Italy, July 10-14, 2006, edited by M. Bugliesi, B. Preneel, V. Sassone, and I. Wegener (Springer, 2006), vol. 4051 of Lecture Notes in Computer Science, pp. 619–630, ISBN 3-540-35904-4. [21] J. W. Anderson, Hyperbolic Geometry (Springer-Verlag, London, 2005). [22] J. Cannon, W. Floyd, R. Kenyon, and W. Parry, Flavors of Geometry (MSRI, Berkeley, 1997), chap. Hyperbolic Geometry. [23] D. Burago, Y. Burago, and S. Ivanov, A Course in Metric Geometry (AMS, Providence, 2001).
+[24] J. Ratcliffe, Foundations of Hyperbolic Manifolds (Springer, New York, 2006). [25] M. R. Bridson and A. Haefliger, Metric Spaces of Non-Positive Curvature (Springer-Verlag, Berlin, 1999). [26] S. Buyalo and V. Schroeder, Elements of Asymptotic Geometry (European Mathematical Society, Zu ̈rich, 2007).
+[27] M. Gromov, Metric Structures for Riemannian and NonRiemannian Spaces (Birkh ̈auser, Boston, 2007). [28] M. Girvan and M. E. J. Newman, Proc Natl Acad Sci USA 99, 7821 (2002). [29] M. Bogu ̃na ́, R. Pastor-Satorras, A. D ́ıaz-Guilera, and A. Arenas, Phys Rev E 70, 056122 (2004). [30] D. J. Watts, P. S. Dodds, and M. E. J. Newman, Science 296, 1302 (2002). [31] S. Redner, Eur Phys J B 4, 131 (1998).
+[32] K. B ̈orner, J. T. Maru, and R. L. Goldstone, Proc Natl Acad Sci USA 101, 5266 (2004). [33] L. Muchnik, R. Itzhack, S. Solomon, and Y. Louzoun, Phys Rev E 76, 016106 (2007). [34] D. Crandall, D. Cosley, D. Huttenlocher, J. Kleinberg, and S. Suri, in Proceedings of the 14th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD 2008), Las Vegas, Nevada, USA, August 24-27, 2008, edited by Y. Li, B. Liu, and S. Sarawagi (ACM, 2008), pp. 160–168, ISBN 978-1-60558-193-4. [35] F. Menczer, Proc Natl Acad Sci USA 99, 14014 (2002).
+[36] M. Nei and S. Kumar, Molecular Evolution and Phylogenetics (Oxford University Press, Oxford, 2000). [37] B. Leiner, V. Cerf, D. Clark, R. Kahn, L. Kleinrock, D. Lynch, J. Postel, L. Roberts, and S. Wolff, Commun ACM 40, 102 (1997). [38] A. Dhamdhere and K. Dovrolis, in Proceedings of the 8th ACM SIGCOMM Conference on Internet Measurement (IMC 2008), Vouliagmeni, Greece, October 20-22, 2008, edited by K. Papagiannaki and Z.-L. Zhang (ACM, 2008), pp. 183–196, ISBN 978-1-60558-334-1. [39] X. Dimitropoulos, D. Krioukov, G. Riley, and kc claffy, in Proceedings of the 7th International Workshop on Passive and Active Network Measurement (PAM 2006), Adelaide, Australia, March 30-31, 2006, edited by M. Allman and M. Roughan (2006), pp. 91–100, URL http://www.pamconf. net/2006/papers/pam06-proceedings.pdf.
+[40] M. Bogun ̃ ́a and R. Pastor-Satorras, Phys Rev E 68, 036112 (2003). [41] M. E. J. Newman, Contemp Phys 46, 323 (2005). [42] P. L. Krapivsky and S. Redner, Phys Rev E 71, 036118 (2005). [43] A.-L. Barab ́asi and R. Albert, Science 286, 509 (1999). [44] M. Bogun ̃ ́a, R. Pastor-Satorras, and A. Vespignani, Eur Phys J B 38, 205 (2004). [45] M. A ́ . Serrano and M. Bogun ̃ ́a, Phys Rev E 72, 036133 (2005). [46] E. Ravasz, A. L. Somera, D. A. Mongru, Z. N. Oltvai, and A.-L. Barab ́asi, Science 297, 1551 (2002). [47] E. Ravasz and A.-L. Baraba ́si, Phys Rev E 67, 026112 (2003). [48] K. Claffy, Y. Hyun, K. Keys, M. Fomenkov, and D. Krioukov, in Proceedings of the 2009 Cybersecurity Applications & Technology Conference for Homeland Security (CATCH 2009), Washington, DC, March 3-4, 2009 (IEEE Computer Society, 2009), pp. 205–211, ISBN 978-0-7695-3568-5, URL http://www.caida.org/projects/ark/.
+[49] P. Mahadevan, D. Krioukov, K. Fall, and A. Vahdat, Comput Commun Rev 36, 135 (2006). [50] L. A. Adamic, R. M. Lukose, A. R. Puniyani, and B. A. Huberman, Phys Rev E 64, 046135 (2001). [51] A. Trusina, S. Maslov, P. Minnhagen, and K. Sneppen, Phys Rev Lett 92, 178702 (2004). [52] L. Gao, IEEE ACM T Network 9, 733 (2001). [53] X. Dimitropoulos, D. Krioukov, M. Fomenkov, B. Huffaker, Y. Hyun, kc claffy, and G. Riley, Comput Commun Rev 37, 29 (2007). [54] M. Bogu ̃na ́ and D. Krioukov, Phys Rev Lett 102, 058701 (2009). [55] M. Bogun ̃a ́, D. Krioukov, and kc claffy, Nature Physics 5, 74 (2009). [56] M. Bogun ̃a ́, F. Papadopoulos, and D. Krioukov, Nature Comms 1, 62 (2010).

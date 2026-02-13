@@ -1,0 +1,55 @@
+Skip to main content
+Computer Science > Machine Learning
+[Submitted on 18 Feb 2025 (v1), last revised 31 Oct 2025 (this version, v4)]
+Efficient Neural SDE Training using Wiener-Space Cubature
+Luke Snow, Vikram Krishnamurthy
+A neural stochastic differential equation (SDE) is an SDE with drift and diffusion terms parametrized by neural networks. The training procedure for neural SDEs consists of optimizing the SDE vector field (neural network) parameters to minimize the expected value of an objective functional on infinite-dimensional path-space. Existing training techniques focus on methods to efficiently compute path-wise gradients of the objective functional with respect to these parameters, then pair this with Monte-Carlo simulation to estimate the gradient expectation. In this work we introduce a novel training technique which bypasses and improves upon this Monte-Carlo simulation; we extend results in the theory of Wiener space cubature to approximate the expected objective functional value by a weighted sum of functional evaluations of deterministic ODE solutions. Our main mathematical contribution enabling this approximation is an extension of cubature bounds to the setting of Lipschitz-nonlinear functionals acting on path-space. Our resulting constructive algorithm allows for more computationally efficient training along several lines. First, it circumvents Brownian motion simulation and enables the use of efficient parallel ODE solvers, thus decreasing the complexity of path-functional evaluation. Furthermore, and more surprisingly, we show that the number of paths required to achieve a given (expected loss functional oracle value) approximation can be reduced in this deterministic cubature regime. Specifically, we show that under reasonable regularity assumptions we can observe a O(1/n) convergence rate, where n is the number of path evaluations; in contrast with the standard O(1/sqrt(n)) rate of naive Monte-Carlo or the O(log(n)^d /n) rate of quasi-Monte-Carlo.
+Subjects:	Machine Learning (cs.LG)
+Cite as:	arXiv:2502.12395 [cs.LG]
+ 	(or arXiv:2502.12395v4 [cs.LG] for this version)
+ 	
+https://doi.org/10.48550/arXiv.2502.12395
+Focus to learn more
+Submission history
+From: Luke Snow [view email]
+[v1] Tue, 18 Feb 2025 00:06:40 UTC (28 KB)
+[v2] Wed, 5 Mar 2025 15:10:51 UTC (28 KB)
+[v3] Mon, 22 Sep 2025 17:36:28 UTC (1,707 KB)
+[v4] Fri, 31 Oct 2025 19:32:43 UTC (1,731 KB)
+
+Access Paper:
+View PDFTeX Source双语版本(沉浸式翻译)
+view license
+Current browse context: cs.LG
+< prev next >
+
+newrecent2025-02
+Change to browse by: cs
+References & Citations
+NASA ADS
+Google Scholar
+Semantic Scholar
+Export BibTeX Citation
+Bookmark
+Bibliographic Tools
+Code, Data, Media
+Demos
+Related Papers
+Recommenders and Search Tools
+Link to Influence Flower
+Influence Flower (What are Influence Flowers?)
+Core recommender toggle
+CORE Recommender (What is CORE?)
+IArxiv recommender toggle
+IArxiv Recommender (What is IArxiv?)
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax (What is MathJax?)
+About
+Help
+Contact
+Subscribe
+Copyright
+Privacy Policy
+Web Accessibility Assistance
+
+arXiv Operational Status 

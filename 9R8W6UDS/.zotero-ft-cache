@@ -1,0 +1,77 @@
+Phase Transition Prediction via Attention-Enhanced Rare Event Detection: A Machine Learning Approach to Critical Phenomena
+(Dated: May 25, 2025)
+We present a machine learning framework that combines attention mechanisms with rare event detection for predicting phase transitions in complex systems. Our approach integrates self-attention neural networks with large deviation theory to identify critical precursors and provide early warning signals before phase transitions occur.
+
+
+2
+I. INTRODUCTION
+Phase transitions represent fundamental phenomena across diverse physical systems, from magnetization in spin systems to collective motion in biological swarms [1]. Traditional approaches to phase transition prediction rely on equilibrium statistical mechanics and mean-field theories, which often fail to capture the complex dynamics and fluctuations preceding critical transitions [2]. Recent advances in machine learning have opened new avenues for understanding complex systems [3]. However, most existing approaches treat phase transition prediction as a standard classification problem, overlooking two crucial aspects: (1) the temporal correlations that characterize approach to criticality, and (2) the role of rare fluctuations as harbingers of impending transitions [4]. In this work, we introduce a framework that synergistically combines attention mechanisms from deep learning with rare event detection from large deviation theory. Our approach recognizes that phase transitions are preceded by characteristic patterns in both typical behavior (captured by attention) and atypical fluctuations (identified through rare event analysis).
+II. THEORETICAL FRAMEWORK
+A. Mathematical Formulation of Phase Transitions
+Consider a system characterized by an order parameter φ(t) that undergoes a phase transition. For the Vicsek model of collective motion, the order parameter is defined as:
+φ(t) = 1
+N
+N
+X
+i=1
+eiθi(t) (1)
+where θi(t) represents the orientation angle of particle i at time t, and N is the total number of particles. The phase transition occurs when φ transitions from near-zero values (disordered phase) to finite values (ordered phase) as a control parameter (e.g., noise strength η) crosses a critical threshold ηc.
+B. Rare Event Detection via Large Deviation Theory
+We define rare events as realizations of the system that occur with probability below a threshold ε:
+Rε = {X(t) : P (X(t)) < ε} (2)
+where X(t) represents the system’s microstate at time t. The rate function I(φ) from large deviation theory quantifies the exponential rarity of observing order parameter value φ:
+I(φ) = Tli→m∞ − 1
+T log PT (φ) (3)
+Critical fluctuations preceding phase transitions manifest as events in the tail of the distribution, characterized by large values of I(φ).
+C. Attention Mechanism for Temporal Dependencies
+Given a time series X = [x1, x2, . . . , xT ] ∈ RT ×d, where each xt is a d-dimensional feature vector, we employ a multi-head self-attention mechanism. The attention weights are computed as:
+Aij = exp(Qi · Kj/√dk)
+PT
+k=1 exp(Qi · Kk/√dk) (4)
+where Q = XWQ, K = XWK , and V = XWV are the query, key, and value matrices, respectively.
+
+
+3
+D. Coupled Attention-Rare Event Framework
+The key contribution of our approach lies in coupling attention mechanisms with rare event detection. We introduce a rare event indicator function:
+Irare(t) = I[φ(t) ∈ Rε] + αI[|∆φ(t)| > θjump] (5)
+where I[·] is the indicator function, ∆φ(t) = φ(t) − φ(t − 1), and θjump is a threshold for detecting sudden changes. We modify the attention weights to emphasize time points associated with rare events:
+ ̃Aij = Aij · wevent(ti) · wevent(tj ) (6)
+where the event weight function is:
+wevent(t) = 1 + γ · Irare(t) + δ · exp(−λPrare(φ(t))) (7)
+with γ, δ, and λ as hyperparameters controlling the relative importance of rare events.
+III. MODEL ARCHITECTURE
+A. Neural Network Architecture
+Our model consists of three main components:
+1. Feature Extraction Layer: A fully connected layer that maps raw features to a higher-dimensional space:
+h(0) = ReLU(W(0)xenhanced + b(0)) (8)
+2. Attention Layer: Multi-head self-attention with rare event enhancement:
+h(1) = MultiHead(h(0),  ̃A) (9)
+3. Prediction Layer: LSTM followed by fully connected layers for phase transition prediction:
+Pphase = σ(W(out)LSTM(h(1)) + b(out)) (10)
+B. Multi-Objective Loss Function
+We employ a multi-objective loss function that combines phase transition prediction with rare event detection:
+L = Lphase + βLrare + γLattention (11)
+where:
+Lphase = −
+X
+i
+[yi log(pi) + (1 − yi) log(1 − pi)] (12)
+Lrare = 1
+T
+T
+X
+t=1
+|Irare(t) − Iˆrare(t)|2 (13)
+Lattention = −
+X
+i,j
+ ̃Aij log(Aij) (14)
+
+
+4
+IV. EXPERIMENTAL SETUP AND RESULTS
+A. Vicsek Model Simulations
+B. Performance Metrics
+[1] N. Goldenfeld, Lectures on Phase Transitions and the Renormalization Group (Addison-Wesley, Reading, MA, 1992).
+[2] M. Scheffer, J. Bascompte, W. A. Brock, V. Brovkin, S. R. Carpenter, V. Dakos, H. Held, E. H. van Nes, M. Rietkerk, and G. Sugihara, Nature 461, 53 (2009). [3] G. Carleo, I. Cirac, K. Cranmer, L. Daudet, M. Schuld, N. Tishby, L. Vogt-Maranto, and L. Zdeborova ́, Rev. Mod. Phys. 91, 045002 (2019). [4] V. Dakos, M. Scheffer, E. H. van Nes, V. Brovkin, V. Petoukhov, and H. Held, Proc. Natl. Acad. Sci. USA 105, 14308 (2008).

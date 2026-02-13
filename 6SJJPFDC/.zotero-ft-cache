@@ -1,0 +1,55 @@
+Skip to main content
+Statistics > Machine Learning
+[Submitted on 31 Oct 2025]
+Optimal Convergence Analysis of DDPM for General Distributions
+Yuchen Jiao, Yuchen Zhou, Gen Li
+Score-based diffusion models have achieved remarkable empirical success in generating high-quality samples from target data distributions. Among them, the Denoising Diffusion Probabilistic Model (DDPM) is one of the most widely used samplers, generating samples via estimated score functions. Despite its empirical success, a tight theoretical understanding of DDPM -- especially its convergence properties -- remains limited.
+In this paper, we provide a refined convergence analysis of the DDPM sampler and establish near-optimal convergence rates under general distributional assumptions. Specifically, we introduce a relaxed smoothness condition parameterized by a constant L, which is small for many practical distributions (e.g., Gaussian mixture models). We prove that the DDPM sampler with accurate score estimates achieves a convergence rate of \widetilde{O}\left(\frac{d\min\{d,L^2\}}{T^2}\right)~\text{in Kullback-Leibler divergence}, where d is the data dimension, T is the number of iterations, and \widetilde{O} hides polylogarithmic factors in T. This result substantially improves upon the best-known d^2/T^2 rate when L < \sqrt{d}. By establishing a matching lower bound, we show that our convergence analysis is tight for a wide array of target distributions. Moreover, it reveals that DDPM and DDIM share the same dependence on d, raising an interesting question of why DDIM often appears empirically faster.
+Subjects:	Machine Learning (stat.ML); Machine Learning (cs.LG); Statistics Theory (math.ST)
+Cite as:	arXiv:2510.27562 [stat.ML]
+ 	(or arXiv:2510.27562v1 [stat.ML] for this version)
+ 	
+https://doi.org/10.48550/arXiv.2510.27562
+Focus to learn more
+Submission history
+From: Yuchen Jiao [view email]
+[v1] Fri, 31 Oct 2025 15:44:50 UTC (167 KB)
+
+Access Paper:
+View PDFHTML (experimental)TeX Source双语版本(沉浸式翻译)
+view license
+Current browse context: stat.ML
+< prev next >
+
+newrecent2025-10
+Change to browse by: cs cs.LG math math.ST stat stat.TH
+References & Citations
+NASA ADS
+Google Scholar
+Semantic Scholar
+Export BibTeX Citation
+Bookmark
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer (What is the Explorer?)
+Connected Papers Toggle
+Connected Papers (What is Connected Papers?)
+Litmaps Toggle
+Litmaps (What is Litmaps?)
+scite.ai Toggle
+scite Smart Citations (What are Smart Citations?)
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax (What is MathJax?)
+About
+Help
+Contact
+Subscribe
+Copyright
+Privacy Policy
+Web Accessibility Assistance
+
+arXiv Operational Status 

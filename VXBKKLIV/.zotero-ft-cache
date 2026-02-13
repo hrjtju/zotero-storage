@@ -1,0 +1,1729 @@
+Neural Entropy
+Akhil Premkumar
+Department of Applied Physics Yale University New Haven, CT 06511, USA akhil.premkumar@yale.edu
+Work done while at the University of Chicago
+Abstract
+We explore the connection between deep learning and information theory through the paradigm of diffusion models. A diffusion model converts noise into structured data by reinstating, imperfectly, information that is erased when data was diffused to noise. This information is stored in a neural network during training. We quantify this information by introducing a measure called neural entropy, which is related to the total entropy produced by diffusion. Neural entropy is a function of not just the data distribution, but also the diffusive process itself. Measurements of neural entropy on a few simple image diffusion models reveal that they are extremely efficient at compressing large ensembles of structured data.
+1 Introduction
+How much information is stored in a neural network? As a simple example, consider training a neural network to store an 8-bit grayscale image of dimension H × W pixels. The network learns a smooth map from pixel co-ordinates to grayscale intensity values from H × W bytes of raw data. This is not the total number of bytes of the parameters that constitute the network, and not every image of size H × W contains the same amount of information. But it is reasonable to expect that if we push images of higher and higher resolutions/detail onto the same network, at some point the network will not be able to reproduce the images faithfully
+The question is even more pertinent in the context of generative models. These models are capable of producing seemingly endless variations of the original training data, say images, but that does not mean the neural network has stored an infinite number of images. Rather, generative models store a distribution of images, call it pd, and the generated samples are points that interpolate the training data in pd. This is similar to how the network from the prior example blends the grayscale intensities between neighboring pixels. So the analogous question to ask is this: how many bytes of data is pd worth? The primary goal of this paper is to answer this question in the context of diffusion-based generative models (hint: it is not simply the Shannon entropy of pd, see Sec. C.2).
+Diffusion models serve as a natural bridge between information theory and machine learning, having been inspired by ideas from non-equilibrium thermodynamics [1], which itself can be viewed as an application of information-theoretic principles to physical systems [2–4]. Very briefly, samples from a training dataset are incrementally noised till they are distributed as a generic Gaussian, call it peq, while a neural network learns to reverse these noising steps. Once trained, the network can transform a random Gaussian vector into a highly structured output that resembles a typical member of the training data. In the continuum limit, the noising and denoising stages become diffusive processes [5, 6], the thermodynamic properties of which are well established [7–9].
+Diffusion gradually wipes out information from pd over time (cf. Fig. 6). The information loss is quantified by the total entropy produced during the process, Stot. Within this framework, we can
+39th Conference on Neural Information Processing Systems (NeurIPS 2025).
+arXiv:2409.03817v3 [cs.LG] 3 Nov 2025
+
+
+define the information content of pd in relation to the diffusion process itself—it is the amount of information that must be reinstated to drive the process away from its equilibrium state peq back to pd. It is precisely Stot (cf. Sec. C). A well-trained diffusion model retains nearly all of this information in its neural network. Therefore, we can characterize the information content of the network by a quantity we call the neural entropy, SNN ≈ Stot, defined in Eq. (18).
+Before we delve into the details, a few points must be clarified. First, it is important to stress that neural entropy quantifies the information stored in a perfectly trained network; it is not the entropy of the phase space density over the neural network’s internal microstates. Second, no diffusion model can reconstruct pd perfectly because we only have access to a finite number of training samples from it [10], and training is imperfect even with a large dataset. Third, the neural network encodes and interpolates the given information, drawing from its own inductive biases to fill in the gaps between the training data [11]. This is why diffusion models are able to estimate very high-dimensional distributions even from relatively small datasets [12]. Consequently, neural entropy is just one part of a slew of variables, like the choice of network architecture, optimization algorithm, etc. that ultimately affect the overall model performance.
+Despite these caveats, empirical measurements of neural entropy reveal interesting insights into the behavior of neural networks. First, in a setting where the inductive biases are relatively weak and the data distribution is largely unstructured (e.g. Gaussian mixtures), diffusion models tend to struggle to reconstitute pd accurately as more information is fed into the network (see Fig. 10). Second, in image diffusion models with U-nets trained on real images, the neural entropy shows a distinct logarithmic scaling with the number of training samples N (see Figs. 1 and 16). That is, the marginal information gained per sample decreases approximately as 1/N . The quality of generated images also reflects this trend (see Fig. 18). Provided that N is sufficiently large for the model to approximate pd well, diffusion models compress the images with great efficiency, since they encode the ensemble statistics of the training data; storing each image separately in old-fashioned memory would have incurred a linear cost in N .
+102 103 104 N
+0.25
+0.50
+0.75
+1.00
+1.25
+SNN
+1e4
+CIFAR-10 MNIST
+Figure 1: Neural entropy vs. number of samples for two image diffusion models.
+2 Schrödinger’s Gedankenexperiment
+The link between diffusion and information theory can be traced back to a thought experiment introduced by Erwin Schrödinger in a seminal paper from 1931 [13]. Consider a diffusion process like the dissolution of an ink drop in water. Common experience suggests that the ink particles would homogenize over the available volume of water and remain in this diffused state indefinitely. However, there is a very small but non-zero probability that the ink particles collect together in some exotic configuration at a later time. Schrödinger asks: what is the probability that the particles diffuse back to their original state?
+To answer this question in a simpler setting we study random walkers on a one-dimensional lattice. The lattice sites are spaced by l and the walkers jump to one of their nearest neighbors at each time step. The density of walkers at x updates as
+p(x, t + ∆t) = qR(x − l)p(x − l, t) + qL(x + l)p(x + l, t), (1)
+where qR(x) (or qL(x)) is the probability that a walker at x jumps to the right (or left) at time ∆t (see Sec. B.1 for notation). But that does not mean exactly qR(x) fraction of all walkers at x always jump rightwards in ∆t; over several trials, there will be small fluctuations in the actual number of walkers that make such a transition. Such fluctuations can accumulate to evolve p in a manner different from Eq. (1), albeit with low probability. One may liken this to throwing a perfectly fair coin 1000 times: due to fluctuations, we do not always obtain the expected outcome of 500 heads and 500 tails, and in fact there is a minute probability of 2−1000 of obtaining all heads (or all tails).
+For appropriate choices of qR(x) and qL(x), there exists an equilibrium distribution peq which satisfies the detailed balance conditions corresponding to Eq. (1). Let T be a large enough time that
+2
+
+
+the walkers can equilibrate to very nearly peq from another state pd. Starting from peq at t = 0, the probability that the walkers would migrate back to the distribution pd at time t = T is [13, 14]
+P [pd] ∝ exp
+"
+−M
+X
+x0 ,xT
+peq(x0)h(xT |x0) log h(xT |x0)
+g(xT |x0)
+#
+≡ e−MDKL(h∥g). (2)
+Here, M is the total number of walkers on the lattice and g(xT |x0) is the probability that a walker at x0 ends up at xT under Eq. (1). That is, g is the transition kernel for Eq. (1). On the other hand h(xT |x0) is a kernel that transports peq(x0) to pd(xT ). There are many kernels h that accomplish this, but for sufficiently large M the exponential in Eq. (2) picks out an optimal kernel h⋆ for which the Kullback-Leibler divergence DKL(h⋆∥g) is minimum. It can be shown that the evolution of peq → pd under h⋆ is a reversal (playback) of the transformation pd → peq under Eq. (1) [14, 15].
+With peq (or g) fixed, P can be understood as a distribution of distributions. A sample from P is a distribution that peq can fluctuate into at time t = T , under the dynamics in Eq. (1). If M is large, P is sharply peaked at peq; the probability that the walkers would deviate from this configuration is exponentially small. This is true even with h⋆—natural processes have a preferred direction of time, and they rarely evolve in reverse. Eq. (2) is intimately related to the Second Law of Thermodynamics. In fact,
+Stot :=
+T −∆t
+X
+t=0
+X
+xt+∆t ,xt
+p(xt, t)h⋆(xt+∆t|xt) log h⋆(xt+∆t|xt)
+g(xt+∆t|xt) ≥ DKL(h⋆∥g). (3)
+where p(xt, t) is the distribution of walkers as they evolve between peq and pd, and Stot is the total entropy generated if pd was subjected to Eq. (1) for time T (cf. Sec. A.2). In simple terms, Stot quantifies the time irreversibility of the process pd → peq [9, 16, 17]. We discuss the meaning of Stot in greater detail in the upcoming sections and Sec. C.
+Combining Eqs. (2) and (3), we obtain a key relation between the Shannon information content of the outcome pd, per walker, and the total entropy [2, 18, 19]:
+Stot
+log 2 ≥ − 1
+M log2 P [pd] . (4)
+If we observe a set of random walkers that was initially at equilibrium and find that they are still distributed as peq we learn nothing new; that was the outcome we expected. However, in the unlikely event that we observe the random walkers distributed as pd, we would gain an amount of information commensurate with the total entropy generated in diffusing pd → peq.
+3 Diffusion models and Maxwell’s demon
+We can enhance the probability of obtaining the outcome pd by bringing g closer to h⋆. That is, we adjust the jump probabilities in Eq. (1) such that the distribution of walkers evolves to pd after time T . The modified dynamics reshapes the distribution P to be peaked around pd rather than peq
+To see how this is implemented in a diffusion model we convert the discrete random walker setup from Eq. (1) to a continuous diffusion process by making the lattice spacing l small. Taylor expanding in l and keeping the leading terms, we obtain the Fokker-Planck equation (see Sec. A)
+∂tp(x, t) = −∂x(b+(x)p(x, t)) + σ2
+2 ∂2
+xp(x, t), (5)
+b+(x) := l
+∆t (qR(x) − qL(x)), σ2 := l2
+∆t . (6)
+We restrict ourselves to drift terms b+(x) that are confining so that peq(x) ∝ exp(R x 2b+/σ2) exists. By explicit calculation of Eq. (3), it can be shown that if a distribution pd is subjected to Eq. (5) the total entropy produced after time T is (cf. Eq. (39) and [9])
+Stot =
+ZT
+0
+dt σ2
+2 Ep(·,t)
+h
+∥∂x log peq − ∂x log p∥2i
+, (7)
+3
+
+
+where the expectation value is taken over the distribution p that interpolates pd and peq. The r.h.s. in Eq. (7) is the KL divergence between path measures of two stochastic differential equations (SDEs),
+dXt = −(b+(Xt) − σ2∂x log p(Xt, t))dt + σdBt, (8a)
+dXt = b+(Xt)dt + σdBt, (8b)
+upto a boundary term that vanishes when T is large [20]. Eqs. (8a) and (8b) that correspond to the transition kernels h⋆ and g respectively (cf. Sec. A.1). That is, if we reset the clock to t = 0 and apply Eq. (8a) for a time T we can drive peq back to pd along p. Bringing Eq. (8b) closer to Eq. (8a) would concentrate P around pd. In a diffusion model this can be done by changing Eq. (8b) to
+dXt = (b+(Xt) + σ2eθ(Xt, t))dt + σdBt, (9)
+where eθ(Xt, t) is the output of a neural network trained to minimize an equivalent of (cf. Eq. (90))
+LEM :=
+ZT
+0
+dt σ2
+2 Ep
+h
+∥∂x log peq − ∂x log p + eθ∥2i
+. (10)
+It follows from Eq. (4) that, a perfectly trained network stores at least the same amount of information as we would learn from observing peq fluctuate to pd under Eq. (8b). In practice, training is not perfect, so the information absorbed by the network is not exactly Stot, as we discuss below. We define the ideal neural entropy as the information retained by the network under perfect training,
+SˆNN := Stot. (11)
+This discussion is reminiscent of Maxwell’s demon, a famous thought experiment from physics [21, 22]. The crucial difference is that the demon does not perform work on the system; it measures the state of the system to make decisions about closing doors or adjusting potentials [23]. Diffusion models do expend work to reconstitute pd from peq, through the modified drift term in Eq. (9). The additional σ2eθ term reshapes the free energy landscape to make pd the most probable outcome (cf. Sec. C.2). But these models also measure and store state information from simulations of pd → peq during training.
+A true Maxwell’s demon would reverse diffusion by waiting for peq to fluctuate into pd, an event it learns about by measurement, and switch up the potential to lock pd into place. This is an example of an ‘information ratchet’ [24, 25]. On the other hand, a diffusion model remembers pd in a manner closer to how we store, say, an image in memory. A grayscale image of dimensions H × W is a sample from a uniform probability distribution over the hypercube [0, 255]H×W . The information gained from observing any sample is log2(256)H×W = H × W bytes. This is also the amount of information we need to specify to locate a specific sample/image in the hypercube. In the same way, Stot is the information required to locate within the paths generated by Eq. (8b) a set of paths that transport peq → pd.
+4 Entropy matching
+Having introduced the total entropy Stot in the context of random walkers on a lattice, we can generalize it to a D-dimensional continuous diffusion process with little effort. We will make the drift and diffusion diffusion coefficients time-dependent, but keep the latter isotropic. That is, pd diffuses under
+dYs = b+(Ys, s)ds + σ(s)dBˆs, (12)
+where we have introduced a new time variable s := T − t for the ‘forward’ evolution (see Fig. 6). Let p0 be the result of evolving pd for a time T with Eq. (12). The SDEs from Eq. (8b) are updated to
+dXt = −(b+(Xt, T − t) − σ(T − t)2∇ log p(Xt, t))dt + σ(T − t)dBt, (13a)
+dXt = b+(Xt, T − t)dt + σ(T − t)dBt, (13b)
+There is no longer a static equilibrium state since Eq. (13b) changes over time; if we start with p0 at time t = 0 and evolve under Eq. (13b) we will obtain a distribution different from p0, which we denote as pb+ , that depends on p0 as well as Eq. (13b). But it is useful to define the quasi-invariant distribution, p(t)
+eq (x), which satisfies the homogeneous Fokker-Planck equation
+0 = −∇ · (b+(x, T − t)p(t)
+eq ) + 1
+2 σ(T − t)2∇2p(t)
+eq =⇒ p(t)
+eq (x) = 1
+Zt
+exp
+Zx
+dx ̄ 2b+
+σ2 . (14)
+4
+
+
+Intuitively, p(t)
+eq can be understood as the ‘least informative state’ at time t. It is the distribution that would result if we froze b+ and σ at their values at t and waited for the system to equilibrate. Therefore p
+(t)
+eq depends only on the drift and diffusion coefficients at t and has no memory of the initial state. For example, if b+ = −(x − t) and σ = 1 the quasi-invariant state would be p(t)
+eq ∝ exp(−(x − t)2) [7]. Thus, p(t)
+eq is the natural generalization of peq for time-dependent dynamics. In this paper, we restrict ourselves to forward processes for which the drift and diffusion coefficients have the same time-dependence, that is, b+/σ2 = const. In that case, it can be shown that
+Stot ≡
+ZT
+0
+dt σ2
+2 Ep ∇ log p(t)
+eq − ∇ log p
+2
+= DKL pd p(T )
+eq − DKL p0∥p(0)
+eq . (15)
+This relation is derived in Sec. B.3. It bears a strong likeness to an important result in thermodynamics called the Jarzynski equality [26], specifically the form given in [27]. According to this relation, total entropy is the information gap between p and the maximally ignorant state at a given T . Further discussion of the connection to thermodynamics is given in Sec. C.1. Our main goal is to understand the consequences of Eq. (15) to diffusion models.
+Replacing p(t)
+eq in Eq. (15) with pb+ turns it into an inequality,
+Stot ≡
+ZT
+0
+dt σ2
+2 Ep ∇ log p(t)
+eq − ∇ log p
+2
+≥ DKL pd pb+ (16)
+This is a slight variation of Theorem 1 from [20]. A detailed proof is given in Sec. B.2. If we modify the drift term in Eq. (13b) to b+ + σ2eθ as we did in Eq. (9), Eq. (16) changes to (cf. Eq. (47))
+ZT
+0
+dt σ2
+2 Ep ∇ log p(t)
+eq − ∇ log p + eθ
+2
+≥ DKL (pd(·)∥pθ(·, T )) . (17)
+The l.h.s. is the training objective, LEM, the minimization of which can now be seen as tightening the KL divergence between true pd and the reconstructed distribution pθ. We call this the entropymatching objective. It is nearly the same as the flow-matching objective from [28], except for the factors multiplying the expectation value.
+The neural entropy defined in Eq. (11) is not always the true measure of the information stored in the network. This is often beneficial; if the neural network stored Stot perfectly for a relatively sparse dataset, such as images, the diffusion model would learn to reconstruct a series of Dirac delta functions in pixel space. We propose that the actual value of neural entropy is estimated by
+SNN :=
+ZT
+0
+ds σ2
+2 Ep
+h
+∥eθ ∥2 i
+. (18)
+The time integral has been expressed in terms of s here because entropy is produced in the s-direction. Practically Eq. (18) is computed by simulating the forward process Eq. (12) and taking the Monte Carlo average (cf. Eq. (23)). So the expectation is still taken with respect to the ideal reverse evolution.
+A relation analogous to Eq. (17) can be derived for score-matching diffusion models by switching the drift term in Eq. (13b) to −b+ − σ2sθ (cf. Eq. (46)),
+ZT
+0
+dt σ2
+2 Ep
+h
+∥sθ − ∇ log p∥2i
+≥ DKL (pd(·)∥pθ(·, T )) . (19)
+However, setting sθ = 0 on the l.h.s. does not give us a term that can be interpreted sensibly as an entropy. For example, if we consider the special case where b+, σ are time-independent and choose pd = peq, we see that Stot vanishes and no information would be stored in the neural network in an entropy-matching model. However, E[∥∇ log p∥2] ̸= 0 since the score function is non-zero over the support of peq, so the network ends up having to store ‘information’ to convert peq to itself! Comparing Eqs. (17) and (19) we see that setting sθ = ∇ log p(t)
+eq + eθ makes both approaches equivalent, in principle. However, the score-matching network must put additional effort into learning the quasi-invariant distribution, which complicates the interpretation of score-matching loss as an entropy. See Sec. D for further discussion.
+5
+
+
+5 Thermodynamic uncertainty
+Returning for a moment to the random walkers on a discrete lattice, it is apparent that the walkers are less likely to fluctuate into a pd that is far different from peq, compared to one that is more similar to peq. This is manifest from Eqs. (2) and (4): a larger KL between pd and peq, which is Stot, suppresses P[pd] further. In practice pd is often fixed by the training data and p(t)
+eq changes as we adjust the drift and diffusion coefficients in the forward process, Eq. (12), to speed up the generative process. There is great interest in straightening the trajectories from the Probability Flow (PF) ODE [6] by clever choices of b+ and σ, to enable few-shot sampling during the generative stage [29–31]. However, such forward processes often produce more entropy, which means these models may inadvertently be placing a higher information load on the neural network.
+As an illustrative example, consider the Straight Line Diffusion Model (SL) introduced in [31]. The forward process is
+dYs = − 1
+1 − s Ys +
+r2
+1 − s σ0dBs. (20)
+At an intermediate time s ∈ (0, T ) (with T = 1), a sample yd ∼ pd is propagated to
+ys = (1 − s)yd + σ0
+p1 − (1 − s)2ε, (21)
+where ε ∼ N (0, 1D). For small σ0 and a fairly ‘wide’ pd, the trajectories in Eq. (21) are nearly
+straight lines that land at yT ∼ N (0, σ021D). This is a result of allowing the drift term to dominate the noise in Eq. (20). But that also makes p(t)
+eq ∝ exp(−y2/σ02) a very narrow Gaussian, which increases the KL to pd and thereby Stot. Or, using the intuition from Sec. 2, decreasing the randomness in the diffusion process diminishes the chances of an automatic fluctuation into pd. Using a forward process with more noise would lower the entropy, but only to a certain extent. If the σ is too large p
+(t)
+eq becomes too wide compared to pd and Stot rises again.
+The above discussion is meant to highlight that Stot depends on the forward diffusion process and pd in a non-trivial way, and that there might be an optimal process that produces the least entropy for a given pd. This intuition is made more precise by the thermodynamic uncertainty relation, which
+relates the total entropy produced to the L2-Wasserstein distance between pd and p0 [32, 33],
+Stot × σ2T ≥ 1
+2 W2(pd, p0)2. (22)
+Here σ is assumed to be a constant for simplicity and σ2T is the time it takes for pd to reach p0,
+measured in units of σ−2. The W2 depends only on the initial and final distributions. If two processes take the same time to equilibrate (reach p0 ≈ peq), the one whose equilibrium state is farther from pd will generate more entropy. If two process transform pd to the same p0, the W2 is the same in both cases, but the faster transformation will produce more entropy to satisfy the bound. Therefore a diffusion model must store more information to reverse a faster diffusion process. This is the thermodynamic speed limit: given pd and p0, there is an upper limit to how fast we can diffuse one to the other without exceeding a specific entropy production budget. Equivalently, a faster transformation requires a greater amount of information to reverse, which has been found to affect accuracy [34]. These observations are also confirmed in our experiments.
+6 Experiments
+Neural entropy, as defined in Eq. (11), quantifies the information presented to the network in an idealized setting. In practice, the finiteness of the data, imperfections in training, and strong inductive biases of the network all affect the amount of information stored in the neural network. To address these points we will perform two broad classes of experiments, first to probe the transport properties of diffusion discussed in Eq. (22), and second, to study the storage efficiency of diffusion models.
+Transport experiments We work with synthetic datasets sampled from simple multivariate distributions for which we have closed-form expressions for both pd and ∇ log p (e.g. Gaussian mixtures). This allows us to produce as many samples as we require with high fidelity, compute their exact log densities, and work in arbitrary dimensions. Recall from Eq. (17) that the loss function upper bounds the KL divergence between the data distribution and the generated distribution, DKL(pd(·)∥pθ(·, T )),
+6
+
+
+0.0 0.2 0.4 0.6 0.8 1.0
+s
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+1.2
+1.4
+ ̇
+SNN
+1e3Entropy prod. rate (VPx)
+nep =40 nep =80 nep=120 nep=160 nep=200
+0.0 0.2 0.4 0.6 0.8 1.0
+s
+0
+1
+2
+3
+4
+5
+SNN
+1e2 Total entropy (VPx)
+0.0 0.2 0.4 0.6 0.8 1.0
+s
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+1.2
+ ̇
+SNN
+1e3 Entropy prod. rate (SL)
+0.0 0.2 0.4 0.6 0.8 1.0
+s
+0
+1
+2
+3
+4
+5
+SNN
+1e2 Total entropy (SL)
+Figure 2: Entropy production rate and total entropy as pd is diffused to p0 by the VPx and SL processes from Eq. (24) and Eq. (20) respectively. The dashed lines are the ideal curves for S ̇tot and Stot, while the solid lines are S ̇NN and SNN at the end of the nep-th training epoch.
+which means this KL can be used to assess the performance of the diffusion model—a smaller KL implies the model reproduces pd more faithfully. For any sample x we know pd(x), so all we need to compute the KL is log pθ(x, T ). The latter is approximated by the method discussed in Sec. E.2. Finally, the transport experiments will be carried out with diffusion models with a multi-layer perceptron (MLP) core. Since the inductive biases in such fully connected networks are weak [35], these models enable us to isolate the effects of varying levels of neural entropy on the model performance.
+If pd is a mixture of Gaussians it is possible to compute Eq. (11) explicitly, which gives the ideal value of neural entropy. However, due to the imperfections mentioned above the actual neural entropy is given by Eq. (18). Both these expressions are computed by Monte Carlo averages, and it is useful to examine how they change over time s ∈ (0, T ]. For example, with some new samples y ̃d ∼ pd,
+SNN(s) =
+Zs
+0
+ds ̄ σ2
+2 Ep
+h
+∥eθ ∥2 i
+≈ s Ey ̃d∼pd Es ̄∼U(0,s)
+σ(s ̄)2
+2 Eys ̄∼p(ys ̄|y ̃d)
+h
+∥eθ(ys ̄, s ̄)∥2i
+,
+(23)
+To explore the considerations raised in Sec. 5 more thoroughly, we experiment with a few different diffusion processes. We introduce a minor generalization of the Variance Preserving (VP) process, given by the SDE
+dYs = − β(s)
+2 Ys ds + κpβ(s)dBs, (24)
+which we shall henceforth refer to as VPx. For κ = 1 this is the same as the VP process from [1, 6, 29]. If we set κ = σ0 we obtain a process that has the same quasi-invariant distribution as Eq. (20). However, the trajectories generated by Eq. (24) are
+ys = e− 1
+2
+Rs
+0 β(s ̄)ds ̄yd + κ
+q
+1 − e− R s
+0 β(s ̄)ds ̄ ε, (25)
+which ‘forgets’ yd at an exponential rate as opposed to the linear evolution in Eq. (21). This difference is borne out in their respective entropy profiles—plots of the entropy production rate S ̇tot ≡ dStot/ds, and the total entropy Stot, over time. These are the dashed curves in Fig. 2. The final value of Stot is very nearly the same for both processes when κ = σ0 since they have a common p(t)
+eq (cf. Eq. (16)), with small discrepancies arising from differences in their respective p0. The solid lines in Fig. 2 are S ̇NN and SNN, evaluated at various stages of training. As we train over more epochs, nep, the network absorbs more information, bringing SNN closer to its ideal value Stot.
+The experiments in Fig. 2 were carried out on a model trained on N = 8192 samples from a mixture of five Gaussians in D = 6 dimensions, which is pd. The Gaussian components were N (x ̄r, 1D), where the means x ̄r were randomly chosen from a D-hypercube of side length 4 centered at the
+origin. We used κ = σ0 = 0.1, so both processes transform pd to p0 ≈ N (0, 10−21D) at T = 1 (cf. Eq. (40)). The SL process has a singularity at T = 1 exactly (cf. Eq. (20)); this divergence manifests in the S ̇NN curve for SL at the early stages of training.
+In both VPx and SL dynamics, the combination of weak noise with a relatively strong drift subdues the randomness in the diffusion process, leading to larger Stot (cf. Sec. 5). Equivalently, the pd used above
+7
+
+
+0 200 400 600
+nep
+10
+20
+SNN (T)
+1e2
+0 200 400 600
+nep
+10
+5
+0
+5
+Cross-entropy
+1e2
+0 200 400 600
+nep
+1
+2
+Loss
+1e2
+nc = 10 nc = 100 nc = 1000 nc = 3000 nc = 6000
+Figure 3: The evolution of neural entropy, cross-entropy, and loss over training epochs for an unconditional image diffusion model (VP) trained on the MNIST dataset. The different colors correspond to models trained on nc number of samples per class; nc = 6000 means the model was trained on the entire dataset. The growth in neural entropy with the number of samples is nearly logarithmic. The values of SNN(T ) at the end of training are shown in Fig. 16.
+is too far from their equilibrium state so a larger amount of information must be supplied to transform peq ≈ p0 to pd. On the other hand, if we use a regular VP process, for which peq = N (0, 1D), the ‘distance’ to pd is smaller and so is the total entropy. As a result, the VP model trains much faster and produces a more accurate reconstruction of pd than the VPx or SL model. This is shown in Fig. 10.
+Storage experiments We carry out similar experiments on a simple image diffusion model with a U-net core, trained on the MNIST dataset without class conditioning [36]. In this instance, the training dataset is small relative to the dimensionality of pixel space. Therefore the model relies on the inductive biases of the network to generalize from the given data points rather than memorize them [12]. Entropy curves for this dataset also show a sharp peak in entropy production near s = 0 (see Fig. 12). This is because the images live on a manifold Md of much lower dimensionality compared to the ambient 784-dimensional space. Seen from the t-direction, the sharp rise in entropy as t → T tells us that the diffusion model needs to inject a lot of information in the final few time steps to locate the sample precisely on Md. Similar plots for the SL model are given in Sec. E.
+In Fig. 3 we train the image model on the first nc samples from each class, N = 10nc samples in total, and measure SNN and the cross entropy Epd [− log pθ] as training progresses. We cannot compute the true Stot or KL since the exact log densities are not known. Nonetheless, we see a similar result as before: the neural entropy and cross-entropy saturates after the model trains for a while. Importantly, the model absorbs more information if it is presented with a larger number of samples, but the growth in SNN(T ) with N is not linear, it appears to be logarithmic (see Figs. 1 and 16).
+We obtain the same behavior from a diffusion model trained on the CIFAR-10 dataset [37]. This time we use a U-net with selfattention layers [5, 38] and apply class conditioning. The image quality improves substantially with N but neural entropy scales as nearly log N (see Fig. 18). Notably, such a trend is absent from the Gaussian mixture experiments performed on an MLP-based diffusion model (see Figs. 4 and 15). At low N these models concentrate the probability mass around the sparse data points and learn a very different distribution from the true pd. This is why SNN is larger at small N ; it could also be larger than Stot produced by diffusion of the actual pd. On the other hand, the combination of structured data and well-matched inductive biases in the image models saves us from overfitting even when data density is low, while also compressing the details from additional samples efficiently.
+101 102 103 104
+N
+2.8
+3.0
+3.2
+3.4
+3.6
+SNN (T)
+Figure 4: Neural entropy vs. number of samples for a diffusion model with an MLP trained on Gaussian mixtures.
+8
+
+
+7 Conclusion
+In Sec. 1 we used the example of storing images to motivate neural entropy. We presented two scenarios: the storage of individual images versus the retention of a distribution of images. In a conventional memory the number of bytes required to store N images will be N times the bytes per image, even with efficient compression. Classical compression algorithms make implicit assumptions about the statistical properties of natural images and apply them universally to all inputs. However a diffusion model sees a large ensemble of images and can learn non-local correlations between the pixels of similar groups of images; they are infinitely deep autoencoders [39–41]. In other words, these models can tailor a compression scheme specific to the properties of the data distribution. This is a lossy form of compression of course, since we rarely recover the training images perfectly from these probabilistic models.
+How about other generative models? At a conceptual level, Schrödinger’s argument can be extended beyond just diffusion. For instance, a very simple-minded approach to creating a sentence of length L would be to choose L words at random from a corpus. The vast majority of sentences produced by this process would be utterly meaningless, but once in a while, we get a rare fluctuation that counts as a sensible statement. The collection of all such sentences constitutes an island of meaning pd, in a sea of non-sense peq. Here peq can be a uniform distribution over all L-word combinations, say. P is the distribution of all distributions on these combinations. The information needed to transform peq → pd is proportional to the negative logarithm of the probability of fluctuating into pd automatically. A mechanism that enhances this probability to near certainty would need to store that much information to effect the transformation. If we start with a peq that assigns a greater probability to more frequently used words it would be easier, albeit still very improbable, to auto-fluctuate to pd. This is a manifestation of thermodynamic uncertainty, for words.
+Diffusion-based LLMs [42, 43] offer the most direct path to defining neural entropy in the context of language. They are based on a discrete diffusion process very similar to the lattice random walks we considered in Secs. 2 and 3. The ideal neural entropy in that case should have a form similar to Eq. (37), with transitions that extend beyond nearest neighbor jumps. The discrete analog of the thermodynamic uncertainty relation, Eq. (22), is discussed in [33]. It would be interesting to investigate how the choice of the forward process in diffusion LLMs affects the training efficiency and model performance. More work will be needed to extend the entropic picture to transformer models, but investigations into the compressive abilities of such models are underway [44].
+Limitations Our definition of neural entropy is limited to continuous diffusion models at present. In Sec. D we also point out the difficulties in defining neural entropy with score-matching models. With respect to the experimental results, the logarithmic growth of neural entropy with N is stated as an empirical observation with little explanation. A deeper investigation of this phenomenon is relegated to future work. In particular, it would be interesting to check whether this trend is repeated in more sophisticated network architectures like diffusion transformers [45], or if there is a connection to the scaling laws [46]. As noted in Figs. 12 and 17 the calculation of neural entropy in the image models requires some care due to divergent entropy production near s = 0. This behooves us to investigate the neural entropy in diffusion processes with momentum components which soften such singular behavior [47, 48].
+Related work The original work that introduced diffusion models took inspiration from the Jarzynski equality and fluctuation theorem from non-equilibrium thermodynamics [1, 49, 50]. The relation between these ideas becomes apparent through [40, 7], both of which use the FeynmanKac formula and Girsanov’s theorem to develop similar results separately for diffusion models and thermodynamics. These results can also be understood in the language of stochastic optimal control [15, 51]. We illustrate both approaches in Sec. B.4. Several authors have also developed the connection between these models and the Schrödinger’s bridge problem [52, 53]. The consequences of the thermodynamic speed limit on diffusion model accuracy are studied in greater detail in [34]. Information-theoretic aspects of diffusion models are also explored in [54], and a deeper discussion of their ability to capture mutual information is given in [55]. It has also been noted that diffusion models are a form of energy-based memory [56], which concurs with the discussion in Secs. C.2 and 4, since the generative process in these models is a descent along a learned free energy landscape.
+9
+
+
+Acknowledgments and Disclosure of Funding
+We thank Lorenzo Orecchia, William Cottrell, Austin Joyce, Maurice Weiler, and Ryan Robinett for valuable discussions, and Yuji Hirono for bringing [34] to our attention. We are especially grateful to William Cottrell and Lorenzo Orecchia for their comments on an earlier version of this paper. The author was supported in part by the Kavli Institute for Cosmological Physics at the University of Chicago through an endowment from the Kavli Foundation. Computational resources for this project were made available through the AI+Science research funding from the Data Science Institute at the University of Chicago. Code is available at https://github.com/akhilprem1/NeuralEntropy
+10
+
+
+References
+[1] Jascha Sohl-Dickstein, Eric Weiss, Niru Maheswaranathan, and Surya Ganguli. Deep unsupervised learning using nonequilibrium thermodynamics. In Francis Bach and David Blei, editors, Proceedings of the 32nd International Conference on Machine Learning, volume 37 of Proceedings of Machine Learning Research, pages 2256–2265, Lille, France, 07–09 Jul 2015. PMLR. URL https://proceedings.mlr.press/v37/sohl-dickstein15.html. 1, 7, 9, 28
+[2] C. E. Shannon. A mathematical theory of communication. The Bell System Technical Journal, 27(3):379–423, 1948. doi: 10.1002/j.1538-7305.1948.tb01338.x. 1, 3
+[3] E. T. Jaynes. Information theory and statistical mechanics. Phys. Rev., 106:620–630, May 1957. doi: 10.1103/PhysRev.106.620. URL https://link.aps.org/doi/10.1103/PhysRev. 106.620. 26, 27
+[4] E. T. Jaynes. Gibbs vs Boltzmann Entropies. American Journal of Physics, 33(5):391–398, 05 1965. ISSN 0002-9505. doi: 10.1119/1.1971557. URL https://doi.org/10.1119/1. 1971557. 1, 26
+[5] Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoising diffusion probabilistic models. In Hugo Larochelle, Marc’Aurelio Ranzato, Raia Hadsell, Maria-Florina Balcan, and HsuanTien Lin, editors, Advances in Neural Information Processing Systems 33: Annual Conference on Neural Information Processing Systems 2020, NeurIPS 2020, December 612, 2020, virtual, 2020. URL https://proceedings.neurips.cc/paper/2020/hash/ 4c5bcfec8584af0d967f1ab10179ca4b-Abstract.html. 1, 8, 22, 31
+[6] Yang Song, Jascha Sohl-Dickstein, Diederik P. Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole. Score-based generative modeling through stochastic differential equations. In 9th International Conference on Learning Representations, ICLR 2021, Virtual Event, Austria, May 37, 2021. OpenReview.net, 2021. URL https://openreview.net/forum?id=PxTIG12RRHS. 1, 6, 7, 22, 28, 32, 35
+[7] Hao Ge and Da-Quan Jiang. Generalized jarzynski’s equality of inhomogeneous multidimensional diffusion processes. Journal of Statistical Physics, 131(4):675–689, 5 2008. ISSN 1572-9613. doi: 10.1007/s10955-008-9520-4. URL https://doi.org/10.1007/ s10955-008-9520-4. 1, 5, 9, 22
+[8] Raphaël Chetrite and Krzysztof Gaw ̨edzki. Fluctuation relations for diffusion processes. Communications in Mathematical Physics, 282(2):469–518, 2008. ISSN 1432-0916. doi: 10.1007/s00220-008-0502-9. URL https://doi.org/10.1007/s00220-008-0502-9.
+[9] Udo Seifert. Entropy production along a stochastic trajectory and an integral fluctuation theorem. Phys. Rev. Lett., 95:040602, Jul 2005. doi: 10.1103/PhysRevLett.95.040602. URL https://link.aps.org/doi/10.1103/PhysRevLett.95.040602. 1, 3, 23, 26
+[10] William Bialek, Curtis G. Callan, and Steven P. Strong. Field theories for learning probability distributions. Phys. Rev. Lett., 77:4693–4697, Dec 1996. doi: 10.1103/PhysRevLett.77.4693. URL https://link.aps.org/doi/10.1103/PhysRevLett.77.4693. 2
+[11] Andrew G Wilson and Pavel Izmailov. Bayesian deep learning and a probabilistic perspective of generalization. In H. Larochelle, M. Ranzato, R. Hadsell, M.F. Balcan, and H. Lin, editors, Advances in Neural Information Processing Systems, volume 33, pages 4697–4708. Curran Associates, Inc., 2020. URL https://proceedings.neurips.cc/paper_files/paper/ 2020/file/322f62469c5e3c7dc3e58f5a4d1ea399-Paper.pdf. 2
+[12] Zahra Kadkhodaie, Florentin Guth, Eero P. Simoncelli, and Stéphane Mallat. Generalization in diffusion models arises from geometry-adaptive harmonic representation. CoRR, abs/2310.02557, 2023. doi: 10.48550/ARXIV.2310.02557. URL https://doi.org/10. 48550/arXiv.2310.02557. 2, 8
+11
+
+
+[13] Raphaël Chetrite, Paolo Muratore-Ginanneschi, and Kay Schwieger. E. Schrödinger’s 1931 paper “on the reversal of the laws of nature” [“über die umkehrung der naturgesetze”, sitzungsberichte der preussischen akademie der wissenschaften, physikalisch-mathematische klasse, 8 n9 144–153]. The European Physical Journal H, 46(1):28, Nov 2021. ISSN 21026467. doi: 10.1140/epjh/s13129-021-00032-7. URL https://doi.org/10.1140/epjh/ s13129-021-00032-7. 2, 3
+[14] Akhil Premkumar. Generative diffusion from an action principle, 2023. URL https://arxiv. org/abs/2310.04490. 3, 24
+[15] Michele Pavon. Stochastic control and nonequilibrium thermodynamical systems. Applied Mathematics and Optimization, 19(1):187–202, 1989. doi: 10.1007/BF01448198. URL https://doi.org/10.1007/BF01448198. 3, 9, 22, 23, 24, 25, 26
+[16] Udo Seifert. Stochastic thermodynamics, fluctuation theorems and molecular machines. Reports on Progress in Physics, 75(12):126001, nov 2012. doi: 10.1088/0034-4885/75/12/126001. URL https://dx.doi.org/10.1088/0034-4885/75/12/126001. 3, 20
+[17] Édgar Roldán and Juan M. R. Parrondo. Estimating dissipation from single stationary trajectories. Phys. Rev. Lett., 105:150607, Oct 2010. doi: 10.1103/PhysRevLett.105.150607. URL https: //link.aps.org/doi/10.1103/PhysRevLett.105.150607. 3
+[18] David J. C. MacKay. Information Theory, Inference & Learning Algorithms. Cambridge University Press, USA, 2002. ISBN 0521642981. 3
+[19] Kim Sharp and Franz Matschinsky. Translation of Ludwig Boltzmann’s Paper “On the Relationship between the Second Fundamental Theorem of the Mechanical Theory of Heat and Probability Calculations Regarding the Conditions for Thermal Equilibrium”. Entropy, 17(4):1971–2009, 2015. ISSN 1099-4300. doi: 10.3390/e17041971. URL https: //www.mdpi.com/1099-4300/17/4/1971. Originally published in Sitzungsberichte der Kaiserlichen Akademie der Wissenschaften. Mathematisch-Naturwissen Classe. Abt. II, vol. 76, pp. 373–435 (Wien, 1877); reprinted in Wiss. Abhandlungen, Vol. II, reprint 42, pp. 164–223, Barth, Leipzig, 1909. 3
+[20] Yang Song, Conor Durkan, Iain Murray, and Stefano Ermon. Maximum likelihood training of score-based diffusion models. In M. Ranzato, A. Beygelzimer, Y. Dauphin, P.S. Liang, and J. Wortman Vaughan, editors, Advances in Neural Information Processing Systems, volume 34, pages 1415–1428. Curran Associates, Inc., 2021. URL https://proceedings.neurips.cc/paper_files/paper/2021/file/ 0a9fdbb17feb6ccb7ec405cfb85222c4-Paper.pdf. 4, 5, 21, 22, 31, 37
+[21] J. C. Maxwell. Ii. illustrations of the dynamical theory of gases. The London, Edinburgh, and Dublin Philosophical Magazine and Journal of Science, 20(130):21–37, 1860. doi: 10.1080/ 14786446008642902. URL https://doi.org/10.1080/14786446008642902. 4
+[22] Koji Maruyama, Franco Nori, and Vlatko Vedral. Colloquium: The physics of maxwell’s demon and information. Rev. Mod. Phys., 81:1–23, Jan 2009. doi: 10.1103/RevModPhys.81.1. URL https://link.aps.org/doi/10.1103/RevModPhys.81.1. 4
+[23] J M R Parrondo, C Van den Broeck, and R Kawai. Entropy production and the arrow of time. New Journal of Physics, 11(7):073008, jul 2009. doi: 10.1088/1367-2630/11/7/073008. URL https://dx.doi.org/10.1088/1367-2630/11/7/073008. 4
+[24] Takahiro Sagawa and Masahito Ueda. Generalized jarzynski equality under nonequilibrium feedback control. Phys. Rev. Lett., 104:090602, Mar 2010. doi: 10.1103/PhysRevLett.104. 090602. URL https://link.aps.org/doi/10.1103/PhysRevLett.104.090602. 4
+[25] Shoichi Toyabe, Takahiro Sagawa, Masahito Ueda, Eiro Muneyuki, and Masaki Sano. Experimental demonstration of information-to-energy conversion and validation of the generalized jarzynski equality. Nature Physics, 6(12):988–992, 2010. ISSN 1745-2481. doi: 10.1038/nphys1821. URL https://doi.org/10.1038/nphys1821. 4
+12
+
+
+[26] Christopher Jarzynski. Rare events and the convergence of exponentially averaged work values. Phys. Rev. E, 73:046105, Apr 2006. doi: 10.1103/PhysRevE.73.046105. URL https: //link.aps.org/doi/10.1103/PhysRevE.73.046105. 5
+[27] S. Vaikuntanathan and C. Jarzynski. Dissipation and lag in irreversible processes. Europhysics Letters, 87(6):60005, oct 2009. doi: 10.1209/0295-5075/87/60005. URL https://dx.doi. org/10.1209/0295-5075/87/60005. 5, 26
+[28] Yaron Lipman, Ricky T. Q. Chen, Heli Ben-Hamu, Maximilian Nickel, and Matt Le. Flow matching for generative modeling. CoRR, abs/2210.02747, 2022. doi: 10.48550/ARXIV.2210. 02747. URL https://doi.org/10.48550/arXiv.2210.02747. 5
+[29] Tero Karras, Miika Aittala, Timo Aila, and Samuli Laine. Elucidating the design space of diffusion-based generative models. In Sanmi Koyejo, S. Mohamed, A. Agarwal, Danielle Belgrave, K. Cho, and A. Oh, editors, Advances in Neural Information Processing Systems 35: Annual Conference on Neural Information Processing Systems 2022, NeurIPS 2022, New Orleans, LA, USA, November 28 - December 9, 2022, 2022. URL http://papers.nips.cc/paper_files/paper/2022/hash/ a98846e9d9cc01cfb87eb694d946ce6b-Abstract-Conference.html. 6, 7, 30
+[30] Nikita Kornilov, Alexander V. Gasnikov, and Alexander Korotin. Optimal flow matching: Learning straight trajectories in just one step. CoRR, abs/2403.13117, 2024. doi: 10.48550/ ARXIV.2403.13117. URL https://doi.org/10.48550/arXiv.2403.13117.
+[31] Yuyan Ni, Shikun Feng, Haohan Chi, Bowen Zheng, Huan ang Gao, Wei-Ying Ma, Zhi-Ming Ma, and Yanyan Lan. Straight-line diffusion model for efficient 3d molecular generation, 2025. URL https://arxiv.org/abs/2503.02918. 6, 35
+[32] Jean-David Benamou and Yann Brenier. A computational fluid mechanics solution to the monge-kantorovich mass transfer problem. Numerische Mathematik, 84(3):375–393, Jan 2000. ISSN 0945-3245. doi: 10.1007/s002110050002. URL https://doi.org/10.1007/ s002110050002. 6
+[33] Tan Van Vu and Keiji Saito. Thermodynamic unification of optimal transport: Thermodynamic uncertainty relation, minimum dissipation, and thermodynamic speed limits. Phys. Rev. X, 13: 011013, Feb 2023. doi: 10.1103/PhysRevX.13.011013. URL https://link.aps.org/doi/ 10.1103/PhysRevX.13.011013. 6, 9
+[34] Kotaro Ikeda, Tomoya Uda, Daisuke Okanohara, and Sosuke Ito. Speed-accuracy trade-off for the diffusion models: Wisdom from nonequilibrium thermodynamics and optimal transport, 2024. URL https://arxiv.org/abs/2407.04495. 6, 9, 10
+[35] Peter W. Battaglia, Jessica B. Hamrick, Victor Bapst, Alvaro Sanchez-Gonzalez, Vinícius Flores Zambaldi, Mateusz Malinowski, Andrea Tacchetti, David Raposo, Adam Santoro, Ryan Faulkner, Çaglar Gülçehre, H. Francis Song, Andrew J. Ballard, Justin Gilmer, George E. Dahl, Ashish Vaswani, Kelsey R. Allen, Charles Nash, Victoria Langston, Chris Dyer, Nicolas Heess, Daan Wierstra, Pushmeet Kohli, Matthew M. Botvinick, Oriol Vinyals, Yujia Li, and Razvan Pascanu. Relational inductive biases, deep learning, and graph networks. CoRR, abs/1806.01261, 2018. URL http://arxiv.org/abs/1806.01261. 7
+[36] Yann LeCun, Léon Bottou, Yoshua Bengio, and Patrick Haffner. Gradient-based learning applied to document recognition. Proceedings of the IEEE, 86(11):2278–2324, 1998. doi: 10.1109/5.726791. 8
+[37] Alex Krizhevsky. Learning multiple layers of features from tiny images. Technical report, University of Toronto, 2009. https://www.cs.toronto.edu/~kriz/ learning-features-2009-TR.pdf. 8
+[38] Tim Salimans and Jonathan Ho. Progressive distillation for fast sampling of diffusion models. CoRR, abs/2202.00512, 2022. URL https://arxiv.org/abs/2202.00512. 8
+13
+
+
+[39] Xiaolong Wang, Ross B. Girshick, Abhinav Gupta, and Kaiming He. Non-local neural networks. In 2018 IEEE Conference on Computer Vision and Pattern Recognition, CVPR 2018, Salt Lake City, UT, USA, June 18-22, 2018, pages 7794–7803. Computer Vision Foundation / IEEE Computer Society, 2018. doi: 10.1109/CVPR.2018.00813. URL http://openaccess.thecvf.com/content_cvpr_2018/html/Wang_Non-Local_ Neural_Networks_CVPR_2018_paper.html. 9
+[40] Chin-Wei Huang, Jae Hyun Lim, and Aaron C Courville. A variational perspective on diffusion-based generative models and score matching. In M. Ranzato, A. Beygelzimer, Y. Dauphin, P.S. Liang, and J. Wortman Vaughan, editors, Advances in Neural Information Processing Systems, volume 34, pages 22863–22876. Curran Associates, Inc., 2021. URL https://proceedings.neurips.cc/paper_files/paper/2021/file/ c11abfd29e4d9b4d4b566b01114d8486-Paper.pdf. 9, 21, 22, 24, 31
+[41] David McAllester. On the mathematics of diffusion models, 2023. URL https://arxiv. org/abs/2301.11108. 9
+[42] Aaron Lou, Chenlin Meng, and Stefano Ermon. Discrete diffusion modeling by estimating the ratios of the data distribution. In Forty-first International Conference on Machine Learning, ICML 2024, Vienna, Austria, July 21-27, 2024. OpenReview.net, 2024. URL https:// openreview.net/forum?id=CNicRIVIPA. 9
+[43] Minkai Xu, Tomas Geffner, Karsten Kreis, Weili Nie, Yilun Xu, Jure Leskovec, Stefano Ermon, and Arash Vahdat. Energy-based diffusion language models for text generation. CoRR, abs/2410.21357, 2024. doi: 10.48550/ARXIV.2410.21357. URL https://doi.org/10. 48550/arXiv.2410.21357. 9
+[44] Ziguang Li, Chao Huang, Xuliang Wang, Haibo Hu, Cole Wyeth, Dongbo Bu, Quan Yu, Wen Gao, Xingwu Liu, and Ming Li. Lossless data compression by large models. Nature Machine Intelligence, May 2025. ISSN 2522-5839. doi: 10.1038/s42256-025-01033-7. URL https://doi.org/10.1038/s42256-025-01033-7. 9
+[45] William Peebles and Saining Xie. Scalable diffusion models with transformers. In Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV), pages 4195–4205, October 2023. 9
+[46] Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B. Brown, Benjamin Chess, Rewon Child, Scott Gray, Alec Radford, Jeffrey Wu, and Dario Amodei. Scaling laws for neural language models. CoRR, abs/2001.08361, 2020. URL https://arxiv.org/abs/2001.08361. 9
+[47] Tim Dockhorn, Arash Vahdat, and Karsten Kreis. Score-based generative modeling with critically-damped langevin diffusion. In International Conference on Learning Representations (ICLR), 2022. 9
+[48] Alexandra Lamtyugina, Agnish Kumar Behera, Aditya Nandy, Carlos Floyd, and Suriyanarayanan Vaikuntanathan. Score-based generative diffusion with "active" correlated noise sources. CoRR, abs/2411.07233, 2024. doi: 10.48550/ARXIV.2411.07233. URL https: //doi.org/10.48550/arXiv.2411.07233. 9
+[49] C. Jarzynski. Equilibrium free-energy differences from nonequilibrium measurements: A masterequation approach. Phys. Rev. E, 56:5018–5035, Nov 1997. doi: 10.1103/PhysRevE.56.5018. URL https://link.aps.org/doi/10.1103/PhysRevE.56.5018. 9, 26
+[50] Gavin E. Crooks. Nonequilibrium measurements of free energy differences for microscopically reversible markovian systems. Journal of Statistical Physics, 90(5):1481–1487, 1998. ISSN 1572-9613. doi: 10.1023/A:1023208217925. URL https://doi.org/10.1023/A: 1023208217925. 9
+[51] Julius Berner, Lorenz Richter, and Karen Ullrich. An optimal control perspective on diffusionbased generative modeling. Transactions on Machine Learning Research, 2024. ISSN 28358856. URL https://openreview.net/forum?id=oYIjw37pTP. 9
+14
+
+
+[52] Yuyang Shi, Valentin De Bortoli, Andrew Campbell, and Arnaud Doucet. Diffusion schrödinger bridge matching. In A. Oh, T. Naumann, A. Globerson, K. Saenko, M. Hardt, and S. Levine, editors, Advances in Neural Information Processing Systems, volume 36, pages 62183–62223. Curran Associates, Inc., 2023. URL https://proceedings.neurips.cc/paper_files/ paper/2023/file/c428adf74782c2092d254329b6b02482-Paper-Conference.pdf. 9
+[53] Ludwig Winkler, Cesar Ojeda, and Manfred Opper. A score-based approach for training schrödinger bridges for data modelling. Entropy, 25(2):316, 2023. ISSN 1099-4300. doi: 10.3390/e25020316. URL https://www.mdpi.com/1099-4300/25/2/316. 9
+[54] Xianghao Kong, Rob Brekelmans, and Greg Ver Steeg. Information-theoretic diffusion. In Proceedings of the Eleventh International Conference on Learning Representations (ICLR 2023), 2023. URL https://openreview.net/forum?id=UvmDCdSPDOW. Preprint at https: //arxiv.org/abs/2302.03792. 9
+[55] Giulio Franzese, Mustapha Bounoua, and Pietro Michiardi. MINDE: Mutual information neural diffusion estimation. In Proceedings of the International Conference on Learning Representations (ICLR), pages 16685–16716, 2024. URL https://proceedings.iclr.cc/paper_ files/paper/2024/file/47f75e809409709c6d226ab5ca0c9703-Paper-Conference. pdf. 9
+[56] Benjamin Hoover, Hendrik Strobelt, Dmitry Krotov, Judy Hoffman, Zsolt Kira, and Duen Horng Chau. Memory in plain sight: A survey of the uncanny resemblances between diffusion models and associative memories. CoRR, abs/2309.16750, 2023. doi: 10.48550/ARXIV.2309.16750. URL https://doi.org/10.48550/arXiv.2309.16750. 9
+[57] Kunio Yasue. A simple derivation of the onsager–machlup formula for one-dimensional nonlinear diffusion process. Journal of Mathematical Physics, 19(8):1671–1673, 08 1978. ISSN 0022-2488. doi: 10.1063/1.523888. URL https://doi.org/10.1063/1.523888. 19
+[58] Edward Nelson. Derivation of the schrödinger equation from newtonian mechanics. Phys. Rev., 150:1079–1085, Oct 1966. doi: 10.1103/PhysRev.150.1079. URL https://link.aps.org/ doi/10.1103/PhysRev.150.1079. 21
+[59] Brian D.O. Anderson. Reverse-time diffusion equation models. Stochastic Processes and their Applications, 12(3):313–326, 1982. ISSN 0304-4149. doi: https://doi.org/10.1016/ 0304-4149(82)90051-5. URL https://www.sciencedirect.com/science/article/ pii/0304414982900515.
+[60] U. G. Haussmann and E. Pardoux. Time Reversal of Diffusions. The Annals of Probability, 14 (4):1188 – 1205, 1986. doi: 10.1214/aop/1176992362. URL https://doi.org/10.1214/ aop/1176992362.
+[61] Hans Föllmer. Random fields and diffusion processes. In Paul-Louis Hennequin, editor, École d’Été de Probabilités de Saint-Flour XV–XVII, 1985–87, pages 101–203, Berlin, Heidelberg, 1988. Springer Berlin Heidelberg. ISBN 978-3-540-46042-8. 21
+[62] Sosuke Ito. Geometric thermodynamics for the fokker–planck equation: stochastic thermodynamic links between information geometry and optimal transport. Information Geometry, 7(1):441–483, 2024. ISSN 2511-249X. doi: 10.1007/s41884-023-00102-3. URL https://doi.org/10.1007/s41884-023-00102-3. 22
+[63] M. Kac. On distributions of certain wiener functionals. Transactions of the American Mathematical Society, 65(1):1–13, 1949. ISSN 00029947, 10886850. URL http://www.jstor. org/stable/1990512. 24
+[64] Wendell Fleming and Raymond Rishel. Deterministic and Stochastic Optimal Control. Stochastic Modelling and Applied Probability. Springer New York, NY, 1 edition, 1975. ISBN 978-0-387-90155-8. doi: 10.1007/978-1-4612-6380-7. URL https://doi.org/10.1007/ 978-1-4612-6380-7. 25
+15
+
+
+[65] M.I. Kamien and N.L. Schwartz. Dynamic Optimization, Second Edition: The Calculus of Variations and Optimal Control in Economics and Management. Dover Books on Mathematics. Dover Publications, 2013. ISBN 9780486310282. URL https://books.google.com/ books?id=liLCAgAAQBAJ. 25
+[66] Ludwig Boltzmann. Further Studies on the Thermal Equilibrium of Gas Molecules, pages 262–349. Imperial College Press, 2003. doi: 10.1142/9781848161337_0015. 26
+[67] Gavin E. Crooks and Christopher Jarzynski. Work distribution for the adiabatic compression of a dilute and interacting classical gas. Phys. Rev. E, 75:021116, Feb 2007. doi: 10.1103/PhysRevE. 75.021116. URL https://link.aps.org/doi/10.1103/PhysRevE.75.021116. 26
+[68] Christopher Jarzynski. Equalities and Inequalities: Irreversibility and the Second Law of Thermodynamics at the Nanoscale, pages 145–172. Springer Basel, Basel, 2013. ISBN 9783-0348-0359-5. doi: 10.1007/978-3-0348-0359-5_4. URL https://doi.org/10.1007/ 978-3-0348-0359-5_4. 26
+[69] E. T. Jaynes. Information theory and statistical mechanics. ii. Phys. Rev., 108:171–190, Oct 1957. doi: 10.1103/PhysRev.108.171. URL https://link.aps.org/doi/10.1103/ PhysRev.108.171. 26
+[70] Thomas M. Cover and Joy A. Thomas. Elements of Information Theory (Wiley Series in Telecommunications and Signal Processing). Wiley-Interscience, USA, 2006. ISBN 0471241954. 26
+[71] Maxwell Aifer, Samuel Duffield, Kaelan Donatella, Denis Melanson, Phoebe Klett, Zach Belateche, Gavin E. Crooks, Antonio J. Martinez, and Patrick J. Coles. Thermodynamic bayesian inference. CoRR, abs/2410.01793, 2024. doi: 10.48550/ARXIV.2410.01793. URL https://doi.org/10.48550/arXiv.2410.01793. 27
+[72] Richard Jordan, David Kinderlehrer, and Felix Otto. The variational formulation of the fokkerplanck equation. SIAM Journal on Mathematical Analysis, 29(1):1–17, 1998. doi: 10.1137/ S0036141096303359. URL https://doi.org/10.1137/S0036141096303359. 27
+[73] Mehran Kardar. Statistical Physics of Particles. Cambridge University Press, 2007. 28
+[74] Matthew Tancik, Pratul Srinivasan, Ben Mildenhall, Sara Fridovich-Keil, Nithin Raghavan, Utkarsh Singhal, Ravi Ramamoorthi, Jonathan Barron, and Ren Ng. Fourier features let networks learn high frequency functions in low dimensional domains. In H. Larochelle, M. Ranzato, R. Hadsell, M.F. Balcan, and H. Lin, editors, Advances in Neural Information Processing Systems, volume 33, pages 7537–7547. Curran Associates, Inc., 2020. URL https://proceedings.neurips.cc/paper_files/paper/2020/file/ 55053683268957697aa39fba6f231c68-Paper.pdf. 30
+[75] Dongjun Kim, Seungjae Shin, Kyungwoo Song, Wanmo Kang, and Il-Chul Moon. Soft truncation: A universal training technique of score-based diffusion model for high precision score estimation. In Kamalika Chaudhuri, Stefanie Jegelka, Le Song, Csaba Szepesvári, Gang Niu, and Sivan Sabato, editors, International Conference on Machine Learning, ICML 2022, 17-23 July 2022, Baltimore, Maryland, USA, volume 162 of Proceedings of Machine Learning Research, pages 11201–11228. PMLR, 2022. URL https://proceedings.mlr.press/ v162/kim22i.html. 32
+[76] Pascal Vincent. A connection between score matching and denoising autoencoders. Neural Computation, 23:1661–1674, 2011. URL https://api.semanticscholar.org/CorpusID: 5560643. 31
+[77] Diederik Kingma, Tim Salimans, Ben Poole, and Jonathan Ho. Variational diffusion models. In M. Ranzato, A. Beygelzimer, Y. Dauphin, P.S. Liang, and J. Wortman Vaughan, editors, Advances in Neural Information Processing Systems, volume 34, pages 21696–21707. Curran Associates, Inc., 2021. URL https://proceedings.neurips.cc/paper_files/paper/ 2021/file/b578f2a52a0229873fefc2a4b06377fa-Paper.pdf. 35, 37
+[78] Akhil Premkumar. Diffusion density estimators, 2024. URL https://arxiv.org/abs/2410. 06986. 35, 37
+16
+
+
+[79] Dimitra Maoutsa, Sebastian Reich, and Manfred Opper. Interacting particle solutions of fokker–planck equations through gradient–log–density estimation. Entropy, 22(8), 2020. ISSN 1099-4300. doi: 10.3390/e22080802. URL https://www.mdpi.com/1099-4300/22/8/802. 35
+[80] Sitan Chen, Sinho Chewi, Jerry Li, Yuanzhi Li, Adil Salim, and Anru Zhang. Sampling is as easy as learning the score: theory for diffusion models with minimal data assumptions. In The Eleventh International Conference on Learning Representations, ICLR 2023, Kigali, Rwanda, May 1-5, 2023. OpenReview.net, 2023. URL https://openreview.net/forum? id=zyLVMgsZ0U_. 35
+17
+
+
+Contents
+1 Introduction 1
+2 Schrödinger’s Gedankenexperiment 2
+3 Diffusion models and Maxwell’s demon 3
+4 Entropy matching 4
+5 Thermodynamic uncertainty 6
+6 Experiments 6
+7 Conclusion 9
+References 11
+Contents 18
+A Random walk on a lattice 19
+A.1 Reversal . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+A.2 Entropy production . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+B Stochastic control 20
+B.1 Notation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+B.2 A fluctuation relation for diffusion models . . . . . . . . . . . . . . . . . . . . . . 21
+B.3 The H-theorem . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+B.4 Derivation of the bound . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+C Non-equilibrium thermodynamics 25
+C.1 Dissipation, lag, and the information gap . . . . . . . . . . . . . . . . . . . . . . . 25
+C.2 Entropy and free energy . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+D Score matching 28
+E Details of experiments 30
+E.1 Diffusion models . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+E.2 Density estimation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36
+18
+
+
+A Random walk on a lattice
+Random walks on a discrete one-dimensional lattice serve as a simple toy model to understand many of the results in this paper. Consider M random walkers on a lattice of spacing l, each of whom can occupy any of the sites x = nl, n ∈ Z. We shall use the time variable s for the forward evolution of the walkers. In every time step ∆s every walker at x jumps either left or right with probability qL(x, s) and qR(x, s) respectively, so qL + qR = 1. Then, the probability of finding a walker at x updates as
+p(x, s + ∆s) = qR(x − l, s)p(x − l, s) + qL(x + l, s)p(x + l, s), (26)
+since all walkers that were at x at time s cleared out and have been replaced by incoming walkers from either the left or right. Taylor expanding Eq. (26) in small ∆s and l,
+∂sp(x, s) = − l
+∆s ∂x((qR(x, s) − qL(x, s))p(x, s)) + l2
+2∆s ∂2
+xp(x, s), (27)
+which is the Fokker-Planck equation with drift and diffusion coefficients
+b+(x, s) = l
+∆s (qR(x, s) − qL(x, s)), σ2 = l2
+∆s . (28)
+Conversely, given a Fokker-Planck equation with a generic drift b+ we can think of it as the small l limit of a lattice model with jump probabilities
+qR(x, s) = 1
+2 + ∆s
+2l b+(x, s), qL(x, s) = 1
+2 − ∆s
+2l b+(x, s). (29)
+If the diffusion coefficient is time and/or position dependent we can map it to Eq. (28) by rescaling time and/or by a change of variables [57].
+A.1 Reversal
+Eq. (26) can be reversed by returning to x − l and x + l respectively a fraction
+qR(x − l, s)p(x − l, s)
+p(x, s + ∆s) =: q ̃L(x, s + ∆s), (30a)
+qL(x + l, s)p(x + l, s)
+p(x, s + ∆s) =: q ̃R(x, s + ∆s) (30b)
+of p(x, s + ∆s). It is useful to introduce a new time variable t for the reverse direction, as shown in Fig. 5. Then, the site x receives q ̃R fraction of the contents of x − l, and q ̃L of the walkers in x + l from time t, and the distribution of walkers evolve as
+p ̃(x, t + ∆t) = q ̃R(x − l, t)p ̃(x − l, t) + q ̃L(x + l, t)p ̃(x + l, t), (31)
+In the small l limit, we can compute the new drift,
+b−(x, t) := l
+∆t (q ̃R(x, t) − q ̃L(x, t))
+=l
+∆t (qR − qL) − l2
+∆t ∂x log p + 1
+p
+l3
+2∆t ∂2
+x((qR − qL)p) − l(qR − qL)∂sp + . . .
+x,s
+= b+(x, s) − σ(x, s)2∂x log p(x, s) + O(l3). (32)
+The diffusion coefficient remains unchanged at the same order,
+l2
+∆t (q ̃R(x, t) + q ̃L(x, t)) = l2
+∆t (qR(x, t) + qL(x, t)) + O(l3). (33)
+19
+
+
+s
+T0
+s + ∆s s
+t
+0T
+t + ∆t
+t
+Figure 5: Time variables in the forward (top) and reverse (bottom) directions.
+A.2 Entropy production
+Eq. (31) is not the only way to return to the original distribution of walkers, but it is the strategy that corresponds to the optimal kernel h⋆ in Eq. (3). In that expression, g is the transition kernel for the forward dynamics Eq. (26), now applied in the t-direction. Explicitly,
+h⋆(xt+∆t|xt) = q ̃R(xt, t)δxt+∆t,xt+l + q ̃L(xt, t)δxt+∆t,xt−l, (34a)
+g(xt+∆t|xt) = qR(xt, t)δxt+∆t,xt+l + qL(xt, t)δxt+∆t,xt−l. (34b)
+Here δxt+∆t,xt+l means xt+∆t is to the right of xt etc. We can compute Eq. (3) explicitly for the random walker on a lattice.
+DKL(h⋆∥g) =
+X
+x0 ,xT
+peq(x0)h⋆(xT |x0) log h⋆(xT |x0)
+g(xT |x0) . (35)
+Using the log sum inequality,
+DKL(h⋆∥g) ≤
+T −∆t
+X
+t=0
+X
+xt+∆t ,xt
+p(xt, t)h⋆(xt+∆t|xt) log h⋆(xt+∆t|xt)
+g(xt+∆t|xt) =: Stot. (36)
+Using Eq. (34b),
+Stot =
+T −∆t
+X
+t=0
+X
+xt
+p(xt, t) q ̃R log q ̃R
+qR
++ q ̃L log q ̃L
+qL xt,t
+. (37)
+Substituting Eq. (30b) and Taylor expanding,
+Stot =
+n−1
+X
+t=0
+X
+xt
+p(qL − qR) log qL
+qR
++ l∂xp log qL
+qR
++ l2
+2 p qL(∂x log(qLp))2 + qR(∂x log(qRp))2
++ l∂x((qL − qR)p) + l2
+2 ∂2
+xp − ∆s qL
+qR
+∂s(qRp) + qR
+qL
+∂s(qLp) + O(l3).
+(38)
+Expressing the jump probabilities in terms of b+ and σ2 (cf. Eq. (29)) and using the Fokker-Planck equation to eliminate some terms, we obtain the final expression for total entropy [16]:
+Stot =
+ZT
+0
+dt 1
+2σ2 Ep
+h
+2b+ − σ2∂x log p 2i
+. (39)
+B Stochastic control
+B.1 Notation
+We use the time variable s for the forward diffusion process, which runs from right (s = 0) to left
+(s = T ) in Fig. 6. Sometimes we indicate functions of s as
+←
+f to remove ambiguity when the same
+function is also expressed in terms of time variable t = T − s. That is,
+←
+f (s) =
+←
+f (T − t) = f (t). For
+instance, p(x, t) ≡ p←(x, s). Bˆs and Bt denote the Brownian motions associated with the forward and reverse/controlled SDEs, respectively. ∇ is the gradient with respect the spatial coordinates,
+20
+
+
+and ∂t, ∂s are partial time derivatives. Stot is the total entropy produced during forward diffusion, SG is the non-equilibrium Gibbs entropy of the distribution, and SNN is the neural entropy. We make the time-dependence of the entropies explicit later in the paper after we have introduced the s variable; Stot and SNN without the time argument should be understood as Stot(s = T ) ≡ Stot(T ). Throughout the paper, we set Boltzmann’s constant to unity, kB = 1. log is the natural logarithm. pd and p0 denote the initial (s = 0) and final (s = T ) densities for the forward process, and peq is its equilibrium state. Diffusion takes an infinite time to equilibrate but we always take T to be large compared to the intrinsic time scale of the diffusion process, which is why we ignore the difference between p0 and peq in Secs. 2 and 3. pu(·, 0) and pu(·, T ) are the initial (t = 0) and final (t = T ) densities of the controlled process. There is a slight abuse of notation here because pu(·, 0) is a distribution that does not depend on the control u, it is just the initial state to which the control is applied.
+Assumptions We make the same assumptions given in App. A of [20], with the following additions for entropy-matching models:
+1. ∃C > 0 ∀x ∈ RD, t ∈ [0, T ] : ∥eθ(x, t)∥2 < C(1 + ∥x∥2) ,
+2. ∃C > 0 ∀x, y ∈ RD, t ∈ [0, T ] : ∥eθ(x, t) − eθ(y, t)∥2 < C∥x − y∥2 ,
+3. Novikov’s condition: Ep exp R T
+0 dt 1
+2 ∇ log p(t)
+eq − ∇ log p + eθ
+2
+<∞.
+B.2 A fluctuation relation for diffusion models
+Given a set of data vectors, probabilistic models attempt to learn the underlying data distribution from which these vectors could have been sampled. One way to do this is to minimize the KL divergence between the data and the model distributions. Score-based diffusion models are trained by optimizing an objective that upper bounds this KL [20, 40]. In this section, we extend this bound to a more general parameterization of the generative process.
+Consider a D-dimensional probability density function pd subjected to a diffusive process
+dYs = b+(Ys, s)ds + σ(s)dBˆs. (40)
+The noise is isotropic and position-independent. Under Eq. (40), the distribution pd(y) ≡ p←(y, 0)
+evolves to some another distribution p0(y) ≡ p←(y, T ) (see Fig. 6). This process can be reversed by an SDE [58–61]
+dXt = −b−(Xt, T − t)dt + σ(T − t)dBt, (41)
+where t = T − s, and the drift term is
+b−(X, s) := b+(X, s) − σ2(s)∇ log p←(X, s). (42)
+Starting from p0(x) ≡ p(x, 0), the reverse evolution back to pd(x) ≡ p(x, T ) appears as a playback
+of the forward process in Eq. (40), so that p(x, t) = p←(x, T − t) at an intermediate time t. Crucially,
+we need information about the forward process, specifically the score function ∇ log p←, to construct the reverse drift term in Eq. (42). This makes sense: the final distribution p0 has little to no memory of the initial state pd, meaning that many different pd could diffuse to roughly the same p0, rendering the problem non-invertible without explicit knowledge of the forward process.
+If we replace b− in Eq. (41) with a different drift term u, called the control, and evolve p0(x) by the stochastic process
+dXt = −u(Xt, t)dt + σ(T − t)dBt, (43)
+the density pu(x, t) of Xt will differ from p(x, t), and land on a terminal distribution pu(x, T ) ̸= p(x, T ). The KL divergence between these distributions is bounded as
+ZT
+0
+dt 1
+2σ2 Ep(·,t)
+h
+∥b− − u∥2i
+≥ DKL (p(·, T )∥pu(·, T )) . (44)
+More generally, if we start at some pu(x, 0) ̸= p0(x),
+ZT
+0
+dt 1
+2σ2 Ep
+h
+∥b− − u∥2i
++ DKL (p0(·)∥pu(·, 0)) ≥ DKL (p(·, T )∥pu(·, T )) . (45)
+21
+
+
+p0(x) or p(x, 0)
+x
+Forward SDE
+dYs =b+ ds+σ dBˆs
+Reverse SDE
+dXt =−b− dt+σ dBt
+pd(x) or
+p(x, T )
+x
+s
+T0
+s
+t
+0T
+t
+Figure 6: A schematic of the forward and reverse diffusion processes.
+This result can be derived using the theory of stochastic optimal control [15] or by an application of the Feynman-Kac formula and Girsanov’s theorem [40, 7]. The details are given in Sec. B.4. See also [62].
+As a particular example, we can choose u = b+ − σ2sθ, where sθ is the output of a neural network, which converts the l.h.s. in Eq. (44) into the score-matching objective from [5, 6]. This leads to Theorem 1 from [20] (cf. Eq. (19)),
+ZT
+0
+dt σ2
+2 Ep
+h
+∥sθ − ∇ log p∥2i
++ DKL (p0(·)∥pθ(·, 0)) ≥ DKL (p(·, T )∥pθ(·, T )) . (46)
+If we pick the initial distribution pθ(x, 0) to be close to p0(x), and train a neural network to minimize the score-matching term, we can tighten the KL divergence between the data distribution, p(x, T ) ≡ pd(x), and the generated one, pθ(x, T ). This is how score-matching diffusion models
+work. Similarly, the parameterization u = −b+ − σ2eθ gives the entropy-matching objective (cf. Eq. (17)),
+ZT
+0
+dt σ2
+2 Ep
+"
+2b+
+σ2 − ∇ log p + eθ
+2
+#
++DKL (p0(·)∥pθ(·, 0)) ≥ DKL (p(·, T )∥pθ(·, T )) . (47)
+Lastly, if we set u = −b+ and choose pu(x, 0) = p0(x) for simplicity, we obtain a lower bound on the total entropy (cf. Eq. (16))
+Stot(T ) ≡
+ZT
+0
+dt σ2
+2 Ep
+"
+2b+
+σ2 − ∇ log p
+2
+#
+≥ DKL p(·, T )∥pb+ (·, T ) . (48)
+Next, we look at the conditions for which this bound is saturated.
+22
+
+
+B.3 The H-theorem
+We derive Eq. (15) here, following [15]. It states that p relaxes toward peq, with the rate of approach slowing down as it nears that state. To prove it we start with the time derivative
+−d
+dt DKL (p(x, t)||peq
+t (x))
+=d
+dt Ep − log p(x, t)
+peq
+t (x)
+=d
+dt −
+Z
+dx p(x, t) log p(x, t) − d
+dt −
+Z
+dx p(x, t) log peq
+t (x) . (49)
+The first term on the r.h.s. is the Gibbs entropy production rate S ̇ (t) [9],
+S ̇ (t) = −
+Z
+dx ∂tp log p −
+Z
+dx ∂tp
+=
+Z
+dx −∇ · (b−p) − σ2
+2 ∇2p log p +
+Z
+dx∇(· · · )
+IB=P
+Z
+dx p(x, t) σ2
+2 ∥∇ log p∥2 + b− · ∇ log p . (50)
+The second term in Eq. (49) can be simplified by using the Fokker-Planck equations for p and peq,
+d dt
+Z
+dx p(x, t) log peq
+t (x)
+=
+Z
+dx ∂tp(x, t) log peq
+t (x) + p(x, t) ∂tpeq
+t (x)
+peq
+t (x)
+=
+Z
+dx ∇ · (b−p) + σ2
+2 ∇2p log peq
+t (x) +
+Z
+dx p(x, t)
+peq
+t (x) −∇ · (b+peq
+t ) + σ2
+2 ∇2peq
+t.
+Here, we used the fact that ∂tpeq
+t = 0 when b+/σ2 = const., and replaced that zero with Eq. (14). We will consider each new term separately for clarity. Integrating by parts,
+Z
+dx ∇ · (b−p) + σ2
+2 ∇2p log peq
+t (x)
+=
+Z
+dx p(x, t) −b− · ∇ log peq
+t − σ2
+2 ∇ log p · ∇ log peq
+t,
+and
+Z
+dx p(x, t)
+peq
+t (x) −∇ · (b+peq
+t ) + σ2
+2 ∇2peq
+t
+=
+Z
+dx b+ · ∇p − b+p · ∇peq
+t peq
+t
+− σ2
+2 ∇ log p · ∇ log peq
+t + σ2
+2 p ∥∇ log peq
+t ∥2 ,
+=
+Z
+dx p(x, t) b+ · (∇ log p − ∇ log peq
+t ) − σ2
+2 ∇ log p · ∇ log peq
+t + σ2
+2 ∥∇ log peq
+t ∥2 .
+Adding up everything, we obtain
+−d
+dt DKL (p(x, t)||peq
+t (x))
+= Ep
+σ2
+2 ∥∇ log p(x, t) − ∇ log peq
+t (x)∥2 + (b− + b+) · (∇ log p(x, t) − ∇ log peq
+t (x))
+= −Ep
+1
+2σ2 2b+ − σ2∇ log p(x, t) 2 , (51)
+where in the last step we used Eq. (14) to replace ∇ log peq
+t (x). Integrating Eq. (51) yields Eq. (15).
+23
+
+
+B.4 Derivation of the bound
+We present a derivation of the bound in Eq. (44), drawing from the proofs in [40, 15]. We only outline the steps here, and refer the reader to those papers for more formal details. Consider the process specified by the SDE
+dXt = v(Xt, t)dt + σ(T − t)dBt (52)
+with the initial condition X0 ∼ pv(·, 0). The evolution of pv(x, t) under Eq. (52) is given by the Fokker-Planck equation
+∂tpv + ∇ · (vpv) − σ2
+2 ∇2pv = 0. (53)
+Switching the time variable to s = T − t (see Fig. 6) converts this into a backward Kolmogorov
+equation for p←v(·, s) := pv(·, t),
+∂s
+p←v − (∇ · v) p←v − v · ∇ p←v + σ2
+2 ∇2 p←v = 0, (54)
+with the terminal condition p←v(·, T ) = pv(·, 0). The solution for Eq. (54) is given by the FeynmanKac formula [63],
+p←v(x, s) = E
+"
+p←v(YT , T ) exp(−
+ZT
+s
+ds ̄ ∇ · v(Ys ̄, T − s ̄)) Ys = x
+#
+, (55)
+where Ys ̄ is a diffusion process that solves
+dYs = −v(Ys, T − s)ds + σ(s)dB′
+s. (56)
+That is, Eq. (55) is a path integral over all paths that start from x at time s and evolve under Eq. (56).
+Setting s = 0 in Eq. (55) gives us the likelihood pv(·, T ) ≡ p←v(·, 0). Next, [40] bounds the log likelihood by a change of measure and Jensen’s inequality,
+log pv(x, T ) ≥ EQ
+"
+dP
+dQ + log pv(YT , 0) −
+ZT
+0
+ds ̄∇ · v Y0 = x
+#
+. (57)
+Here dP
+dQ is the Radon-Nikodym derivative. For our purposes it is enough to understand the expectation value of this object as
+EQ
+dP
+dQ Y0 = x = −
+Z
+dyT Q(yT |x) log Q(yT |x)
+P (yT |x) , (58)
+where P is the transition probability corresponding to Eq. (56) and Q is the transition probability for a new process1
+dYs = w(Ys, s)ds + σ(s)dBˆs. (59)
+Then, Eq. (58) can be simplified [14], allowing the r.h.s. in Eq. (57) to be written as the negative of a cost functional (at s = 0)
+←
+J (x, s; v, w) := Ew
+"
+ZT
+s
+ds ̄ 1
+2σ2 ∥v + w∥2 + ∇ · v − log pv(YT , 0) Ys = x
+#
+. (60)
+We have tinkered with the notation a little, using Ew to indicate that the averages are taken over Eq. (59). Eqs. (57) and (60) will be used in two different ways below. We will set pv(·, 0) = p0(·) in both cases for simplicity.
+Case 1: v = −u, w = b+. Then, Eq. (52) becomes the controlled process Eq. (43) and Eq. (59) is the forward diffusion from Eq. (40), and Eq. (60) is
+log pu(x, T ) ≥ −←
+J (x, 0; −u, b+) . (61)
+1B′
+s is a reparameterization of Bˆs. See Sec. 4 of [40]
+24
+
+
+Case 2: v = −b−. Under this choice Eq. (52) is the reverse diffusion process from Eq. (41), which takes p0 → pd via p. Then,
+log p(x, T ) ≥ −←
+J (x, 0; −b−, w) . (62)
+This inequality is saturated if we set w = b+ [15]. To see this, we define the value function
+←
+W (x, s) := mwin
+←
+J (x, s; −b−, w), which is the minimum cost over all admissible values of w. It
+satisfies the Dynamic Programming equation [64, 65],
+∂s
+←
+W + σ2
+2 ∇2 ←
+W − ∇ · b− = mwin − 1
+2σ2 ∥b− − w∥2 − w · ∇ ←
+W . (63)
+Pointwise minimization of the r.h.s. gives w⋆ = b− − σ2∇ ←
+W . Substituting this back into Eq. (63)
+we find that
+←
+W solves
+∂s
+←
+W + b+ · ∇ ←
+W + σ2
+2 ∇2 ←
+W = σ2
+2 ∥∇ ←
+W ∥2 + σ2∇ log p← · ∇ ←
+W + ∇ · b−, (64)
+with terminal value
+←
+W (x, T ) = − log p0(x). But notice that, for v = −b−, Eq. (54) can be written
+as following equation for
+←
+S := − log p←,
+∂s
+←
+S + b+ · ∇←
+S + σ2
+2 ∇2←
+S = −σ2
+2 ∥∇←
+S ∥2 + ∇ · b−, (65)
+also with a terminal value
+←
+S (x, T ) = − log p0(x). Comparing Eqs. (64) and (65), we see that
+←
+W (x, s) = − log p←(x, s), and Eq. (62) becomes
+log p(x, T ) = − ←
+W (x, 0)
+= −Eb+
+"
+ZT
+s
+ds ̄ 1
+2σ2 ∥∇ log p←∥2 − ∇ · b− − log p0(YT ) Y0 = x
+#
+.
+(66)
+The bound on the KL divergence between p and pu can be obtained by integrating Eqs. (61) and (66) over pd,
+−
+ZT
+0
+ds ̄ E← p
+∥b+ − b−∥2 − ∥b+ − u∥2
+2σ2 − ∇ · (b− − u) ≥ DKL (p(·, T )||pu(·, T )) . (67)
+The last term in the average can be integrated by parts,
+−E← p [∇ · (b− − u)] = E← p
+h
+(b− − u) · ∇ log p←
+i (4=2) 1
+σ2 E← p [(b− − u) · (b− − b+)] , (68)
+to rewrite Eq. (67) in its final form
+ZT
+0
+ds ̄ 1
+2σ2 E← p
+h
+∥b− − u∥2i
+≥ DKL (p(·, T )∥pu(·, T )) . (69)
+Note that (a) since p(·, t) = p←(·, s) we can replace the average E← p → Ep and change the time
+integral to run over t, which gives Eq. (44), and (b) we would have an additional KL term if we had p0(·) ̸= pu(·, 0) in Eq. (67), the one from Eq. (45).
+C Non-equilibrium thermodynamics
+C.1 Dissipation, lag, and the information gap
+Eq. (15) is a Jarzynski equality, applied to Langevin dynamics. Assuming p0 ≈ p(0)
+eq so that we can ignore the KL between them, Eq. (15) is
+Stot = DKL pd p(T )
+eq . (70)
+25
+
+
+The l.h.s. is the total entropy produced as the distribution pd is diffused to p0 by Eq. (40) [9]. As diffusion progresses in the s-direction, our knowledge of the system diminishes over time. Stot is a measure of this information loss. Seen from the t-direction, Eq. (41) restores the information worn away in the forward process. This is the perspective put forward in the Vaikuntanathan-Jarzynski (VJ) relation for irreversible processes [27],
+Wdiss(t) = β−1DKL(ρt∥ρeq
+t ). (71)
+This equation can be understood by considering a system, initially at a temperature β−1, driven away from equilibrium by varying an external parameter λ from A to B, over a time interval t ∈ [0, T ]. Let ⟨W ⟩ be the average mechanical work needed to effect this transformation which, according to the Second Law, is at least equal to the free energy difference ∆F between A and B. Then, Wdiss = ⟨W ⟩ − ∆F is the average work dissipated over the whole process. ρt is the phase space
+density as the system evolves from A to B, and ρeq
+t is the equilibrium density corresponding to
+the value of the parameter at that instant, λt.2 That is, if we adjust the parameter to λt and wait a
+long time, the system will evolve to ρeq
+t , its entropy increasing monotonically during the process.
+This is Boltzmann’s H-theorem [66, 15]. In other words, ρeq
+t is the maximum entropy (or minimum information) distribution consistent with λt [3, 4].
+On the other hand, under finite time non-equilibrium evolution the system is rushed along to the state ρt and is not afforded the time to relax to the maximum entropy configuration. As a result, a lag
+develops between ρt and ρeq
+t , as measured by the KL divergence in Eq. (71). Lag indicates the extent to which the system is out of equilibrium. The VJ relation, Eq. (71), says that the dissipated work dictates the maximum extent to which the equilibrium can be broken at a given instant.
+We can also interpret the lag as the information gap between ρt and ρeq
+t . The entropy of a system is a measure of missing information, with larger entropy associated with a greater degree of ignorance
+about the system’s true state. ρeq
+t has a higher entropy than ρt since much of the information in the
+latter is lost when ρt equilibrates to ρeq
+t . Intuitively, it is clear that the gap is precisely the amount of
+information we need to exhume ρt from ρeq
+t.
+In the context of Eq. (70), the non-equilibrium process is the reverse diffusion from Eq. (41). The VJ relation forces a shift in perspective, nudging us to think of Eq. (13b) as the ‘native’ dynamics of the system, with the process in Eq. (13a) driving it away from its ‘preferred state’ p(t)
+eq . The gap measures the information deficit that keeps the native dynamics from reaching pd on its own. This is also the lesson from Schrödinger’s thought experiment (cf. Sec. 2). We can close the gap by modifying the native dynamics to enhance the probability of the outcome pd (cf. Eq. (9)). The maximum additional information needed to do this is Stot.
+These arguments also serve to illustrate a specific point about the Second Law: it is a statement about the irreversibility of a non-equilibrium transformation, even if that process is simulated on a computer. In the real world irreversibility is an observed property of almost all physical processes3 [68, 69], but we take this for granted since we evolve with SDEs that are not time-symmetric by construction (cf. Eq. (40)).
+C.2 Entropy and free energy
+Shannon entropy can be understood as a measure of ignorance. The analogous quantity we use for diffusive processes is the non-equilibrium Gibbs entropy [9]
+SG[ p←] := −
+Z
+dx p←(x, s) log p←(x, s). (72)
+SG can be understood as a continuous version of the Shannon entropy,4 up to a multiplicative factor kB which we set to 1 (see footnote 15 in [3]). Gibbs entropy is a measure of our uncertainty in the state of the system, which in this case are the locations of the diffusing particles. But we can choose the drift and diffusion coefficients such that the final distribution is narrower than the initial one
+2 ρeq
+t ≡ ρeq(·, λt) depends on time only through the parameter λt.
+3We are specifically referring to systems with a large number of degrees of freedom, N ; if N is small enough it is possible to obtain ‘second law violating’ behavior, see for instance [49, 67]. 4Eq. (72) is also called the differential entropy of a continuous random variable, which has some important differences from the discrete version. Refer to chapter 8 of [70] for details.
+26
+
+
+123
+456
+time
+Stot
+1
+2
+3
+4
+56
+Figure 7: Diffusion is a non-equilibrium process that generates entropy over time. On the left, we see snapshots of a diffusive process (Ornstein-Uhlenbeck). In the forward direction (increasing s) the distribution evolves from 1 → 6 (i.e. pd → p0), and entropy produced till that point in time is indicated on the right. Note that Stot is the total entropy produced, which is different from the change in Gibbs entropy of the distribution, which is negative in this experiment.
+(see Fig. 7). Then, our ignorance of the particle positions would be reduced, so the change in Gibbs entropy is negative. However, the total entropy increases, as expected; Stot is not just the change in Gibbs entropy.
+We can see this explicitly by looking at the expressions for both. Combining Eqs. (66) and (72) and integrating by parts one obtains
+SG[p0] − SG[pd] =
+ZT
+0
+ds E p←
+σ2
+2 ∇ log p← 2
++ ∇ · b+ , (73)
+which is different from the total entropy,
+Stot =
+ZT
+0
+ds σ2
+2 E← p
+"
+2b+
+σ2 − ∇ log p←
+2
+#
+(7=0) DKL pd p(T )
+eq − DKL p0 p(0)
+eq . (74)
+These expressions differ when b+ ̸= 0. To understand how they are related we look at the free energy
+F [p] = E[p] − β−1SG[p], (75)
+where the temperature β−1 := σ2/2 and the energy is
+E[p] := Ep [U (x)] , U (x) = −
+Zx
+dx ̄ b+(x ̄). (76)
+For simplicity we will assume that b+ and σ are time-independent (cf. Eq. (5)), so we have a
+static equilibrium state peq = Z−1 exp(−βU (x)), and that p0 = peq. The generalization to the time-dependent case is straightforward. Then,
+Stot = DKL pd peq = −SG[pd] + βE[pd] + log Z = β(F [pd] − F [peq]), (77)
+where in the last step we have used βF [peq] = − log Z, which follows from evaluating Eq. (75) on peq. Since Stot is positive, F [pd] > F [peq] irrespective of whether SG[pd] is larger or smaller than SG[peq]. In Fig. 7, frame 1 has a higher Gibbs entropy but also a higher energy, so the particles coalesce into the distribution in frame 6, giving up some of their Gibbs entropy to move to a lower energy configuration. Thus, Langevin dynamics moves pd towards the lower free energy state peq [71]. The minimization of free energy is also closely related to the interpretation of the Fokker-Planck equation as a Wasserstein gradient flow [72].
+Relating Stot to free energy also helps us connect the discussion in Sec. 2 to statistical mechanics. In systems with a large number of particles, the equilibrium distribution of microstates is sharply peaked, with the most probable microstates piled up around the free energy minima (see [3] or Sec. 4.6 in
+27
+
+
+[73]). The distributions p are the microstates in the Schrödinger picture, and P[p] ∝ exp(−βN F [p]) is peaked at peq. Then,
+e−N Stot = e−βN F [pd]
+e−βNF [peq] ≈ P[pd]. (78)
+Modifying the drift term in Eq. (9) changes the free energy landscape such that pd becomes its new minima. In other words, the diffusion model applies an external force to do work on the system, and the range of possible outcomes of the combined arrangement constitutes a non-equilibrium analog of the Gibbs ensemble.
+D Score matching
+In Sec. 4 we touched on the difficulty in defining neural entropy for the score-matching model. This point warrants further elaboration. We start with
+dXt = −(b+(Xt, T − t) − σ(t)2∇ log p(Xt, t))dt + σ(T − t)dBt, (79a)
+dXt = −b+(Xt, T − t)dt + σ(T − t)dBt. (79b)
+Notice that the drift term in Eq. (79b) has the opposite sign to the one in Eq. (13b). This seems like a natural choice, since modifying −b+ → −b+ + σ2sθ sets up the model to learn the score ∇ log p Eq. (19). But note that b+ is a confining drift term which means −b+ is not. Therefore, Eq. (79b) does not have a quasi-invariant distribution, and the intuition from Sec. 4 no longer holds. We can identify the inconsistencies arising from this conceptual breakdown through a straightforward calculation.
+Starting with Eq. (11), let us tentatively define the ideal score matching neural entropy
+Sˆsm
+NN(T ) :=
+ZT
+0
+ds σ2
+2 Ep
+h
+∥∇ log p∥2i
+. (80)
+The quantity on the right can be related to the non-equilibrium Gibbs entropy of the diffusing distribution, which we will write in terms of the time variable s (cf. Eq. (72)). The change in Gibbs entropy under the forward process is given in Eq. (73). We may therefore rewrite Eq. (80) as
+Sˆsm
+NN(T ) = SG[p0] − SG[pd] −
+ZT
+0
+ds Ep [∇ · b+] . (81)
+To simplify further we need to choose the drift term b+. Let us consider the Variance Preserving (VP) process [1, 6], for which b+(y, s) = −β(s)y/2 and σ(s) = pβ(s) in Eq. (40), where β(s) is positive. Noting that ∇ · b+ = − 1
+2 β(s)∇ · x = − D
+2 β(s), Eq. (81) reduces to
+SˆVP
+NN(T ) = SG[p0] − SG[pd] + D
+2
+ZT
+0
+ds β(s). (82)
+Upon closer inspection, Eq. (82) reveals a problem with the score matching neural entropy. Consider the trivial case where p0 and pd are identical. The Gibbs entropies at the initial and final times are equal, therefore the first two terms cancel. But we are still left with a positive integral on the r.h.s. (see Fig. 8b). This is also apparent from Eq. (80)—the score function is static but it is not zero, so the neural entropy is some positive number, and ‘information’ is delivered to the network. Next, imagine changing pd to some other distribution pd′, with p0 and the β-schedule kept fixed. The only change
+in Eq. (11) is the −SG[pd] term. As a result, if pd′ has a larger entropy than pd the neural entropy
+decreases. It would seem that the network needs to remember less information to transform p0 → pd′ than it does to convert pd to itself!
+The issue arises from the −b+ term in Eq. (79b). For the VP process that SDE is
+dX = β
+2 Xtdt + pβdBt. (83)
+But this process has a repulsive drift term which, given enough time, dilutes the distribution away to infinity. Therefore, the network sθ has to work against −b+ to keep the distribution pθ intact. In the
+above examples the growth in neural entropy due to the R dsβ(s) term in Eq. (82) is indicative of the effort needed to hold the diffusing particles in place as the drift βX/2 tries to drive them apart (see
+28
+
+
+0.0 0.2 0.4 0.6 0.8 1.0
+s
+0
+2
+4
+6
+8
+ ̇
+SNN
+(a) Entropy production rate.
+0.0 0.2 0.4 0.6 0.8 1.0
+s
+0
+1
+2
+3
+4
+SNN
+Score Matching Entropy Matching
+D 2
+∫s
+0
+ds ̄β(s ̄)
+(b) Total entropy.
+Figure 8: Ideal neural entropy curves for score matching and entropy matching models with a VP process. For entropy-matching models, the neural entropy is the same as Stot (cf. Eq. (11)), which is why entropy production trails off as forward diffusion approaches its final state.
+Fig. 8). For this reason, the score matching neural entropy from Eq. (80) is not an accurate gauge of the non-trivial information the network must store to reverse diffusion.
+In practice, Eq. (80) can be approximated by
+S sm
+NN(T ) :=
+ZT
+0
+ds σ2
+2 Ep
+h
+∥sθ ∥2 i
+, (84)
+just like we did in Eq. (18). Experimental comparison of the neural entropy in entropy-matching models and the Ssm
+NN for score-matching models are shown in Fig. 9.
+5 10 15 20
+SNemN (T)
+0.2
+0.4
+0.6
+D KL (pd ‖pθ )
+Entropy-matching
+D=4 D=5 D=6 D=7 D=8
+5.0 7.5 10.0 12.5 15.0
+S sNmN(T)
+0.1
+0.2
+0.3
+0.4
+Score-matching
+Figure 9: KL versus neural entropy for the entropy-matching and score-matching models. Both models are trained on a series of progressively larger Gaussian mixtures, just like the ones used for Fig. 11. The experiments are repeated in different dimensions, D. Sem
+NN is the neural entropy defined
+in Eq. (11). Ssm
+NN is an analogous, but different, quantity defined in Sec. D in an attempt to define neural entropy for a score-matching model. Note how network performance decreases at lower values of Ssm
+NN, in contrast to the trend in entropy-matching. This behavior is explained in Sec. D. The VP process was used for both sets of experiments, with the same β-schedule.
+29
+
+
+50 100 150 200
+2
+4
+6
+8
+10
+SNN (T)
+1e2 VPx
+50 100 150 200
+2
+4
+6
+8
+10
+1e2 SL
+50 100 150 200
+2
+4
+6
+VP
+0 50 100 150 200
+nep
+0
+2
+4
+6
+8
+D KL (pd ‖pθ )
+1e2
+D=3 D=6 D=9
+0 50 100 150 200
+nep
+0
+2
+4
+6
+8
+1e2
+0 50 100 150 200
+nep
+0.0
+0.2
+0.4
+0.6
+Figure 10: The evolution of neural entropy (top) and the KL between pd and the reconstructed distribution pθ(·, T ) (bottom) over training epochs, nep. The entropies and KL are measured at s = T = 1. The pd’s are Gaussian mixtures in D = 3, 6, 9 dimensions. The dashed lines are the actual value of Stot generated by the respective diffusion processes. The VPx and SL processes (κ = σ0 = 0.1) produce two orders of magnitude larger Stot than VP, which is why SNN is slow to catch up in these models—the network takes longer to absorb more information. This increase in retention is tracked by a decrease in the KL. Here again, the VP model outshines VPx and SL: the diffusion model can reconstitute pd more faithfully when it has to remember less information to do so.
+E Details of experiments
+All models in this paper, except for the ones in Fig. 9, were trained with 4 random seeds varying both weights initialization and order of training data, and the results were averaged over. The faint bands in the plots are within one standard deviation from the mean measurements. All computations were done on A100 GPUs with 80 GB of memory. The CIFAR-10 models were trained on 4 GPUs in parallel while the Gaussian mixture and MLP experiments were trained on just one. Training on CIFAR-10 with the full dataset (nc = 5000 in Fig. 16) takes 4.5 hours. Experiments for MNIST that stop between training epochs to compute log densities (see Figs. 3 and 13), and repeat for different numbers of training samples, take around 4 hours for each training seed. For the low-D models in the transport experiments we used Fourier features on the x variable to help the the MLPs learn better [74]. These were inserted before the input stage of an MLP with architecture (512, 256, D). We use T = 1 in all experiments. More details about specific experiments are given in the respective figure captions.
+E.1 Diffusion models
+We use three kinds of diffusion processes to experiment with different entropy production profiles in diffusion models. These are the VP, VPx, and Straight Line (SL) SDEs from Eq. (24) and Eq. (20) respectively. These are Ornstein-Uhlenbeck processes, which have the general form [29]
+dYs = f (s)Ysds + σ(s)dBs. (85)
+30
+
+
+1000 2000
+0
+2
+4
+6
+8
+D KL (pd ‖pθ )
+1e2 VPx
+D=3 D=6 D=9
+1000 2000
+0
+2
+4
+6
+8 1e2 SL
+0 10 20
+0
+1
+2
+3
+VP
+1000 2000 SNN (T)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Residual loss
+1e2
+1000 2000 SNN (T)
+0.00
+0.25
+0.50
+0.75
+1.00
+1.25
+1e2
+0 10 20 SNN (T)
+1
+2
+3
+4
+Figure 11: KL and residual loss at nep = 200 epochs vs. the neural entropy in the network. The plots are generated with the same experimental setup as Fig. 10, but we vary the total entropy produced by using increasingly broader pd’s.
+The perturbation kernel of this SDE is
+p(ys|y0) = N ys; μ(s)y0, Σ(s)21D , (86)
+where
+μ(s) = exp
+Zs
+0
+ds ̄f (s ̄) , (87a)
+Σ(s)2 = μ(s)2
+Zs
+0
+ds ̄σ(s ̄)2
+μ(s ̄)2 . (87b)
+Starting at s = 0, a sample yd ∼ pd is propagated to
+ys = μ(s)yd + Σ(s)ε (88)
+at an intermediate time s ∈ (0, T ], where ε ∼ N (0, 1D). The object
+∇ log p(ys|yd) = − ε
+Σ(s) (89)
+is used in the denoising entropy-matching objective
+LDEM := T Eyd∼pd Es∼U(0,T ) Λ(s) σ(s)2
+2 Eys∼p(ys|yd) ∇ log p(s)
+eq + eθ − ∇ log p(ys|yd)
+2
+.
+(90) It is straightforward to show that LDEM is equivalent to the upper bound in Eq. (17) when Λ(s) = 1 [76]. For instance, plugging sθ = ∇ log p(t)
+eq + eθ into the derivation in App. A of [40] would suffice. Empirically, it has been found that the choice Λ(s) = 2Σ(s)2/σ(s)2 produces better results in image models [5], although [20] reports that Λ(s) = 1 gives better log densities when used in conjunction with importance sampling. We have used the prescription from [5] with s sampled from the uniform distribution U(0, T ) with no importance sampling. In the experiments shown in Figs. 2 and 10 each yd is evolved to 10 random values of s from this interval, which improved KL estimates whilst also
+31
+
+
+0.00 0.25 0.50 0.75 1.00
+s
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+ ̇
+S NN (s)
+1e5 Entropy production rate
+0.2 0.4 0.6 0.8 1.0
+s
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+SNN (s)
+1e3 Total entropy
+0.02 0.04 0.06 0.08 0.10
+s
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+ ̇
+S NN (s)
+1e5
+Zoomed in
+0.02 0.04 0.06 0.08 0.10
+s
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+SNN (s)
+1e3
+Zoomed in
+nep =5 nep =10 nep =20
+nep =40 nep =80 nep=150
+nep=250 nep=350 nep=400
+nep=500 nep=600
+Figure 12: Entropy production curves for an image diffusion model trained on the entire MNIST dataset (nc = 6000 from Fig. 3) with the VP process. The different lines correspond to entropy measurements at different epochs of training (see Fig. 2). The lower panels zoom in on a time interval close to the start of the forward diffusion process. Notice how the entropy production rate is sharply peaked near s = 0. This is due to the dimensionality of the data manifold Md. Since Md is much lower dimensional than the ambient pixel space the model must supply a large amount of information as t → T (or s → 0) to place the samples on Md. The same behavior also appears in score-matching models, but it is often conflated with a numerical divergence at s = 0 due to the vanishing of Σ(s) in Eq. (89) [75]. The latter is addressed by truncating the diffusion process at s = 10−5 [6]. These entropy production rates are computed by splitting the interval (10−5, T ] into 500 time steps and computing the average in Eq. (23) over 1000 samples from the test dataset propagated to each step.
+32
+
+
+0 200 400 600
+nep
+20
+40
+SNN (T)
+1e2
+0 200 400 600
+nep
+10
+0
+10
+Cross-entropy
+1e2
+0 200 400 600
+nep
+0
+5
+10
+Loss
+1e2
+nc = 10 nc = 100 nc = 1000 nc = 3000 nc = 6000
+Figure 13: The evolution of neural entropy, cross-entropy, and loss over training epochs for an unconditional image diffusion model (SL) trained on the MNIST dataset. This is the analog of Fig. 3 for the Straight Line diffusion model (cf. Eq. (20)). Notice that a far greater amount of neural entropy is produced here compared to the VP process, for reasons explained in Sec. 5. However, the cross entropy settles to similar values for both VP and SL. The scaling of SNN(T ) with the number of samples, at nep = 600, still exhibits a nearly logarithmic trend, just like with the VP process (see Fig. 16).
+0.00 0.25 0.50 0.75 1.00
+s
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+1.2
+ ̇
+S NN (s)
+1e5 Entropy production rate
+0.2 0.4 0.6 0.8 1.0
+s
+0
+1
+2
+3
+4
+5
+SNN (s)
+1e3 Total entropy
+0.02 0.04 0.06 0.08 0.10
+s
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+1.2
+ ̇
+S NN (s)
+1e5
+Zoomed in
+0.02 0.04 0.06 0.08 0.10
+s
+0
+1
+2
+3
+4
+5
+SNN (s)
+1e3
+Zoomed in
+nep =5 nep =10 nep =20
+nep =40 nep =80 nep=150
+nep=250 nep=350 nep=400
+nep=500 nep=600
+Figure 14: Entropy production curves for an image diffusion model trained on the entire MNIST dataset (nc = 6000 from Fig. 13) with the SL process.
+33
+
+
+0 100 200 300
+nep
+1
+2
+3
+SNN (T)
+0 100 200 300
+nep
+0
+1
+2
+3
+4
+D KL (pd ‖pθ )
+0 100 200 300
+nep
+1.5
+2.0
+2.5
+Loss
+N = 10 N = 100
+N = 500 N = 1000
+N = 5000 N = 10000
+Figure 15: The evolution of neural entropy, cross-entropy, and loss over training epochs for diffusion model (VP) with an MLP core trained on a mixture of five Gaussians in D = 6 dimensions. N is the number of samples used for training. The scaling of SNN(T ) with the number of samples does not show a neat trend like the ones for the image models (see Fig. 16). Due to the unstructured nature of the data and the relatively weak prior constraints imposed by the MLP, the model learns different distributions at different N . This is most emphatic for N = 10 where the data is so sparse that the model increasingly concentrates probability mass around the given samples as training progresses. This is why the KL rises and loss continues to drop for N = 10.
+102 103 104
+N
+0.6
+0.8
+1.0
+1.2
+SNN (T)
+1e4 CIFAR-10/U-net+SA
+102 103 104
+N
+1.50
+1.75
+2.00
+2.25
+2.50
+1e3 MNIST/U-net
+101 102 103 104
+N
+2.8
+3.0
+3.2
+3.4
+3.6 Gaussian Mixture/MLP
+Figure 16: Neural entropy versus number of samples for CIFAR-10 trained on a U-net with selfattention layers (left), MNIST trained on a simple U-net (center) (cf. Fig. 3), and mixture of Gaussians in D = 6 trained on an MLP-based diffusion model (right) (cf. Fig. 15). These are the values of SNN(T ) at the end of training. The first two plots are the same ones from Fig. 1. Note the absence of the logarithmic trend in the Gaussian mixture/MLP case. All models shown here use the VP process.
+34
+
+
+0.00 0.25 0.50 0.75 1.00
+s
+0
+1
+2
+3
+4
+5
+ ̇
+S NN (s)
+1e5 Entropy production rate
+0.2 0.4 0.6 0.8 1.0
+s
+0.00
+0.25
+0.50
+0.75
+1.00
+1.25
+SNN (s)
+1e4 Total entropy
+0.01 0.02 0.03 0.04 0.05
+s
+0
+1
+2
+3
+4
+5
+ ̇
+S NN (s)
+1e5
+Zoomed in
+0.01 0.02 0.03 0.04 0.05
+s
+0.00
+0.25
+0.50
+0.75
+1.00
+1.25
+SNN (s)
+1e4
+Zoomed in
+nc=10 nc=100 nc=1000 nc=3000 nc=5000
+Figure 17: Entropy production curves for CIFAR-10. Note that the different colors correspond to the different number of samples per class used for training, nc, rather than the number of epochs. All CIFAR-10 experiments were trained to 200 epochs. Computing the neural entropy in this case requires special care since the peak near s = 0 is even sharper than the ones for MNIST (see Fig. 12); the lower-dimensional data manifold with the CIFAR-10 images lives in a much higher-dimensional pixel space compared to MNIST.
+reducing loss fluctuations [77, 78]. But in the image models we sampled at just one random s per yd per epoch.
+The functions μ(s) and Σ(s) for the VPx and SL processes can be read off from Eq. (25) and Eq. (21) respectively. In both cases Σ(s) vanishes at s = 0, so Eq. (89) diverges at that instant. Therefore we do not venture below s = 10−5 when training with Eq. (90). The SL SDE has an additional singularity at s = T = 1, so we also cut off samples at s = 1 − 10−5 in that case. Note that [31] approximates Σ(s)SL ≈ σ0 since σ0 is small, but we retain the full time-dependence in our experiments.
+New samples from a diffusion model can be generated efficiently using the Probability Flow ODE [6, 79, 80],
+dx(t) = − b+(x, T − t) − σ2
+2 ∇ log p(x, t) dt, (91)
+where the true score is approximated by ∇ log p ≈ ∇ log p(t)
+eq + eθ in entropy-matching models.
+35
+
+
+nc=10
+nc=100
+nc=1000
+nc=3000
+nc=5000
+CIFAR-10 samples (seed 7)
+nc=10
+nc=100
+nc=1000
+nc=3000
+nc=5000
+CIFAR-10 samples (seed 23)
+Figure 18: A few samples generated from the conditional diffusion model trained on CIFAR-10 images. Each row in a grid contains one image from each class, and the rows correspond to models trained with different numbers of samples nc per class. We used the probability flow ODE to produce these images (cf. Eq. (91)), with the same ten initial noise vectors for each nc. These samples affirm the key takeaway from the neural entropy vs. N trends Figs. 1 and 16: the rate of additional information absorbed by the model decreases with each new sample. The two grids differ by the seed value used to initialize model weights and fix the order in which the training samples are applied.
+E.2 Density estimation
+In our experiments with Gaussian mixtures and MNIST, we compute the KL divergence to the true distribution and the cross-entropy respectively to gauge mode performance (cf. Figs. 3, 13 and 15). But diffusion models do not give exact log densities on the learned distribution, despite claims in the literature. However, a lower bound on the log density log pθ(x, T ) can be established from Eq. (61). That latter is, explicitly,
+log pu(x, T ) ≥ −E
+"
+ZT
+0
+ds 1
+2σ2 ∥b+ − u∥2 − ∇ · u − log pu(YT , 0) Y0 = x
+#
+. (92)
+The expectation is computed over trajectories generated by Eq. (40) that start at x at s = 0. The bound is saturated if u = b−, in which case pu(x, T ) = pd(x) (cf. Sec. B.4), but u is approximated by a neural network in diffusion models. We can use integration by parts to avoid taking the gradient
+36
+
+
+of the neural network in the ∇ · u term. For a vector-valued function h(ys, s),
+EYs [∇ · h(Ys, s)|Y0 = x] = −
+Z
+dys h(ys, s) · ∇p(ys, s|x, 0)
+= −EYs [h(Ys, s) · ∇ log p(Ys, s|Y0, 0)|Y0 = x] ,
+(93)
+where p(ys, s|x, 0) is the same kernel from Eq. (89) with the time-dependence indicated explicitly, and we have assumed that the product hp vanishes at the x-boundaries. Using Eq. (93) in Eq. (92) we obtain
+log pu(x, T ) ≥ (94)
+−E
+"
+ZT
+0
+ds 1
+2σ2 ∥b+ − u∥2 + u · ∇ log p(Ys, s|Y0, 0) − log pu(YT , 0) Y0 = x
+#
+.
+By transferring the gradient operator from u we avoid the need to take derivatives of the neural network; since the transition probability is a Gaussian the gradients of their log are easy to calculate. The r.h.s. is a path integral, which can estimate efficiently as a Monte Carlo average
+log pu(x, T ) ≥ −T Es∼U(0,T )Eys∼p(ys,s|x,0)
+1
+2σ2 ∥b+ − u∥2 + u · ∇ log p(ys, s|x, 0) − SG[p0].
+(95) Here, we have replaced EyT ∼p(yT ,T |x,0) [log pu(yT )] with the negative Gibbs entropy −SG[p0] since yT would be distributed as p0 irrespective of the x at which it started, to a very good approximation
+(cf. Sec. C.2). Finally, for entropy-matching models, u = −b+ − σ2eθ, and therefore
+log pem
+θ (x, T ) ≥ − SG[p0]
+−T Es∼U(0,T )Eys∼p(ys,s|x,0)
+σ2
+2 ∇ log p(t)
+eq + eθ
+2
+− (b+ + σ2eθ) · ∇ log p(ys, s|x, 0) .
+(96) We use this lower bound in lieu of the true neural log densities in our calculations. The MC average must be computed with a fairly large number of samples [77, 78]. For the Gaussian mixture experiments, this is an excellent substitution. The results are noisy but still insightful in the image experiments. A version of Eq. (96) for score-matching is derived in [20], which is obtained by setting eθ = −∇ log p(t)
+eq + sθ in this one.
+37
+
+
+NeurIPS Paper Checklist
+1. Claims
+Question: Do the main claims made in the abstract and introduction accurately reflect the paper’s contributions and scope?
+Answer: [Yes]
+Justification: The abstract and introduction clearly state the goal of the paper and the main contributions.
+Guidelines:
+• The answer NA means that the abstract and introduction do not include the claims made in the paper. • The abstract and/or introduction should clearly state the claims made, including the contributions made in the paper and important assumptions and limitations. A No or NA answer to this question will not be perceived well by the reviewers. • The claims made should match theoretical and experimental results, and reflect how much the results can be expected to generalize to other settings. • It is fine to include aspirational goals as motivation as long as it is clear that these goals are not attained by the paper.
+2. Limitations
+Question: Does the paper discuss the limitations of the work performed by the authors?
+Answer: [Yes]
+Justification: The limitations of our work are discussed inline in Sec. 7.
+Guidelines:
+• The answer NA means that the paper has no limitation while the answer No means that the paper has limitations, but those are not discussed in the paper. • The authors are encouraged to create a separate "Limitations" section in their paper. • The paper should point out any strong assumptions and how robust the results are to violations of these assumptions (e.g., independence assumptions, noiseless settings, model well-specification, asymptotic approximations only holding locally). The authors should reflect on how these assumptions might be violated in practice and what the implications would be. • The authors should reflect on the scope of the claims made, e.g., if the approach was only tested on a few datasets or with a few runs. In general, empirical results often depend on implicit assumptions, which should be articulated. • The authors should reflect on the factors that influence the performance of the approach. For example, a facial recognition algorithm may perform poorly when image resolution is low or images are taken in low lighting. Or a speech-to-text system might not be used reliably to provide closed captions for online lectures because it fails to handle technical jargon. • The authors should discuss the computational efficiency of the proposed algorithms and how they scale with dataset size. • If applicable, the authors should discuss possible limitations of their approach to address problems of privacy and fairness. • While the authors might fear that complete honesty about limitations might be used by reviewers as grounds for rejection, a worse outcome might be that reviewers discover limitations that aren’t acknowledged in the paper. The authors should use their best judgment and recognize that individual actions in favor of transparency play an important role in developing norms that preserve the integrity of the community. Reviewers will be specifically instructed to not penalize honesty concerning limitations.
+3. Theory assumptions and proofs
+Question: For each theoretical result, does the paper provide the full set of assumptions and a complete (and correct) proof?
+Answer: [Yes]
+38
+
+
+Justification: The assumptions and proofs are given in detail in Sec. B.
+Guidelines:
+• The answer NA means that the paper does not include theoretical results. • All the theorems, formulas, and proofs in the paper should be numbered and crossreferenced. • All assumptions should be clearly stated or referenced in the statement of any theorems. • The proofs can either appear in the main paper or the supplemental material, but if they appear in the supplemental material, the authors are encouraged to provide a short proof sketch to provide intuition. • Inversely, any informal proof provided in the core of the paper should be complemented by formal proofs provided in appendix or supplemental material. • Theorems and Lemmas that the proof relies upon should be properly referenced.
+4. Experimental result reproducibility
+Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper (regardless of whether the code and data are provided or not)?
+Answer: [Yes]
+Justification: Details of the experiments are discussed in Secs. E and 6.
+Guidelines:
+• The answer NA means that the paper does not include experiments. • If the paper includes experiments, a No answer to this question will not be perceived well by the reviewers: Making the paper reproducible is important, regardless of whether the code and data are provided or not. • If the contribution is a dataset and/or model, the authors should describe the steps taken to make their results reproducible or verifiable. • Depending on the contribution, reproducibility can be accomplished in various ways. For example, if the contribution is a novel architecture, describing the architecture fully might suffice, or if the contribution is a specific model and empirical evaluation, it may be necessary to either make it possible for others to replicate the model with the same dataset, or provide access to the model. In general. releasing code and data is often one good way to accomplish this, but reproducibility can also be provided via detailed instructions for how to replicate the results, access to a hosted model (e.g., in the case of a large language model), releasing of a model checkpoint, or other means that are appropriate to the research performed. • While NeurIPS does not require releasing code, the conference does require all submissions to provide some reasonable avenue for reproducibility, which may depend on the nature of the contribution. For example (a) If the contribution is primarily a new algorithm, the paper should make it clear how to reproduce that algorithm. (b) If the contribution is primarily a new model architecture, the paper should describe the architecture clearly and fully. (c) If the contribution is a new model (e.g., a large language model), then there should either be a way to access this model for reproducing the results or a way to reproduce the model (e.g., with an open-source dataset or instructions for how to construct the dataset). (d) We recognize that reproducibility may be tricky in some cases, in which case authors are welcome to describe the particular way they provide for reproducibility. In the case of closed-source models, it may be that access to the model is limited in some way (e.g., to registered users), but it should be possible for other researchers to have some path to reproducing or verifying the results.
+5. Open access to data and code
+Question: Does the paper provide open access to the data and code, with sufficient instructions to faithfully reproduce the main experimental results, as described in supplemental material?
+39
+
+
+Answer: [Yes]
+Justification: The code for all experiments is available here.
+Guidelines:
+• The answer NA means that paper does not include experiments requiring code. • Please see the NeurIPS code and data submission guidelines (https://nips.cc/ public/guides/CodeSubmissionPolicy) for more details.
+• While we encourage the release of code and data, we understand that this might not be possible, so “No” is an acceptable answer. Papers cannot be rejected simply for not including code, unless this is central to the contribution (e.g., for a new open-source benchmark). • The instructions should contain the exact command and environment needed to run to reproduce the results. See the NeurIPS code and data submission guidelines (https: //nips.cc/public/guides/CodeSubmissionPolicy) for more details.
+• The authors should provide instructions on data access and preparation, including how to access the raw data, preprocessed data, intermediate data, and generated data, etc. • The authors should provide scripts to reproduce all experimental results for the new proposed method and baselines. If only a subset of experiments are reproducible, they should state which ones are omitted from the script and why. • At submission time, to preserve anonymity, the authors should release anonymized versions (if applicable). • Providing as much information as possible in supplemental material (appended to the paper) is recommended, but including URLs to data and code is permitted.
+6. Experimental setting/details
+Question: Does the paper specify all the training and test details (e.g., data splits, hyperparameters, how they were chosen, type of optimizer, etc.) necessary to understand the results?
+Answer: [Yes]
+Justification: The training details are given in Sec. 6, and under the figures in Sec. E. More detail will be provided with the code.
+Guidelines:
+• The answer NA means that the paper does not include experiments. • The experimental setting should be presented in the core of the paper to a level of detail that is necessary to appreciate the results and make sense of them. • The full details can be provided either with the code, in appendix, or as supplemental material.
+7. Experiment statistical significance
+Question: Does the paper report error bars suitably and correctly defined or other appropriate information about the statistical significance of the experiments?
+Answer: [Yes]
+Justification: All experiments in this paper, except for the ones in Fig. 9 are computed over four different initializations of the respective model weights. The plots indicate the region of one standard deviation from the mean results, when relevant.
+Guidelines:
+• The answer NA means that the paper does not include experiments. • The authors should answer "Yes" if the results are accompanied by error bars, confidence intervals, or statistical significance tests, at least for the experiments that support the main claims of the paper. • The factors of variability that the error bars are capturing should be clearly stated (for example, train/test split, initialization, random drawing of some parameter, or overall run with given experimental conditions). • The method for calculating the error bars should be explained (closed form formula, call to a library function, bootstrap, etc.)
+40
+
+
+• The assumptions made should be given (e.g., Normally distributed errors).
+• It should be clear whether the error bar is the standard deviation or the standard error of the mean.
+• It is OK to report 1-sigma error bars, but one should state it. The authors should preferably report a 2-sigma error bar than state that they have a 96% CI, if the hypothesis of Normality of errors is not verified.
+• For asymmetric distributions, the authors should be careful not to show in tables or figures symmetric error bars that would yield results that are out of range (e.g. negative error rates).
+• If error bars are reported in tables or plots, The authors should explain in the text how they were calculated and reference the corresponding figures or tables in the text.
+8. Experiments compute resources
+Question: For each experiment, does the paper provide sufficient information on the computer resources (type of compute workers, memory, time of execution) needed to reproduce the experiments?
+Answer: [Yes]
+Justification: The details are given in Sec. E.
+Guidelines:
+• The answer NA means that the paper does not include experiments.
+• The paper should indicate the type of compute workers CPU or GPU, internal cluster, or cloud provider, including relevant memory and storage.
+• The paper should provide the amount of compute required for each of the individual experimental runs as well as estimate the total compute.
+• The paper should disclose whether the full research project required more compute than the experiments reported in the paper (e.g., preliminary or failed experiments that didn’t make it into the paper).
+9. Code of ethics
+Question: Does the research conducted in the paper conform, in every respect, with the NeurIPS Code of Ethics https://neurips.cc/public/EthicsGuidelines?
+Answer: [Yes]
+Justification: We conform.
+Guidelines:
+• The answer NA means that the authors have not reviewed the NeurIPS Code of Ethics.
+• If the authors answer No, they should explain the special circumstances that require a deviation from the Code of Ethics.
+• The authors should make sure to preserve anonymity (e.g., if there is a special consideration due to laws or regulations in their jurisdiction).
+10. Broader impacts
+Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work performed?
+Answer: [NA]
+Justification: There is no direct societal impact that we can see.
+Guidelines:
+• The answer NA means that there is no societal impact of the work performed.
+• If the authors answer NA or No, they should explain why their work has no societal impact or why the paper does not address societal impact.
+• Examples of negative societal impacts include potential malicious or unintended uses (e.g., disinformation, generating fake profiles, surveillance), fairness considerations (e.g., deployment of technologies that could make decisions that unfairly impact specific groups), privacy considerations, and security considerations.
+41
+
+
+• The conference expects that many papers will be foundational research and not tied to particular applications, let alone deployments. However, if there is a direct path to any negative applications, the authors should point it out. For example, it is legitimate to point out that an improvement in the quality of generative models could be used to generate deepfakes for disinformation. On the other hand, it is not needed to point out that a generic algorithm for optimizing neural networks could enable people to train models that generate Deepfakes faster.
+• The authors should consider possible harms that could arise when the technology is being used as intended and functioning correctly, harms that could arise when the technology is being used as intended but gives incorrect results, and harms following from (intentional or unintentional) misuse of the technology.
+• If there are negative societal impacts, the authors could also discuss possible mitigation strategies (e.g., gated release of models, providing defenses in addition to attacks, mechanisms for monitoring misuse, mechanisms to monitor how a system learns from feedback over time, improving the efficiency and accessibility of ML).
+11. Safeguards
+Question: Does the paper describe safeguards that have been put in place for responsible release of data or models that have a high risk for misuse (e.g., pretrained language models, image generators, or scraped datasets)?
+Answer: [NA]
+Justification:
+Guidelines: Not applicable.
+• The answer NA means that the paper poses no such risks.
+• Released models that have a high risk for misuse or dual-use should be released with necessary safeguards to allow for controlled use of the model, for example by requiring that users adhere to usage guidelines or restrictions to access the model or implementing safety filters.
+• Datasets that have been scraped from the Internet could pose safety risks. The authors should describe how they avoided releasing unsafe images.
+• We recognize that providing effective safeguards is challenging, and many papers do not require this, but we encourage authors to take this into account and make a best faith effort.
+12. Licenses for existing assets
+Question: Are the creators or original owners of assets (e.g., code, data, models), used in the paper, properly credited and are the license and terms of use explicitly mentioned and properly respected?
+Answer: [Yes]
+Justification: We cite the creators of MNIST and CIFAR-10.
+Guidelines:
+• The answer NA means that the paper does not use existing assets. • The authors should cite the original paper that produced the code package or dataset.
+• The authors should state which version of the asset is used and, if possible, include a URL. • The name of the license (e.g., CC-BY 4.0) should be included for each asset.
+• For scraped data from a particular source (e.g., website), the copyright and terms of service of that source should be provided.
+• If assets are released, the license, copyright information, and terms of use in the package should be provided. For popular datasets, paperswithcode.com/datasets has curated licenses for some datasets. Their licensing guide can help determine the license of a dataset.
+• For existing datasets that are re-packaged, both the original license and the license of the derived asset (if it has changed) should be provided.
+42
+
+
+• If this information is not available online, the authors are encouraged to reach out to the asset’s creators.
+13. New assets
+Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets?
+Answer: [No]
+Justification: We do not introduce new assets.
+Guidelines:
+• The answer NA means that the paper does not release new assets.
+• Researchers should communicate the details of the dataset/code/model as part of their submissions via structured templates. This includes details about training, license, limitations, etc.
+• The paper should discuss whether and how consent was obtained from people whose asset is used.
+• At submission time, remember to anonymize your assets (if applicable). You can either create an anonymized URL or include an anonymized zip file.
+14. Crowdsourcing and research with human subjects
+Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants and screenshots, if applicable, as well as details about compensation (if any)?
+Answer: [NA]
+Justification:
+Guidelines:
+• The answer NA means that the paper does not involve crowdsourcing nor research with human subjects.
+• Including this information in the supplemental material is fine, but if the main contribution of the paper involves human subjects, then as much detail as possible should be included in the main paper.
+• According to the NeurIPS Code of Ethics, workers involved in data collection, curation, or other labor should be paid at least the minimum wage in the country of the data collector.
+15. Institutional review board (IRB) approvals or equivalent for research with human subjects
+Question: Does the paper describe potential risks incurred by study participants, whether such risks were disclosed to the subjects, and whether Institutional Review Board (IRB) approvals (or an equivalent approval/review based on the requirements of your country or institution) were obtained?
+Answer: [NA]
+Justification:
+Guidelines:
+• The answer NA means that the paper does not involve crowdsourcing nor research with human subjects.
+• Depending on the country in which research is conducted, IRB approval (or equivalent) may be required for any human subjects research. If you obtained IRB approval, you should clearly state this in the paper.
+• We recognize that the procedures for this may vary significantly between institutions and locations, and we expect authors to adhere to the NeurIPS Code of Ethics and the guidelines for their institution.
+• For initial submissions, do not include any information that would break anonymity (if applicable), such as the institution conducting the review.
+16. Declaration of LLM usage
+43
+
+
+Question: Does the paper describe the usage of LLMs if it is an important, original, or non-standard component of the core methods in this research? Note that if the LLM is used only for writing, editing, or formatting purposes and does not impact the core methodology, scientific rigorousness, or originality of the research, declaration is not required.
+Answer: [NA]
+Justification:
+Guidelines:
+• The answer NA means that the core method development in this research does not involve LLMs as any important, original, or non-standard components.
+• Please refer to our LLM policy (https://neurips.cc/Conferences/2025/LLM) for what should or should not be described.
+44

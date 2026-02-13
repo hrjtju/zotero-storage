@@ -1,0 +1,1351 @@
+Infinitely deep neural networks as diffusion processes
+Stefano Peluchetti
+speluchetti@cogent.co.jp
+Stefano Favaro
+stefano.favaro@unito.it Cogent Labs Department ESOMAS
+University of Torino
+and Collegio Carlo Alberto
+Abstract
+When the parameters are independently and
+identically distributed (initialized) neural net
+works exhibit undesirable properties that
+emerge as the number of layers increases, e.g.
+a vanishing dependency on the input and a
+concentration on restrictive families of func
+tions including constant functions. We con
+sider parameter distributions that shrink as
+the number of layers increases in order to re
+cover well-behaved stochastic processes in the
+limit of infinite depth. This leads to set forth a
+link between infinitely deep residual networks
+and solutions to stochastic differential equa
+tions, i.e. diffusion processes. We show that
+these limiting processes do not suffer from the
+aforementioned issues and investigate their
+properties.
+1 Introduction
+Modern neural networks (NN) models featuring a large
+number of layers (depth) and features per layer (width)
+have achieved a remarkable performance across many
+domains (LeCun et al., 2015). It is well known (Neal,
+1995; Matthews et al., 2018) that in the limit of infi
+nite width, NNs whose parameters are appropriately
+distributed converge to Gaussian processes. This con
+nection helps to study properties of very wide NNs,
+and forms the basis of inferential algorithms directly
+targeting the infinite-dimensional setting (Lee et al.,
+2018; Garriga-Alonso et al., 2019; Lee et al., 2019;
+Arora et al., 2019). Based on this recent literature,
+it is natural to ask whether it is possible to set an
+Proceedings of the 23rdInternational Conference on Artificial
+Intelligence and Statistics (AISTATS) 2020, Palermo, Italy.
+PMLR: Volume 108. Copyright 2020 by the author(s).
+analogous useful connection between infinitely deep
+neural networks (IDNN) and stochastic processes. At
+a first glance, this correspondence might prove elusive.
+To see why, we now look at the literature on initial
+ization schemes. Indeed there is a duality between
+initialization schemes and Bayesian NNs: an initial
+ization scheme can be seen as a prior on the model
+parameters, thus inducing a prior on the NN. A NN at
+initialization may thus be viewed as a stochastic pro
+cess indexed by depth, whose distribution is defined by
+a sequence of conditional distributions mapping from
+each layer to the next. Early works focused on stabi
+lizing the variance of key quantities of interest across
+the layers of deep NNs (Glorot and Bengio, 2010; He
+et al., 2015). More recent works (Poole et al., 2016;
+Schoenholz et al., 2017; Hayou et al., 2019a) consider
+the impact of initializations to the propagation of the
+input signal.
+Even when initialized on the edge of chaos (EOC) for
+optimal signal propagation, feedforward NNs with fixed
+independent and identically distributed (i.i.d.) initial
+ization exhibit some pathological properties as their
+total depth increases. In particular, the dependency on
+the input eventually vanishes for most activation func
+tions. In addition to that, the layers seen as random
+functions on the input space eventually concentrate on
+restrictive families including constant functions. As an
+illustrative example, we show in Figure 1 function sam
+ples from the last layer of a feedforward deep NNs for
+two activation functions under EOC initialization. For
+a tanh activation, the input has no discernible impact
+on the output, as can be seen by the constant marginal
+distributions, and the sampled functions are almost con
+stant. This behavior is representative of most smooth
+activation functions. For a ReLU activation, the input
+affects the variance of the output and the function sam
+ples are piece-wise linear. In both cases, the outputs of
+any two inputs end up perfectly correlated. While this
+study applies to feedforward NNs, very deep residual
+networks (ResNet) suffer from similar issues (Yang and
+Schoenholz, 2017), with the additional issue that the
+arXiv:1905.11065v3 [stat.ML] 1 Mar 2020
+
+
+Infinitely deep neural networks as diffusion processes
+2 10 1 2
+2
+1
+0
+1
+2
+tanh
+2 10 1 2
+ReLU
+Figure 1: Function samples of a given pre-activation
+(number 1) of the last layer, xlast,1, of a fully connected
+feedforward NN with 500 layers of 500 units over a 1
+dimensional input z ∈ [−2, 2]; tanh activation function
+and ReLU activation function, and parameters on the
+edge of chaos; 5 draws are displayed in blue in each
+figure; for each input the 5%, 50% and 95% quantiles
+are displayed in orange.
+variance of the Gaussian-distributed pre-activations
+may grow unbounded over layers.
+While it is possible to obtain a well-defined stochastic
+process corresponding to an IDNN, such a process is
+unexpressive: linear regression is a more flexible alter
+native. The difficulties discussed so far are determined
+by the fact that typical prior distributions on the model
+parameters introduce a constant level of randomness
+over each hidden layer. In this paper we consider prior
+distributions that depend on the number of layers, in
+such a way that they shrink as the number layers in
+creases. This approach leads to our main result: as the
+number of layers increases, a class of ResNets converges,
+jointly over multiple inputs, to diffusion processes on
+a finite time interval. The conditions required for at
+taining convergence provide us with a general guideline
+for selecting compatible NN architectures, activation
+functions and parameters distributions. The limiting
+diffusion processes satisfy suitable stochastic differen
+tial equations (SDE) that describe the evolution of
+IDNN layers over time (depth). The limiting diffusion
+is well-behaved in the sense that: i) it retains depen
+dency from the input; ii) it does not suffer from the
+perfect correlation constraint; iii) it does not collapse
+to a deterministic function nor does it diverge.
+The paper is structured as follows. In Section 2 we
+recall some preliminary results on diffusion limits of
+discrete-time stochastic process. Section 3 contains our
+main result: the convergence of a class of ResNets to
+solutions of SDEs. Section 4 contains numerical ex
+periments and Section 5 concludes. Proofs, additional
+experiments and plots, and additional discussions on re
+lated work are deferred to the Supplementary Material
+(SM).
+Notation: for a matrix h, h> is its transpose, and if
+h is square diag(h) is its diagonal vector and Tr(h) is
+its trace; ‖x‖ = √x>x is the norm of the vector x;
+〈x, y〉 = x>y is the inner product of vectors x and y;
+‖h‖ = √Tr(h>h) is the norm of a matrix h; vec(u) is
+the vectorization the tensor u; I is the identity matrix
+and 1 is a vector of ones; for random variables z and w,
+var[z], cov[z, w] and ρ[z, w] are the variance, covariance
+and correlation; for random vectors x ∈ Rr and y ∈ Rc,
+C[x, y]i,j = cov[xi, xj] is the r × c cross-covariance
+matrix C[x, y]; V[x] = C[x, x] is the r × r covariance
+matrix of x; the expectation E[u] of a random tensor
+u is the tensor of the expectations of its elements; for
+two D-dimensional stochastic processes xt, yt, [x]t is
+the quadratic variation (a D-dimensional vector) and
+[x, y]t is the quadratic covariation (a D×D-dimensional
+matrix); 1 is the indicator function.
+2 Preliminaries
+For l = 1, . . . , L let xl be the l-th layer of a NN with
+with L layers, and let x0 be the NN input. In this
+section we recall general results for diffusion approxi
+mations. The connection with NNs, i.e. defining what
+xl exactly represents in a NN, is postponed to the
+next section. As we will be seeking a continuous time
+stochastic process limit we re-index x0, x1, . . . , xL on
+a discrete time scale. Let T > 0 denote a terminal
+time, ∆t = T /L, for each L we establish the corre
+spondence between discrete indices l ∈ Z+ and discrete
+times t ∈ R+ by l = 0, 1, . . . , L ↔ t = 0, ∆t, 2∆t, . . . , T .
+From now on we will consider without loss of generality
+a NN with input x0 and layers x∆t, . . . , xT , denoting
+a layer with xt.
+Let p(xT |x0) be the conditional distribution of the
+output given the input for a NN at initialization. Our
+strategy to enforce desirable properties on p(xT |x0)
+consists in having a NN converge, as the number of
+layers L go to infinity (∆t ↓ 0), to a continuous-time
+stochastic process on the time interval [0, T ]. In this
+case, for L large enough, the distribution p(xT |x0) will
+be close to the distribution of the limiting process at
+terminal time T given the same x0, and such limiting
+process should be chosen to make this transition density
+well behaved. In all NN architectures considered in this
+paper, each layer depends only on the previous one,
+hence xt has the Markov property. These conditions
+identify a class of diffusion processes (Stroock and
+Varadhan, 2006), which are continuous-time Markov
+processes with continuous paths, as natural candidates
+for the limiting process. For simplicity we assume that
+the parameters of all layers follow the same distribution
+(extensions are discussed in Section 3.2), making xt
+time-homogeneous.
+Let xt be a generic D-dimensional discrete-time Markov
+process and let ∆xt = xt+∆t − xt define the forward
+
+
+Running heading author breaks the line
+increments. Hereafter we report a set of conditions
+that imply the convergence of xt to the solution of a
+limiting SDE, and it is implicit that the distribution
+p(xt+∆t|xt) depends on ∆t for the limits to exist as
+required.
+Assumption 2.1 (Convergence of instantaneous mean
+and covariance). There exist μx(x) : RD → RD and
+σx2(x) : RD → RD×D such that:
+l∆itm↓0
+E[∆xt|xt]
+∆t = μx(xt) (1)
+l∆itm↓0
+V[∆xt|xt]
+∆t = σx2(xt) (2)
+l∆itm↓0
+E[(∆xt )2+δ |xt ]
+∆t = 0 (3)
+for some δ > 0, where all convergences are uniform on
+compacts of RD for each component, μx(x) and σx2(x)
+are continuous, and σx2(x) is positive semi-definite:
+σx2(x) = σx(x)σx(x)> for some σx(x) : RD → RD×D.
+Assumptions (1) and (2) pinpoint the form of the limit
+ing SDE, while assumption (3) is a technical condition
+that allows us to consider the limits (1) and (2) instead
+of their truncated version (Nelson, 1990). The next
+theorem establishes that, under additional assumptions,
+in the limit xt can be embedded in the solution of a
+SDE.
+Theorem 2.1. Under Assumption 2.1, extend xt to a
+continuous-time process xt on t ∈ [0, T ] by continuous
+on-right step-wise-constant interpolation of xt:
+xt = xu1u≤t<u+∆t (u ∈ 0, ∆t, 2∆t, . . . , T ) (4)
+Consider the D-dimensional SDE on [0, T ] with initial
+value x0 = x0, drift vector μx(x) given by (1), and
+diffusion matrix σx(x) given by a square root of (2):
+dxt = μx(xt)dt + σx(xt)dBt (5)
+where Bt is a D-dimensional Brownian motion (BM)
+with independent components and (5) is short-hand
+notation for:
+xT = x0 +
+∫T
+0
+μx(xt)dt +
+∫T
+0
+σx(xt)dBt
+The first integral is a standard (Riemann) integral, and
+the second integral is an Ito integral. If SDE (5) admits
+a weak solution, and if this solution is unique in law and
+non-explosive, then the stochastic process defined by (4)
+converges in law to the solution of the SDE (5). This
+result still holds true for a random but independent and
+square integrable random variable x0 ∼ p(x0), provided
+that the driving BM is independent of x0. In both cases
+the convergence in law is on D([0, ∞), RD), the space
+of RD-valued processes on [0, ∞) which are continuous
+from the right with finite left limits, endowed with the
+Skorohod metric (Billingsley, 1999).
+We are dealing with three processes: the (discrete-time)
+NN xt, its continuous time interpolation xt, and the
+limiting diffusion xt (Øksendal, 2003). In Theorem
+2.1, the continuous-time interpolation xt of xt is in
+troduced because we are seeking a continuous-time
+limiting process from a discrete-time one. The conver
+gence established in Theorem 2.1 is strong in the sense
+that it concerns the convergence of the distribution of
+the stochastic process (xt)t∈[0,T ] as a stochastic object
+on the whole time interval [0, T ] to the diffusion limit
+(xt)t∈[0,T ] as L ↑ ∞. We consider weak solutions, as
+opposed to a strong ones, where it suffices that a BM
+Bt can be found such that a solution can be obtained
+(Øksendal, 2003). The focus on weak solutions and
+uniqueness in law of such solutions (also called weak
+uniqueness) is justified by our interest in the distribu
+tional properties of the limiting behavior of xt, and it
+enables us to consider weaker requirements for attain
+ing convergence of xt. Consider the discretization of
+SDE (5)
+xt+∆t = xt + μx(xt)∆t + σx(xt)ζt
+√∆t, (6)
+where ζt is a D-dimensional random vector whose com
+ponents are i.i.d. as standard Gaussian (mean 0 and
+variance 1). Under suitable conditions (Kloeden and
+Platen, 1992), it can be proved that the discretized
+SDE (6) converges to the SDE (5), and we recognize the
+Euler discretization of an ordinary differential equation
+(ODE) in the deterministic part (6). In Theorem 2.1
+we postulate the existence and uniqueness in law of
+the weak solution of the limiting SDE, and its non
+explosive behavior. The following conditions suffice for
+our goals.
+Assumption 2.2 (Existence of weak solution and
+uniqueness in law on compact sets). The functions
+μx(x) and σx(x) are twice continuously differentiable.
+Assumption 2.3 (Non-explosive solution). There ex
+ist a finite C > 0 such that for each x ∈ RD:
+‖μx(x)‖ + ‖σx(x)‖ ≤ C(1 + ‖x‖).
+When Assumption 2.1 and Assumption 2.2 hold (as it
+will be the case in all the models considered), but As
+sumption 2.3 does not hold, we still obtain convergence
+to the solution of the SDE (5). However, the stochas
+tic process xt might diverge to infinity with positive
+probability on any time interval. We will return to this
+point more in detail.
+3 Residual network diffusions
+We focus on unmodified, albeit simplified, standard
+architectures. This is in line with the information
+propagation research (Poole et al., 2016; Schoenholz
+et al., 2017; Hayou et al., 2019a) but in contrast with
+
+
+Infinitely deep neural networks as diffusion processes
+Chen et al. (2018), where the recursion is modified
+with an additional ∆t term to achieve convergence to
+a limiting ODE.
+In this section, we study the implications of Assump
+tion 2.1, Assumption 2.2 and Assumption 2.3 in NNs.
+First of all, xt needs to be of constant dimensionality,
+as otherwise ∆xt is undefined. Consistently with the
+previous section we assume xt ∈ RD. For Assump
+tion 2.1 to hold we need Pr(‖∆xt‖ > ε|xt) ↓ 0 as
+∆t ↓ 0 for any ε > 0, i.e. we require the increments
+to vanish eventually. Intuitively this is due to the
+continuity of the paths of the limiting diffusion pro
+cess. A fully connected feedforward NN is expressed
+by the relationship xt+∆t = ft(xt) = φ(Atxt + at)
+for a nonlinear activation φ : R → R applied element
+wise. As standard convention we refer to At ∈ RD×D
+as weights and to at ∈ RD as biases. Hence ∆xt =
+φ(Atxt + at) − xt. Shrinking increments would imply
+that for all x, φ(Atx + at) can be made arbitrarily
+concentrated around x with a suitable choice of distri
+butions for (At, at). This cannot be achieved unless φ
+is linear or the distribution of (At, at) depends on x.
+Indeed, fixing x determines the values around which
+(At, at) need to concentrate for the increments to vanish
+(if any), hence the increments will not vanish for a differ
+ent x′ 6= x, a fact that is most easily seen in the specific
+case where (At, at) are scalars. The same reasoning
+rules out the ResNet originally introduced in the work
+of He et al. (2016a), where xt+∆t = ft(xt + rt(xt)).
+This leaves us with the identity ResNet of He et al.
+(2016b) where xt+∆t = xt + rt(xt) for some choice of
+rt, the residual blocks, which we require to eventually
+vanish.
+3.1 Shallow residual blocks
+Each residual block rt results from an interleaved ap
+plication of affine transforms and non-linear activation
+functions. We consider the case of shallow residual
+blocks of the form:
+xt+∆t = xt + φ(Atψ(xt) + at) (7)
+for two activation functions φ : R → R, ψ : R → R
+which are applied element-wise. We point out that
+the non-standard use of 2 activation functions φ, ψ
+is to cover the case of shallow residual blocks in full
+generality.
+3.2 Parameter distribution and activation
+functions
+For a shallow residual block rt, the vanishing incre
+ments requirement is satisfied by having the distri
+butions of At and at concentrate around 0 provided
+that φ(0) = 0. It proves advantageous to consider
+weights and biases given by increments of diffusions
+corresponding to solvable SDEs.
+Assumption 3.1 (Parameters distribution and scal
+ing). Let Wt and bt be the diffusion processes respec
+tively with values in RD×D and RD solutions of:
+dWt = μW dt + dW ̃t; d vec(W ̃t) = σW d vec(BtW ) (8)
+dbt = μbdt + σbdBtb (9)
+where BtW and Btb are independent BMs with inde
+pendent components respectively with values in RD×D
+and RD, μW ∈ RD×D, μb ∈ RD, σW ∈ RD2×D2 , σb ∈
+RD×D, and ΣW = σW σW >, Σb = σbσb> are positive
+semi-definite.
+Then the discretizations of Wt and bt admit the (exact)
+representations:
+∆Wt = μW ∆t + εtW
+√∆t; ∆bt = μb∆t + εtb
+√∆t
+vec(εtW ) i.i∼.d. ND2
+(0, ΣW ); εtb
+i.i∼.d. ND
+(0, Σb)
+for t = ∆t, . . . , T where N stands for the multivariate
+Gaussian distribution. We will consider residual blocks
+where At = ∆Wt and at = ∆bt:
+xt+∆t = xt + φ(∆Wtψ(xt) + ∆bt) (10)
+Thus Assumption 3.1 covers the case where the pa
+rameters are independently and identically distributed
+across layers according to an arbitrary multivariate
+Gaussian distribution, up to the required scaling
+which is necessary to obtain the desired diffusion
+limit. By considering deterministic but time-dependent
+μtW , μtb, ΣtW , Σtb the extension to layer-dependent distri
+butions is immediate. More generally, we can consider
+Wt and bt driven by arbitrary SDEs. Moreover, depen
+dencies across the parameters of different layers can be
+accommodated by introducing additional SDE-driven
+processes, commonly driving the evolution of Wt and
+bt. We do not pursue further these directions in the
+present work. As for the activation functions, we will
+require:
+Assumption 3.2 (Activation functions regularity).
+The function φ : R → R satisfies: φ(0) = 0, φ is
+continuously differentiable three times on R, its sec
+ond and third derivatives have at most exponential tails
+growth, i.e. for some k > 0:
+|xli|↑m∞
+|φ′′(x)|
+ek|x| + |xli|↑m∞
+|φ′′′(x)|
+ek|x| < ∞
+The function ψ : R → R is locally bounded and contin
+uously differentiable two times on R.
+3.3 Diffusion limits
+The next theorem is the main result of the present
+paper, regarding the convergence of (10). Proofs are
+in SM A.
+
+
+Running heading author breaks the line
+Theorem 3.1. Under Assumption 3.1 and Assump
+tion 3.2 the continuous-time interpolation xt of xt
+converges in law to the solution on [0, T ] of
+dxt = φ′(0)(V[εtW ψ(xt) + εtb|xt])1/2dBt (11)
++ φ′(0)(μb + μW ψ(xt))dt
++1
+2 φ′′(0) diag(V[εtW ψ(xt) + εtb|xt])dt
+with initial value x0 = x0 where Bt is a D-dimensional
+BM vector with independent components.
+This result does not establish a direct connection be
+tween xt and the driving sources of stochasticity Wt
+and bt. As we are interested in the properties of deep
+ResNets in function space, i.e. over multiple inputs, a
+brute force approach would require us to establish
+diffusion limits as in Theorem 3.1 for an enlarged
+xt = [x(1)
+t · · · x(N)
+t ] ∈ RDN corresponding to N ini
+tial values x0 = [x(1)
+0 · · · x(N)
+0 ]. Instead, we show that
+the limiting SDE is equivalent in law to the solution
+of another SDE which preserves the dependency on
+the driving sources of stochasticity. From here on
+x(i)
+t , x(j)
+t denote ResNets corresponding to two initial
+values x(i)
+0 , x(j)
+0 , and x(i)
+t , x(j)
+t denotes diffusion lim
+its corresponding to the same two initial values (i.e.
+x(i)
+0 = x(i)
+0 , x(j)
+0 = x(j)
+0 ). We will continue to use xt for
+x(i)
+t and xt for x(i)
+t when no confusion arises.
+Corollary 3.1. Under the same assumptions of Theo
+rem 3.1 the limiting process is also given by the solution
+on [0, T ] of:
+dx(i)
+t = φ′(0)(dWtψ(x(i)
+t ) + dbt) (12)
++1
+2 φ′′(0)(d[W ψ(x(i))]t + d[b]t)
+where Wt and bt are defined in Assumption 3.1 and
+over two initial values we have:
+d[x(i), x(j)]t = φ′(0)2(d[W ψ(x(i)), W ψ(x(j))]t +d[b, b]t)
+(13)
+The results obtained so far are general in the sense that
+we allow for an arbitrary covariance structure between
+the elements of εtW , i.e. an arbitrary (constant and de
+terministic) quadratic covariation for Wt. This makes
+it difficult to derive more explicit results, and is also an
+impractical approach as the parametrization requires
+O(D4) elements. We thus consider more restrictive dis
+tribution assumptions with a more manageable O(D2)
+parametrization cost.
+Assumption 3.3 (Matrix normal weights). Let
+bt, μb, σb, Btb, μW , BtW be defined as in Assumption 3.1.
+Let Wt be the diffusion matrix with values in RD×D
+solution of:
+dWt = μW dt + σWO dBtW σWI
+where σWO , σWI ∈ RD×D and ΣWO = σWO σWO >,
+ΣWI = σWI >σWI are positive semi-definite.
+Under Assumption 3.3 the discretization of Wt satisfies:
+εtW
+i.i∼.d. MN D,D
+(0, ΣWO , ΣWI )
+for t = ∆t, . . . , T where MN stands for the ma
+trix normal distribution. This is an immediate con
+sequence of the fact that if ζ ∼ MN (0, I, I), then
+AζB ∼ MN (0, AA>, B>B). See Gupta and Nagar
+(1999). The main property of MN distributions is that
+the covariance factorizes as cov(εoW,i, εoW′,i′ ) = ΣoW,oO′ ΣiW,iI′ .
+Corollary 3.2. Under the same assumptions of The
+orem 3.1, if Wt is distributed according to Assump
+tion 3.3, (12) and (13) are given by:
+dx(i)
+t = φ′(0)((μW ψ(x(i)
+t ) + μb)dt (14)
++ σWO dBtW σWI ψ(x(i)
+t ) + σbdBtb
+)
++1
+2 φ′′(0) diag (Σb + ΣWO (ψ(x(i)
+t )>ΣWI ψ(x(i)
+t )))dt
+d[x(i), x(j)]t = φ′(0)2(Σb + ΣWO ψ(x(i)
+t )>ΣWI ψ(x(j)
+t ))dt
+Finally, we consider the simplest "fully i.i.d." centered
+distribution assumptions for Wt, bt. i.i.d. initializations
+are most commonly used in the training of NNs. We
+also introduce a scaling of the weights by D−1/2 (which
+is the same scaling used to obtain Gaussian process
+limits in infinitely wide NNs). We will see in Section 4.2
+that this scaling has a stabilizing effect on the dynamics
+of xt.
+Assumption 3.4 (Fully i.i.d. parameters). Let Wt
+and bt be the diffusion processes respectively with values
+in RD×D and RD solutions of:
+dWt = √σwD dBtW ; dbt = σbdBtb
+for BtW , Btb independent BMs respectively with values
+in RD×D, RD and scalars σw > 0, σb > 0.
+Under Assumption 3.4 the discretizations of Wt, bt sat
+isfy:
+∆Wt = εtW
+√σwD
+√∆t; ∆bt = εtbσb
+√∆t (15)
+εtW
+i.i∼.d. MN D,D
+(0, ID, ID
+); εtb
+i.i∼.d. ND
+(0, ID
+) (16)
+Corollary 3.3. Under the same assumptions of The
+orem 3.1, if Wt and bt are distributed according to
+Assumption 3.4, (12) and (13) are given by:
+dx(i)
+t = φ′(0)( √σwD ‖ψ(x(i)
+t )‖dBtW + σbdBtb
+) (17)
++1
+2 φ′′(0)(σb2 + σ2w
+D ‖ψ(x(i)
+t )‖2)) ID dt
+d[x(i), x(j)]t = φ′(0)2(σb2 + σ2w
+D 〈ψ(x(i)
+t ), ψ(x(j)
+t )〉) ID dt
+
+
+Infinitely deep neural networks as diffusion processes
+3.4 Qualitative properties
+Non-vanishing input dependency: a consequence of The
+orem 3.1 is that the distribution of the ResNet output
+given the input p(xT |x0) converges to the transition
+density p(xT |x0) of the solution of (12). As T is finite,
+the dependency on the input does not vanish in the
+limit of infinite total depth L and can be controlled via
+the parameter distributions and T .
+Flexible output distributions: from (12)-(13) we see that the joint evolution of x(i)
+t , x(j)
+t corresponding to
+x(i)
+0 , x(j)
+0 is not perfectly correlated (unless there are
+no weight parameters, a not very relevant case). This
+remains true also in the parameterizations of Assump
+tion 3.3 and Assumption 3.4. Thus in the limit of
+infinite total depth L the distribution in function space
+does not suffer from the perfect correlation problem.
+The joint distribution p(x(i)
+T , x(j)
+T |x(i)
+0 , x(j)
+0 ) is not Gaus
+sian.
+Role of integration time: a standard time-change result
+for SDEs (Revuz and Yor, 1999) implies that time
+scaling a SDE is equivalent to multiplying the drift
+and diffusion coefficients respectively by the scaling
+constant and by the square root of the scaling constant,
+as can be intuitively seen from (6). From (11) we see
+that it is possible to compensate changes in the inte
+gration time T with changes in the "hyper-parameters"
+μb, μW , Σb, ΣW in Assumption 3.1 to leave the dynam
+ics of (11) invariant. This remains true also in the pa
+rameterizations of Assumption 3.3 and Assumption 3.4.
+Hence we can restrict T = 1 without loss of generality.
+Matrix normal weights: in this case V[εtW ψ(xt) + εtb|xt]
+is given by Σb + ΣWO (ψ(xt)>ΣWI ψ(xt)). The depen
+dency on the state xt in (11) goes through a linear
+transformation and a weighted inner product. This
+sheds some light on the impact of introducing depen
+dencies among row and columns of the weight parame
+ters At = ∆Wt. Specifically, ΣWI define the structure
+of the inner weighted product, while ΣWO defines how
+such transforms affect each dimension d ∈ D.
+Fully i.i.d. parameters: in this case V[εtW ψ(xt) + εtb|xt]
+is given by σb2 + σ2
+w
+D ‖ψ(xt)‖2. The dependency on the
+state xt in (11) goes only through the norm of xt which
+is permutation invariant in d ∈ D. Thus the law of
+the processes xt,d is exchangeable across d ∈ D if the
+distribution of x0,d is so.
+Explosive solutions: without further assumptions the
+solutions to the limiting SDEs can be explosive. From
+(11) we see that the potentially troublesome term is the
+variance matrix in the drift ((14) makes the issue easier
+to see in a more restricted setting). Assumption 2.3 is
+satisfied under all considered parameter distribution
+assumptions if either: i) ψ exhibits at most square-root
+growth, in particular ψ is bounded; or ii) ψ exhibits
+at most linear growth, in particular ψ is the identity
+function, and φ′′(0) = 0, in particular φ = tanh.
+Non-smooth activations: the diffusion limits are based
+on a sufficiently smooth activation φ per Assump
+tion 3.2. We consider here the following case which in
+cludes the ReLU activation. If φ(a) is positively homo
+geneous, i.e. φ(αa) = αφ(a) for α > 0, h is random vari
+able, and γ > 0 then: E[φ(h∆tγ)/∆t] = E [φ(h)] ∆tγ−1
+and E[φ(h∆tγ)2/∆t] = E [φ(h)2] ∆t2γ−1. Comparing
+these with (1) and (2), we see that unless E[φ(h)] = 0,
+choosing γ = 1/2 would result in the drift term blowing
+up. Choosing γ = 1 recovers a deterministic limit as
+in Chen et al. (2018).
+3.5 Input and output layers
+So far we have considered x0 ∈ RD to be the input
+of the ResNet. A NN acts as a function approxima
+tor to be fitted to some dataset {(z(i), y(i))}iN=1 where
+z(i) ∈ RZ represents an input and y(i) ∈ RY represents
+the corresponding output. In general, there can be
+a mismatch between D, Z and Y , making it is neces
+sary to introduce adaptation layers z(i) 7→ x(i)
+0 and
+x(i)
+T 7→ ̂y(i) where ̂y(i) is the NN prediction for z(i).
+As for xt, we will denote a single data-point (z(i), y(i))
+with (z, y) when no confusion arises.
+4 Experiments
+4.1 Sanity check
+First of all we investigate numerically the correctness
+of the results obtained in Section 3.3. We consider the
+setting of Assumption 3.4 with φ = tanh, σ2w = σb2 = 1,
+T = 1, L = D = 500 and 1-dimensional inputs. In
+all the experiments ψ is set to the identity function.
+As noted in Section 3.5 we need to introduce an in
+put layer mapping z ∈ R 7→ x0 ∈ RD. For this toy
+example we simply copy the input across all dimen
+sions: x0,• = z, i.e. x0,d = z for each d ∈ D. We
+refer to this model as SCtanh. We consider two inputs
+z(1) = 0, z(2) = 1, hence x(1)
+0,• = z(1), x(2)
+0,• = z(2), and
+simulate 10.000 draws of the first dimension (d = 1) of i) x(1)
+T , x(2)
+T via the ResNet recursion (7); ii) x(1)
+T,
+x(2)
+T via the discretization (6) of the limiting SDE (17).
+Our analysis imply that i) and ii) are equivalent in
+the limit L ↑ ∞. We report the results in Figure 2
+where good agreement is indeed observed. We replicate
+this experiment in SM B for SCswish, where the tanh
+activation in SCtanh is replaced by the swish activa
+tion (swish(x) = x sigmoid(x)) which has been shown
+empirically (Ramachandran et al., 2017) and theoreti
+
+
+Running heading author breaks the line
+4 20 2 4
+4
+2
+0
+2
+4
+6
+6 4 2 0 2 4 6 5 0 5 10
+sde resnet
+Figure 2: For model SCtanh: 2D KDE plot for
+(̂y1(z(1)), ̂y1(z(2))) (left), 1D KDE and histogram plots
+for ̂y1(z(1)) (center), ̂y1(z(2)) (right) when ̂y1 is sam
+pled from a ResNet and from the Euler discretization
+of its limiting SDE (sde); ̂y denotes a generic model
+output, hence ̂y1 is its first dimension.
+5
+0
+5
+2 10 1 2
+2.5
+0.0
+2.5
+5.0
+7.5
+10.0
+12.5
+2 10 1 2
+Figure 3: Function samples of xT.1 for SCtanh (top)
+and SCswish (bottom), see Figure 1 for the description
+of the plotted quantities.
+cally (Hayou et al., 2019a) to be competitive. In this
+case φ′(0) = φ′′(0) = 1/2 and Assumption 2.3 is not
+satisfied.
+4.2 Function space distributions
+We show empirically that the dependency on the input
+is retained and the output distribution does not exhibit
+perfect correlation for very deep ResNet constructed
+as in the present paper. We consider the same model
+SCtanh of Section 4.1. First of all, from the center and
+right plots of Figure 2 we see that x(1)
+T,1 and x(2)
+T,1 are
+differently distributed, meaning the input dependency
+is retained, and from the left plot we see that they are
+not perfectly correlated, otherwise the 2D KDE would
+collapse to a straight line.
+In Figure 3 (top) we visualize samples of xT,1 from
+SCtanh in function space for different combinations of
+L (more plots in SM B). More specifically, we approx
+imate function draws by considering 400 inputs z(i)
+equally spaced on [−2, 2]. Using the ResNet recursion (7) we obtain 400 output values x(i)
+T,1. We repeat this
+procedure to obtain 10.000 function draws. In Figure 3
+(bottom) we repeat this experiment for SCswish. In this
+specific case we did not observe divergent trajectories
+for the 10.000 function draws. In Figure 3 we observe
+0.8
+0.4
+0.0
+0.4
+0.8
+0.8
+0.4
+0.0
+0.4
+0.8
+Figure 4: Output correlation heatmap for SCtanh
+(top-left), SCswish (top-right), EOtanh (bottom-left),
+EOReLU (bottom-right).
+similar distribution properties across different orders
+of magnitude for D, which suggests the existence of
+a stochastic limit in the doubly infinite setting where
+L, D ↑ ∞.
+In Figure 4 (top) we plot the correlations ρ[x(1)
+T,1, x(2)
+T ,1 ]
+for inputs (z(1), z(2)) in the range [−2, 2] × [−2, 2] for
+the tanh and swish activations: for different inputs
+the output correlations are far from 1. Let us refer to
+the model of Figure 1 with tanh activation as EOtanh,
+and to the model of Figure 1 with ReLU activation as
+EOReLU. For comparison, we show in Figure 4 (bottom) the correlations ρ[x(1)
+last,1, x(2)
+last,1] for pre-activation 1 for
+EOtanh and EOReLU: all correlations are close to 1.
+4.3 SGD training
+In this experiment we consider the MNIST dataset
+(LeCun, 1998). Each observation (z, y) is composed
+of an image z ∈ R784 (we flatten to a vector) and a
+class y ∈ R10 (we use 1-hot encoding). We consider the
+setting of Assumption 3.4 with φ = tanh, σ2w = σb2 = 1,
+T = 1 and random input and output layers given by
+x0 = WI z, ̂y = WOxT where WI ∈ RD×784, WO ∈ R10×D and WI,d,i, WO,c,o
+i.i∼.d. N (0, 1). We use the
+cross-entropy loss function and fit the model to the
+training dataset via SGD. Figure 5 (top) shows the evo
+lution of the training losses over 1 epoch (mini-batches
+of 200 samples) when the gradients are taken with re
+spect to {εtW , εtb}T −∆t
+t=0 ((16), reparametrized gradients)
+for a common learning rate. This choice results in
+stable loss decrease over all considered values for L
+and D. Moreover all average accuracies computed on
+the test dataset after 1 training epoch are in the range
+[87.1%, 90.6%]. In contrast, we were unable to obtain
+a test accuracy uniformly above 72.4% with a common
+(tuned via grid-search) learning rate when the gradients
+
+
+Infinitely deep neural networks as diffusion processes
+1
+2
+0 100 200 300 0 100 200 300
+= 15 = 50 = 150 = 500
+100
+101
+10 1
+100
+101
+102
+1
+2
+Figure 5: Averaged (over each batch) loss on MNIST
+training dataset for the model of Section 4.3, different
+L, D, for reparametrized gradients (top, shared linear
+scale on y-axes) and for standard gradients (bottom,
+different log-scales on y-axes).
+are computed with respect to {∆Wt, ∆bt}T −∆t
+t=0 ((15),
+standard gradients). Figure 5 (bottom) illustrates the
+issue: a common learning rate leads to either slow or
+divergent trajectories. Similar results (not shown) are
+obtained for commonly used initializations (Glorot and
+Bengio (2010); He et al. (2015)). Our experiment sug
+gests the existence of results akin to Jacot et al. (2018);
+Hayou et al. (2019b) as both L, D ↑ ∞.
+Zhang et al. (2019) considers initializations for ResNets
+which are not encompassed yet by our analysis. Con
+versely, the residual blocks in Zhang et al. (2019) can
+not be shallow. An analysis of gradient properties
+motivates initializing the residual block parameters
+so that the their variance shrinks as the ResNet gets
+deeper. However, the residual blocks are multiplied by
+parameters initialized at 0, hence our desiderata iii)
+(Section 1) is not satisfied. Moreover the gradients are
+not reparametrized as in the above experiment.
+5 Discussion
+We have established the convergence of identity
+ResNets He et al. (2016b) to solutions of SDEs as the
+number of layers goes to infinity. Our results rely on
+smooth activation functions and on model parameter
+distributions which shrink as total depth increases. Fur
+ther conditions on the activation functions are obtained
+by restricting the limiting SDEs to be non explosive.
+As the infinitesimal evolution of SDEs is character
+ized by their instantaneous mean and covariance, it
+seemed natural to assume that model’s parameters
+have Gaussian distributions. However, our results can
+be strengthened to hold for finite-variance parameter
+distributions.
+Building on the connection between IDNN and diffu
+sion processes we showed that, as the number of layers
+goes to infinity: the last layer does not collapse to a
+deterministic limit, nor does it diverge to infinity; the
+dependency of the last layer on the input does not
+vanish; the last layer, as stochastic function on input
+space, remains flexible without collapsing to restrictive
+families of distributions. We then investigated addi
+tional properties of the limiting diffusions. In contrast
+to the information propagation approach our analysis
+covers finitely-wide NNs and correlated parameters at
+the layer level.
+While the limiting diffusions do not suffer from catas
+trophic limitations, to obtain competitive performance
+more attention needs to be paid to architectural choices,
+to parameters’ distribution selection, and to input and
+output layers. Moreover, results on forward propa
+gation do not trivially translate to corresponding re
+sults on gradient back-propagation. With this in mind,
+hereafter we list some promising future research direc
+tions. Firstly, we can consider more realistic residual
+blocks consisting of multiple convolutional layers as
+in Zhang et al. (2019). Extending the present work
+to convolutional NN does not require new theoretical
+developments as a convolutional transform (jointly over
+all positions) can be expressed via matrix multiplica
+tion. Deep residual blocks could be approached via
+fractional Brownian motions (Biagini et al., 2008) or
+via re-scaled Brownian motions. Secondly, the same
+techniques used to derive the evolution of IDNNs can
+be used to obtain the evolution of the input-output
+Jacobian. This would pave the way to an extensions
+of the neural tangent kernel (Jacot et al., 2018; Lee
+et al., 2019; Arora et al., 2019; Hayou et al., 2019b)
+to IDNNs. Thirdly, stable behavior has been observed
+with an appropriate scaling of the weight parameters
+as the wideness D increases. In particular, it would
+be instructive to characterize the distribution of NNs
+which are both infinitely deep and wide. This result
+could form the basis of Bayesian inference (Lee et al.,
+2018; Garriga-Alonso et al., 2019) for doubly infinite
+NNs and of data-dependent initializations.
+6 Acknowledgements
+We wish to thank the three anonymous reviewers and
+the meta reviewer for their valuable feedback. The au
+thors acknowledge Thierry Sousbie and Tiago Ramalho
+for the many suggestions that greatly improved the pre
+sentation of the current work. Stefano Favaro received
+funding from the European Research Council (ERC)
+under the European Union’s Horizon 2020 research
+and innovation programme under grant agreement No
+817257. Stefano Favaro gratefully acknowledge the
+financial support from the Italian Ministry of Educa
+tion, University and Research (MIUR), “Dipartimenti
+di Eccellenza" grant 2018-2022.
+
+
+Running heading author breaks the line
+References
+Arora, S., Du, S. S., Hu, W., Li, Z., Salakhutdinov, R.,
+and Wang, R. (2019). On exact computation with
+an infinitely wide neural net. In Advances in Neural
+Information Processing Systems 32.
+Biagini, F., Hu, Y., Øksendal, B., and Zhang, T. (2008).
+Stochastic calculus for fractional Brownian motion
+and applications. Springer Science & Business Media.
+Billingsley, P. (1999). Convergence of Probability Mea
+sures. Wiley-Interscience, 2nd edition.
+Chen, T. Q., Rubanova, Y., Bettencourt, J., and Du
+venaud, D. K. (2018). Neural ordinary differential
+equations. In Advances in Neural Information Pro
+cessing Systems 31, pages 6571–6583.
+Garriga-Alonso, A., Rasmussen, C. E., and Aitchison,
+L. (2019). Deep convolutional networks as shallow
+gaussian processes. In International Conference on
+Learning Representations.
+Glorot, X. and Bengio, Y. (2010). Understanding the
+difficulty of training deep feedforward neural net
+works. In Proceedings of the thirteenth international
+conference on artificial intelligence and statistics,
+pages 249–256.
+Gupta, A. K. and Nagar, D. K. (1999). Matrix variate
+distributions. Chapman and Hall/CRC, 1st edition.
+Hayou, S., Doucet, A., and Rousseau, J. (2019a). On
+the impact of the activation function on deep neural
+networks training. In Proceedings of the 36th In
+ternational Conference on Machine Learning, pages
+2672–2680.
+Hayou, S., Doucet, A., and Rousseau, J. (2019b). Train
+ing dynamics of deep networks using stochastic gradi
+ent descent via neural tangent kernel. arXiv preprint
+arXiv:1905.13654.
+He, K., Zhang, X., Ren, S., and Sun, J. (2015). Delving
+deep into rectifiers: Surpassing human-level perfor
+mance on imagenet classification. In Proceedings
+of the IEEE international conference on computer
+vision, pages 1026–1034.
+He, K., Zhang, X., Ren, S., and Sun, J. (2016a). Deep
+residual learning for image recognition. In Proceed
+ings of the IEEE conference on computer vision and
+pattern recognition, pages 770–778.
+He, K., Zhang, X., Ren, S., and Sun, J. (2016b). Iden
+tity mappings in deep residual networks. In Euro
+pean conference on computer vision, pages 630–645.
+Springer.
+Jacot, A., Gabriel, F., and Hongler, C. (2018). Neural
+tangent kernel: Convergence and generalization in
+neural networks. In Advances in Neural Information
+Processing Systems 31, pages 8571–8580.
+Kloeden, P. E. and Platen, E. (1992). Numerical Solu
+tion of Stochastic Differential Equations. Springer,
+corrected edition.
+LeCun, Y. (1998). The mnist database of handwritten
+digits. http://yann. lecun. com/exdb/mnist/.
+LeCun, Y., Bengio, Y., and Hinton, G. (2015). Deep
+learning. nature, 521(7553):436.
+Lee, J., Sohl-dickstein, J., Pennington, J., Novak, R.,
+Schoenholz, S., and Bahri, Y. (2018). Deep neural
+networks as gaussian processes. In International
+Conference on Learning Representations.
+Lee, J., Xiao, L., Schoenholz, S. S., Bahri, Y., Sohl
+Dickstein, J., and Pennington, J. (2019). Wide neural
+networks of any depth evolve as linear models under
+gradient descent. In Advances in Neural Information
+Processing Systems 32.
+Matthews, A. G. d. G., Rowland, M., Hron, J., Turner,
+R. E., and Ghahramani, Z. (2018). Gaussian pro
+cess behaviour in wide deep neural networks. arXiv
+preprint arXiv:1804.11271.
+Neal, R. M. (1995). Bayesian Learning for Neural
+Networks. PhD thesis, University of Toronto.
+Nelson, D. B. (1990). Arch models as diffusion approx
+imations. Journal of econometrics, 45(1-2):7–38.
+Øksendal, B. (2003). Stochastic Differential Equations:
+An Introduction with Applications. Springer, 6th
+edition.
+Poole, B., Lahiri, S., Raghu, M., Sohl-Dickstein, J.,
+and Ganguli, S. (2016). Exponential expressivity in
+deep neural networks through transient chaos. In
+Advances in Neural Information Processing Systems
+29, pages 3360–3368.
+Ramachandran, P., Zoph, B., and Le, Q. V. (2017).
+Searching for activation functions. arXiv preprint
+arXiv:1710.05941.
+Revuz, D. and Yor, M. (1999). Continuous Martingales
+and Brownian Motion. Springer, 3rd edition.
+Schoenholz, S. S., Gilmer, J., Ganguli, S., and Sohl
+Dickstein, J. (2017). Deep information propagation.
+In International Conference on Learning Represen
+tations.
+Stroock, D. W. and Varadhan, S. S. (2006). Multidi
+mensional diffusion processes. Springer, 2006 edition.
+Yang, G. and Schoenholz, S. (2017). Mean field resid
+ual networks: On the edge of chaos. In Guyon, I.,
+Luxburg, U. V., Bengio, S., Wallach, H., Fergus,
+R., Vishwanathan, S., and Garnett, R., editors, Ad
+vances in Neural Information Processing Systems 30,
+pages 7103–7114. Curran Associates, Inc.
+
+
+Infinitely deep neural networks as diffusion processes
+Zhang, H., Dauphin, Y. N., and Ma, T. (2019). Resid
+ual learning without normalization via better initial
+ization. In International Conference on Learning
+Representations.
+
+
+A Proofs
+This section contains all the proofs of the theorems stated in the main text and the lemmas required to prove
+them.
+Proof of Theorem 2.1. This is (Nelson, 1990, Theorem 2.2): Assumption 2.1 and the postulated weakly unique
+and non-explosive weak solution satisfy all the conditions required for the application of (Nelson, 1990, Theorem
+2.2). Note that we use a stronger non-explosivity condition Øksendal (2003). Alternatively, for this standard
+result the reader can refer to the monograph Stroock and Varadhan (2006) on which Nelson (1990) is based; yet
+another reference is Ethier and Kurtz (2009).
+Lemma A.1. If φ satisfies Assumption 3.2, ∼ N (0, σ2) with σ2 ≤ σ∗2, α > 0, then we can find M2(α, σ∗2) < ∞
+and M3(α, σ∗2) < ∞ such that:
+E [|φ′′( )|α] ≤ M2(α, σ∗2)
+E [|φ′′′( )|α] ≤ M3(α, σ∗2)
+Proof. We prove the result only for φ′′( ), the case for φ′′′( ) being identical. Let L large enough such that
+|φ′′(x)| ≤ K1eK2|x| for |x| ≥ L then:
+E [|φ′′( )|α] = E [|φ′′( )|α1| |≤L
+] + E [|φ′′( )|α1| |>L
+]
+≤ sup
+|x|≤L
+|φ′′(x)|α + K1α E[eK2α| |]
+The first term is finite, that the second one can be bounded by a finite and increasing function in σ2 follows from
+the symmetry in law of and the form of its movement generating function.
+Proof of Theorem 3.1. We suppress the dependency on t of vector and matrices and the conditioning in expecta
+tions and covariances in this proof to ease the notation. We also drop the boldness of xt as no confusion arises in
+this setting. We instead reserve subscripts for indexing: for example xd denotes the d-th element of a vector x.
+Let h = (μW √∆t + εW )ψ(x) + (μb√∆t + εb) so that h√∆t = ∆W ψ(x) + ∆b. By second order Taylor expansion
+of φ around 0 we have for d = 1, . . . , D
+∆xd
+∆t = φ(hd
+√∆t)
+∆t = φ′(0)hd∆t−1/2 + 1
+2 φ′′(0)h2d + 1
+6 φ′′′(θd)h3d∆t1/2
+with θd ∈ (−hd
+√∆t, hd
+√∆t). To prove (1) we want to show that ∀R > 0
+l∆itm↓0 sup
+‖x‖<R
+∣∣∣∣μx(x)d − E
+[
+φ′(0)hd∆t−1/2 + 1
+2 φ′′(0)h2d + 1
+6 φ′′′(θ)h3d∆t1/2
+]∣∣∣∣ = 0.
+Now, hd = (μdW
+√∆t + εdW )ψ(x) + μbd
+√∆t + εbd and the distribution assumptions on εW and εb lead to
+E
+[
+φ′(0)hd∆t−1/2 + 1
+2 φ′′(0)h2d
+]
+= φ′(0)(μbd + μdW ψ(x))
++1
+2 φ′′(0) V[εW ψ(x) + εb]d,d
++1
+2 φ′′(0) (μbd + μdW ψ(x))2 ∆t
+= μx(x)d + 1
+2 φ′′(0) (μbd + μdW ψ(x))2 ∆t.
+It remains to show that
+l∆itm↓0 sup
+‖x‖<R
+∣∣∣(μbd + μdW ψ(x))2∣∣∣ ∆t = 0,
+arXiv:1905.11065v3 [stat.ML] 1 Mar 2020
+
+
+which holds as ψ is locally bounded, and that
+l∆itm↓0 sup
+‖x‖<R
+∣∣E [φ′′′(θd)h3d
+]∣∣ ∆t1/2 = 0,
+for which it suffices to show that sup‖x‖<R
+∣∣E [φ′′′(θd)h3d
+]∣∣ can be bounded by M (R) < ∞ uniformly in ∆t. By
+Cauchy–Schwarz
+sup
+‖x‖<R
+∣∣E [φ′′′(θd)h3d
+]∣∣ ≤ sup
+‖x‖<R E [φ′′′(θd)2]1/2 sup
+‖x‖<R E [h6d
+]1/2 .
+Again, as ψ is locally bounded the constraint sup‖x‖<R corresponds to a constraint on the variance of hd hence
+the second sup is finite. By Lemma A.1 the first sup is finite too and not increasing in ∆t as |θd| ≤ √∆t|hd|
+which allows us to produce the desired bound M (R).
+Regarding (3), by first order Taylor expansion of φ around 0 we need to show that for d = 1, . . . , D and R > 0
+l∆itm↓0 sup
+‖x‖<R
+∣∣∣∣∣E
+[ (φ′(0)hd∆t1/2 + 1
+2 φ′′(θd)h2d∆t)4 ∆t
+]∣∣∣∣∣ = 0
+with θd ∈ (−hd
+√∆t, hd
+√∆t). Note that The term inside the expectation is composed of a sum of terms of the
+form khdnφ′′(θd)m∆tα for integers n, m ≥ 0 and reals α > 0, k ∈ R. This results from repeated applications of
+the Cauchy–Schwarz inequality and Lemma A.1 as we did previously to prove (1).
+Regarding (2), we can compute E[∆x(∆x)>]/∆t instead of V[∆x]/∆t as in the infinitesimal limit of ∆t ↓ 0 the
+two quantities have to agree due to the convergence of the infinitesimal mean that we have already established.
+Hence by first order Taylor expansion of φ around 0 we need to show that for d, u = 1, . . . , D and R > 0:
+l∆itm↓0 sup
+‖x‖<R
+∣∣∣∣∣σx2(x)d,u − E
+[ (φ′(0)hd∆t1/2 + 1
+2 φ′′(θd)h2d∆t)(φ′(0)hu∆t1/2 + 1
+2 φ′′(θu)h2u∆t) ∆t
+] ∣∣∣∣∣ = 0
+with θd ∈ (−hd
+√∆t, hd
+√∆t), θu ∈ (−hu
+√∆t, hu
+√∆t). The only term inside the expectation not vanishing in
+∆t is
+E[φ′(0)2hdhu] = φ′(0)2 V[εW ψ(x) + εb]d,u
++ φ′(0)2 (μbd + μdW ψ(x)) (μbu + μuW ψ(x)) ∆t
+= σx2(x)d,u + φ′(0)2 (μbd + μdW ψ(x)) (μbu + μuW ψ(x)) ∆t.
+The (uniform on compacts) convergence of all terms aside from σx2(x)d,u to 0 once again follows from repeated
+applications of the Cauchy–Schwarz inequality and Lemma A.1.
+Now, the continuity of μx(x) and σx(x) are a consequence of the continuity of the conditional covariance
+V[εW ψ(x) + εb], and as V[εW ψ(x) + εb] is positive semi-definite so is σx2(x). Hence all the conditions of
+Assumption 2.1 hold true.
+Finally, as ψ is differentiable two times with continuity, it follows from the dependency of μx and σx2 on x only
+through V[εW ψ(x) + εb] that Assumption 2.2 is satisfied too. The application of Theorem 2.1 completes the
+proof.
+Proof of Corollary 3.1. Notice that
+d[W ψ(x)]t + d[b]t = d[W ψ(x) + b]t = diag(V[εtW ψ(xt) + εtb|xt])dt
+Then expanding dWt and dbt in (12) shows that the drift terms are matched between (11) and (12). The quadratic
+variation of (11) is
+φ′(0)2 diag(V[εtW ψ(xt) + εtb|xt])dt
+which is equal to the quadratic variation of (12) as it is computed as
+d[x]t = d[φ′(0)(W ψ(x) + b)]t = φ′(0)2d[W ψ(x) + b]t
+This shows the equivalence in law between the solution of (11) and the solution of (12). Then (13) immediately
+follows by direct computation.
+
+
+Proof of Corollary 3.2 and Corollary 3.3. Notice that
+d[W ψ(x(i)) + b, W ψ(x(j)) + b]t
+= C[εtW ψ(x(i)
+t ) + εtb, εtW ψ(x(j)
+t ) + εtb|x(i)
+t , x(j)
+t ]dt
+= (Σb + C[εtW ψ(x(i)
+t ), εtW ψ(x(j)
+t )|x(i)
+t , x(j)
+t ])dt
+and
+C[εtW ψ(x(i)
+t ), εtW ψ(x(j)
+t )|x(i)
+t , x(j)
+t ]r,c
+= E[(εtW,r,•ψ(x(i)
+t ))(εtW,c,•ψ(x(j)
+t ))|x(i)
+t , x(j)
+t]
+=
+D ∑
+d,u=1
+ψ(x(i)
+t,d)ψ(x(j)
+t,u) E[Wr,dWc,u]
+= ΣrW,cO
+D ∑
+d,u=1
+ψ(x(i)
+t,d)ψ(x(j)
+t,u)ΣdW,uI
+= ΣrW,cO (ψ(x(i)
+t )>ΣWI ψ(x(j)
+t )).
+This proves Corollary 3.2. Corollary 3.3 follows by setting σb = σb ID, σWI = ID and σWO = σwD−1/2 ID.
+B Additional experiments and plots
+B.1 Bayesian inference
+In this toy experiment we perform approximate Bayesian inference via Approximate Bayesian Computation
+(ABC, (Sisson et al., 2018)) rejection sampling for function regression. We consider the setting of Assumption
+3.4 with φ = tanh, σ2w = σb2 = 10, T = 1 and L = D = 500. For this experiment we use a random input layer given by x0 = WI z where WI ∈ RD×1 and WI,d,1
+i.i∼.d. N (0, 1) which makes the distribution of xT,1 symmetric
+around 0. We refer to this model as SRtanh. We fix a computational budget of 10.000 simulations and compute
+10 approximate posteriors samples by selecting the 10 function draws with smallest l2 distance from a synthetic
+dataset D consisting of 3 data points. The results are reported in Figure 1 where we also compare with the
+results obtained by applying the same ABC algorithm to the first pre-activation of the last layer of EOtanh. We
+2 10 1 2
+20
+10
+0
+10
+20
+30
+2 10 1 2
+10
+5
+0
+5
+10
+2 10 1 2
+2
+1
+0
+1
+2 10 1 2
+0
+1
+2
+Figure 1: 10 function samples in light blue over z ∈ [−2, 2] for: prior xT,1 and ABC-posterior xT,1|D for SRtanh
+(2 leftmost); prior xlast,1 and ABC-posterior xlast,1|D for EOtanh (2 rightmost); 3 data points of D in blue.
+observe that the more flexible prior results in significantly improved efficiency with ABC: as the prior draws are
+almost constant in EOtanh we are constrained to finding the line with minimum distance from the 3 points. The
+use of σ2w = σb2 = 10 in SRtanh compared to SCtanh allows for increased range and variability of xT,1. While it’s
+possible to similarly increase weight and bias variances in EOtanh while remaining on the edge of chaos, this does
+not solve the underlying issue that the model a priori (hence a posteriori) assigns all probability mass to constant
+functions in the limit of L ↑ ∞. Simulations (not shown) confirms that this modification does not improve the
+posterior inference efficiency for EOtanh. It should be noted that we do not advocate the use of ABC rejection
+sampling as a realistic solution for this inference setting. Nonetheless this toy experiment exemplifies how a
+prior-data conflict typically frustrates inference algorithms.
+
+
+B.2 Additional experiment for Section 4.1
+We replicate the experiment of Section 4.1 for the swish activation and plot the results in Figure 2 where again
+good agreement is observed.
+Figure 2: For model SCswish: 2D KDE plot for (̂y1(z(1)), ̂y1(z(2))) (left), 1D KDE and histogram plots for ̂y1(z(1))
+(center), ̂y1(z(2)) (right) when ̂y1 is sampled from a ResNet (resnet) and from the Euler discretization of its
+limiting SDE (sde); ̂y denotes a generic model output, hence ̂y1 is its first dimension.
+B.3 Additional plots for Section 4.2
+In Figure 3 we plot additional function samples for the models SCtanh and SCswish of Section 4.2 corresponding
+to different combinations of L and D. We observe similar dynamics across different orders of magnitude for both
+L and D.
+B.4 Additional 2D plots
+In Figure 4 we plot 2D function samples of xT,1 for SCtanh and SCswish to complement the visualizations of
+Section 4.2.
+C Related work
+In this section we discuss more in detail further connections with related work. Chen et al. (2018) investigates
+the connection between infinite ResNets and ordinary differential equations (ODE), with a focus on potential
+computational advantages from gradient-descent training perspective. A difference between our work and that
+of Chen et al. (2018) is that we only operate on the distribution of the model parameters, while Chen et al.
+(2018) modifies the ResNet recursion with a ∆t multiplicative term. The two approaches are equivalent for ReLU
+activations (see Section 3.4), where the SDE limit collapses to a deterministic ODE. While the focus of Chen
+et al. (2018) is on the training of neural networks in the present work the emphasis is on the priori distribution of
+neural networks induced by a class of priors on the model parameters.
+Pennington et al. (2017, 2018) investigates the properties of the spectrum of the input-output Jacobian of deep
+neural networks at initialization which affects gradient-descent training speed. Of particular interest to the setting
+of the present work are the orthogonal initializations, proposed in Pennington et al. (2017) to achieve dynamical
+isometry, which seem amenable to a modification of the approach presented in our paper.
+While Pennington et al. (2017, 2018) relies on mean-field assumptions, i.e. infinite width and iid finite variance
+initializations, Burkholz and Dubatovka (2019) consider the setting of finite width and ReLU activations to derive
+exact results. Unfortunately, due to the use of ReLU activations the proposed initialization scheme is not of
+particular interest to our setting (see our discussion above regarding Chen et al. (2018)).
+Hanin and Rolnick (2018); Hanin (2018) study ReLU networks when the width and depth are comparable and
+both large. As hinted in Section 4.2 and in the Discussion it would be interesting to investigate the behavior of
+the limiting SDEs when both depth and width grow unbounded. In this setting it is possible for the order of the
+limits and for the relative speed of convergence of L and D to affect the limiting dynamics.
+Finally there has been recent interest in using heavy-tailed distributions for gradient noise and for trained
+parameter distributions, see for instance Simsekli et al. (2019); Martin and Mahoney (2019). The present
+
+
+5
+0
+5
+2 10 1 2
+5
+0
+5
+2 10 1 2 2 10 1 2 2 10 1 2
+2.5
+0.0
+2.5
+5.0
+7.5
+10.0
+12.5
+2 10 1 2
+2.5
+0.0
+2.5
+5.0
+7.5
+10.0
+12.5
+2 10 1 2 2 10 1 2 2 10 1 2
+Figure 3: Function samples of xT,1 for SCtanh (top) and SCswish (bottom) for different values of L and D.
+2.0 1.5 1.0 0.5 0.0 0.5 1.0 1.5 2.0 2.0
+1.5
+1.0
+0.5
+0.0
+0.5
+1.0
+1.5
+2.0
+2
+1
+0
+1
+2
+3
+4
+activation: tanh
+2.0 1.5 1.0 0.5 0.0 0.5 1.0 1.5 2.0 2.0
+1.5
+1.0
+0.5
+0.0
+0.5
+1.0
+1.5
+2.0
+2
+1
+0
+1
+2
+3
+4
+5
+activation: swish
+Figure 4: Function samples of xT,1 for SCtanh (left) and SCswish (right) for L = 100 and D = 100 on the bounded
+interval [−2, 2] × [−2, 2].
+work covers exclusively Gaussian initializations and could be extended with some effort to cover finite-variance
+
+
+ones. Extensions to heavy tailed distributions would me more involved and likely resulting in less tractable
+Semimartingales (instead of SDEs) due to the presence of finite and infinite activity jump components. On the
+other hand the added flexibility could prove beneficial in bridging the gap between the performance of finitely
+trained neural networks and their limiting stochastic processes counterparts at least in some settings.
+References
+Burkholz, R. and Dubatovka, A. (2019). Initialization of relus for dynamical isometry. In Advances in Neural
+Information Processing Systems, pages 2382–2392.
+Chen, T. Q., Rubanova, Y., Bettencourt, J., and Duvenaud, D. K. (2018). Neural ordinary differential equations.
+In Advances in Neural Information Processing Systems 31, pages 6571–6583.
+Ethier, S. N. and Kurtz, T. G. (2009). Markov processes: characterization and convergence. Wiley-Interscience.
+Hanin, B. (2018). Which neural net architectures give rise to exploding and vanishing gradients? In Advances in
+Neural Information Processing Systems, pages 582–591.
+Hanin, B. and Rolnick, D. (2018). How to start training: The effect of initialization and architecture. In Advances
+in Neural Information Processing Systems, pages 571–581.
+Martin, C. H. and Mahoney, M. W. (2019). Traditional and heavy-tailed self regularization in neural network
+models. arXiv preprint arXiv:1901.08276.
+Nelson, D. B. (1990). Arch models as diffusion approximations. Journal of econometrics, 45(1-2):7–38.
+Øksendal, B. (2003). Stochastic Differential Equations: An Introduction with Applications. Springer, 6th edition.
+Pennington, J., Schoenholz, S., and Ganguli, S. (2017). Resurrecting the sigmoid in deep learning through
+dynamical isometry: theory and practice. In Advances in neural information processing systems, pages
+4785–4795.
+Pennington, J., Schoenholz, S. S., and Ganguli, S. (2018). The emergence of spectral universality in deep networks.
+arXiv preprint arXiv:1802.09979.
+Simsekli, U., Sagun, L., and Gurbuzbalaban, M. (2019). A tail-index analysis of stochastic gradient noise in deep
+neural networks. arXiv preprint arXiv:1901.06053.
+Sisson, S. A., Fan, Y., and Beaumont, M. (2018). Handbook of approximate Bayesian computation. Chapman and
+Hall/CRC. Stroock, D. W. and Varadhan, S. S. (2006). Multidimensional diffusion processes. Springer, 2006 edition.

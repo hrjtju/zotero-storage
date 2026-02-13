@@ -1,0 +1,55 @@
+Skip to main content
+Computer Science > Machine Learning
+[Submitted on 24 Feb 2025]
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Max van Spengler, Pascal Mettes
+Embedding tree-like data, from hierarchies to ontologies and taxonomies, forms a well-studied problem for representing knowledge across many domains. Hyperbolic geometry provides a natural solution for embedding trees, with vastly superior performance over Euclidean embeddings. Recent literature has shown that hyperbolic tree embeddings can even be placed on top of neural networks for hierarchical knowledge integration in deep learning settings. For all applications, a faithful embedding of trees is needed, with combinatorial constructions emerging as the most effective direction. This paper identifies and solves two key limitations of existing works. First, the combinatorial construction hinges on finding highly separated points on a hypersphere, a notoriously difficult problem. Current approaches achieve poor separation, degrading the quality of the corresponding hyperbolic embedding. We propose highly separated Delaunay tree embeddings (HS-DTE), which integrates angular separation in a generalized formulation of Delaunay embeddings, leading to lower embedding distortion. Second, low-distortion requires additional precision. The current approach for increasing precision is to use multiple precision arithmetic, which renders the embeddings useless on GPUs in deep learning settings. We reformulate the combinatorial construction using floating point expansion arithmetic, leading to superior embedding quality while retaining utility on accelerated hardware.
+Subjects:	Machine Learning (cs.LG); Artificial Intelligence (cs.AI)
+Cite as:	arXiv:2502.17130 [cs.LG]
+ 	(or arXiv:2502.17130v1 [cs.LG] for this version)
+ 	
+https://doi.org/10.48550/arXiv.2502.17130
+Focus to learn more
+Submission history
+From: Max van Spengler [view email]
+[v1] Mon, 24 Feb 2025 13:19:59 UTC (573 KB)
+
+Access Paper:
+View PDFHTML (experimental)TeX SourceOther Formats双语版本(沉浸式翻译)
+view license
+Current browse context: cs.LG
+< prev next >
+
+newrecent2025-02
+Change to browse by: cs cs.AI
+References & Citations
+NASA ADS
+Google Scholar
+Semantic Scholar
+Export BibTeX Citation
+Bookmark
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer (What is the Explorer?)
+Connected Papers Toggle
+Connected Papers (What is Connected Papers?)
+Litmaps Toggle
+Litmaps (What is Litmaps?)
+scite.ai Toggle
+scite Smart Citations (What are Smart Citations?)
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax (What is MathJax?)
+About
+Help
+Contact
+Subscribe
+Copyright
+Privacy Policy
+Web Accessibility Assistance
+
+arXiv Operational Status 
+Get status notifications via email or slack

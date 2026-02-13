@@ -1,0 +1,1349 @@
+HAL Id: hal-00849930
+https://hal.science/hal-00849930
+Submitted on 1 Aug 2013
+HAL is a multi-disciplinary open access archive for the deposit and dissemination of scientific research documents, whether they are published or not. The documents may come from teaching and research institutions in France or abroad, or from public or private research centers.
+L’archive ouverte pluridisciplinaire HAL, est destinée au dépôt et à la diffusion de documents scientifiques de niveau recherche, publiés ou non, émanant des établissements d’enseignement et de recherche français ou étrangers, des laboratoires publics ou privés.
+A survey of the Schrödinger problem and some of its connections with optimal transport
+Christian Léonard
+To cite this version:
+Christian Léonard. A survey of the Schrödinger problem and some of its connections with optimal transport. Discrete and Continuous Dynamical Systems - Series A, 2014, 34 (4), pp.1533-1574. ￿hal00849930￿
+
+
+A SURVEY OF THE SCHR  ̈ODINGER PROBLEM AND SOME OF ITS CONNECTIONS WITH OPTIMAL TRANSPORT
+CHRISTIAN L ́EONARD
+Abstract. This article is aimed at presenting the Schr ̈odinger problem and some of its connections with optimal transport. We hope that it can be used as a basic user’s guide to Schr ̈odinger problem. We also give a survey of the related literature. In addition, some new results are proved.
+Contents
+1. Introduction 1 2. Schro ̈dinger’s problem 6 3. (f, g)-transform of a Markov measure 16 4. Standard examples 19 5. Slowing down 24 6. The statistical physics motivation of Schro ̈dinger’s problem 28 7. A short history of Schro ̈dinger’s problem and related literature 32 Annexe A. Relative entropy with respect to an unbounded measure 37 References 38
+1. Introduction
+This article is aimed at presenting the Schro ̈dinger problem and some of its connections with optimal transport. We hope that it can be used as a basic user’s guide to Schro ̈dinger problem. We also give a survey of the related literature. In addition, some new results are proved. We denote by P(Y ) and M+(Y ) the sets of all probability and positive measures on a space Y. In 1931, Schro ̈dinger [Sch31, Sch32] addressed a problem which is translated in modern terms1 as follows. Let X = Rn or more generally a complete connected Riemannian manifold without boundary, Ω = C([0, 1], X ) be the space of all continuous X -valued paths on the unit time interval [0, 1] and denote R ∈ M+(Ω) the law of the reversible Brownian motion on X , i.e. the Brownian motion with the volume measure as its initial distribution. Remark that R is an unbounded measure on Ω whenever the manifold X is not compact. Define the relative entropy of any probability measure P with respect to R
+Date: Revised version. March 7, 2013.
+2010 Mathematics Subject Classification. 46N10,60J25,60F10.
+Key words and phrases. Schr ̈odinger problem, optimal transport, displacement interpolations, Markov measures, relative entropy, large deviations. Author partially supported by the ANR project GeMeCoD. ANR 2011 BS01 007 01. 1Recall that in the early 30’s the axioms of probability theory were not settled and that the notion of random process still relied entirely on physical intuition.
+1
+
+
+2 CHRISTIAN LE ́ONARD
+by
+H(P |R) =
+∫
+Ω
+log
+( dP dR
+)
+dP ∈ (−∞, ∞], P ∈ P(Ω)
+if P is absolutely continuous with respect to R and the above integral is meaningful, and H(P |R) = ∞ otherwise. A precise definition of the relative entropy with respect to an unbounded measure R is presented at the Appendix. The dynamic Schr ̈odinger problem is H(P |R) → min; P ∈ P(Ω) : P0 = μ0, P1 = μ1, (Sdyn)
+where μ0, μ1 ∈ P(X ) are prescribed values of the initial and final time marginals P0 := P (X0 ∈ ·) and P1 := P (X1 ∈ ·) of P. Here (Xt)0≤t≤1 is the canonical process on Ω. This is a convex minimization problem since H(·|R) is a convex function and the constraint set {P ∈ P(Ω) : P0 = μ0, P1 = μ1} = {P ∈ M(Ω) : P ≥ 0, P0 = μ0, P1 = μ1} is a convex subset of the vector space M(Ω) of all bounded measures on Ω. Furthermore, as H(·|R) is strictly convex, if (Sdyn) admits a solution, it must be unique. Let ̂P ∈ P(Ω) be this solution (if it exists). We shall see at Proposition 2.3 that it disintegrates as
+̂P (·) =
+∫
+X2
+Rxy(·) ̂π(dxdy) (1.1)
+where for all x, y ∈ X , Rxy := R(· | X0 = x, X1 = y) is the Brownian bridge from x to y and ̂π ∈ P(X × X ) is the unique solution to the following static Schr ̈odinger problem
+H(π|R01) → min; π ∈ P(X 2) : π0 = μ0, π1 = μ1. (S)
+Here, R01(dxdy) := R((X0, X1) ∈ dxdy) ∝ exp(−d(x, y)2/2) vol(dx)vol(dy) (1.2)
+is the joint law of the initial and final positions of the reversible Brownian motion R, d is the Riemannian distance and π0 := π(· × X ) and π1 := π(X × ·) are the first and second
+marginals of π ∈ P(X 2). The disintegration formula (1.1) means that ̂P shares its bridges with R, that is: ̂P xy = Rxy for almost all x, y, and that this mixture of bridges is governed by the unique solution ̂π to the static Schro ̈dinger problem (S). It also follows from (1.1) that the values of the dynamic and static problems are equal: inf (Sdyn) = inf (S). The structure of problem (S) is similar to Monge-Kantorovich problem’s one:
+∫
+X2
+c(x, y) π(dxdy) → min; π ∈ P(X 2) : π0 = μ0, π1 = μ1 (MK)
+where c : X 2 → [0, ∞) represents the cost for transporting a unit mass from the initial location x to the final location y. Both are convex optimization problems, but unlike (S), the linear program (MK) might admit infinitely many solutions. Since (1.2) writes as
+R01(dxdy) ∝ exp ( − c(x, y)) vol(dx)vol(dy) with
+c(x, y) = d2(x, y)/2, x, y ∈ X ,
+it happens that the Schro ̈dinger problem (S) is connected to the quadratic Monge-Kantorovich optimal transport problem (MK) which is specified by this quadratic cost function. The natural dynamic version of (MK) is
+∫
+Ω
+C dP → min; P ∈ P(Ω) : P0 = μ0, P1 = μ1 (MKdyn)
+with
+C(ω) =
+∫
+[0,1]
+|ω ̇ t|2ωt/2 dt ∈ [0, ∞], ω ∈ Ω, (1.3)
+
+
+THE SCHRO ̈ DINGER PROBLEM 3
+where we put C(ω) = ∞ when ω is not absolutely continuous. Let us comment on the choice of this dynamic version of (MK). For all x, y ∈ X , we have
+c(x, y) = inf{C(ω); ω ∈ Ω : ω0 = x, ω1 = y} (1.4)
+and this infimum is attained at the constant speed geodesic path γxy between x and y, which is assumed to be unique for any (x, y), for simplicity. Therefore, the solutions of (MK) and (MKdyn) are in one-one correspondence:
+• If ̂P solves (MKdyn), then ̂P01 := ̂P ((X0, X1) ∈ ·) solves (MK); • If ̂π solves (MK), then the solution of (MKdyn) is
+̂P (·) =
+∫
+X2
+δγxy (·) ̂π(dxdy) (1.5)
+where δa denotes the Dirac measure at a.
+Furthermore, we have equality of the values of the problems: inf (MK) = inf (MKdyn) ∈ [0, ∞]. Again, the dynamic Schro ̈dinger problem (Sdyn) and the dynamic Monge-Kantorovich problem (MKdyn) are similar. Comparing their respective solutions (1.1) and (1.5), we see that the ̂π’s solve their respective static problem (S) and (MK), while for each (x, y) the bridge Rxy ∈ P(Ω) in (1.1) plays the role of δγxy ∈ P(Ω) in (1.5). All the notions pertaining to the Monge-Kantorovich optimal transport problems (MK) and (MKdyn) which are going to be invoked below are discussed in great details in C. Villani’s textbook [Vil09].
+Displacement interpolations in P2(X ). Let P(X ) denote the set of all probability
+measures on X and P2(X ) := {p ∈ P(X ) : ∫
+X d2(x0, y) p(dy) < ∞} . If μ0, μ1 are in P2(X ),
+then (MK) and (MKdyn) admit a solution. Let ̂P be a solution of (MKdyn). We consider
+μt := ̂P (Xt ∈ ·) ∈ P2(X ), t ∈ [0, 1] (1.6)
+the time-marginal flow of ̂P . The P2(X )-valued path [μ0, μ1] = (μt)0≤t≤1 is called a displacement interpolation between μ0 and μ1. These interpolations encode geometric properties of the manifold X : although P2(X ) is not endowed with a Riemannian metric, Otto [JKO98, Ott01] discovered that [μ0, μ1] is a minimizing constant speed geodesic path on P2(X ), in the length space sense. In particular, (1.5) shows that for each x, y, [δx, δy] = (δγxy
+t )0≤t≤1. Therefore, displacement interpolations lift the notion of minimizing
+constant speed geodesic paths from the state space X up to P2(X ). The common value of the Monge-Kantorovich problems
+W22(μ0, μ1)/2 := inf (MK) = inf (MKdyn)
+allows to define the Wasserstein distance W2(μ0, μ1) between μ0 and μ1. Saying that γxy
+has a constant speed means that for all 0 ≤ s ≤ t ≤ 1, d(γsxy, γxy
+t ) = (t − s)d(x, y). With (1.5), we see that [μ0, μ1] inherits this constant speed property: for all 0 ≤ s ≤ t ≤ 1, W2(μs, μt) = (t − s)W2(μ0, μ1). It is a remarkable fact that W2(μ0, μ1) also admits the following Benamou-Brenier representation [BB00]:
+W22(μ0, μ1) = inf
+(ν,v)
+{∫
+[0,1]×X
+|vt(x)|2x νt(dx)dt
+} =
+∫
+[0,1]×X
+|∇ψt(x)|2x μt(dx)dt (1.7)
+where the infimum is taken over all (ν, v) such that ν = (νt)0≤t≤1 ∈ C([0, 1], P2(X )), v is a smooth vector field and these quantities are linked by the following current equation
+
+
+4 CHRISTIAN LE ́ONARD
+(in a weak sense) with boundary values:
+{ ∂tν + ∇·(ν v) = 0, t ∈ (0, 1) ν0 = μ0, ν1 = μ1.
+The last equality in (1.7) states that the infimum is attained at ν = μ: the displacement interpolation (1.6), and some gradient vector field v = ∇ψ which might not be smooth. The optimal couple (μ, ∇ψ) solves the forward-backward coupled system
+(a)
+{ ∂tμ + ∇·(μ ∇ψ) = 0, t ∈ (0, 1]
+μ0, t = 0 (b)
+{ ∂tψ + 1
+2 |∇ψ|2 = 0, t ∈ [0, 1)
+ψ1, t = 1 (1.8)
+for some measurable function ψ1 which is designed for obtaining μ1 at time 1. The potential ψ is the unique viscosity solution of the Hamilton-Jacobi equation (1.8)-(b); it admits the Hopf-Lax representation
+ψt(z) = inyf
+{ d2(z, y)
+2(1 − t) + ψ1(y)
+}
+, 0 ≤ t < 1, y ∈ X . (1.9)
+In particular, if ψ1 is bounded, ψ is locally Lipschitz continuous and almost everywhere differentiable. Based on these properties of the displacement interpolations, F. Otto [JKO98, Ott01] developed an informal theory aimed at considering the metric space (P2(X ), W2) as a Riemannian manifold. This informal approach relies on the idea that, in view of the current equation (1.8)-(a), ∂tμ|t=0 = −∇·(μ ∇ψ0) is a candidate to be a tangent vector at μ0. Second order calculus necessitates to take also (1.8)-(b) into account. The analogue of displacement interpolation exists with (MKdyn) replaced by (Sdyn). This entropic interpolation also enjoys properties which are similar to (1.7) and (1.8). They are discussed below.
+The Monge-Kantorovich problem is a limit of Schr ̈odinger problems. It is wellknown that taking Rk to be the reversible Brownian motion with variance 1/k, i.e. the Markov measure associated to the Markov generator
+Lk = ∆/(2k)
+with the volume measure as its initial distribution, the bridges of Rk converge: for each (x, y), we have kli→m∞ Rk,xy = δγxy ∈ P(Ω) (1.10)
+with respect to the usual narrow topology σ(P(Ω), Cb(Ω)). This result is an easy consequence of Schilder’s theorem which is a large deviation result (as k tends to infinity) whose rate function is precisely the dynamic cost function C given at (1.3), see [DZ98]. In fact, the dynamic and static Monge-Kantorovich problems are respectively the Γlimits of sequences of dynamic and static Schro ̈dinger problems associated to the sequence (Rk)k≥1 in M+(Ω) of reference path measures [Mik04, L ́eo12a]. More precisely (but still informally), considering the sequence of re-normalized Schro ̈dinger problems
+H(P |Rk)/k → min; P ∈ P(Ω) : P0 = μ0, P1 = μ1, (Skdyn)
+we have Γ- kli→m∞ (Skdyn) = (MKdyn) (1.11)
+and similarly the re-normalized static version
+H(π|R0k1)/k → min; π ∈ P(X 2) : π0 = μ0, π1 = μ1, (Sk)
+
+
+THE SCHRO ̈ DINGER PROBLEM 5
+satisfies Γ- limk→∞ (Sk) = (MK). Recall that this implies that under some compactness
+requirements, the values converge: limk→∞ inf (Skdyn) = inf (MKdyn) and any limit point of
+the sequence of minimizers ( ̂P k)k≥1 of (Skdyn) solves (MKdyn). A similar statement holds
+with the static problems. In particular, the time-marginal flow
+μtk := ̂Ptk, t ∈ [0, 1],
+of the solution to (Skdyn) converges as k tends to infinity to the displacement interpolation [μ0, μ1] when (MK) admits a unique solution, for instance when both μ0 and μ1 are abso
+lutely continuous. Denoting and calling the entropic interpolation [μ0, μ1]k := (μtk)t∈[0,1]
+of order k, we have kli→m∞[μ0, μ1]k = [μ0, μ1], (1.12)
+with respect to the topology of uniform convergence on C([0, 1], P2(X )) where P2(X ) is equipped with W2.
+The Schr ̈odinger problem is a regular approximation of the Monge-Kantorovich problem. Now, we explain informally why in some sense, (Skdyn) is a regularization of its limiting Monge-Kantorovich problem (MKdyn). Unlike (MKdyn), for each k ≥ 1, (Skdyn)
+admits a unique solution ̂P k ∈ P(Ω). It can be proved that ̂P k is a Markov diffusion whose semigroup generator (Atk)0≤t≤1 is of the following form
+Atk = ∇ψtk ·∇ + ∆/(2k), 0 ≤ t < 1,
+with ψk the smooth function on [0, 1) × X which is the unique classical solution of the Hamilton-Jacobi-Bellman equation
+{ ∂tψk + 1
+2 |∇ψk|2 + ∆ψk/(2k) = 0, t ∈ [0, 1)
+ψ1k, t = 1
+for some measurable function ψ1k designed for recovering2 μ1k = μ1 as the final distribution of the weak solution to
+{∫
+[0,1]×X (∂t + Atk)u(t, x) μtk(dx)dt = 0, ∀u ∈ Co∞((0, 1)×X )
+μ0k = μ0, t = 0.
+which is the evolution equation of the entropic interpolation [μ0, μ1]k of order k.
+Remark that the current equation (1.8)-(a):
+{ ∂tμ + ∇·(μ ∇ψ) = 0, t ∈ (0, 1]
+μ0, t = 0 signifies
+{∫
+[0,1]×X (∂t + At)u(t, x) μt(dx)dt = 0, ∀u ∈ Co∞((0, 1)×X ) μ0, t = 0
+with
+At = ∇ψt ·∇, 0 ≤ t < 1,
+to be compared with the second order operator Atk above. We see that, as a consequence of the smoothing and positivity-improving effects of the Laplace operator, the entropic interpolation of order k: [μ0, μ1]k, is positive and regular on (0, 1) × X . This is in contrast with the limiting displacement interpolation [μ0, μ1].
+2In fact, one can recover exactly μ1 if it has a regular density. Otherwise, one can build a sequence μ1k
+such that limk→∞ μ1k = μ1.
+
+
+6 CHRISTIAN LE ́ONARD
+Extension of the framework. We have chosen Rk to be attached to the Brownian motion, but taking Rk to be any Markov measure on a Polish state space X satisfying a large deviation principle with some rate function C leads to limiting Monge-Kantorovich problems associated to alternate cost functions C and c which are still linked by the contraction formula (1.4). Such extensions based on continuous random paths are considered in [L ́eo12a]. Extensions where the reference measure R is a random walk on a discrete graph are investigated in [L ́eoa], see also Sections 4 and 5 below.
+New results. Although this article is mainly a survey, we have obtained some new results. Theorem 2.9 recollects several sufficient conditions on the reference path measure
+R and the prescribed marginal measures μ0 and μ1, for the unique solution ̂P of (Sdyn) to admit the following product-shaped Radon-Nikodym derivative
+̂P = f0(X0)g1(X1) R ∈ P(Ω), (1.13)
+where f0 and g1 are positive measurable positive functions on X . The slight innovation is due to the possibility that R might have an infinite mass, e.g. the reversible Brownian motion on Rn. Theorem 2.12 is a significant improvement of Theorem 2.9 in the special important case where R is assumed to be Markov. Under some additional requirement on R, it states that (1.13) holds where f0 and g1 may vanish on some sets. Proposition 2.10 simply states that, if R is Markov, then the solution ̂P of (Sdyn) is also Markov. Although this is intuitively clear, the author couldn’t find in the literature any proof of this result. Finally, the Benamou-Brenier type formulas that are stated at Propositions 4.1 and 4.2, are new results.
+Outline of the paper. In Section 2, the dynamic and static Schro ̈dinger problems are rigorously stated, their main properties of existence and uniqueness are discussed and the shape of their minimizers is described. This specific shape, given by (1.13), suggests to introduce at Section 3 the notion of (f, g)-transform of a Markov measure R which is a time-symmetric version of Doob’s h-transform. In particular, the classical analogue of Born’s formula, which was Schro ̈dinger’s motivation in [Sch31, Sch32], is derived at Theorem 3.4. Then we illustrate at Section 4 the general results of Sections 2 and 3. First, we revisit the case where R is the reversible Brownian motion. Then, we consider a discrete setting where the reference measure is a reversible random walk on a graph. At Section 5, we see that slowing the reference Markov process down to a complete absence of motion, is the right asymptotic to consider for recovering optimal transport from minimal entropy. Technically, this is expressed in terms of Γ-convergence results in the spirit of (1.11). In Section 6, by means of basic large deviation results, we present the motivation for addressing the entropy minimization problem (Sdyn). This leads us naturally to the lazy gas experiment, a starting point to the Lott-Sturm-Villani theory. Literature is discussed at Section 7.
+Acknowledgements. Many thanks to Jean-Claude Zambrini for numerous fruitful discussions. The author also wishes to thank Toshio Mikami and a careful referee for pointing out a gap in the preliminary version of the article.
+2. Schr ̈odinger’s problem
+We begin fixing some notation and describing the general framework. Then, Schro ̈dinger’s problem is stated and its main properties are discussed in a general setting.
+
+
+THE SCHRO ̈ DINGER PROBLEM 7
+Path measures. Depending on the context, we denote by the same letter the set Ω = C([0, 1], X ) of all continuous paths from the unit time interval [0, 1] to the topological state space X , or Ω = D([0, 1], X ) the set of all c`adl`ag (right-continuous and left-limited) paths. We furnish X with its Borel σ-field and Ω with the canonical σ-field σ(Xt; 0 ≤ t ≤ 1) which is generated by the time projections
+Xt(ω) := ωt ∈ X , ω = (ωs)0≤s≤1 ∈ Ω, t ∈ [0, 1].
+The mapping X = (Xt)0≤t≤1 : Ω → Ω which is the identity on Ω, is usually called the canonical process. We call a path measure, any positive measure Q ∈ M+(Ω) on Ω. Its time-marginals are the push-forward measures
+Qt := (Xt)#Q ∈ M+(X ), t ∈ [0, 1].
+This means that for any Borel subset A ⊂ X , Qt(A) = Q(Xt ∈ A). If Q describes the behaviour of the random path (Xt)0≤t≤1 of some particle, then Qt describes the behaviour of the random position Xt of the particle at time t. Remark that the flow (Qt)0≤t≤1 ∈ M+(X )[0,1] contains less information than the path measure Q ∈ M+(Ω). In particular, (Qt)0≤t≤1 doesn’t tell us anything about the correlations between two positions at different
+times s and t which are encoded in Qst := (Xs, Xt)#Q ∈ M+(X 2). We shall be primarily concerned with the endpoint marginal measure
+Q01 := (X0, X1)#Q ∈ M+(X 2),
+meaning that for any Borel subsets B ⊂ X 2, Q01(B) = Q((X0, X1) ∈ B). We also denote
+Qxy = Q(· | X0 = x, X1 = y) ∈ P(Ω),
+the bridge of Q between x and y. For each Q ∈ M+(Ω), the disintegration formula (A.7) with φ = (X0, X1) writes as follows:
+Q(·) =
+∫
+X2
+Qxy(·) Q01(dxdy) ∈ M+(Ω).
+We assume that the topological state space X is a Polish (separable and complete metric) space and equip Ω = D([0, 1], X ) with the corresponding Skorokhod topology. It is wellknown [Bil68] that this topology turns Ω into a Polish space and that the corresponding Borel σ-field is precisely the canonical one: σ(Xt; 0 ≤ t ≤ 1). Moreover, in restriction to C([0, 1], X ), the Skorokod topology is the topology of uniform convergence which also turns C([0, 1], X ) into a Polish space. We still have the coincidence of the Borel σ-field and the canonical one. The path space Ω is furnished with this topology.
+Why unbounded path measures. One may wonder why a random behaviour should be described by an unbounded measure rather than a probability measure. We have in mind as a particular but important application, the reversible Brownian motion on X = Rn. It is the Brownian motion whose forward dynamics is driven by the heat semigroup as usual, but its random initial position X0 is uniformly distributed on Rn. Denoting R ∈ M+(Ω) the
+corresponding path measure on Ω = C([0, 1], Rn), R0(dx) = dx is the Lebesgue measure3
+3Although this paper is not concerned with the interpretation of such a description, one should note that a “frequencist” interpretation fails unless one introduces an infinite system of independent particles initially distributed according to a Poisson point process with a uniform spatial frequency. An alternate information viewpoint is also relevant: the Lebesgue measure (or any of its positive multiples) is the less informative a priori measure for modelling our complete lack of knowledge about the initial position. Indeed, it is invariant under isometries and translations, and the entropic problems to be considered below are insensitive to homotheties (up to an additive constant).
+
+
+8 CHRISTIAN LE ́ONARD
+on Rn and R(·) = ∫
+X Wx(·) dx where Wx is the Wiener probability measure with initial
+marginal δx. Clearly, R has the same infinite mass as R0. Similarly, the simple random walk on a countably infinite graph X admits an unbounded reversing measure R0 so that the corresponding reversible simple random walk is described by an unbounded measure R ∈ M+(Ω) with Ω = D([0, 1], X ). Considering such reversible path measures R ∈ M+(Ω) as reference measures usually simplifies computations.
+Relative entropy. Let r be some σ-finite positive measure on some space Y . The relative entropy of the probability measure p with respect to r is loosely defined by
+H(p|r) :=
+∫
+Y
+log(dp/dr) dp ∈ (−∞, ∞], p ∈ P(Y ) (2.1)
+if p ≪ r and H(p|r) = ∞ otherwise. The rigorous definition of the relative entropy and its basic properties are recalled at the appendix section A.
+Statement of Schr ̈odinger’s problem. The main data is a given reference path measure R ∈ M+(Ω). In this section any (non-zero) σ-finite path measure in M+(Ω) can serve as a reference measure. We first state a dynamic version (Sdyn) of Schro ̈dinger’s problem which is associated to R. Then, we define Schro ̈dinger’s problem (S) as a static projection of (Sdyn) and the connections between the solutions of (S) and (Sdyn) are described at Proposition 2.3.
+Definition 2.1 (Dynamic Schro ̈dinger’s problem). The dynamic Schr ̈odinger problem associated with the reference path measure R ∈ M+(Ω) is the following entropy minimization problem
+H(P |R) → min; P ∈ P(Ω) : P0 = μ0, P1 = μ1 (Sdyn) where μ0, μ1 ∈ P(X ) are prescribed initial and final marginals.
+Considering the projection R01 = (X0, X1)#R ∈ M+(X 2) of R on the product space X 2 as a reference measure, leads us to Schro ̈dinger’s (static) problem.
+Definition 2.2 (Schro ̈dinger’s problem). The (static) Schr ̈odinger problem associated with the reference measure R01 ∈ M+(X 2) is the following entropy minimization problem
+H(π|R01) → min; π ∈ P(X 2) : π0 = μ0, π1 = μ1 (S)
+where π0 := π(· × X ) and π1 := π(X × ·) ∈ P(X ) denote respectively the first and second
+marginals of π ∈ P(X 2) and μ0, μ1 ∈ P(X ) are prescribed marginals.
+These optimization problems are highly connected. This is the content of next proposition.
+Proposition 2.3 (Fo ̈llmer, [Fo ̈l88]). The Schr ̈odinger problems (Sdyn) and (S) admit respectively at most one solution ̂P ∈ P(Ω) and ̂π ∈ P(X 2). If (Sdyn) admits the solution ̂P , then ̂π = ̂P01 is the solution of (S). Conversely, if ̂π solves (S), then (Sdyn) admits the solution
+̂P (·) =
+∫
+X2
+Rxy(·) ̂π(dxdy) ∈ P(Ω) (2.2)
+which means that ̂P01 = ̂π ∈ P(X 2)
+and that ̂P shares its bridges with R :
+̂P xy = Rxy, ∀(x, y) ̂π-a.e.
+
+
+THE SCHRO ̈ DINGER PROBLEM 9
+Proof. Being strictly convex problems, (Sdyn) and (S) admit respectively at most one solution. Let us particularize the consequences of the additive property formula (A.8) to r = R, p = P and φ = (X0, X1). We have for all P ∈ P(Ω),
+H(P |R) = H(P01|R01) +
+∫
+X2
+H(P xy|Rxy) P01(dxdy)
+which implies that H(P01|R01) ≤ H(P |R) with equality (when H(P |R) < ∞) if and only
+if P xy = Rxy for P01-almost every (x, y) ∈ X 2, see (A.9) and (A.10). Note that this
+additive property formula is available since both X 2 and Ω are Polish spaces. Therefore ̂P is the (unique) solution of (Sdyn) if and only if it disintegrates as (2.2).
+Existence results. We present below at Proposition 2.5 a simple criterion for (S) and (Sdyn) to have a solution. We first need a preliminary result.
+Lemma 2.4. We have: inf (Sdyn) = inf (S) ∈ (−∞, ∞]. Let B : X → [0, ∞) be a measurable function such that
+∫
+X2
+e−B(x)−B(y)R01(dxdy) < ∞ (2.3)
+and take μ0, μ1 ∈ P(X ) such tha∫t
+X
+B dμ0,
+∫
+X
+B dμ1 < ∞. (2.4)
+The static and dynamic Schr ̈odinger problems (S) and (Sdyn) admit a (unique) solution if and only if inf (Sdyn) = inf (S) < ∞ or equivalently if and only if the prescribed marginals μ0 and μ1 are such that
+there exists some πo ∈ P(X 2) such that π0o = μ0, π1o = μ1 and H(πo|R01) < ∞. (2.5)
+Proof. The first identity comes from the proof of Proposition 2.3. Since X is Polish, the probability measures μ0 and μ1 are tight measures on X and it
+follows with the Prokhorov criterion on X 2 that the closed constraint set Π(μ0, μ1) :=
+{π ∈ P(X 2) : π0 = μ0, π1 = μ1} is uniformly tight and therefore compact in P(X 2).
+Taking (2.3) into account, (A.3) and (A.4) give us H(π|R01) = H(π|R0B1) − ∫
+X 2 W dπ − zB,
+π ∈ P(X 2) with W (x, y) = B(x) + B(y), x, y ∈ X , zB := ∫
+X 2 e−B(x)−B(y)R01(dxdy) < ∞
+and R0B1 := z−1
+B e−B⊕BR01 ∈ P(X 2). In restriction to Π(μ0, μ1), we obtain
+H(π|R01) = H(π|R0B1) −
+∫
+X
+B dμ0 −
+∫
+X
+B dμ1 − zB, π ∈ Π(μ0, μ1). (2.6)
+Together with (2.4), this implies that H(·|R01) is lower bounded and lower semi-continuous on the compact set Π(μ0, μ1). Hence, (S) admits a solution if and only inf (S) < ∞. We already remarked that (Sdyn) has a solution if and only (S) has a solution that is: inf (S) < ∞, or equivalently if and only (2.5) is satisfied.
+Proposition 2.5. Suppose that R0 = R1 = m ∈ M+(X ) (this is satisfied in particular when R is reversible with m as its reversing measure).
+(a) For (Sdyn) and (S) to have a solution, it is necessary that H(μ0|m), H(μ1|m) < ∞. (b) Let us give a set of sufficient conditions. Suppose that there exist some nonnegative measurable functions A and B on X such that (i) R01(dxdy) ≥ e−A(x)−A(y) m(dx)m(dy);
+(ii) ∫
+X 2 e−B(x)−B(y)R01(dxdy) < ∞
+
+
+10 CHRISTIAN LE ́ONARD
+Let μ0 and μ1 satisfy
+(iii) ∫
+X (A + B) dμ0, ∫
+X (A + B) dμ1 < ∞
+(iv) H(μ0|m), H(μ1|m) < ∞
+Then, (Sdyn) and (S) admit a unique solution. (c) If we have (iv) and
+(v) ∫
+X eα(A+B) dm < ∞ for some α > 0,
+then (iii) is satisfied.
+Remark that for (v) to be satisfied, it is necessary that m is a bounded measure.
+Proof. Statement (a) follows directly from Lemma 2.4 and H(μ0|m), H(μ1|m) ≤ H(πo|R01) < ∞, see (A.9). Let us look at statement (b). Testing (2.5) with πo = μ0 ⊗ μ1, one easily observes that when (i) and (iii) are satisfied, it suffices that H(μ0|m), H(μ1|m) < ∞ for (2.5) to hold true, and consequently by Lemma 2.4, for (Sdyn) and (S) to have a (unique) solution. Let us look at statement (c). With the variational representation formula (A.5), one sees that (iv) and (v) imply (iii).
+The dual problem. Take a measurable function B : X → [1, ∞) that satisfies (2.3). Define CB(X ) to be the space of all continuous functions u : X → R such that sup |u|/B <
+∞ and PB(X ) := {μ ∈ P(X ); ∫
+X B dμ < ∞} . Based on the variational representation of
+the relative entropy (A.6) and on the observation that for each π ∈ P(X 2), (π0, π1) =
+(μ0, μ1) if and only if ∫
+X 2[φ(x) + ψ(y)] π(dxdy) = ∫
+X φ dμ0 + ∫
+X ψ dμ1, for all φ, ψ ∈ Cb(X )
+(the space of all bounded continuous numerical functions on X ), it can be proved that a
+dual problem to the Schro ̈dinger problem (S) is
+∫
+X
+φ dμ0 +
+∫
+X
+ψ dμ1 − log
+∫
+X2
+eφ⊕ψ dR01 → max; φ, ψ ∈ CB(X ) (D)
+where φ ⊕ ψ : (x, y) ∈ X 2 7→ φ(x) + ψ(y) ∈ R and it is assumed that the prescribed marginals satisfy μ0, μ1 ∈ PB(X ). In particular, the dual equality inf (S) = sup (D) ∈ (−∞, ∞] is satisfied. This is proved, for instance, in [L ́eo01a] when the reference measure is a probability measure. In the general case, take (2.6) into account to get back to a reference measure with a finite mass. Of course, there is no reason for the dual attainment to hold in general in a space of regular functions such as CB(X )2. Suppose however that μ0 and μ1 are such that (D) is
+attained at (φˆ, ψˆ). Then, the dual equality: ∫
+X 2 φˆ ⊕ ψˆ d̂π − log ∫
+X 2 eφˆ⊕ψˆ dR01 = H(̂π|R01)
+and the case of equality in (A.6) lead us to
+d̂π/dR01 = exp(φˆ ⊕ ψˆ), (2.7)
+at least when d̂π/dR01 > 0. The shape of the minimizer ̂π of (S) will be discussed further in next subsection.
+Similarly, a dual problem to the dynamic version (Sdyn) of (S) is
+∫
+X
+φ dμ0 +
+∫
+X
+ψ dμ1 − log
+∫
+Ω
+eφ(X0)+ψ(X1) dR → max; φ, ψ ∈ CB(X ) (Ddyn)
+We observe that (D)=(Ddyn).
+Some properties of the minimizer ̂π of (S). We give some details about the structure of the unique minimizer ̂π of (S) which is assumed to exist; for instance under the hypotheses of Proposition 2.5.
+
+
+THE SCHRO ̈ DINGER PROBLEM 11
+It is proved in [L ́eo01b, Thm. 5.1 & (5.9)]4 that there exist two functions φ, ψ : X → R such that
+(i) d̂π/dR01 = exp(φ ⊕ ψ), ̂π-a.e.
+(ii) φ ⊕ ψ : X 2 → R is R01-measurable. It is tempting to write that ̂π has the following shape
+̂π(dxdy) = f (x)g(y) R01(dxdy)
+where f = eφ and g = eψ are such that the marginal constraints
+{ f (x)ER[g(X1) | X0 = x] = dμ0/dR0(x), R0-a.e.
+g(y)ER[f (X0) | X1 = y] = dμ1/dR1(y), R1-a.e. (2.8)
+are satisfied. This was already suggested by (2.7). But this is not allowed in the general case. Indeed, two obstacles have to be avoided. Some comments are necessary.
+Obstacle (i). Firstly, the identity (i) is only valid ̂π-almost everywhere and it might happen that it doesn’t hold true R01-almost everywhere. Otherwise stated, there exists some
+measurable subset S ⊂ X 2 such that: (i)’ ̂π = 1S exp(φ ⊕ ψ) R01
+and it is not true in general that the set S ⊂ X 2 is the product S = S0 × S1 of two measurable subsets of X , see [FG97, §2] or [L ́eo01b, §5].
+Obstacle (ii). Secondly, statement (ii) does not imply that φ and ψ are respectively R0 and R1-measurable on X . Only the tensor sum φ ⊕ ψ is R01-measurable on the product
+space X 2. Hence, one is not allowed to consider the conditional expectations in (2.8).
+Avoiding obstacle (i). To avoid the obstacle (i), it is enough to slightly modify the prescribed marginals μ0 and μ1 as follows. It is shown in [L ́eo01b] that (i) is satisfied R01-a.e. (rather than ̂π-a.e.) if (μ0, μ1) is in the intrinsic core: icor C, of the set of all admissible constraints C := {(μ0, μ1) ∈ P(X )2; inf (S)(μ0,μ1) < ∞}.
+Recall that for any convex set C, its intrinsic core is defined as icor C := {y ∈ C; ∃x, z ∈ C : y ∈]x, z[} where ]x, z[:= {(1 − t)x + tz; 0 < t < 1} ⊂ C. It is also shown in [L ́eo01b] that C = {Λ∗ < ∞} where Λ∗ is the convex conjugate of the extended real valued function Λ which is defined for any measurable functions φ, ψ by
+Λ(φ, ψ) = log ∫
+X 2 eφ⊕ψ dR01 ∈ (−∞, ∞]. Therefore C is a convex subset of P(X )2. In
+particular, considering { μǫ0 := (1 − ǫ)μ0 + ǫR0w
+μǫ1 := (1 − ǫ)μ1 + ǫR1w
+(2.9)
+with R0w, R1w ∈ P(X ) the marginals of R0w1 = zw−1e−w R01 ∈ P(X 2) where the function
+w is chosen5 such that ∫
+X 2 we−w dR01 < ∞ for H(R0w1|R01) < ∞ to be satisfied with
+∫
+X 2 w dR0w1 < ∞, see (A.4), we observe that for any admissible (μ0, μ1) ∈ C, for any
+arbitrarily small ǫ > 0, (μǫ0, μǫ1) ∈ icor C. Therefore, (μǫ0, μǫ1) is arbitrarily close to (μ0, μ1)
+in total variation norm and the corresponding solution ̂πǫ of (S)(μǫ0,μǫ1) satisfies
+̂πǫ = exp(φǫ ⊕ ψǫ) R01
+for some functions φǫ and ψǫ such that φǫ ⊕ ψǫ is jointly R01-measurable.
+4The assumptions of [L ́eo01b] require that R01 is a probability measure. In the general case where R01 is unbounded, use (2.6) to go back to the unit mass setting.
+5In the important special case where R is a probability measure, just take w = 0 in order that R0w1 = R01.
+
+
+12 CHRISTIAN LE ́ONARD
+Proposition 2.6. We say that the constraint (μ0, μ1) is internal if it is in the intrinsic core of the set of all admissible constraints: (μ0, μ1) ∈ icor C. In this case, we have
+̂π = exp(φ ⊕ ψ) R01
+for some jointly R01-measurable function φ ⊕ ψ on X 2.
+Overcoming obstacle (ii). To overcome the measurability obstacle (ii), it is necessary to impose some restriction on the reference measure R01. It is proved in [BL92, Proposition 6.1] that when the function φ⊕ψ is measurable with respect to some product measure α ⊗ β on the product space X 2, the functions φ and ψ are respectively α-measurable and β-measurable. Therefore, if it is assumed that
+R0 ⊗ R1 ≪ R01,
+any R01-measurable function is R0 ⊗ R1-measurable. As φ ⊕ ψ is R01-measurable, φ and ψ are respectively R0 and R1-measurable. Choosing another way, it is also possible to obtain the desired measurability property when assuming
+R01 ≪ R0 ⊗ R1.
+To see this, let ̂π, φ and ψ satisfy (i). It is proved in [Csi75] that φ ⊕ ψ stands in the L1(̂π)-closure of L1(μ0) ⊕ L1(μ1), denoted by Λ̂π. In addition, with [RT93, Proposition
+2], we know that when π ∈ P(X 2) with first and second marginals π0 = μ0 and π1 = μ1, is such that π ≪ π0 ⊗ π1 = μ0 ⊗ μ1, then for any θ ∈ Λπ, there exist two measurable functions θ0 and θ1 such that θ = θ0 ⊕ θ1, π-a.s. Therefore, if
+̂π ≪ μ0 ⊗ μ1,
+then φ and ψ are respectively μ0 and μ1-measurable functions. But this implicit criterion is not easy to check. The following result is more practical.
+Proposition 2.7. [RT93, Thm. 3] If R01 ≪ R0 ⊗ R1, then φ and ψ in (i): d̂π/dR01 = exp(φ ⊕ ψ), ̂π-a.e., can be chosen respectively as μ0 and μ1-measurable functions.
+Proof. By assumption ̂π ≪ R01 ≪ R0 ⊗ R1. But ̂π ≪ R0 ⊗ R1 implies that ̂π ≪ ̂π0 ⊗ ̂π1 = μ0 ⊗ μ1 and we conclude as above.
+Extending the functions φ and ψ to their R0 and R1-measurable versions: 1{dμ0/dR0>0}φ and 1{dμ1/dR1>0}ψ, we see that φ and ψ can be taken respectively R0 and R1-measurable.
+Summing up. Putting Propositions 2.5, 2.6 and the above considerations together with (2.8), we obtain the following
+Theorem 2.8. Suppose that R satisfies
+(i) R0 = R1 = m ∈ M+(X );
+(ii) R01(dxdy) ≥ e−A(x)−A(y) m(dx)m(dy) for some nonnegative measurable function A on X ;
+(iii) ∫
+X 2 e−B(x)−B(y)R01(dxdy) < ∞ for some nonnegative measurable function B on X ;
+(iv) m⊗2 ≪ R01 or R01 ≪ m⊗2. Suppose also that the constraint (μ0, μ1) satisfies
+(v) H(μ0|m), H(μ1|m) < ∞;
+(vi) ∫
+X (A + B) dμ0, ∫
+X (A + B) dμ1 < ∞ where A and B appear at (ii) and (iii) above;
+(vii) (μ0, μ1) is internal, see the statement of Proposition 2.6. This is the case for instance when m is a probability measure and μ0, μ1 ≥ ǫm, for some ǫ > 0.
+
+
+THE SCHRO ̈ DINGER PROBLEM 13
+Then, (S) admits a unique solution ̂π and
+̂π(dxdy) = f0(x)g1(y) R01(dxdy) (2.10)
+where the positive functions f0 and g1 are m-measurable and solve :
+{ f0(x)ER[g1(X1) | X0 = x] = dμ0/dm(x), m-a.e.
+g1(y)ER[f0(X0) | X1 = y] = dμ1/dm(y), m-a.e. (2.11)
+which is called the Schro ̈dinger system6.
+• It is not necessary for ER[g1(X1) | X0] and ER[f0(X0) | X1] to be well-defined that f0(X0) and g1(X1) are R-integrable, since f0 and g1 are positive measurable functions. Only a notion of integration of nonnegative functions is required, see [L ́eoc]. • The assumption (vii) is here to make sure that d̂π/dR01 > 0. If it is not satisfied, d̂π/dR01 may not have a product form and its structure may be quite complex. The complete description of d̂π/dR01 in this case is given in [L ́eo01b].
+• In view of (2.9), for the assumption (vii) to hold, it is enough that
+{ μ0 ≥ ǫR0w
+μ1 ≥ ǫR1w
+,
+for some ǫ > 0, and we can choose w = 0 when m is a probability measure.
+The solution ̂P of (Sdyn). We deduce from this theorem the characterization of ̂P .
+Theorem 2.9. Suppose that the hypotheses of Theorem 2.8 are satisfied. Then, (Sdyn) admits the unique solution
+̂P = f0(X0)g1(X1) R ∈ P(Ω) (2.12)
+where f0 and g1 are the measurable positive functions which appear at (2.10) and solve (2.11).
+Proof. The existence of the solution ̂P and its representation by the Radon-Nikodym formula (2.12) are direct consequences of Proposition 2.3, Theorem 2.8, (2.2) and (2.10).
+The special case where R is Markov. We are going to assume that the reference path measure R is Markov. Under this restriction, we obtain at Theorem 2.12 below a more efficient version of Theorem 2.8. Let us recall the time-symmetric definition of the Markov property.
+Markov property. One says that R ∈ M+(Ω) is Markov if its time marginal R0 (or any
+other time marginal Rto with 0 ≤ to ≤ 1) is σ-finite7 and for each 0 ≤ t ≤ 1,
+R(X[0,t] ∈ ·, X[t,1] ∈ ·· | Xt) = R(X[0,t] ∈ · | Xt)R(X[t,1] ∈ ·· | Xt)
+signifying that under R, for any t, conditionally on the present state Xt at time t, past and future are independent. This is equivalent to the usual forward time-oriented Markov property
+R(X[t,1] ∈ ·|X[0,t]) = R(X[t,1] ∈ ·|Xt), ∀t ∈ [0, 1].
+Proposition 2.10. Suppose that the reference measure R ∈ M+(Ω) is Markov. If it
+exists, the solution ̂P of (Sdyn) is also Markov.
+6The article [RT93] refers to (2.11) as the Schr ̈odinger equation, but this is misleading. After Fortet and Beurling [For40, Beu60], we prefer calling (2.11) the Schr ̈odinger system. 7This assumption is necessary for defining conditional versions of R, such as R(· | Xt) or R(· | X[0,t]), see [L ́eoc].
+
+
+14 CHRISTIAN LE ́ONARD
+Proof. We need some notation. For each 0 ≤ t ≤ 1, we set Ω[0,t] := {ω|[0,t]; ω ∈ Ω}
+and Ω[t,1] := {ω|[t,1]; ω ∈ Ω} the set of all paths on [0, t] and [t, 1] respectively. For any Q ∈ M+(Ω), Qt,z := Q(·|Xt = z) ∈ P(Ω), Qt,z
+[0,t] := Q(X[0,t] ∈ ·|Xt = z) ∈ P(Ω[0,t]) and
+Qt,z
+[t,1] := Q(X[t,1] ∈ ·|Xt = z) ∈ P(Ω[t,1]).
+Claim 2.11. We fix 0 ≤ t ≤ 1. Among all the P ∈ P(Ω) such that Pt = μ, P[t0z,t] =
+Qt<z and P[tt,z1] = Qt>z, z ∈ X , where μ ∈ P(X ), Qt<z ∈ P(Ω[0,t] ∩ {Xt = z}) and Qt>z ∈ P(Ω[t,1] ∩{Xt = z}) are prescribed, the relative entropy H(·|R) attains its unique minimum
+at P ∗(·) = ∫
+X Qt<z ⊗ Qt>z(·) μ(dz). In particular, P[∗t,1](·|X[0,t]) = P[∗t,1](·|Xt).
+Accept this claim for a while and suppose, ad absurdum, that ̂P is not Markov. Then, there exists some 0 ≤ t ≤ 1 such that ̂P (·|Xt) 6= ̂P[0,t](·|Xt) ⊗ ̂P[t,1](·|Xt). Choosing μ = ̂Pt, Qt<z = ̂P[t0z,t] and Qt>z = ̂P[tt,z1] in the above claim, we see that the time marginals
+are unchanged: Ps∗ = ̂Ps, for all s ∈ [0, 1] and that H(P ∗|R) < H( ̂P |R) : ̂P is not the solution to (Sdyn), a contradiction. It remains to prove the claim. With (A.8), we see that
+H(P |R) = H(μ|Rt) +
+∫
+X
+H(P tz|Rtz) μ(dz)
+and
+H(P tz|Rtz) = H(Qt<z|R[t0z,t]) +
+∫
+Ω[0,t]
+H (P[tt,z1](·|X[0,t])|R[ttz,1](·|X[0,t])) dQt<z.
+Noting that R[ttz,1](·|X[0,t]) = R[ttz,1] and Qt>z = ∫
+Ω[0,t] P[tt,z1](·|X[0,t]) dQt<z, we obtain with Jensen’s inequality that
+H (Qt>z
+∣∣R[ttz,1]
+)=H
+(∫
+Ω[0,t]
+P[tt,z1](·|X[0,t]) dQt<z
+∣∣∣R[ttz,1](·|X[0,t])
+)
+≤
+∫
+Ω[0,t]
+H (P[tt,z1](·|X[0,t])|R[ttz,1](·|X[0,t])) dQt<z
+with equality if and only if P[tt,z1](·|X[0,t]) = Qt>z, Qt<z-a.e. Since this holds for μ-almost
+every z, this amounts to say that P (·) = ∫
+X Qt<z ⊗ Qt>z(·) Pt(dz) and it also means that
+P[tt,z1](·|X[0,t]) = P[tt,z1], P[t0z,t]-a.e. which is the desired forward Markov property at time t. This completes the proofs of the claim and the proposition.
+Reversibility. A path measure R ∈ M+(Ω) is said to be reversible with m ∈ M+(X ) as its reversing measure (m-reversible for short), if R0 = m and for any 0 ≤ u ≤ v ≤ 1,
+R is invariant with respect to the time reversal mapping revuv defined by: revtuv :=
+X(u+v−t)+ , u ≤ t ≤ v, meaning that (revuv)#R = (X[u,v])#R. Clearly, this implies that Ru = Rv for any u, v. In other words, R is m-stationary i.e. Rt = m, for all 0 ≤ t ≤ 1. This notion is invoked at statement (c) of the following result.
+Theorem 2.12 (The Markov case).
+Suppose that the reference measure R ∈ M+(Ω) satisfies
+(i) R is Markov; (ii) there exist some 0 < to < 1 and some measurable Xo ⊂ X such that Rto(Xo) > 0 and
+R01 ≪ R((X0, X1) ∈ ·|Xto = z), ∀z ∈ Xo.
+
+
+THE SCHRO ̈ DINGER PROBLEM 15
+(iii) R0 = R1 = m ∈ M+(X ); (iv) R01(dxdy) ≥ e−A(x)−A(y) m(dx)m(dy) for some nonnegative measurable function A on X ;
+(v) ∫
+X 2 e−B(x)−B(y)R01(dxdy) < ∞ for some nonnegative measurable function B on X ;
+Suppose also that the constraint (μ0, μ1) satisfies
+(vi) H(μ0|m), H(μ1|m) < ∞;
+(vii) ∫
+X (A + B) dμ0, ∫
+X (A + B) dμ1 < ∞ where A and B appear at (iv) and (v) above.
+(a) Then, the unique solution ̂P of (Sdyn) is also Markov and
+̂P = f0(X0)g1(X1) R ∈ P(Ω) (2.13)
+where f0 and g1 are the m-measurable nonnegative functions which appear at (2.10) and solve the Schr ̈odinger system (2.11). (b) Conversely, let ̂P be defined by (2.13) with f0 and g1 two m-measurable nonnegative
+functions solving the Schr ̈odinger system (2.11). Then, ̂P is Markov and it is the unique solution of (Sdyn). (c) For the properties (i), (ii) and (iii) to hold, it is enough that R is a m-reversible Markov measure which admits a regenerative set in the following sense: There exists a measurable subset Xo ⊂ X with m(Xo) > 0 such that for each 0 < h < 1 and all measurable subset A ⊂ X with m(A) > 0, we have: R(Xh ∈ A|X0 = x) > 0, for all x ∈ Xo.
+Proof. • Proof of (a). By Proposition 2.5, the properties (iii)–(vii) assure the existence of the unique solution ̂P of (Sdyn). With Proposition 2.3, we have ̂P xy = Rxy, for all (x, y), ̂π-a.e. This means that
+d ̂P
+dR = d̂π
+dR01
+(X0, X1).
+On the other hand, we have just seen at Proposition 2.10 that ̂P is Markov. But, it is proved in [LRZ] that under the assumptions (i) and (ii), if P ∈ P(Ω) is a Markov measure such that dP/dR = h(X0, X1) for some measurable function h, then there exist two measurable nonnegative functions f and g such that P = f (X0)g(X1) R. This proves statement (a).
+• Proof of (b). The fact that ̂P is the solution of (Sdyn) is proved in [Csi75] by a geometric
+approach or in [L ́eo01b] by a functional analytic approach. We easily see that ̂P inherits the Markov property of R using the time-symmetric definition of the Markov property together with the product shape of (2.13).
+• Proof of (c). Statement (c) is an easy exercise.
+Remark that, unlike Theorem 2.8, Theorem 2.12 does not require that the constraint (μ0, μ1) is internal. Also remark that the functions f0 and g1 are nonnegative (in contrast with Theorem 2.8 where they are positive) and that it may happen that R0(f0 = 0) or R1(g1 = 0) is positive. Theorem 2.12 extends a similar result by F ̈ollmer and Gantert in [FG97], where it is required for the product shape formula (2.13) to hold, that R ≪ ̂P and also that Xo has full measure.
+
+
+16 CHRISTIAN LE ́ONARD
+3. (f, g)-transform of a Markov measure
+Motivated by Theorems 2.9 and 2.12, we introduce the transform f0(X0)g1(X1) R of a Markov measure R and call it an (f, g)-transform. It was already noticed by F ̈ollmer [Fo ̈l88, FG97] and Nagasawa [Nag89], that it is a time symmetric version of Doob’s usual h-transform [Doo57, Doo00]. We are going to assume for simplicity that the reference path measure R is reversible. Let us recall the definition of this notion.
+(f, g)-transform of a reversible Markov measure. Let us first state an assumption which will hold for the remainder of the paper.
+Assumption 3.1. The reference path measure R ∈ M+(Ω) is Markov and m-reversible with m ∈ M+(X ).
+The Markov property of the reference measure will turn out to be crucial for the description of the dynamics of the solution ̂P of (Sdyn). Indeed, we have already seen at
+Proposition 2.10 that ̂P inherits the Markov property from R. It follows that its dynamics is characterized by its stochastic derivatives. On the other hand, reversibility is only assumed for simplicity.
+Definition 3.2 ((f, g)-transform). Let f0, g1 : X → [0, ∞) be two nonnegative measurable functions such that ER(f0(X0)g1(X1)) = 1. The path measure
+P := f0(X0)g1(X1) R ∈ P(Ω) (3.1)
+is called an (f, g)-transform of R.
+This definition is motivated by Theorems 2.9 and 2.12 which assert that the solution ̂P of (Sdyn) is an (f, g)-transform of R. Note that under Theorem 2.9’s assumptions, f0 and g1 are positive, while they are allowed to vanish under Theorem 2.12’s assumptions, as in Definition 3.2. Let us introduce for each t ∈ [0, 1], the functions ft, gt : X → [0, ∞) defined by
+{ ft(z) := ER(f0(X0) | Xt = z)
+gt(z) := ER(g1(X1) | Xt = z) , for Pt-a.e. z ∈ X . (3.2)
+Remark that although we have ER(f0(X0)g1(X1)) < ∞, this does not ensure that f0(X0) and g1(X1) are integrable. We have to use positive integration to give a meaning to the conditional expectations ER(f0(X0) | Xt), ER(g1(X1) | Xt) ∈ [0, ∞], see [L ́eoc]. Next result is a kind of converse of Theorems 2.9 and 2.12.
+Theorem 3.3. If the functions f0 and g1 entering the definition of the (f, g)-transform P of R given at (3.1) satisfy { ∫
+X g0f0 log f0 dm < ∞
+∫
+X f1g1 log g1 dm < ∞
+(as a convention 0 log 0 = 0), then P01 and P are the unique solutions of (S) and (Sdyn) respectively, where the prescribed constraints μ0, μ1 ∈ P(X ) are chosen to satisfy (2.11), i.e. using notation (3.2) { μ0 = f0g0 m
+μ1 = f1g1 m . (3.3)
+Proof. The pair of finite integrals is equivalent to H(P |R) < ∞. Hence, the statement about (S) is a direct consequence of [L ́eo01b, Thm. 5.1]. Its corollary about (Sdyn) follows as for Theorem 2.9.
+
+
+THE SCHRO ̈ DINGER PROBLEM 17
+Note that there may exist solutions of (Sdyn) which are not (f, g)-transforms of R. This happens when the support of the solution is not a rectangle (i.e. the product of Borel subsets), see [FG97, §2] or [L ́eo01b, §5]. Next result extends the product formulas (3.3) to all t ∈ [0, 1].
+Theorem 3.4 (Euclidean analogue of Born’s formula). The path measure P = f0(X0)g1(X1) R is Markov and for each 0 ≤ t ≤ 1, its time marginal Pt ∈ P(X ) is given by
+Pt = ftgt m. (3.4)
+Remark 3.5. It follows with (3.4) that for all t ∈ [0, 1], 0 < ER(f0(X0) | Xt), ER(g1(X1) | Xt) < ∞, P -a.e., but not R-a.e. in general.
+Proof of Theorem 3.4. The Markov property of P is a direct consequence of Theorem 3.3 and Proposition 2.10. We propose an alternate simple proof. To prove that P is Markov, we show that for each 0 ≤ t ≤ 1 and any bounded measurable functions a ∈ σ(X[0,t]), b ∈ σ(X[t,1]), we have
+EP (ab | Xt) = EP (a | Xt)EP (b | Xt).
+Indeed, we have
+EP (ab | Xt) (i=) ER(f0(X0)abg1(X1) | Xt)
+ER(f0(X0)g1(X1) | Xt)
+(i=i) ER(f0(X0)a | Xt)ER(bg1(X1) | Xt)
+ER(f0(X0) | Xt)ER(g1(X1) | Xt)
+(ii=i) EP (a | Xt)EP (b | Xt), P -a.e.,
+which is the desired result. Equality (i) is a general result about conditioning; note that we do not divide by zero P -a.s. Equality (ii) uses crucially the assumed Markov property of R and one obtains (iii) by considering separately the cases when b ≡ 1 and a ≡ 1 in the just obtained identity to see that EP (a | Xt) = ER(f0(X0)a|Xt)
+ER(f0(X0)|Xt) and EP (b | Xt) = ER(bg1(X1)|Xt)
+ER(g1(X1)|Xt) .
+Finally, to prove (3.4), remark that
+dPt
+dm (Xt) = dPt
+dRt
+(Xt) = ER
+( dP
+dR | Xt
+)
+= ER(f0(X0)g1(X1) | Xt)
+X= ER(f0(X0) | Xt)ER(g1(X1) | Xt) =: ft(Xt)gt(Xt)
+where we used the Markov property of R at the marked equality.
+Forward and backward generators. Let Q ∈ M+(Ω) be a Markov measure. Its
+forward stochastic derivative ∂ + −L→Q is defined by
+[∂t + −→L Q
+t ](u)(t, x) := lhi↓m0 h−1EQ
+(u(t + h, Xt+h) − u(t, Xt) | Xt = x)
+for any measurable function u : [0, 1] × X → R in the set dom −L→Q for which this limit exists Qt-a.e. for all 0 ≤ t < 1. In fact this definition is only approximate, we give it here as a support for understanding the relations between the forward and backward generators. For a precise statement see [L ́eod, §2]. Since the time reversed Q∗ of Q is still
+Markov, Q admits a backward stochastic derivative −∂ + ←L−Q which is defined by
+[−∂t + ←L−Q
+t ]u(t, x) := lhi↓m0 h−1EQ
+(u(t − h, Xt−h) − u(t, Xt) | Xt = x)
+for any measurable function u : [0, 1] × X → R in the set dom L←−Q for which this limit
+exists Qt-a.e. for all 0 < t ≤ 1. Remark that ←L−Q
+t = −→L Q∗
+1−t, 0 ≤ t ≤ 1.
+
+
+18 CHRISTIAN LE ́ONARD
+It is proved in [L ́eod, §2] that these stochastic derivatives are extensions of the extended forward and backward generators of Q in the sense of semimartingales. In particular,
+they offer us a natural way for computing generators. Later on, we shall call −→L Q and ←L−Q generators, rather than stochastic derivatives.
+For simplicity, we denote −L→R = L←−R = L without the superscript R and without the
+time arrows, since R is assumed to be reversible. We also write −A→ = −→L P and A←− = ←L−P the generators of the (f0, g1)-transform P defined by (3.1). Stochastic derivatives have been introduced by E. Nelson in [Nel67] while studying the dynamical properties of the Brownian motion. The above definition (more precisely the one of [L ́eod]), which is an extension of Nelson’s one, is necessary for technical reasons.
+The dynamics of the (f, g)-transform. To give the expressions of the generators −A→
+and ←A−, we need to introduce the carr ́e du champ of R. It is defined for any functions u, v on X such that u, v and uv are in dom L, by
+Γ(u, v) := L(uv) − uLv − vLu.
+In general, the forward and backward generators (∂t + −A→t)0≤t≤1 and (−∂t + A←−t)0≤t≤1 of P depend explicitly on t. The following informal statement is known for long in specific situations. In the important examples which are discussed below at Section 4 below, these claims are easy consequences of Itˆo’s formula (for instance see [RY99, Ch. 8,§ 3] in the continuous diffusion case).
+Informal statement 3.6. Under some hypotheses on R, the forward and backward generators of P are given for any function u : [0, 1] × X → R belonging to some class UR of regular functions, by
+
+
+−A→tu(x) = Lu(x) + Γ(gt, u)(x)
+gt(x) , (t, x) ∈ [0, 1) × X
+A←−tu(x) = Lu(x) + Γ(ft, u)(x)
+ft(x) , (t, x) ∈ (0, 1] × X
+(3.5)
+where ft, gt are defined at (3.2). Because of (3.4), for any t no division by zero occurs Pt-a.e.
+Rigorous statement and proof are given in [L ́eod] for instance.
+Idea of proof of Statement 3.6. To obtain the forward generator of P , we are going to
+compute the stochastic derivative −A→tu(x) := limh↓0 h−1EP [u(Xt+h) − u(Xt) | Xt = x]. Let us denote for simplicity F0 = f0(X0), Gt = gt(Xt) and Ut = u(Xt). We have
+EP [Ut+h − Ut | Xt = x] = ER[F0(Ut+h − Ut)G1 | Xt = x]
+ER[F0G1 | Xt = x] = ER[F0 | Xt = x]ER[(Ut+h − Ut)G1 | Xt = x]
+ER[F0 | Xt = x]ER[G1 | Xt = x] = ER[(Ut+h − Ut)G1 | Xt = x]
+gt(x) ,
+where the Markov property of R is used at second identity. But,
+ER[(Ut+h − Ut)G1 | Xt = x]
+= ER[(Ut+h − Ut)Gt+h | Xt = x]
+= gt(x)ER[(Ut+h − Ut) | Xt = x] + ER[(Ut+h − Ut)(Gt+h − Gt) | Xt = x],
+
+
+THE SCHRO ̈ DINGER PROBLEM 19
+where the first equality is a martingale identity. We conclude by means of the definition of L: limh↓0 h−1ER[(Ut+h − Ut) | Xt = x] =: Lu(x), and with the following identity
+limh↓0 h−1ER[(Ut+h − Ut)(Gt+h − Gt) | Xt = x] = Γ(u, gt)(x).
+One sees that it is necessary that the functions ft and gt are regular enough to be in the domains of the carr ́e du champ operators. For instance, choosing f0, g1 ∈ dom L insures that f ∈ dom(−∂ + L) and g ∈ dom(∂ + L) and also that f and g are classical solutions of the following parabolic PDEs
+{ (−∂t + L)f (t, x) = 0, 0 < t ≤ 1, f0, t = 0,
+{ (∂t + L)g(t, x) = 0, 0 ≤ t < 1,
+g1, t = 1. (3.6)
+Even better, since R is assumed to be m-reversible, its Markov generator L is self-adjoint on L2(m) and for any f0, g1 in L2(m) we have f ∈ dom(−∂ + L) and g ∈ dom(∂ + L). It is worthwhile describing the dynamics (3.5) in terms of
+{ φ := log f,
+ψ := log g. (3.7)
+Remark that because of (3.4), for any 0 ≤ t ≤ 1, φt and ψt are well defined Pt-a.e. In analogy with the Kantorovich potentials which appear in the optimal transport theory, we call φ and ψ the Schr ̈odinger potentials. They are solutions of the “second order”8 Hamilton-Jacobi equations
+{ (−∂t + B)φ(t, x) = 0, 0 < t ≤ 1, Pt-a.e.
+φ0 = log f0, t = 0, (3.8)
+and { (∂t + B)ψ(t, x) = 0, 0 ≤ t < 1, Pt-a.e.
+ψ1 = log g1, t = 1, (3.9)
+where the non-linear operator B is defined by
+Bu := e−uLeu
+for any function u such that eu ∈ dom L.
+4. Standard examples
+We present two well-known reference processes: the reversible Brownian motion and a reversible random walk on a graph. We also apply the above general results to these important examples.
+Reversible Brownian motion. The reversible Brownian motion R on X = Rn is spec
+ified by { L = ∆/2,
+R0(dx) = m(dx) = dx (4.1)
+where the Markov generator L = ∆/2 is defined on C2(Rn). It is easily checked that R is m-reversible. Let P = f0(X0)g1(X1) R ∈ P(Ω) be any (f, g)-transform of R. By the regularity improving property of the heat kernel, (f0, g1) is such that f ∈ dom(−∂t + ∆/2) for
+8When R is a random walk on a discrete space for instance, then the term “second order” is only justified in analogy with the continuous case, see (4.13).
+
+
+20 CHRISTIAN LE ́ONARD
+t ∈ (0, 1] and g ∈ dom(∂t + ∆/2) for t ∈ [0, 1). We have Bu = ∆u/2 + |∇u|2/2, Γ(u, v) =
+∇u · ∇v for any u, v ∈ C2(X ). The expressions (3.5)
+{ −A→t = ∆/2 + ∇ψt · ∇
+A←−t = ∆/2 + ∇φt · ∇ (4.2)
+of the forward and backward generators tell us that the density μt(x) := dPt/dx solves the following parabolic PDEs
+{ (∂t − ∆/2)μt(x) + ∇ · (μt∇ψt)(x) = 0, (t, x) ∈ (0, 1] × X μ0, t = 0,
+where ψ solves (3.9):
+{ (∂t + ∆/2)ψt(x) + |∇ψt(x)|2/2 = 0, (t, x) ∈ [0, 1) × X
+ψ1 = log g1, t = 1, (4.3)
+and in the reversed sense of time
+{ (−∂t − ∆/2)μt(x) + ∇ · (μt∇φt)(x) = 0, (t, x) ∈ [0, 1) × X μ1, t = 1,
+where φ solves (3.8):
+{ (−∂t + ∆/2)φt(x) + |∇φt(x)|2/2 = 0, (t, x) ∈ (0, 1] × X φ0 = log f0, t = 0.
+It is important to note the smoothing effect of the semigroup of R which allows us to define the classical gradients ∇ψt and ∇φt for all t in [0, 1) and (0, 1] respectively. They are the forward and backward drift vector fields of the canonical process under P. Also recall that, as a direct consequence of (3.4), no logarithm of zero is taken, Pt-almost surely, i.e. almost everywhere, and we have the time-reversal formula
+∇ψt + ∇φt = ∇ log μt, 0 < t < 1.
+Back to Schr ̈odinger problem. Under the assumption of Theorem 3.3, P = f0(X0)g1(X1) R solves (Sdyn) with the prescribed marginals given at (3.3). It is a (f, g)-transform of R, and we have just seen that there exist φ and ψ such that its forward and backward generators are given by (4.2).
+Minimal action. We derive the analogue of Benamou-Brenier formula (1.7). Consider the problem of minimizing the average kinetic action ∫
+[0,1]×Rn
+|vt(x)|2
+2 νt(dx)dt → min (4.4)
+among all (ν, v) where ν = (νt)0≤t≤1 is a measurable path in P(Rn), (vt(x))
+(t,x)∈[0,1]×Rn is
+a measurable Rn-valued vector field and the following constraints are satisfied:
+{ (∂t − ∆/2)ν + ∇·(νv) = 0, on (0, 1)×Rn
+ν0 = μ0, ν1 = μ1 (4.5)
+where this evolution equation is meant in the following weak sense: for any function
+u ∈ Co1,2((0, 1) × Rn), we have ∫
+(0,1)×Rn(∂t + ∆/2 + v · ∇)u(t, x) νt(dx)dt = 0.
+
+
+THE SCHRO ̈ DINGER PROBLEM 21
+Proposition 4.1. Let μ0, μ1 ∈ P2(Rn) be such that H(μ0|Leb), H(μ1|Leb) < ∞. Then,
+(Sdyn) has a unique solution ̂P ∈ P(Ω) and the unique solution to the minimal action problem (4.4) is ((μt)t∈[0,1], ∇ψ) where
+μt = ̂Pt, t ∈ [0, 1],
+and
+ψt(x) = log ER[g1(X1) | Xt = x], (t, x) ∈ [0, 1)×Rn
+with g1 a solution of (2.11). Moreover, ψ is the unique classical solution of the HamiltonJacobi-Bellman equation (4.3) and
+inf {H(π|R01); π ∈ P(X 2) : π0 = μ0, π1 = μ1
+} − H(μ0|m)
+= inf
+{∫
+X
+H(πx | R1x) μ0(dx); (πx)x∈X :
+∫
+X
+πx(·) μ0(dx) = μ1
+}
+=
+∫
+[0,1]×Rn
+|∇ψt(x)|2
+2 μt(dx)dt (4.6)
+= inf
+{∫
+[0,1]×Rn
+|vt(x)|2
+2 νt(dx)dt; (ν, v) : (ν, v) satisfies (4.5)
+} .
+where R1x := R(X1 ∈ ·|X0 = x) ∈ P(X ) and (πx)x∈X ∈ P(X )X is a measurable Markov
+kernel.
+Proof. The integrability assumptions on μ0 and μ1 ensure that the hypotheses of Proposition 2.5 are satisfied. Therefore, (Sdyn) admits a unique solution. As a consequence of Girsanov’s theory, for any Q ∈ P(Ω) such that H(Q|R) < ∞, there exists some predictable Rn-valued drift field β such that (i) EQ
+∫
+[0,1] |βt|2 dt < ∞,
+(ii) Q solves the martingale problem associated with the forward generator (∂t + ∆/2 + βt · ∇)0≤t≤1 (iii) and H(Q|R) is given by
+H(Q|R) = H(Q0|m) + EQ
+∫
+[0,1]
+|βt|2
+2 dt. (4.7)
+For a proof with an analytic flavour, see for instance [L ́eo12b]. It is proved in [CL95] (see also [Mik90] for a related result) that when (ν, v) satisfies
+(∂t − ∆/2)ν + ∇·(νv) = 0 on (0, 1) × Rn, and ∫
+[0,1]×Rn |vt(x)|2/2 νt(dx)dt < ∞, then there exists a path measure Q ∈ P(Ω) such that
+Qt = νt, ∀0 ≤ t ≤ 1, (4.8)
+Q solves the martingale problem associated with the forward stochastic derivative (∂t + ∆/2 + vt · ∇)0≤t≤1 and, by (4.7)
+H(Q|R) = H(μ0|m) +
+∫
+[0,1]×Rn
+|vt(x)|2
+2 νt(dx)dt < ∞ (4.9)
+with Q0 = μ0 and Q1 = μ1. Therefore, to any (ν, v) which satisfies
+∫
+[0,1]×Rn |vt(x)|2/2 νt(dx)dt < ∞ and (4.5), one can associate some Q ∈ P(Ω) which verifies (4.8) and (4.9). Since
+inf (S) = inf (Sdyn) = H( ̂P |R) = H(μ0|m) +
+∫
+[0,1]×X
+|∇ψt(x)|2
+2 μt(dx)dt
+
+
+22 CHRISTIAN LE ́ONARD
+with μt := ̂Pt and ψ given at (4.2), and since ̂P is the unique solution to (Sdyn), we have proved that identity (4.6) holds true, (μ, ∇ψ) solves (4.4) and μ is unique in the sense that if (ν, v) and (ν′, v′) are solutions, then ν = ν′ = μ. It remains to check that ∇ψ is also unique. The following property of μ holds with v = ∇ψ :
+∫
+(0,1)×Rn
+(∂t + ∆/2 + v · ∇)u dμtdt = 0, ∀u ∈ Co∞((0, 1) × Rn).
+Suppose that it is also verified with v′. Subtracting, we obtain ∫
+(0,1)×Rn (v′−∇ψ)·∇u dμtdt =
+0, ∀u ∈ Co∞((0, 1) × Rn), meaning that v′ − ∇ψ is orthogonal in L2Rn((0, 1) × Rn, dμtdt)
+to ∇Co∞((0, 1) × Rn). It follows that the squared norm ‖v′‖2 := ∫
+[0,1]×Rn |vt′(x)|2 μt(dx)dt
+in L2Rn((0, 1) × Rn, dμtdt) is minimal at the orthogonal projection of ∇ψ on the closure of
+∇Co∞((0, 1) × Rn). Of course, this projection is ∇ψ itself.
+Clearly, there is also a backward version of Proposition 4.1.
+Reversible random walk on a graph. Let R be a random walk on a countable connected graph (X , ∼) where x ∼ y means that x and y are next neighbours. Its generator is given for any finitely supported function u by
+Lu(x) = ∑
+y:y∼x
+[u(y) − u(x)] Jx(y), x ∈ X (4.10)
+where Jx(y) > 0 for all x ∼ y is interpreted as the average frequency of jumps from x to y. Its dual formulation is the current equation
+∂tρt(x) = ∑
+y:y∼x
+[ρt(y)Jy(x) − ρt(x)Jx(y)], x ∈ X , 0 < t < 1
+where ρt(x) := R(Xt = x). Clearly, the path measure R admits the stationary measure
+m ∈ M+(X ) if and only if ∑
+y:y∼x[myJy(x) − mxJx(y)] = 0, for all x ∈ X . It admits m
+as a reversing measure if this global equilibrium property is reinforced into the following detailed one:
+mxJx(y) = myJy(x), ∀x, y ∈ X , x ∼ y. The special case where the jump measure
+Jx := ∑
+y:y∼x
+Jx(y) δy ∈ M+(X )
+is equal to Jxo = 1
+nx
+∑
+y:y∼x δy where
+nx := # {y : y ∼ x} < ∞
+is the number of neighbours of x which is assumed to be finite for all x, corresponds to the simple random walk on the graph (X , ∼). It is easily checked that its reversing measure
+is mo = ∑
+x∈X nxδx ∈ M+(X ) which is unbounded when X is infinite.
+For simplicity we assume in the general case that
+sup
+x∈X
+Jx(X ) < ∞
+where Jx(X ) := ∑
+y:y∼x Jx(y) is the global average frequency of jumps at x. This ensures that for any initial marginal R0 ∈ M+(X ), there exists a Markov measure R ∈ M+(Ω) with generator L. Moreover, any bounded function u : X → R is in the domain of L.
+Viewing L = (Lxy)x,y∈X as a matrix with Lxy =
+
+
+Jx(y), if x ∼ y; −Jx(X ), if x = y; 0, otherwise
+and the functions
+
+
+THE SCHRO ̈ DINGER PROBLEM 23
+as column vectors indexed by X , we observe that the solutions of the heat equations (3.6) are ft = etLf0 and gt = e(1−t)Lg1, 0 ≤ t ≤ 1. (4.11)
+It follows that for any couple (f0, g1) of nonnegative functions and any 0 ≤ t ≤ 1, ft ∈ dom(−∂t + L) and gt ∈ dom(∂t + L).
+We have Bu(x) = Lu(x) + ∑
+y:y∼x θ(u(y) − u(x)) Jx(y) with
+θ(a) := ea − a − 1, a ∈ R, (4.12)
+Γ(u, v)(x) = ∑
+y:y∼x[u(y)−u(x)][v(y)−v(x)] Jx(y), for any bounded functions u, v and any x ∈ X . Let P = f0(X0)g1(X1) R be any (f, g)-transform of the random walk R. Applying (3.5), the forward and backward generators of P turn out to be the jump generators associated respectively with the jump measures
+
+
+−J→x = ∑
+y:y∼x
+gt(y)
+gt(x) Jx(y) δy = ∑
+y:y∼x
+exp (ψt(y) − ψt(x))Jx(y) δy
+J←−x = ∑
+y:y∼x
+ft(y)
+ft(x) Jx(y) δy = ∑
+y:y∼x
+exp (φt(y) − φt(x))Jx(y) δy
+Again, no division by zero occurs Pt-a.e. for every 0 ≤ t ≤ 1, i.e. everywhere for each 0 < t < 1. The functions f and g satisfy (4.11) and the Schro ̈dinger potentials ψ and φ satisfy (3.9):
+{ (∂t + L)ψt(x) + ∑
+y:y∼x θ(ψt(y) − ψt(x)) Jx(y) = 0, (t, x) ∈ [0, 1) × X
+ψ1 = log g1, t = 1, (4.13)
+and (3.8):
+{ (−∂t + L)φt(x) + ∑
+y:y∼x θ(φt(y) − φt(x)) Jx(y) = 0, (t, x) ∈ (0, 1] × X φ0 = log f0, t = 0.
+Minimal action. Let θ∗ be the convex conjugate of θ defined at (4.12), i.e.
+θ∗(b) =
+
+
+(b + 1) log(b + 1) − b, if b > −1 1, if b = −1 +∞, if b < −1.
+Consider the problem of minimizing
+∫
+[0,1]×X 2
+θ∗(j(t, x; y) − 1) νt(dx)Jx(dy)dt → min (4.14)
+among all (ν, j) where ν = (νt)0≤t≤1 is a measurable path in P(X ), j : [0, 1] × X 2 → [0, ∞) is a measurable nonnegative function and the following constraints are satisfied:
+{ ∂tνt(x) − ∑
+y:y∼x
+{νt(y)j(t, y; x)Jy(x) − νt(x)j(t, x; y)Jx(y)} = 0, on (0, 1)×X ν0 = μ0, ν1 = μ1
+(4.15)
+where we write νt = ∑
+x∈X νt(x) δx.
+Proposition 4.2. Let μ0, μ1 ∈ P(Rn) be such that inf (S) < ∞, for instance when the assumptions of Proposition 2.5 are satisfied. The unique solution to the minimal action problem (4.14) is (μ, jψ) where μ = (μt)t∈[0,1] with
+μt = ̂Pt, t ∈ [0, 1],
+
+
+24 CHRISTIAN LE ́ONARD
+and ̂P ∈ P(Ω) is the unique solution of (Sdyn), and
+jψ(t, x; y) = exp(ψt(y) − ψt(x))
+with
+ψt(x) = log ER[g1(X1) | Xt = x], (t, x) ∈ [0, 1) × Rn
+with g1 a solution of (2.11). Moreover, ψ is the unique classical solution of the HamiltonJacobi-Bellman equation (4.13) and
+inf {H(π|R01); π ∈ P(X 2) : π0 = μ0, π1 = μ1
+} − H(μ0|m)
+= inf
+{∫
+X
+H(πx | R1x) μ0(dx); (πx)x∈X :
+∫
+X
+πx(·) μ0(dx) = μ1
+}
+=
+∫
+[0,1]×X 2
+θ∗(jψ(t, x; y) − 1) μt(dx)Jx(dy)dt (4.16)
+= inf
+{∫
+[0,1]×X 2
+θ∗(j(t, x; y) − 1) νt(dx)Jx(dy)dt; (ν, j) : (ν, j) satisfies (4.15)
+}
+where R1x := R(X1 ∈ ·|X0 = x) ∈ P(X ) and (πx)x∈X ∈ P(X )X is any measurable Markov kernel.
+Remark that θ∗(jψ(t, x; y) − 1) = θ∗( gt(y)−gt(x)
+gt(x)
+) where gt(y)−gt(x)
+gt(x) looks like a discrete logarithmic derivative which is analogous to ∇ψt(x) = ∇ log gt(x).
+Proof. The proof follows the same line as Proposition 4.1’s one.
+5. Slowing down
+In this section, we describe an efficient way to recover optimal transport as a limit of Schro ̈dinger problems. The main idea consists in slowing the reference process down to a no-motion process. In the following lines, we present some heuristics and refer the reader to [L ́eo12a] for a rigorous treatment in the case where X is a real vector space and [L ́eoa] in the alternate case where X is a discrete graph. The specific case of the reversible Brownian motion has been investigated by T. Mikami in [Mik04] with a stochastic control approach which differs from what is presented below. Let R be Markov with generator L. The slowed down process is represented by the sequence (Rk)k≥1 in M+(Ω) of Markov measures associated with the generators
+Lk := L/k, k ≥ 1.
+Remark that slowing the process down doesn’t modify its reversible measure m; one converges more slowly towards the same equilibrium. Suppose also that the sequence (Rk)k≥1 in M+(Ω) obeys the large deviation principle in Ω with speed αk and rate function C, meaning approximately that for a “large class” of measurable subsets A of Ω, we have
+Rk(A) k→≍∞ exp
+[
+−αk inf
+ω∈A C(ω)
+]
+. (5.1)
+For instance, in the case (4.1) when R is the reversible Brownian motion on Rn, Schilder’s theorem tells us that C is the kinetic action (1.3) and αk = k. In the case (4.10) when R is a reversible random walk, it is proved in [L ́eoa] that αk = log k and the rate function is
+C(ω) := ∑
+0≤t≤1
+1{ωt−6=ωt}, ω ∈ Ω, (5.2)
+
+
+THE SCHRO ̈ DINGER PROBLEM 25
+where in this situation Ω is the space of all right-continuous paths with finitely many jumps. Remark that C is simply the total number of jumps of the path. At a heuristic level, the Γ-convergence of
+H(P |Rk)/αk → min; P ∈ P(Ω) : P0 = μ0, P1 = μ1 (Skdyn)
+as k tends to infinity to
+∫
+Ω
+C dP → min; P ∈ P(Ω) : P0 = μ0, P1 = μ1 (MKdyn)
+is best seen with the dual problems. Without getting into the details, to show this Γ-convergence, it is enough to prove that the objective functions of the dual problems converge pointwise, see [L ́eo12a] for the details. Let us check this pointwise convergence. Recall that the dual problem of (S) is
+∆R(φ0, ψ1) → max; φ0, ψ1 ∈ Cb(X ) (D)
+with ∆R(φ0, ψ1) := ∫
+X φ0 dμ0 +∫
+X ψ1 dμ1 −log ∫
+Ω eφ0(X0)+ψ1(X1) dR. Consequently, for each
+k ≥ 1, the dual problem of (Skdyn) consists in maximizing α−1
+k ∆Rk (φ0, ψ1) or equivalently:
+α−1
+k ∆Rk (αkφ0, αkψ1). This leads us to
+∫
+X
+φ0 dμ0 +
+∫
+X
+ψ1 dμ1 − α−1
+k log
+∫
+Ω
+eαk[φ0(X0)+ψ1(X1)] dRk → max; φ0, ψ1 ∈ Cb(X ) (Dk)
+The pointwise limit, as k tends to infinity, of α−1
+k ∆Rk (αkφ0, αkψ1) is a direct consequence
+of the large deviation principle (5.1) and the Laplace-Varadhan integral lemma [DZ98, Thm. 4.3.1], which provide us with
+kli→m∞ α−1
+k log
+∫
+Ω
+eαk[φ0(X0)+ψ1(X1)] dRk = sup
+Ω
+{φ0(X0) + ψ1(X1) − C} .
+Here, we took advantage of φ0(X0) + ψ1(X1) ∈ Cb(Ω) to apply the Laplace-Varadhan
+lemma. We see that the pointwise limit of the objective function of (Dk) is
+kli→m∞ α−1
+k ∆Rk (αkφ0, αkψ1) =
+∫
+X
+φ0 dμ0 +
+∫
+X
+ψ1 dμ1 − sup
+Ω
+{φ0(X0) + ψ1(X1) − C}
+and the limit dual problem is (this is informal)
+∫
+X
+φ0 dμ0 +
+∫
+X
+ψ1 dμ1 − sup
+Ω
+{φ0(X0) + ψ1(X1) − C} → max; φ0, ψ1 ∈ Cb(X ).
+But this problem is equivalent to
+∫
+X
+φ0 dμ0 +
+∫
+X
+ψ1 dμ1 → max; φ0, ψ1 ∈ Cb(X ) : φ0 ⊕ ψ1 ≤ c (D∞)
+where c(x, y) := inf {C(ω); ω ∈ Ω : ω0 = x, ω1 = y} , (5.3)
+recall (1.4). To see this, first remark that for any λ ∈ R, transforming φ0 ⊕ ψ1 into φ0 ⊕
+ψ1 + λ doesn’t modify the value of ∫
+X φ0 dμ0 + ∫
+X ψ1 dμ1 − supΩ {φ0(X0) + ψ1(X1) − C}.
+Hence, when supΩ {φ0(X0) + ψ1(X1) − C} < ∞, we can normalize φ0 ⊕ ψ1 so that supΩ {φ0(X0) + ψ1(X1) − C} = 0 and we obtain the equivalent problem
+∫
+X
+φ0 dμ0 +
+∫
+X
+ψ1 dμ1 → max; φ0, ψ1 ∈ Cb(X ) : φ0(X0) + ψ1(X1) − C ≤ 0.
+But, φ0(X0) + ψ1(X1) − C ≤ 0 on Ω if and only if φ0 ⊕ ψ1 ≤ c on X 2.
+We have informally shown that limk→∞ (Dk) = (D∞) (in some insufficiently specified
+
+
+26 CHRISTIAN LE ́ONARD
+sense) which is the usual Kantorovich problem, dual to (MK). Consequently, we must have limk→∞ (Skdyn) = (MK) in some sense. Similarly, the static analogue of (Skdyn) which
+is
+H(π|R0k1)/αk → min; π ∈ P(X 2) : π0 = μ0, π1 = μ1 (Sk)
+converges to ∫
+X2
+c dπ → min; π ∈ P(X 2) : π0 = μ0, π1 = μ1 (MK)
+with c as above. It happens that this convergence is in terms of Γ-convergence.
+Informal statement 5.1 (See [L ́eo12a, L ́eoa]). Suppose that the slowed down Markov measure Rk ∈ M+(Ω) associated with the generator Lk := L/k satisfies the large deviation principle (5.1) with speed αk and rate function C in Ω. Then,
+Γ- kli→m∞ (Skdyn) = (MKdyn) and Γ- kli→m∞ (Sk) = (MK).
+In particular:
+(1) In the reversible Brownian motion case (4.1) in X = Rn, we have:
+αk = k, C(ω) = ∫
+[0,1] |ω ̇ t|2/2 dt, c(x, y) = |y − x|2/2 and we recover (1.11).
+(2) In the case of a random walk on a graph (4.10), we have:
+αk = log k, C(ω) = ∑
+0≤t≤1 1{ωt6=ωt−} and c = d∼ : the graph distance on (X , ∼).
+The diffusion case is treated in details in [L ́eo12a]. In the specific Brownian case (1), the Schro ̈dinger problem converges to the quadratic Monge-Kantorovich problem and, as already remarked at (1.10), the bridges converge as follows:
+kli→m∞ Rk,xy = δγxy ∈ P(Ω)
+where γxy
+t = (1 − t)x + ty, 0 ≤ t ≤ 1 is the constant speed geodesic path between x and
+y. In case (MKdyn) has a unique solution ̂P , we also have limk→∞ ̂P k = ̂P ∈ P(Ω). Since the rigorous version of the Informal Statement 5.1 is simpler to state in the second case (2) of a random walk on a graph, we refer the reader to [L ́eo12a] for the details about (1) and we restrict our attention to (2). In this random walk case, the rigorous version of the Informal Statement 5.1 is stated below at Theorem 5.2. Some preparation is needed. In particular, let us recall basic facts about Γ-convergence.
+Γ-convergence. Recall that Γ- limk→∞ f k = f on the metric space Y if and only if for any y ∈ Y,
+(a) lim infk→∞ f k(yk) ≥ f (y) for any convergent sequence yk → y,
+(b) limk→∞ f k(yko) = f (y) for some sequence yko → y.
+A function f is said to be coercive if for any a ≥ inf f, {f ≤ a} is a compact set. The sequence (f k)k≥1 is said to be equi-coercive if for any real a, there exists some compact set Ka such that ∪k
+{f k ≤ a} ⊂ Ka.
+If in addition to Γ- limk→∞ f k = f , the sequence (f k)k≥1 is equi-coercive, then:
+• limk→∞ inf f k = inf f,
+• if inf f < ∞, any limit point y∗ of a sequence (yk∗)k≥1 of approximate minimizers
+i.e.: f k(yk∗) ≤ inf f k + ǫk with ǫk ≥ 0 and limk→∞ ǫk = 0, minimizes f i.e.:
+f (y∗) = inf f.
+
+
+THE SCHRO ̈ DINGER PROBLEM 27
+For more details about Γ-convergence, see [DM93] for instance. The convex indicator ιA of any subset A, is defined to be equal to 0 on A and to ∞ outside A. We denote for each k ≥ 2, (we drop k = 1 not to divide by log(1) below),
+Ik(P ) := H(P |Rk)/ log k + ι{P :P0=μ0,P1=μ1}, P ∈ P(Ω),
+so that (Skdyn) is simply: (Ik → min). We also define
+I(P ) = EP C + ι{P :P0=μ0,P1=μ1}, P ∈ P(Ω)
+with C given at (5.2). The dynamic Monge-Kantorovich problem (MKdyn) rewrites as (I → min). Similarly, we denote for each k ≥ 2,
+J k(π) := H(π|R0k1)/ log k + ι{π:π0=μ0,π1=μ1}, π ∈ P(X 2),
+so that (Sk) is simply: (Jk → min). We also define
+J(π) =
+∫
+X2
+c dπ + ι{π:π0=μ0,π1=μ1}, π ∈ P(X 2)
+with c given at (5.3). The Monge-Kantorovich problem (MK) rewrites as (J → min). The spaces P(Ω) and P(X 2) are equipped with the topologies of narrow convergence: weakened by the spaces of all numerical continuous and bounded functions. The Γconvergences on P(Ω) and P(X 2) are related to these topologies.
+Theorem 5.2 ([L ́eoa]). Assume that the random walk R and the prescribed marginal measures μ0, μ1 ∈ P(X ) satisfy the hypotheses of Theorem 2.12.
+For each k ≥ 2, let ̂P k ∈ P(Ω) and ̂πk ∈ P(X 2) be the respective solutions of (Skdyn) and (Sk).
+(1) The sequence (Ik)k≥2 is equi-coercive and Γ- limk→∞ Ik = I in P(Ω). In particular, limk→∞ inf (Skdyn) = inf (MKdyn) and any limit point of ( ̂P k)k≥2 is a solution of (MKdyn). A more careful study allows to show that there is a unique limit point ̂P , so that
+limk→∞ ̂P k = ̂P ∈ P(Ω), and that ̂P is the only solution of the auxiliary entropy
+minimization ( ̃Sdyn) which is stated below. (2) The sequence (Jk)k≥2 is equi-coercive and Γ- limk→∞ Jk = J in P(X 2).
+In particular, limk→∞ inf (Sk) = inf (MK) and any limit point of (̂πk)k≥2 is a solution of (MK) which is the Monge-Kantorovich problem associated with the metric cost c = d∼ : the usual graph distance .
+Furthermore, this sequence admits the unique limit point ̂P01, so that limk→∞ ̂πk =
+̂P01 ∈ P(X 2).
+It is also proved in [L ́eoa] that for any distinct x, y ∈ X ,
+kli→m∞ Rk,xy = R ̃xy ∈ P(Ω)
+where R ̃xy is the (x, y)-bridge of
+R ̃ := 1G exp
+(∫
+[0,1]
+JXt(X ) dt
+)
+R ∈ M+(Ω)
+with G the set of all geodesic paths on (X , d∼). Remark that the set Gxy of all geodesic paths between any two distinct states x and y is infinite since the instants of jump are not specified: only the ordered enumeration of the visited states is relevant. Let us denote
+
+
+28 CHRISTIAN LE ́ONARD
+M(μ0, μ1) ⊂ P(X 2) the set of all solutions of the Monge-Kantorovich problem (MK) with c = d∼, and introduce the subsequent auxiliary entropic minimization problem
+H(P |R ̃) → min; P01 ∈ M(μ0, μ1) ( ̃Sdyn)
+The set of all solutions of (MKdyn) consists of all P ∈ P(Ω) concentrated on G, i.e.
+P (G) = 1, and such that the endpoint marginal P01 ∈ P(X 2) solves (MK). Although
+(MKdyn) has always infinitely many solutions (for any distinct x, y, Gxy is infinite), the sequence of Schro ̈dinger problems (Skdyn) selects a unique limit point:
+kli→m∞
+̂P k = ̂P ∈ P(Ω)
+where ̂P is the unique solution of ( ̃Sdyn). We obtain the corresponding results about the static problems (Sk) and (MK) by considering the push-forward mapping P ∈ P(Ω) → P01 ∈ P(X 2).
+6. The statistical physics motivation of Schr ̈odinger’s problem
+We consider a large number n of independent (non-interacting) moving random particles in the state space X . They are described by the independent stochastic processes Y 1, . . . , Y n taking their random values in Ω with the laws
+Law(Y i) = R(· | X0 = yi0) ∈ P(Ω), 1 ≤ i ≤ n (6.1)
+where R ∈ M+(Ω) is a path measure and yi0 ∈ X is the deterministic initial position of the i-th particle. It is also assumed that the particles are indistinguishable. Therefore, one doesn’t loose information considering the empirical probability measure
+Ln := 1
+n
+∑
+1≤i≤n
+δY i
+which is a random element of P(Ω). At each time t, the empirical measure of the particle system is the following random element of P(X ),
+Ltn := 1
+n
+∑
+1≤i≤n
+δYti , 0 ≤ t ≤ 1.
+Suppose that the initial positions are close to a profile μ0 ∈ P(X ), i.e.
+L0n = 1
+n
+∑
+1≤i≤n
+δyi0 n→ →∞ μ0 ∈ P(X )
+with respect to the narrow topology σ(P(X ), Cb(X )). The law of large numbers tells us
+that, as n tends to infinity, Ln converges in law to the deterministic limit μ0R := ∫
+X R(· |
+X0 = x) μ0(dx) in P(Ω) and in particular that at time t = 1,
+L1n(dy) n→ →∞ (μ0 R)1 :=
+∫
+X
+R(X1 ∈ dy | X0 = x) μ0(dx).
+Schro ̈dinger addressed the following problem. Suppose that at the final time t = 1, you observe the system in a profile L1n far away from the expected profile (μ0R)1 : for all
+large enough n, L1n is in a very small neighbourhood of some μ1 ∈ P(X ) which doesn’t
+contain (μ0R)1. This may happen since n is finite, but this is a very rare event, i.e. with an exponentially small probability, see (6.5) below. Nevertheless, conditionally on this rare event, what is the most likely dynamical behaviour of the whole random system described by Ln?
+
+
+THE SCHRO ̈ DINGER PROBLEM 29
+Before stating this rigorously at Problem 6.1 below, take a metric d on P(X ) compatible with the narrow topology and denote B(μ, ǫ) = {ν ∈ P(X ); d(ν, μ) < ǫ} the open ball centred at μ with radius ǫ > 0.
+Problem 6.1 (Schro ̈dinger’s question [Sch32]). Let μ0, μ1 ∈ P(X ) be given. What is the limit
+lǫi↓m0 nli→m∞ Prob(Ln ∈ ·|L1n ∈ B(μ1, ǫ)) (6.2)
+in P(P(Ω))?
+Solving the problem without getting into details. Schro ̈dinger’s approximate proof contains the main ideas. It is based on a statistical physics approach. The main tool for obtaining the limiting behavior as n tends to infinity of the combinatoric terms is Stirling’s formula. As pointed out by F ̈ollmer in [Fo ̈l88], its modern counterpart, which is available in a much more general setting, is Sanov’s theorem.
+Informal statement 6.2 (Informal statement of Sanov’s theorem). Let Y 1, . . . , Y n, . . . be a sequence of independent identically distributed Ω-valued random variables with common law R ∈ P(Ω)9. Define Ln := 1
+n
+∑n
+i=1 δY i its empirical measure. Then, for a “large
+class” of measurable subsets A of P(Ω), we have
+Prob(Ln ∈ A) n→≍∞ exp
+[
+−n inf
+P ∈A H(P |R)
+]
+. (6.3)
+The rigorous statement of this result is in terms of a large deviation principle. It is valid for a general class of spaces Ω, not necessarily a path space. For a comprehensive introduction to the theory of large deviations including Sanov’s theorem, a good textbook is [DZ98]. One says that H(·|R) is the rate function of the large deviations of {Ln}n≥1 as n tends to infinity.
+Idea of proof (a hint to agree with this statement). We consider informally the situation where Ω is replaced by a three-point set. Take Ω = {a, b, c}, R = αδa + βδb + γδc and P = pδa + qδb + rδc with α, β, γ, p, q, r > 0 and α + β + γ = p + q + r = 1. Then,
+Prob(Ln ≈ P )
+= Prob(Ln(a) ≈ p, Ln(b) ≈ q, Ln(c) ≈ r) ≈ n!
+(np)!(nq)!(nr)! αnpβnqγnr ≈ exp[n log n − np log(np) − nq log(nq) − nr log(nr) + np log α + nq log β + nr log γ]
+= exp[−n(p log(p/α) + q log(q/β) + r log(r/γ))]
+= exp[−nH(P |R)]
+where we used Stirling’s formula: k! ≈ exp[k log k − k] as k tends to infinity.
+This hint is very much in the spirit of Schro ̈dinger’s derivation in [Sch32]. Since P 7→ H(P |R) ∈ [0, ∞] is strictly convex and H(P |R) = 0 if and only if P = R, see (A.2), one observes that if R ∈ A, (6.3) leads to the law of large numbers: limn→∞ Ln = R, with an exponential rate of convergence. We need a slight modification of Sanov’s theorem.
+9We take a probability measure, rather than R ∈ M+(Ω), for the simplicity of exposition.
+
+
+30 CHRISTIAN LE ́ONARD
+Informal statement 6.3 (Informal statement of Sanov’s modified theorem).
+Let Y 1, . . . , Y n, . . . be the sequence of independent Ω-valued random variables specified by (6.1). Define Ln := 1
+n
+∑n
+i=1 δY i its empirical measure. Then, for a “large class” of
+measurable subsets A of P(Ω), we have
+Prob(Ln ∈ A) n→≍∞ exp
+[
+−n inf
+P ∈A:P0=μ0
+{
+H(P |R) − H(μ0|R0)
+}]
+. (6.4)
+This statement is proved by D. Dawson and J. Ga ̈rtner in [DG87, Thm. 3.5] where the Schro ̈dinger problem, when R is a diffusion process, is re-discovered10 and investigated by means of large deviations of large non-interacting particle systems. More precisely, [DG87, Thm. 3.5] only states a variational formula in the spirit of for the rate function (A.6). An alternate proof is given in [CL95, Thm. 2.1] which states that the rate function is H(P |μ0R) + ι{P :P0=μ0}, where μ0R := dμ0
+dR0 (X0)R(·|X0). But it is easily seen with the
+additive property (A.8) of the relative entropy that for any P such that P0 = μ0, we
+have H(P |μ0R) = ∫
+X H(P (·|X0 = x)|R(·|X0 = x)) μ0(dx) and H(P |R) = H(μ0|R0) +
+∫
+X H(P (·|X0 = x)|R(·|X0 = x)) μ0(dx), which implies that H(P |μ0R) = H(P |R) −
+H(μ0|R0), the desired result.
+The conditional probability in (6.2) has the form Prob(Ln ∈ A|Ln ∈ Cǫ) where
+Cǫ = {P ∈ P(Ω); P0 = μ0, P1 ∈ B(μ1, ǫ)}
+and ǫ > 0 is introduced to guarantee that Prob(Ln ∈ Cǫ) doesn’t vanish. With (6.4) one sees that for each ǫ > 0 and “all” A ∈ P(Ω),
+Prob(Ln ∈ A|Ln ∈ Cǫ) n→≍∞ exp
+[
+−n
+{
+inf
+P ∈A∩Cǫ
+H(P |R) − inf
+P ∈Cǫ
+H(P |R)
+}]
+Some analytical work (formally, think of A as an arbitrarily small neighbourhood of a generic P ∈ P(Ω)) allows us to show that this implies that limn→∞ Prob(Ln ∈ ·|Ln ∈
+Cǫ) = δ ̂Pǫ where ̂Pǫ is the solution of the convex minimization problem
+H(P |R) → min; P ∈ Cǫ.
+Note that this problem admits a unique solution since H(·|R) is a strictly convex function on the convex set Cǫ. Existence is obtained as usual showing that H(·|R) has compact sublevel sets. Finally, as ǫ decreases to zero, Cǫ decreases to C = {P ∈ P(Ω); P0 = μ0, P1 = μ1} and the objective functions of the minimization problems on Cǫ : H(P |R) +
+ιCǫ(P ) where ιCǫ(P ) =
+{ 0 if P ∈ Cǫ
+∞ otherwise increase towards H(P |R)+ιC(P ). Together with
+some compactness, this monotonicity allows to prove easily that limǫ→0 ̂Pǫ = ̂P where ̂P is the unique solution to the limiting minimization problem:
+H(P |R) → min; P ∈ C.
+Therefore, we have informally obtained the answer to Schro ̈dinger’s question.
+Informal statement 6.4 (The answer to Schro ̈dinger’s question). The limit (6.2) is
+lǫi↓m0 nli→m∞ Prob(Ln ∈ ·|L1n ∈ B(μ1, ǫ)) = δ ̂P ∈ P(P(Ω))
+where ̂P is the unique solution to the entropy minimization problem
+H(P |R) → min; P ∈ P(Ω) : P0 = μ0, P1 = μ1. (Sdyn)
+10No reference to the original papers by Schr ̈odinger is given in [DG87].
+
+
+THE SCHRO ̈ DINGER PROBLEM 31
+Loosely speaking, this means that conditionally on L0n ≈ μ0 and L1n ≈ μ1, the whole
+system Ln tends in law as n tends to infinity towards ̂P . In fact, the rigorous proof of this theorem [L ́eo10, Thm. 7.3] uses large deviation principles and shows that this convergence is exponentially fast. Therefore, Borel-Cantelli lemma allows us to state an almost sure version of this conditional law of large numbers. The same line of reasoning leads to the following evaluation of the probability that the system evolves spontaneously from the prepared initial profile μ0 to the unexpected profile final profile μ1 :
+lǫi↓m0 nli→m∞
+1
+n log Prob(L1n ∈ B(μ1, ǫ)|L0n ∈ B(μ0, ǫ)) = −{ inf (Sdyn) − H(μ0|m)}. (6.5)
+These considerations show that solving Schro ̈dinger’s problem amounts to solve the convex minimization problem (Sdyn) which, in statistical physics, enters the class of Boltzmann-Gibbs conditioning principles. For a variation on this theme, with killed particles, see [DGW90].
+The lazy gas experiment. In his textbook [Vil09, pp. 445-446], C. Villani writes in a section entitled “A fluid mechanics feeling for Ricci curvature - The lazy gas experiment”, the following sentences.
+Take a perfect gas in which particles do not interact, and ask him to move from a certain prescribed density field at time t = 0, to another prescribed density field at time t = 1. Since the gas is lazy, he will find a way to do so that needs a minimal amount of work (least action principle). Measure the entropy11 of the gas at each time, and check that it always lies above the line joining the final and initial entropies. If such is the case, then we know that we live in a nonnegatively curved space.
+This is clearly Schro ̈dinger’s thought experiment. As [Vil09] is only concerned with optimal transport, this lazy gas experiment must be understood at the level of the displacement interpolations. It refers to the important discovery by K.T. Sturm and M. von Renesse [Sv05] that entropy along displacement interpolations enjoys convexity properties related to Ricci lower bounds12. Namely, Otto’s heuristic calculus (see [JKO98, Ott01] and [Vil09, Ch. 15]) allows us to guess that, along the displacement interpolations [μ0, μ1] with respect to quadratic optimal transport on a Riemannian manifold X , the second derivative of the entropy as a function of time: t ∈ [0, 1] 7→ h[μ0,μ1](t) := H(μt|vol) satisfies h′[′μ0,μ1](t) = 〈Γ2(ψt), μt〉, 0 ≤ t ≤ 1, (6.6)
+where ψ solves (1.8) and Γ2(ψ) := LΓ(ψ) − 2Γ(ψ, Lψ), with L = ∆/2, is the iterated carr ́e du champ. Bochner’s formula, relates Γ2 and the Ricci curvature:
+Γ2(ψ) = ‖∇ψ‖2HS + Ric(∇ψ).
+This is the starting point of the Lott-Sturm-Villani theory [Stu06a, Stu06b, LV09]. Schro ̈dinger problem suggests a slight (more realistic :-) variant of this thought experiment where displacement interpolations are replaced with entropic interpolations, see (1.12). This is really a lazy gas experiment, while in some sense, the above mentioned lazy gas experiment in [Vil09] is a very lazy gas experiment. Indeed, in the displacement interpolation setting, not only the particles need to find a cooperative lazy behaviour (the transport mapping x 7→ y) but also each individual particle must find an economic way
+11Here, the entropy is standard Boltzmann’s one: p 7→ −H(p|vol), which is a concave function. 12The decisive milestones on the way towards this result are [McC97, OV00, CEMS01].
+
+
+32 CHRISTIAN LE ́ONARD
+to travel (the minimizing geodesic path) as a result of its intrinsic laziness: it is very slow and at the limit k → ∞, it doesn’t want to move at all, recall Statement 5.1. It is interesting to know that, without slowing down, along the entropic interpolation [μ0, μ1],
+h′[′μ0,μ1](t) = 1
+2 〈Γ2(φt) + Γ2(ψt), μt〉, 0 ≤ t ≤ 1, (6.7)
+where the functions φ and ψ are given at (3.7): φt(z) = log ER(f0(X0) | Xt = z), ψt(z) = log ER(g1(X1) | Xt = z) with f0, g1 such that μt = (f0(X0)g1(X1) R)t. This is proved by the author in [L ́eob]. Remark that (6.7) is an extension of (6.6) where ψ = −φ. Unlike this asymptotic case (k = ∞) where the convexity estimate (6.6) is obtained informally by means of Otto’s heuristic calculus, the entropic interpolation formula (6.7) is rigorous since h[μ0,μ1] is genuinely second differentiable on (0, 1) and the stochastic calculus result (3.5) is rigorous. In the general setting of a reference reversible measure R, and in particular with a reversible random walk on a graph, it is shown in [L ́eob] that stochastic calculus for the (f, g)-transforms as developed at Statement 3.6 leads us to the following rigorous formula
+h′[′μ0,μ1](t) = 1
+2 〈Θ2(φt) + Θ2(ψt), μt〉, 0 < t < 1, (6.8)
+where
+Θ2ψ := LΘψ + e−ψΓ (eψ, Θψ) + e−ψΓ(eψ, ψ)Bψ − e−ψΓ(eψBψ, ψ) (6.9)
+with
+Θψ := e−ψΓ(eψ, ψ) − Bψ + Lψ.
+In the special case where L is a diffusion operator, then Θ = Γ and Θ2 = Γ2. One may expect that formulae (6.8) and (6.9) could lead to some results about the curvature of graphs, in the same spirit as (6.7), which is related to curvature via Bochner’s formula, carries information about the curvature of the underlying Riemannian manifold.
+7. A short history of Schr ̈odinger’s problem and related literature
+Schro ̈dinger’s problem was first addressed by E. Schro ̈dinger in a German written article
+[Sch31] which was published in 1931 and entitled “U ̈ber die Umkehrung der Naturgesetze” 13, then in a French written article [Sch32] which was published in 1932 and entitled “Sur la th ́eorie relativiste de l’ ́electron et l’interpr ́etation de la m ́ecanique quantique”14. The entropy minimization problem appears at the last section VII of the 1932 article which can be read independently of the preceding sections and is entitled: “Une analogie entre la m ́ecanique ondulatoire et quelques probl`emes de probabilit ́es en physique classique”15. Let us quote Schro ̈dinger’s introduction to this section.
+Il s’agit d’un probl`eme classique : probl`eme de probabilit ́es dans la th ́eorie du mouvement brownien. Mais en fin de compte, il ressortira une analogie avec la m ́ecanique ondulatoire, qui fut si frappante pour moi lorsque je l’eus trouv ́ee, qu’il m’est difficile de la croire purement accidentelle.
+A` titre d’introduction, je voudrais citer une remarque que j’ai trouv ́ee dans les “Glifford lectures” de A.S. Eddington (Cambridge, 1928, p. 216 et sqq). Eddington, en parlant de l’interpr ́etation de la m ́ecanique ondulatoire, fait dans une note en bas de page la remarque
+13On the reversibility of the laws of nature. 14On the relativistic theory of the electron and the interpretation of quantum mechanics. 15An analogy between wave mechanics and some probabilistic problems in classical physics.
+
+
+THE SCHRO ̈ DINGER PROBLEM 33
+suivante : 16 “The whole interpretation is very obscure, but it seems to depend on wether you are considering the probability after you know what has happened or the probability for the
+purposes of prediction. The ψψ ̄ is obtained by introducing two symmetrical systems of ψ waves travelling in opposite directions in time; one of these must presumably correspond to probable inference from what is known (or is stated) to have been the condition at a later time.”
+In 1931, wave mechanics is newly born and many physicists are puzzled by its possible interpretations. Based on Eddington’s remark, one may wonder at first sight if in the quantum world knowledge from the far future is available. Of course, this is not so, but why ? In his 1931-32 papers, Schro ̈dinger solves this paradox by providing an amazingly close analogue of the quantum wave function propagation in the classical world, by means of the entropy minimization problem (Sdyn). In particular, formula (3.4) in Theorem 3.4 : Pt(dx) = ft(x)gt(x) m(dx), must be interpreted as the classical analogue of Born’s for
+mula : Pt(dx) = ψt(x)ψ ̄t(x) dx. Let us quote [Sch32] again (this quotation also appears in [Fo ̈l88]) to emphasize that, although derived in a heuristic manner in [Sch31, Sch32], the system (2.11) and Born’s formula (3.4) are motivated by the following question of large deviations in the framework of the lazy gas experiment : Imaginez que vous observez un syst`eme de particules en diffusion, qui soient en  ́equilibre thermodynamique. Admettons qu’`a un instant donn ́e t0 vous les ayez trouv ́ees en r ́epartition `a peu pr`es uniforme et qu’`a t1 > t0 vous ayez trouv ́e un  ́ecart spontan ́e et consid ́erable par rapport `a cette uniformit ́e. On vous demande de quelle mani`ere cet  ́ecart s’est produit. Quelle en est la mani`ere la plus probable ? 17
+As a concluding comment in his 1932 article, Schro ̈dinger writes : La fonction [d’onde] complexe ψ correspond `a deux fonctions r ́eelles, de sorte qu’il suffit de d ́efinir les conditions aux limites en se donnant la valeur de ψ `a un seul instant d ́etermin ́e ; c’est la fac ̧on de voir g ́en ́eralement admise en m ́ecanique quantique. Est-elle la seule admissible ? Dans notre probl`eme, cela reviendrait `a regarder comme donn ́ees les valeurs de f et g18 `a un instant d ́etermin ́e (au lieu des valeurs de leur produit `a deux instants diff ́erents), chose inadmissible et absolument d ́enu ́ee de sens. Doit-on interpr ́eter la remarque d’Eddington, cit ́ee plus haut, comme signalant la n ́ecessit ́e de modifier cette mani`ere de voir en m ́ecanique ondulatoire et prendre comme conditions aux limites les valeurs d’une seule probabilit ́e r ́eelle `a deux instants diff ́erents ? 19
+16This is a classical problem: a probability problem in the theory of Brownian motion. But eventually an analogy with the wave mechanics will appear. This analogy stroke me so hard once I discovered it, that it is difficult for me to believe that it is purely accidental. As an introduction, let me quote a remark that I found in the “Glifford lectures” of A. S. Eddington (Cambridge, 1928, p. 216 et sqq). Discussing the interpretation of wave mechanics, Eddington writes in a footnote the following remark: “The whole interpretation is very obscure, . . . ” 17Imagine that you observe a system of diffusing particles which is in thermal equilibrium. Suppose that at a given time t0 you see that their repartition is almost uniform and that at t1 > t0 you find a spontaneous and significant deviation from this uniformity. You are asked to explain how this deviation occurred. What is its most likely behaviour? 18With the notation of the present article. 19The complex [wave] function ψ corresponds to two real functions. Therefore, it is enough to define the limit conditions by prescribing the value of ψ at a unique given time. This is the regular practice in quantum mechanics. Is it the only admissible one? In our problem, this would correspond to considering that the values of f and g [with the notation of the present article] are prescribed at a given time (instead of the values of their product at two distinct times). This is inadmissible and meaningless. Should one interpret the previously quoted remark of Eddington, as a hint for the necessity of modifying
+
+
+34 CHRISTIAN LE ́ONARD
+This has been performed in 1942 by R. Feynman in his PhD thesis [Fey05], without knowing Schro ̈dinger’s contribution. Feynman’s thesis is entitled : The principle of least action in quantum mechanics. Based on a seminal article by Dirac [Dir33], entitled The Lagrangian in quantum mechanics (also reproduced in [Fey05]), and in contrast with the regular Hamiltonian approach, Feynman’s thesis proposes a Lagrangian approach to quantum mechanics which will be further developed in several directions, see [FH65].
+F ̈ollmer’s contribution. Although Schro ̈dinger obtains the classical Born formula (3.4), he does not write explicitly the problems (Sdyn) and (S). Their explicit formulation is due to H. F ̈ollmer in his Saint-Flour lecture notes [Fo ̈l88, pp. 154-167]. Proposition 2.3 which is based on the additive property of the relative entropy (A.8), also appears in [Fo ̈l88].
+Early mathematical developments. Although this part of Schro ̈dinger’s work has been forgotten for some decades, it had influenced leading mathematicians soon after its publishing.
+Reciprocal processes, 1932. Very soon after Schro ̈dinger’s 1931 article, S. Bernstein published in 1932 an article [Ber32] about the general problem of deriving limit theorems for sequences of dependent random variables. Among other notions, he explored the Markov property and, motivated by [Sch31], proposed a type of time-correlation which is less restrictive than the Markov property and is still symmetric with respect to time reversal20. He suggested that such stochastic processes could be called reciprocal process. While a Markov measure Q ∈ M+(Ω) satisfies for any 0 ≤ s ≤ t ≤ 1,
+Q(X[0,s] ∈ ·, X[t,1] ∈ ·· | X[s,t]) = Q(X[0,s] ∈ · | Xs)Q(X[t,1] ∈ ·· | Xt),
+a path measure Q ∈ M+(Ω) is reciprocal if for any 0 ≤ s ≤ t ≤ 1,
+Q(X[s,t] ∈ · | X[0,s], X[t,1]) = Q(X[s,t] ∈ · | Xs, Xt).
+Any Markov measure is reciprocal, but the converse is false. The theory of reciprocal processes has been forgotten for a while after Bernstein’s article and was eventually developed by B. Jamison in 1974, [Jam74, Jam75]. A significant contribution of Jamison to the theory of Schro ̈dinger problem was that its solution ̂P is not only reciprocal, but also Markov and it is indeed an h-transform of the Markov reference process. This is performed without any entropy, but solely by means of reciprocal transitions. F ̈ollmer recovered these results in [Fo ̈l88] using the entropy minimization problem (Sdyn). For more information about the relations between reciprocal and Markov measures, see [LRZ].
+Time-reversal, 1936. In the very first lines of his celebrated paper [Kol36] about Markov processes and time-reversal, A. Kolmogorov quotes Schro ̈dinger’s 1931 paper as a motivation. This has been surprisingly forgotten afterwards.
+Schr ̈odinger system, 1940. Schro ̈dinger had left open the problem of finding criteria for the system (2.11) to have a solution (f0, g1). In 1940, R. Fortet [For40] proposed a partial solution and in 1960, A. Beurling [Beu60] gave a solution close to the statement of Theorem 2.8. Beurling’s proof also relies upon an entropy argument. Beurling’s result was improved by Jamison in [Jam75] who obtained the complete solution of Schro ̈dinger’s system.
+our usual way of looking at quantum mechanics by defining the limit conditions in terms of the values of a single real probability at two distinct times? 20It is not clear that Bernstein was aware of the time-symmetry of the Markov property. This symmetry has clearly been identified twenty years later by J.L. Doob in his textbook [Doo53].
+
+
+THE SCHRO ̈ DINGER PROBLEM 35
+Stochastic deformations of mechanics. The aim of Euclidean quantum mechanics (EQM), which is mainly developed by J.-C. Zambrini since 1986 [Zam86, CZ91, CWZ00, CZ08], is to transfer by analogy, known results from quantum mechanics to the theory of stochastic processes and the other way round21. The starting paper [Zam86] of this program relies on Schro ̈dinger’s discovery and adapts Jamison’s results for an appropriate class of reciprocal processes (unlike Zambrini, Jamison doesn’t use the time-reversed filtration in his construction of reciprocal processes). Then the EQM program was extended to the derivation of rigorous results about various kind of stochastic processes which are suggested by the textbook Quantum mechanics and path integrals by Feynman and Hibbs [FH65]. This textbook presents, indeed, a time-symmetric (Lagrangian) approach to quantum mechanics which extends Feynman’s early works and in particular his PhD thesis [Fey05]. Feynman’s approach is an enlightening, efficient and intuitive guideline for physicists, but unfortunately it is impossible to put it on a rigorous mathematical ground : it is proved that Feynman’s integral is an oddly defined object. However, replacing Feynman’s integration by stochastic calculus suggests interesting results about diffusion processes. The first of these results was the celebrated Feynman-Kac’s formula [Kac49]. EQM viewpoint, however, is that there is much more in Feynman’s method than this time-asymmetric measure theoretic perturbative formula. EQM uses Kac’s strategy in a systematic manner and its basic program is to obtain rigorous stochastic analogues of several intuitive statements from [FH65] ; intuitive, but highly efficient since they are corroborated by experiments. In EQM, the natural stochastic processes to work with are reciprocal processes. However, in several important situations, it appears that the critical (solving some variational problem) reciprocal processes are Markov. In this case, it is sufficient to work with (f, g)-transforms of Markov reference processes (see [Jam75, F ̈ol88] for an h-transform
+representation) and their extensions : f0(X0) exp ( ∫ 1
+0 U (Xt) dt)g1(X1) R with the addi
+tional Feynman-Kac integral term (x, y) 7→ exp ( ∫ 1
+0 U (Xt) dt) Rxy which is the classical
+analogue of Feynman’s propagator. These extensions of h-transforms are also used by M. Nagasawa in [Nag89, Nag00] who also explores connections between stochastic processes and quantum physics which are highly inspired by the Schro ̈dinger problem. It is also possible to stochastically deform all the mathematical tools of classical mechanics to derive new results about diffusion processes. For instance, M. Thieullen designed a second order calculus for reciprocal processes in [Thi93] and without referring to (Sdyn) or entropy in general, M. Thieullen and J.-C. Zambrini have obtained a stochastic deformation of Noether theorem [TZ97].
+An interesting problem. This suggests that it would be also interesting to derive a type of Noether theorem for the Monge-Kantorovich dynamical problem. Let us give some hint of what is meant. In the Euclidean case, the displacement interpolation [μ0, μ1] is a solution of
+(MKdyn) with C = Ckin := ∫
+[0,1] |X ̇ t|2/2 dt, the kinetic action. It has a constant speed ; this
+means that twice the average kinetic energy ∫
+Ω |X ̇ t|2 d ̂P = ∫
+X |∇ψt(x)|2 μt(dx), with the
+notation of the Benamou-Brenier formula (1.7), doesn’t depend on time t. What happens
+when considering, instead of Ckin, the action functional C = ∫
+[0,1]
+(|X ̇ t|2/2 + U (Xt)) dt which should be connected with some Newton equation ? What are the quantities that are conserved along the minimizer [μ0, μ1], in terms of the symmetries of the potential U?
+21Unlike Nelson’s stochastic mechanics [Nel85] or Nagasawa’s interpretation of quantum mechanics [Nag00], EQM is not aimed at giving a stochastic interpretation of quantum mechanics. Such a project still remains an open problem eighty years after the advent of this theory.
+
+
+36 CHRISTIAN LE ́ONARD
+Stochastic optimal control. Optimal transport can be deformed into a stochastic optimal control problem. This is mainly the contribution of T. Mikami, see [Mik09] for an overview of this approach and some of its main developments. With (4.7), one obtains that the Brownian Schro ̈dinger problem (Sdyn), i.e. taking R to be the reversible Brownian motion, is also expressed as follows :
+EP u
+∫1
+0
+L(ut) dt → min; u ∈ A : P0u = μ0, P1u = μ1 (7.1)
+where A is the set (of admissible controls) which consists of all the Rn-valued progressively measurable processes u and P u (if it exists) is the law of the semi-martingale
+Xtu = X0u +
+∫t
+0
+us ds + Wt, 0 ≤ t ≤ 1
+where W is a standard Brownian motion starting from 0 and
+L(u) = |u|2/2, u ∈ Rn.
+This is a stochastic version of the quadratic Monge-Kantorovich problem (MKdyn) :
+EP u
+∫1
+0
+L(ut) dt → min; u ∈ AMK : P0u = μ0, P1u = μ1
+which is obtained by replacing A with AMK, the set of all controls u ∈ L1Rn([0, 1]) and
+taking P u to be the law of
+Xtu = X0u +
+∫t
+0
+us ds, 0 ≤ t ≤ 1,
+a process with a random initial position and a deterministic evolution. This theory extends naturally to the case where L is strictly convex, regular and coercive enough : lim|u|→∞ L(u)/|u|p = ∞, for some p > 1. But results close to optimal transport are obtained with L admitting a quadratic growth, i.e. in harmony with the Brownian motion W.
+When L is quadratic, if the Brownian motion W is replaced with √ǫW and ǫ tends to zero, then Mikami shows in [Mik04] that (Sdyn) tends to (MKdyn). Unfortunately, this type of convergence remains unclear unless L is quadratic, i.e. unless the stochastic optimal control problem corresponds to (Sdyn). T. Mikami and M. Thieullen have proved a Kantorovich-type dual equality in [MT06] for (7.1) and recovered related optimal transport results in [MT08]. T. Mikami has intensively studied the connections between stochastic control and optimal transport. In particular, soon after the discovery by Jordan, Kinderlehrer and Otto [JKO98] of the relation between gradient flows, Wasserstein distance and dissipative evolution equations, he proposed in [Mik00] a stochastic approach to the JKO approximation scheme. In addition to the already cited articles by Mikami, several other works by the same author are related to a probabilistic approach to optimal transport : [Mik02, Mik06, Mik08, Mik12]. Let us also quote the early contributions of Mikami [Mik90] and P. Dai Pra [Dai91] where the Schro ̈dinger problem is translated in terms of stochastic control.
+Penalized Monge-Kantorovich problem. The connection between the Monge-Kantorovich and the Schro ̈dinger problems is also exploited implicitly in some works where (MK) is penalized by a relative entropy, leading to the minimization problem
+∫
+X2
+c dπ + 1
+k H(π|ρ) → min; π ∈ P(X 2) : π0 = μ0, π1 = μ1
+
+
+THE SCHRO ̈ DINGER PROBLEM 37
+where ρ ∈ P(X 2) is a fixed reference probability measure on X 2, for instance ρ = μ0 ⊗ μ1.
+Putting ρk(dxdy) = Z−1
+k e−kc(x,y) ρ(dxdy) with Zk = ∫
+X 2 e−kc dρ < ∞, up to the additive
+constant log(Zk)/k, this minimization problem rewrites as (Sk) with ρk instead of R0k1. See
+for instance the papers by R ̈uschendorf and Thomsen [RT93, RT98] and the references therein. Also interesting are the papers by Dupuy, Galichon and Salanie [GS, DG] with an applied point of view.
+Annexe A. Relative entropy with respect to an unbounded measure
+This appendix section is a short version of [L ́eoc, § 2] which we refer to for more details. Let r be some σ-finite positive measure on some space Y . The relative entropy of the probability measure p with respect to r is loosely defined by
+H(p|r) :=
+∫
+Y
+log(dp/dr) dp ∈ (−∞, ∞], p ∈ P(Y ) (A.1)
+if p ≪ r and H(p|r) = ∞ otherwise. More precisely, when r is a probability measure, we have
+H(p|r) =
+∫
+Y
+h(dp/dr) dr ∈ [0, ∞], p, r ∈ P(Y )
+with h(a) = a log a − a + 1 ≥ 0 for all a ≥ 0, (take h(0) = 1). Hence, the definition (A.1) is meaningful. It follows from the strict convexity of h that H(·|r) is also strictly convex. In addition, since h(a) = inf h = 0 ⇐⇒ a = 1, we also have for any p ∈ P(Y ),
+H(p|r) = inf H(·|r) = 0 ⇐⇒ p = r. (A.2)
+If r is unbounded, one must restrict the definition of H(·|r) to some subset of P(Y ) as follows. As r is assumed to be σ-finite, there exist measurable functions W : Y → [1, ∞) such that
+zW :=
+∫
+Y
+e−W dr < ∞. (A.3)
+Define the probability measure rW := z−1
+W e−W r so that log(dp/dr) = log(dp/drW ) − W −
+log zW . It follows that for any p ∈ P(Y ) satisfying ∫
+Y W dp < ∞, the formula
+H(p|r) := H(p|rW ) −
+∫
+Y
+W dp − log zW ∈ (−∞, ∞] (A.4)
+is a meaningful definition of the relative entropy which is coherent in the following sense.
+If ∫
+Y W ′ dp < ∞ for another measurable function W ′ : Y → [0, ∞) such that zW ′ < ∞,
+then H(p|rW ) − ∫
+Y W dp − log zW = H(p|rW ′) − ∫
+Y W ′ dp − log zW ′ ∈ (−∞, ∞].
+Therefore, H(p|r) is well-defined for any p ∈ P(Y ) such that ∫
+Y W dp < ∞ for some
+measurable nonnegative function W verifying (A.3). It can be proved that
+H(p|r) (i=) sup
+{∫
+Y
+u dp − log
+∫
+Y
+eu dr; u : Y → [−∞, ∞),
+∫
+Y
+eu dr < ∞
+}
+(A.5)
+(i=i) sup
+{∫
+Y
+u dp − log
+∫
+Y
+eu dr; u ∈ CW (Y )
+}
+, (A.6)
+where
+(i) identity (i) is valid when p is assumed to be absolutely continuous with respect to r;
+
+
+38 CHRISTIAN LE ́ONARD
+(ii) identity (ii) is meaningful when Y is a topological space equipped with its Borel σfield since we have set CW (Y ) to be the space of all continuous functions u : Y → R such that sup |u|/W < ∞, where W is any nonnegative function satisfying (A.3). In this case, it follows that, being the supremum of affine continuous functions, H(·|r) is a convex lower semi-continuous function with respect to the weak topology
+σ({p ∈ P(Y ); ∫
+Y W dp < ∞}, CW (Y )).
+Clearly, identity (i) entails that H(p|r) = ∞ whenever p ∈ P(Y ) is such that ∫
+Y W dp = ∞
+It follows from the strict convexity of H(·|rW ) and (A.4) that H(·|r) is also strictly convex. Let Y and Z be two Polish spaces equipped with their Borel σ-fields. For any measurable function φ : Y → Z and any measure q ∈ M+(Y ) we have the disintegration formula
+q(dy) =
+∫
+Z
+q(dy|φ = z) φ#q(dz) (A.7)
+where z ∈ Z 7→ q(·|φ = z) ∈ P(Y ) is measurable, and the following additive property
+H(p|r) = H(φ#p|φ#r) +
+∫
+Z
+H
+(
+p(· | φ = z)|r(· | φ = z)
+)
+φ#p(dz), (A.8)
+is valid for any p ∈ P(Y ) and any σ-finite r ∈ M+(Y ). In particular, as r(· | φ = z) is a probability measure for each z, with (A.2) we see that
+H(φ#p|φ#r) ≤ H(p|r), ∀p ∈ P(Y ) (A.9)
+with equality if and only if
+p(· | φ = z) = r(· | φ = z), ∀z, φ#p-a.s. (A.10)
+References
+[BB00] J.-D. Benamou and Y. Brenier. A computational fluid mechanics solution to the MongeKantorovich mass transfer problem. Numer. Math., 84(3):375–393, 2000. [Ber32] S. Bernstein. Sur les liaisons entre les grandeurs al ́eatoires. Verhand. Internat. Math. Kongr. Z ̈urich, (Band I), 1932. [Beu60] A. Beurling. An automormhism of product measures. Ann. Math., 72(1):189–200, 1960. [Bil68] P. Billingsley. Convergence of Probability Measures. Wiley Series in Probability and Mathematical Statistics. John Wiley & Sons, 1968. [BL92] J.M. Borwein and A.S. Lewis. Decomposition of multivariate functions. Can. J. Math., 44(3):463–482, 1992. [CEMS01] D. Cordero-Erausquin, R.J. McCann, and M. Schmuckenschl ̈ager. A Riemannian interpolation inequality `a la Borell, Brascamp and Lieb. Invent. Math., 146(2):219–257, 2001. [CL95] P. Cattiaux and C. L ́eonard. Large deviations and Nelson’s processes. Forum Math., 7:95–115, 1995. [Csi75] I. Csisza ́r. I-divergence geometry of probability distributions and minimization problems. Annals of Probability, 3:146–158, 1975.
+[CWZ00] A.B. Cruzeiro, L. Wu, and J.-C. Zambrini. Bernstein processes associated with a Markov process. In R. Rebolledo, editor, Stochastic analysis and mathematical physics, ANESTOC’98. Proceedings of the Third International Workshop, Trends in Mathematics, pages 41–71, Boston, 2000. Birkh ̈auser. [CZ91] A.B. Cruzeiro and J.-C. Zambrini. Malliavin calculus and Euclidean quantum mechanics, I. J. Funct. Anal., 96(1):62–95, 1991.
+[CZ08] K.L. Chung and J.-C. Zambrini. Introduction to Random Time and Quantum Randomness. World Scientific, 2008. [Dai91] P. Dai Pra. A stochastic control approach to reciprocal diffusion processes. Appl. Math. Optim., 23(3):313–329, 1991. [DG] A. Dupuy and A. Galichon. Personality traits and the marriage market. Preprint. Available at SSRN: http://ssrn.com/abstract=2162812.
+
+
+THE SCHRO ̈ DINGER PROBLEM 39
+[DG87] D.A. Dawson and J. G ̈artner. Large deviations from the McKean-Vlasov limit for weakly interacting diffusions. Stochastics, 20:247–308, 1987. [DGW90] D. Dawson, L. Gorostiza, and A. Wakolbinger. Schr ̈odinger processes and large deviations. J. Math. Phys., 31(10):2385–2388, 1990. [Dir33] P. A. M. Dirac. The Lagrangian in quantum mechanics. Phys. Zeitsch. der Sowietunion, 3(1):64–72, 1933. [DM93] G. Dal Maso. An Introduction to Γ-Convergence. Progress in Nonlinear Differential Equations and Their Applications 8. Birkh ̈auser, 1993. [Doo53] J.L. Doob. Stochastic Processes. Wiley, 1953. [Doo57] J.L. Doob. Conditional Brownian motion and the boundary limits of harmonic functions. 85:431–458, 1957.
+[Doo00] J.L. Doob. Classical Potential Theory and Its Probabilistic Counterpart. Classics in Mathematics. Springer, 2nd edition, 2000. (reprint of the 1984 first edition).
+[DZ98] A. Dembo and O. Zeitouni. Large deviations techniques and applications. Second edition. Applications of Mathematics 38. Springer Verlag, 1998.
+[Fey05] R. Feynman. Feynman’s thesis. A new approach to quantum theory. World Scientific, 2005. [FG97] H. F ̈ollmer and N. Gantert. Entropy minimization and Schr ̈odinger processes in infinite dimensions. Ann. Probab., 25(2):901–926, 1997. [FH65] R. Feynman and A. Hibbs. Quantum Mechanics and Path Integrals. McGraw-Hill, 1965.
+[Fo ̈l88] H. F ̈ollmer. Random fields and diffusion processes, in E ́cole d’e ́te ́ de Probabilite ́s de Saint-Flour XV-XVII-1985-87, volume 1362 of Lecture Notes in Mathematics. Springer, Berlin, 1988.
+[For40] R. Fortet. R ́esolution d’un syst`eme d’ ́equations de M. Schr ̈odinger. J. Math. Pures Appl., 9:83, 1940. [GS] A. Galichon and B. Salanie. Matching with trade-offs: revealed preferences over competing characteristics. Preprint. http://hal.archives-ouvertes.fr/hal-00473173/en/. [Jam74] B. Jamison. Reciprocal processes. Z. Wahrsch. verw. Geb., 30:65–86, 1974. [Jam75] B. Jamison. The Markov processes of Schr ̈odinger. Z. Wahrsch. verw. Geb., 32(4):323–331, 1975. [JKO98] R. Jordan, D. Kinderlehrer, and F. Otto. The variational formulation of the Fokker-Planck equation. SIAM J. Math. Anal., 29(1):1–17, 1998. [Kac49] M. Kac. On distributions of certain Wiener functionals. Trans. Amer. Math. Soc., 65:1–13, 1949. [Kol36] A. Kolmogorov. Zur Theorie der Markoffschen Ketten. Mathematische Annalen, 112, 1936. [L ́eoa] C. L ́eonard. Lazy random walks and optimal transport on graphs. Preprint. [L ́eob] C. L ́eonard. On the convexity of the entropy along entropic interpolations. Preprint. [L ́eoc] C. L ́eonard. Some properties of path measures. Preprint. [L ́eod] C. L ́eonard. Stochastic derivatives and h-transforms of Markov processes. Preprint. [L ́eo01a] C. L ́eonard. Minimization of energy functionals applied to some inverse problems. J. Appl. Math. Optim., 44:273–297, 2001. [L ́eo01b] C. L ́eonard. Minimizers of energy functionals. Acta Math. Hungar., 93(4):281–325, 2001. [L ́eo10] C. L ́eonard. Entropic projections and dominating points. ESAIM P&S, 14:343–381, 2010. [L ́eo12a] C. L ́eonard. From the Schr ̈odinger problem to the Monge-Kantorovich problem. J. Funct. Anal., 262(1879-1920), 2012. [L ́eo12b] C. L ́eonard. Girsanov theory under a finite entropy condition. In Se ́minaire de probabilite ́s de Strasbourg, vol. XLIV., pages 429–465. Lecture Notes in Mathematics 2046. Springer, 2012. [LRZ] C. L ́eonard, S. Rœlly, and J.-C. Zambrini. On the time symmetry of some stochastic processes. Preprint. [LV09] J. Lott and C. Villani. Ricci curvature for metric-measure spaces via optimal transport. Ann. of Math., 169(3):903–991, 2009. [McC97] R.J. McCann. A convexity principle for interacting gases. Adv. Math., 128:153–179, 1997. [Mik90] T. Mikami. Variational processes from the weak forward equation. Comm. Math. Phys., 135(1):19–40, 1990. [Mik00] T. Mikami. Dynamical systems in the variational formulation of the Fokker-Planck equation by the Wasserstein metric. Appl. Math. Optim., 42:203–227, 2000. [Mik02] T. Mikami. Optimal control for absolutely continuous stochastic processes and the mass transportation problem. Electron. Comm. Probab., 7:199–213, 2002.
+
+
+40 CHRISTIAN LE ́ONARD
+[Mik04] T. Mikami. Monge’s problem with a quadratic cost by the zero-noise limit of h-path processes. Probab. Theory Relat. Fields, 129:245–260, 2004.
+[Mik06] T. Mikami. A simple proof of duality theorem for Monge-Kantorovich problem. Kodai Math. J., 29(1):1–4, 2006. [Mik08] T. Mikami. Marginal problem for semimartingales via duality. In International Conference for the 25th Anniversary of Viscosity Solutions, volume 30 of Gakuto International Series. Mathematical Sciences and Applications, pages 133–152, 2008.
+[Mik09] T. Mikami. Optimal transportation problem as stochastic mechanics. In Selected papers on probability and statistics, volume 227 of Amer. Math. Soc. Transl. Ser. 2, pages 75–94. Amer. Math. Soc., 2009. [Mik12] T. Mikami. A characterization of the Knothe-Rosenblatt processes by a convergence result. SIAM J. Control and Optim., pages 1903–1920, 2012.
+[MT06] T. Mikami and M. Thieullen. Duality theorem for the stochastic optimal control problem. Stoch. Proc. Appl., 116:1815–1835, 2006. [MT08] T. Mikami and M. Thieullen. Optimal transportation problem by stochastic optimal control. SIAM J. Control Optim., 47(3):1127–1139, 2008. [Nag89] M. Nagasawa. Transformations of diffusion and Schr ̈odinger processes. Probab. Theory Related Fields, 82(1):109–136, 1989.
+[Nag00] M. Nagasawa. Stochastic processes in quantum physics, volume 94 of Monographs in Mathematics. Birkh ̈auser Verlag, Basel, 2000. [Nel67] E. Nelson. Dynamical theories of Brownian motion. Princeton University Press, 1967. Second edition (2001) at: www.math.princeton.edu/∼nelson/books.html. [Nel85] E. Nelson. Quantum fluctuations. Princeton Series in Physics. Princeton University Press, Princeton, NJ, 1985. [Ott01] F. Otto. The geometry of dissipative evolution equations: the porous medieum equation. Comm. Partial Differential Equations, 26(1-2):101–174, 2001.
+[OV00] F. Otto and C. Villani. Generalization of an inequality by Talagrand and links with the logarithmic Sobolev inequality. J. Funct. Anal., 173(2):361–400, 2000. [RT93] L. R ̈uschendorf and W. Thomsen. Note on the Schr ̈odinger equation and I-projections. Statist. Probab. Lett., 17:369–375, 1993. [RT98] L. R ̈uschendorf and W. Thomsen. Closedness of sum spaces and the generalized Schr ̈odinger problem. Theory Probab. Appl., 42(3):483–494, 1998.
+[RY99] D. Revuz and M. Yor. Continuous martingales and Brownian motion, volume 293 of Grundlehren der Mathematischen Wissenschaften. Springer, 3rd edition, 1999.
+[Sch31] E. Schr ̈odinger.  ̈Uber die Umkehrung der Naturgesetze. Sitzungsberichte Preuss. Akad. Wiss. Berlin. Phys. Math., 144:144–153, 1931.
+[Sch32] E. Schr ̈odinger. Sur la th ́eorie relativiste de l’ ́electron et l’interpr ́etation de la m ́ecanique quantique. Ann. Inst. H. Poincare ́, 2:269–310, 1932.
+Available at: http://archive.numdam.org/ARCHIVE/AIHP/.
+[Stu06a] K-T. Sturm. On the geometry of metric measure spaces, I. Acta Math, 196:65–131, 2006. [Stu06b] K-T. Sturm. On the geometry of metric measure spaces, II. Acta Math, 196:133–177, 2006. [Sv05] K-T. Sturm and M-K. von Renesse. Transport inequalities, gradient estimates, entropy, and Ricci curvature. Comm. Pure Appl. Math., 58(7):923–940, 2005. [Thi93] M. Thieullen. Second order stochastic differential equations and non Gaussian reciprocal diffusions. Probab. Theory Related Fields, 97:231–257, 1993.
+[TZ97] M. Thieullen and J.-C. Zambrini. Symmetries in the stochastic calculus of variations. Probab. Theory Related Fields, 107(3):401–427, 1997.
+[Vil09] C. Villani. Optimal Transport. Old and New, volume 338 of Grundlehren der mathematischen Wissenschaften. Springer, 2009.
+[Zam86] J.-C. Zambrini. Variational processes and stochastic versions of mechanics. J. Math. Phys., 27:2307–2330, 1986.
+Modal-X. Universit ́e Paris Ouest. Baˆt. G, 200 av. de la R ́epublique. 92001 Nanterre, France
+E-mail address: christian.leonard@u-paris10.fr

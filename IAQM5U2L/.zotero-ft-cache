@@ -1,0 +1,807 @@
+Learning Neural Network Subspaces
+
+A. Convex Setting
+
+In this section we consider the case where the loss is convex, and we show the optimization problem remains convex when learning the subspace parameters.
+
+Let ω = (ω1, ..., ωm) denote the parameters used to con-
+
+struct the subspace. A simpliﬁed version of our objective is
+
+given by
+
+h(ω) , Eα∼U(Λ)[`(P(α, ω))]
+
+(6)
+
+This objective is simpliﬁed from Equation 1 as we have
+removed the dependence on the training data and neural network—the loss ` is given parameters θ ∈ Rn and returns a positive scalar.
+
+We note that in each of the subspaces we learn—lines, curves, and simplexes—P(α, ω) is linear with respect to ω.
+Proposition A.1. If ` : Rn → R is convex and P is linear with respect to ω then h is convex with respect to ω.
+
+Proof. For two sets of parameters ω and ω and λ ∈ [0, 1],
+
+h((1 − λ)ω + λω)
+
+(7)
+
+= Eα[`(P(α, (1 − λ)ω + λω))]
+
+(8)
+
+= Eα[`((1 − λ)P(α, ω) + λP(α, ω))]
+
+(9)
+
+≤ Eα[(1 − λ)`(P(α, ω)) + λ`(P(α, ω))]
+
+(10)
+
+= (1 − λ)Eα[`(P(α, ω))] + λEα[`(P(α, ω))] (11)
+
+= (1 − λ)h(ω) + λh(ω),
+
+(12)
+
+where Equation 9 and Equation 10 respectively follow from the linearity of P (in ω) and convexity of `.
+
+B. Additional Samples and Feature Similarity Regularization
+In Algorithm 1 we approximate the inner expectation of Equation 1 using a single sample. In this section we approximate the expectation with multiple samples, leading to an improvement in accuracy along the subspace and of the ensemble. When approximating the expectation with s samples we split the batch of size b into s groups of size b/s and sample independent values of α ∼ U([0, 1]) for each. Results for s = {1, 2, 4} are shown in the ﬁrst row of Figure 13.
+Using multiple samples allows us to experiment with additional regularization to enable functional diversity. We can directly encourage models from different parts of the subspace to have orthogonal features. We experiment with regularization of this form, which we call feature similarity regularization, in the second row of Figure 13. For each batch we pick j, k randomly from {1, ..., s}, where s is the number of samples. Let αj and αk denote samples j and k from U ([0, 1]) and φj, φk denote the features obtained
+
+using models P(αj) and P(αk). The feature similarity regularization term is then given by
+
+λ|αj − αk| cos2(φj, φk)
+
+(13)
+
+where the features φ are taken from the output of the penultimate layer and cos(φj, φk) is cosine similarity. The term |αj − αk| allows for more feature similarity when models are close together on the subspace. Results for feature
+similarity regularization are shown in the bottom row of
+Figure 13.
+
+C. Integrating over Subspaces
+
+Is there a subspace from which you can efﬁciently ensemble all models? We believe this is not possible for the subspaces of general neural networks f we learn in this paper. However, this does become possible when considering a speciﬁc form for f .
+
+Consider P : [0, 1] → Rn which deﬁnes a one-dimensional
+
+subspace of weights. In this section we investigate a mech-
+
+anism for ensembling the output of all networks along the
+
+subspace—a closed-form expression for
+
+Z 1
+
+yˆ(x) = f (x, P(α))dα.
+
+(14)
+
+0
+
+For a particular class of functions f , Equation 14 admits a straightforward solution. Consider
+
+f
+
+(x,
+
+P(α))
+
+=
+
+g(x,
+
+P(0))
+
++
+
+dg(x, P(α))) dα
+
+.
+
+(15)
+
+for which
+
+Z 1
+
+f (x, P(α))dα = g(x, P(1)).
+
+(16)
+
+0
+
+The function g can be any learned neural network. To train f (i.e. to learn g) we approximate the derivative by ﬁnite difference during training. For each training batch (x, y) we sample α uniformly from [0, 1] and compute outputs
+
+f (x,
+
+P(α))
+
+=
+
+g(x,
+
+P(0))
+
++
+
+g(x,
+
+P(α
+
++
+
+ ))  
+
+−
+
+g(x,
+
+P(α))
+
+.
+
+(17)
+
+During evaluation we then return g(x, P(1)) which corresponds to the ensemble of all networks f (x, P(α)) (Equation 16). As shown in Figure 14, we experiment with this model on MNIST (LeCun, 1998) using   = 0.1. We use Integral to refer to the model described in this section. Recall that a label noise level of c denotes that a fraction c of the training data is assigned random and ﬁxed labels before training. Since we are restricting the form of f , the accuracy does not differ signiﬁcantly from standard training when there is no label noise. However, as label noise increases the integral solution outperforms other models.
+
+Learning Neural Network Subspaces
+
+ResNet18 (TinyImageNet, samples = 1, λ = 0) ResNet18 (TinyImageNet, samples = 2, λ = 0) ResNet18 (TinyImageNet, samples = 4, λ = 0)
+
+0.68
+
+0.68
+
+0.68
+
+0.67
+
+0.67
+
+0.67
+
+0.66
+
+0.66
+
+0.66
+
+0.65
+
+0.65
+
+0.65
+
+0.64
+
+0.64
+
+0.64
+
+0.63
+
+0.63
+
+0.63
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+ResNet18 (TinyImageNet, samples = 2, λ = 1) ResNet18 (TinyImageNet, samples = 4, λ = 1)
+
+0.68
+
+0.68
+
+Line
+
+0.67
+
+0.67
+
+Line (Ensemble)
+
+0.66
+
+0.66
+
+Curve
+
+Curve (Ensemble)
+
+0.65
+
+0.65
+
+Standard Ensemble of Two
+
+Standard Training
+
+0.64
+
+0.64
+
+0.63
+
+0.63
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+Figure 13. Model and ensemble accuracy along one-dimensional subspaces. For each subspace type, (1) accuracy of a model with weights P(α) is shown with a dashed line and (2) accuracy when the output of models P(α) and P(1 − α) are ensembled is shown with a solid line and denoted (Ensemble). The number of samples of α used to approximate the inner expectation of Equation 1 is given by samples while λ denotes the strength of the feature similarity regularization (Appendix B). Both samples > 1 and λ > 0 tend to improve accuracy for both lines and curves.
+
+Accuracy
+
+LeNet-300-100 (MNIST)
+
+0.98
+
+0.97
+
+0.96
+
+0.95
+
+0.00
+
+0.05
+
+0.10
+
+0.15
+
+0.20
+
+0.25
+
+0.30
+
+Label Noise
+
+Lines (Integral) Curves (Integral) Simplex (Midpoint)
+
+Standard Training Standard Training (Opt. Early Stop)
+
+Figure 14. Learning subspaces of functions with efﬁcient closedform continuous ensembles (Equation 16). Since the functional form is restricted, these “Integral” solutions only provide an accuracy boost for nonzero label noise.
+
+D. Additional Experimental Details
+D.1. Models and Training Details.
+For CIFAR10 experiments we use the ResNet20 model (referred to as cResNet20) which may be found at https:// github.com/facebookresearch/open_lth. For TinyImageNet we use the ResNet{18, 50} models which were used by Tanaka et al. (2020) in their TinyImageNet experiments. Finally, the ImageNet models are from PyTorch (Paszke et al., 2019). We use PyTorch 1.6 and Python 3.7. All models are trained on a single GPU except for the ImageNet models which are trained on 4 GPUs. Standard data augmentations are used—random crop and horizontal ﬂip. To sample uniformly from the m − 1 dimensional probability simplex we sample m random variables from the exponential distribution then normalize so that the sum is 1.
+D.2. Computation
+Consider a convolutional layer with kernel size κ × κ, input size (b, c1, w1, h1), and output size (b, c2, w2, h2). The number of parameters is p = c1c2κ2 while the number of FLOPs in standard training is M = bpw2h2. The algorithm we present requires O(p(m − 1)) additional FLOPs to update the subspace’s network weights, where m is the number of parameters used to construct the subspace. This overhead is minimal with respect to M (since b, w2, h2 tend
+
+Learning Neural Network Subspaces
+
+cResNet20 (CIFAR10) 1.0
+
+ResNet18 (TinyImageNet) 1.0
+
+cos2 (ω1, ω2)
+
+ω1 − ω2 2
+
+cos2 (ω1, ω2)
+
+ω1 − ω2 2
+
+50 100
+
+0.5 25
+
+0.5 50
+
+Line (β = 1) Line (β = 0) Line (β = 1, Point init)
+
+0
+
+0
+
+100
+
+0.0
+
+0
+
+100
+
+0
+
+0
+
+100
+
+0.0
+
+0
+
+100
+
+Line (β = 0, Point init)
+
+Epoch
+
+Epoch
+
+Epoch
+
+Epoch
+
+Figure 15. L2 distance and squared cosine similarity between endpoints ω1, ω2 when training a line. For “Point init” the endpoints of the
+
+line were initialized with the same shared weight values.
+
+cResNet20 (CIFAR10) 1.0
+
+ResNet18 (TinyImageNet) 1.0
+
+Simplex (β = 1, m = 2)
+
+E cos2 (ωj, ωk)
+
+E ωj − ωk 2
+
+E cos2 (ωj, ωk)
+
+E ωj − ωk 2
+
+50 100
+
+0.5 25
+
+0.5 50
+
+Simplex (β = 1, m = 3) Simplex (β = 1, m = 4) Simplex (β = 0, m = 2)
+
+0
+
+0
+
+100
+
+Epoch
+
+0.0 0
+
+100 Epoch
+
+0
+
+0
+
+100
+
+Epoch
+
+0.0 0
+
+100 Epoch
+
+Simplex (β = 0, m = 3) Simplex (β = 0, m = 4)
+
+Figure 16. Average L2 distance and squared cosine similarity between endpoints ωj, ωk when training an m endpoint simplex with
+
+regularization strength β (Equation 5).
+
+to be large, b alone is over 100). The only storage overhead comes from storing multiple copies of the model parameters O(p(m − 1)), which is not signiﬁcant compared to buffers stored for the backward pass, of size O(bc2w2h2) (Chen et al., 2015). This is especially true for lines, curves, and low dimensional simplexes which constitute the majority of our experiments. No additional storage is required for computing the gradient, since the gradient updates to each endpoint are re-scaled versions of the same tensor (except the gradient of the regularization term, which has no dependence on the input data and can be computed after the initial buffers are freed).
+D.3. Batch Normalization
+In many cases batch norm (Ioffe & Szegedy, 2015) parameters require different treatment then other network weights. In standard training the batch norm scale parameter is initialized to be a vector of ones, and often remains mainly positive. Accordingly, cosine distance is likely the wrong distance metric to compare batch norm parameters. Moreover, the number of batch norm parameters is very small with respect to the total number of weights. Accordingly, in Figure 3 and Figure 15 we do not take batch norm parameters into account when considering cosine or L2 distance. Moreover, in Algorithm 1 we do not take batch norm parameters into account when computing the regularization term (Equation 5).
+Although we train batch norm parameters which lie on a line, curve, or simplex, batch norm layers also track a running mean and variance. Since these are not learned parameters, we follow Izmailov et al. (2018); Maddox et al. (2019) and
+
+recompute these statistics using training data. For instance, when evaluating the model at the midpoint of the simplex we ﬁrst compute the running mean and variance with a pass through the training data before evaluating on the test set. For group norm (Wu & He, 2018) or layer norm (Ba et al., 2016) this would not be an issue, although these methods tend to achieve lower accuracy than batch norm in the settings we consider.
+D.4. Baseline Hyperparameters
+We implement all baselines with the same hyperparameters described in section 4 whenever possible. However, some baselines have additional hyperparameters. For SWA (Izmailov et al., 2018) we use the default values from https://github.com/timgaripov/swa—SWA LR of 0.05 and begin saving checkpoints 40 epochs before training ends (75% of the way through). For experiments with SWA throughout this wok we use either a cyclic (denoted Cyclic LR) or high constant (denoted High Const. LR) learning rate for the late phase of training and provide results for the best or both. For SWA-Guassian we construct the Gaussian using 6 saved SWA checkpoints.
+Additionally, we tried using the regularization term (Equation 5) to encourage diversity among the SWA checkpoints but did not succeed in improving performance.
+E. Further Subspace Dynamics
+This section extends the results from subsection 4.1 which examine the shape of subspace throughout training. Figure 15 illustrates that initializing the endpoints of the line
+
+Learning Neural Network Subspaces
+
+TV Distance L2 Distance Cosine Dist. TV Distance L2 Distance Cosine Dist.
+
+cResNet20 (CIFAR10)
+
+0.1
+
+1
+
+ResNet18 (TinyImageNet) 1
+
+50
+
+0.2
+
+50
+
+0.0
+
+0
+
+0
+
+0.0
+
+0
+
+0
+
+Standard Training
+
+Line (β = 1)
+
+Line (β = 0)
+
+Figure 17. Comparing the statistics of the models which lie at the endpoints of a learned line with two independently trained models. We compare total variation (TV) distance between the outputs and {L2, Cosine} distance between the weights.
+
+Accuracy
+
+0.935 0.930
+
+cResNet20 (CIFAR10)
+
+ResNet50 (TinyImageNet) 0.70
+
+0.925
+
+0.69
+
+0.920 0.915
+0.0
+0.67
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+ResNet18 (TinyImageNet β = 0)
+
+0.68
+
+1.0
+
+0.0
+
+0.67
+
+0.2 0.4 0.6 0.8 ResNet18 (TinyImageNet β = 1)
+
+1.0 0.67
+
+Line Line (Ensemble) Curve Curve (Ensemble) Line (Layerwise) Line (Layerwise, Ensemble) SWA (Cyclic LR) SWA (Cyclic LR, Ensemble) Standard Ensemble of Two Standard Training
+ResNet18 (TinyImageNet β = 2)
+
+0.66
+
+0.66
+
+0.66
+
+Accuracy
+
+0.65
+
+0.65
+
+0.65
+
+0.64
+
+0.64
+
+0.64
+
+0.63
+
+0.63
+
+0.63
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+α
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+α
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+α
+
+Figure 18. Model and ensemble accuracy along one-dimensional subspaces. For each subspace type, (1) accuracy of a model with weights P(α) is shown with a dashed line and (2) accuracy when the output of models P(α) and P(1 − α) are ensembled is shown with a solid line and denoted (Ensemble). Note that quantity (2) is symmetric about 0.5 at which point it also intersects with quantity (1). “Standard Ensemble of Two” is the ensemble accuracy of two independently trained networks. For SWA we save only two checkpoints and consider the subspace formed by interpolating between them.
+
+with the same shared initialization (“point init”) has little
+
+effect on the dynamics. After a few epochs of training, any
+
+discrepency between “point init” and standard initialization
+
+nearly disappears. In Figure 16 we examine the average L2
+
+distance and squared cosine similarity between endpoints
+
+when training simplexes. The same general trends hold,
+
+but the average distance between endpoints decreases with
+
+the number of endpoints m. Since a new random pair of
+
+endpoints is sampled for each batch in Algorithm 1, close-
+
+ness between each individual pair is penalized less for larger
+
+m. Finally, in Figure 17 we compare the endpoints of a
+
+line with two independently trained models in terms of L2 distance, cosine distance, and total variation (TV) distance.
+
+For two networks with outputs p1 and p2 the TV distance
+
+is
+
+given
+
+by
+
+1 2
+
+kp1
+
+−
+
+p2k1
+
+and
+
+is
+
+averaged
+
+over
+
+all
+
+examples
+
+in the test set. As expected, β = 1 produces lines with more
+
+distant and functionally diverse endpoints.
+
+F. Additional Baselines for One-Dimensional Subspaces
+In Figure 18 we augment the experiments from subsection 4.2 the additional baseline of SWA (described in section 2) with a cyclic learning rate scheduler. For experiments with SWA (Izmailov et al., 2018) throughout this wok we use either a cyclic (denoted Cyclic LR) or high constant (denoted High Const. LR) learning rate for the late phase of training and provide results for the best or both. In the case of Figure 18, where we save only two SWA checkpoints and interpolate between, cyclic performs better as the high constant scheduler does not ﬁnd checkpoints which match standard training accuracy. Additional details on baseline hyperparameters are provided in Appendix D.
+
+Diﬀ. in Relative Change Diﬀ. in Relative Change Diﬀ. in Relative Change Diﬀ. in Relative Change
+gaussian noise shot noise
+impulse noise defocus blur
+glass blur motion blur
+zoom blur frost snow fog
+brightness contrast
+elastic transform pixelate
+jpeg compression speckle noise spatter gaussian blur
+
+0.02 0.00
+0.050 0.025 0.000
+0.01 0.00 −0.01 −0.02 0.04 0.02 0.00
+
+Line (α = 0.5)
+
+Learning Neural Network Subspaces WideResNet50 (Imagenet → Imagenet-C, severity = 3)
+
+Sum = 0.1222
+
+Line (Layerwise, α = 0.5) WideResNet50 (Imagenet → Imagenet-C, severity = 3) Sum = 0.3639
+
+Line (α = 0.5) ResNet50 (Imagenet → Imagenet-C, severity = 3) Sum = -0.0067
+
+Line (Layerwise, α = 0.5) ResNet50 (Imagenet → Imagenet-C, severity = 3) Sum = 0.3894
+
+Figure 19. Comparing the relative change in accuracy when tested on corrupted data. Comparison is between the midpoint of a line and standard training. A positive bar indicates that the midpoint of the line has relatively less of a drop in accuracy from clean to corrupted data in ImageNet-C. (Hendrycks & Dietterich, 2019). See text (Appendix G) for details.
+
+G. Additional ImageNet-C Robustness Experiments
+In this section we test the models trained on ImageNet (Figure 9, subsection 4.4) across all image corruptions in the ImageNet-C dataset (Hendrycks & Dietterich, 2019). We consider the relative change in accuracy when models are evaluated on corrupted images. For a model with accuracy a on the clean set and b on the corrupted images, the relative change in accuracy is (b − a)/a. The relative change in accuracy (which we refer to as relative change) is chosen because performance on the clean test set can act as a confounder (Taori et al., 2020). The experiments are conducted with a corruption severity of 3.
+Figure 19 illustrates the difference in relative change between the midpoint of the line and a model found through standard training. A positive value indicates that the midpoint of the line has a relatively less severe drop in accuracy when faced with corrupted data. Although performance on
+
+different corruption types is varied, the midpoint models we ﬁnd tend to exhibit more robustness—WideResNet50 (layerwise) outperforms standard training on all but two corruption types.
+However, this evaluation considers only the midpoint of the line, ignoring that we have trained family of models. In Figure 20, we compare the best-performing model on the line (over α ∈ {0, 0.1, ..., 0.9, 1.0}, in terms of the relative change in accuracy) with standard training. This setting is not realistic as α is tuned on the test set, however it is a positive sign for the case when a validation set exists for the corrupted data of interest. A single training run can capture a family of models, and each can be tested on a validation set for the downstream domain.
+
+Diﬀ. in Relative Change Diﬀ. in Relative Change Diﬀ. in Relative Change Diﬀ. in Relative Change
+gaussian noise shot noise
+impulse noise defocus blur
+glass blur motion blur
+zoom blur frost snow fog
+brightness contrast
+elastic transform pixelate
+jpeg compression speckle noise spatter gaussian blur
+
+Learning Neural Network Subspaces Line (α = best) WideResNet50 (Imagenet → Imagenet-C, severity = 3) Sum = 0.2163
+0.04
+0.02
+0.00
+Line (Layerwise, α = best) WideResNet50 (Imagenet → Imagenet-C, severity = 3) Sum = 0.3668
+0.050 0.025 0.000
+Line (α = best) ResNet50 (Imagenet → Imagenet-C, severity = 3) Sum = 0.1845
+0.02
+0.00
+Line (Layerwise, α = best) ResNet50 (Imagenet → Imagenet-C, severity = 3) Sum = 0.3919
+0.04 0.02 0.00
+
+Figure 20. Comparing the relative change in accuracy when tested on corrupted data. Comparison is between the best model on the line and standard training. A positive bar indicates that there exists a model on the line with relatively less of a drop in accuracy from clean to corrupted data in ImageNet-C. This result demonstrates that there exists a model on the line which performs well, but does not indicate how to ﬁnd this model. See text (Appendix G) for details.
+
+H. Further Analysis of Frankle et al. (2020)
+
+Recall from section 2, Observation 4 that Frankle et al.
+
+(2020) consider the scenario where two networks branch
+
+off after k epochs of the trajectory are shared. In other words, they consider θk = Train0→k(θ0, ξ) and let θki →T = Traink→T (θk, ξi) for i ∈ {1, 2}. In Figure 21 (left) we re-
+
+produce results from Frankle et al. (2020), demonstrating that for very small k, the weight average of θk1→T and θk2→T matches the accuracy standard training accuracy. Note
+
+tfchu�ar·ta, c12tyh�eθok1fw→meTiog+dhet θlak2v12→e�rTfa� g· e,
+
+refers to the accuracy and th e ense�mble ref e rs θk1→T + f ·, θk2→T .
+
+of model to the acFor mod-
+
+erate k, the weight average exceeds standard training as a
+
+result of Observation 5 (section 2).
+
+Figure 21 (right) demonstrates that these results hold when considering weight and output space ensembles of 5 models which all share k epochs of trajectory. Finally, in Fig-
+
+ure 21 (middle) we consider random interpolations at differ-
+
+ent scales. Random Mixture (Global) is given by
+
+ � Eα∼U([0,1]) Acc (1
+
+− α)θk1→T
+
++
+
+αθk2→T
+
+   .
+
+(18)
+
+For Random Mixture (Layerwise) we sample different coefﬁcients α for each layer, and for Random Mixture (Perweight) we sample different α for all weights in the network.
+The latter corresponds to a hyper-rectangle with corners θk1→T and θk2→T . When k is at least half of thhe training epochs all models on this n dimensional hyper-rectangle
+match standard training accuracy.
+
+Learning Neural Network Subspaces
+
+Accuracy Accuracy Accuracy
+
+cResNet20 (CIFAR10, 2 Models) 0.93 0.92 0.91
+
+cResNet20 (CIFAR10, 2 Models) 0.93 0.92 0.91
+
+cResNet20 (CIFAR10, 5 Models) 0.94 0.93 0.92 0.91
+
+0
+
+50
+
+100
+
+150
+
+Epochs of shared trajectory
+
+Standard Training Weight Average
+
+0
+
+50
+
+100
+
+150
+
+Epochs of shared trajectory
+
+0
+
+50
+
+100
+
+150
+
+Epochs of shared trajectory
+
+Ensemble Random Mixture (Global)
+
+Random Mixture (Layerwise) Random Mixture (Per Weight)
+
+Figure 21. (left) Reproducing the instability analysis of (Frankle et al., 2020)—providing the accuracy of the weight space ensemble and output space ensemble of two models with k epochs of shared trajectory. (middle) Considering random interpolations between models with k epochs of shared trajectory. Interpolations are global, per-layer, and per-weight. (right) Extending the instability analysis result to 5 models.
+

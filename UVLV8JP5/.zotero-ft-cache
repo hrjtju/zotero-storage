@@ -1,0 +1,1449 @@
+Improving Sharpness-Aware Minimization by Lookahead
+Runsheng Yu 1 Youzhi Zhang 2 James T. Kwok 1
+Abstract
+Sharpness-Aware Minimization (SAM), which performs gradient descent on adversarially perturbed weights, can improve generalization by identifying flatter minima. However, recent studies have shown that SAM may suffer from convergence instability and oscillate around saddle points, resulting in slow convergence and inferior performance. To address this problem, we propose the use of a lookahead mechanism to gather more information about the landscape by looking further ahead, and thus find a better trajectory to converge. By examining the nature of SAM, we simplify the extrapolation procedure, resulting in a more efficient algorithm. Theoretical results show that the proposed method converges to a stationary point and is less prone to saddle points. Experiments on standard benchmark datasets also verify that the proposed method outperforms the SOTAs, and converge more effectively to flat minima.
+1. Introduction
+Deep learning models have demonstrated remarkable success in various real-world applications (LeCun et al., 2015). However, highly over-parameterized neural networks may suffer from overfitting and poor generalization (Zhang et al., 2021). Hence, reducing the performance gap between training and testing is an important research topic (Neyshabur et al., 2017). Recently, there have been a number of works exploring the close relationship between loss geometry and generalization performance. In particular, it has been observed that flat minima often imply better generalization (Chatterji et al., 2020; Jiang et al., 2020; Chaudhari et al.,
+1Department of Computer Science and Engineering, The Hong Kong University of Science and Technology 2Centre for Artificial Intelligence and Robotics, Hong Kong Institute of Science & Innovation, CAS. Correspondence to: Runsheng Yu <runshengyu@gmail.com>, Youzhi Zhang <youzhi.zhang@caircas.org.hk>, James T. Kwok <jamesk@cse.ust.hk>.
+Proceedings of the 41 st International Conference on Machine Learning, Vienna, Austria. PMLR 235, 2024. Copyright 2024 by the author(s).
+2019; Dziugaite & Roy, 2017; Petzka et al., 2021).
+To locate flat minima, a popular approach is based on Sharpness-Aware Minimization (SAM) (Foret et al., 2021). Recently, a number of variants have also been proposed (Kwon et al., 2021; Zhuang et al., 2022; Du et al., 2022b;a; Jiang et al., 2023; Liu et al., 2022). Their main idea is to first add a (adversarial) perturbation to the weights and then perform gradient descent there. However, these methods are myopic as they only update their parameters based on the gradient of the adversarially perturbed parameters. Consequently, the model may converge slowly as it lacks good information about the loss landscape. In particular, recent research has found that SAM can suffer from convergence instability and may be easily trapped in a saddle point (Kim et al., 2023; Compagnoni et al., 2023; Kaddour et al., 2022; Tan et al., 2024).
+To mitigate this problem, one possibility is to encourage the model to gather more information about the landscape by looking further ahead, and thus find a better trajectory to converge (Leng et al., 2018; Wang et al., 2022). In game theory, two popular methods that can encourage the agent to look ahead are the method of extra-gradient (Korpelevich, 1976; Gidel et al., 2019; Lee et al., 2021) and its approximate cousin, the method of optimistic gradient (Popov, 1980; Gidel et al., 2019; Daskalakis & Panageas, 2018; Daskalakis et al., 2018; Mokhtari et al., 2020). Their key idea is to first perform an extrapolation step that looks one step ahead into the future, and then perform gradient descent based on the extrapolation result (Bohm et al., 2022). Besides game theory, similar ideas have also been proven successful in deep learning optimization (Zhou et al., 2021; Zhang et al., 2019; Lin et al., 2020b), and reinforcement learning (Liu et al., 2023). As SAM is formulated as a minimax optimization problem (Foret et al., 2021), this also inspires us to leverage an extrapolation step for better convergence.
+In this paper, we introduce the look-ahead mechanism to SAM. Our main contributions are fourfold:
+(i) We incorporate the idea of extrapolation into SAM so that the model can gain more information about the landscape, and thus help convergence. We also discuss a concrete example on how extrapolation reduces the perturbation and thus helps escape saddle point.
+1
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+(ii) By studying the SAM update scheme, we develop a method that combines SAM’s approximate maximizer to its inner optimization subproblem with lookahead. We further propose a method that reduces the computational cost by removing some steps from a straightforward application of extra-gradient or optimistic gradient ascent.
+(iii) We provide theoretical guarantees that they converge to stationary points at the same rate as SAM, and are not easily trapped at saddle points.
+(iv) Experimental results show that the proposed method has better performance and converge to a flatter minimum.
+2. Background
+2.1. Sharpness-Aware Minimization (SAM)
+SAM (Foret et al., 2021) attempts to improve generalization by finding flat minima. This is achieved by minimizing the worst-case loss within some perturbation radius. Mathematically, it is formulated as the following minimax optimization problem:
+minw∈Rn maxε:∥ε∥≤ρ L(w + ε), (1)
+where L is the loss, w is the model parameter, and ε is the perturbation whose magnitude is bounded by ρ. The loss on the ith sample is denoted li(wt). By taking firstorder approximation on the objective, the optimal ε for the maximization sub-problem can be obtained as:
+ε∗(w) = ρ∇wL(w)
+∥∇wL(w)∥ . (2)
+Problem (1) is then solved by performing gradient descent (with learning rate η) at each iteration t:
+wt = wt−1 − η∇wt−1 L(wt−1 + εt−1), (3)
+where
+εt−1 = ε∗(wt−1). (4)
+As SAM requires two forward-backward calculations in each iteration, it is computationally more expensive than standard Empirical Risk Minimization (ERM). Recently, a number of variants (e.g., AE-SAM (Jiang et al., 2023), LookSAM (Liu et al., 2022), SS-SAM (Zhao, 2022), ESAM (Du et al., 2022a), GSAM (Zhuang et al., 2022)) have been proposed to reduce this cost by using SAM only in iterations that it is likely to be useful and use ERM otherwise. For example, Jiang et al. (2023) proposes the AE-SAM, which uses SAM only when the loss landscape is locally
+sharp, with sharpness being approximated efficiently by ∥∇L(wt)∥2. It is shown that ∥∇L(wt)∥2 can be modeled empirically with a normal distribution N (μt, σt2), in which
+μt and σt2 are estimated in an online manner by exponential moving average as:
+μt = δμt−1 + (1 − δ)∥∇L(wt)∥2,
+σ2
+t = δσ2
+t−1 + (1 − δ)(∥∇L(wt)∥2 − μt)2, (5)
+where δ ∈ (0, 1) controls the forgetting rate. When the loss landscape is locally sharp (i.e., ∥∇L(wt)∥2 ≥ μt + ctσt), SAM is used; otherwise, ERM is used. The threshold ct is decreased linearly from κ2 to κ1 according to the schedule:
+ct = t
+T κ1 + 1 − t
+T κ2, (6)
+where T is the total number of iterations.
+Besides reducing the training cost, there are recent attempts on improving the generalization performance of SAM. For example, ASAM (Kwon et al., 2021) introduces adaptive sharpness, and GSAM (Zhuang et al., 2022) uses a new surrogate loss that focuses more on sharpness.
+2.2. Extra-Gradient (EG)
+Consider the minimax problem:
+minx∈Rm maxy∈Rn f (x, y). (7)
+The method of extra-gradient (EG) (Korpelevich, 1976) performs gradient descent-ascent (GDA), i.e., gradient ascent ∇yf (x, y) on y and gradient descent −∇xf (x, y) on x. Specifically, let z := [x, y]⊤ and F (z) := [∇xf (x, y), −∇yf (x, y)]⊤. At the tth iteration, the EG update can be written as:
+zt = zt − ηtF (zt), (8)
+zt+1 = zt − ηtF (zt), (9)
+where ηt is the learning rate at epoch t. Note that (8) is an extra extrapolation step, which avoids the shortsightedness of both players (x and y) by looking one step ahead into the future (Gidel et al., 2019; Bohm et al., 2022; Jelassi et al., 2020; Pethick et al., 2022). EG has been widely used in two-player zero-sum games (Fudenberg & Tirole, 1991). In machine learning, this has been used in the training of generative adversarial networks (Gidel et al., 2019) and poker games (Lee et al., 2021).
+As shown in (8) and (9), each EG iteration requires computing the gradients w.r.t. x and y twice. To reduce the cost, the method of optimistic gradient (OG) (Popov, 1980) stores the past gradient F (zt−1) and reuses it in the next extrapolation step. The update in zt is thus changed to:
+zt = zt − ηF (zt−1). (10)
+2
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Hence, the gradients w.r.t. x and y only need to be computed once in each iteration. It can be shown that OG enjoys a similar convergence rate as EG (Gidel et al., 2019), and has been commonly used in solving differentiable minimax games (Gidel et al., 2019; Liang & Stokes, 2019; Daskalakis & Panageas, 2018; Daskalakis et al., 2018).
+3. Lookahead in SAM
+Recently, it is observed that SAM can have convergence instability near a saddle point (Kim et al., 2023; Compagnoni et al., 2023), leading to slow convergence and poor performance. As an illustration, consider minimizing the following quadratic objective as in (Compagnoni et al., 2023):
+minw∈R2 w⊤Hw, (11)
+where H ≡ diag(−1, 1). The saddle point is at [0, 0]. We run SAM with an initial w0 = [0.03, 0.03], and SGD optimizer with a learning rate of 0.005. In every SGD step t, we add Gaussian noise from N (0, 0.01) to the gradient as in (Compagnoni et al., 2023). Figure 1a shows the trajectory, and Figure 1b shows the objective with number of epochs. As can be seen, SAM is trapped in the saddle point.
+Inspired by the method of extra-gradient (EG), we propose in the following a number of lookahead mechanisms to alleviate the convergence instability problem of SAM.
+3.1. Direct Adaptation of EG and Its Variant on SAM
+First, we consider the direct adaptation of EG on SAM’s minimax problem (1), which leads to the following update:
+εˆt = Π(εt−1 + ∇εt−1 L(wt−1 + εt−1)), (12)
+wˆt = wt−1 − ηt∇wt−1 L(wt−1 + εt−1), (13)
+εt = Π(εt−1 + ∇εˆt L(wˆt + εˆt)) (14)
+wt = wt−1 − ηt∇wˆt L(wˆt + εˆt). (15)
+Here, Π(ε) is the projection arg minε′:∥ε′∥≤ρ ∥ε − ε′∥ =
+ε
+max(1,∥ε∥/ρ) , and ηt′ is a learning rate. Note that the learning rates in (12) and (14) are set to 1, as is commonly used in SAM and its variants.
+As can be seen, the update requires four gradient computations. This can be expensive, particularly for large deep networks. By using the optimistic gradient (OG) approach (Popov, 1980) (Section 2.2), we replace (12) and (13) by:
+εˆt = Π(εt−1 + η′
+t∇εˆt−1 L(wˆt−1 + εˆt−1)), (16)
+wˆt = wt−1 − ηt∇wˆt−1 L(wˆt−1 + εˆt−1), (17)
+respectively. Since ∇wˆt−1 L(wˆt−1 + εˆt−1) and ∇εˆt−1 L(wˆt−1 + εˆt−1) have already been computed at iteration t − 1, we only need to compute the gradient w.r.t. w and ε once in every epoch.
+However, both EG and OG perform gradient descent ascent (GDA) on (1), which converges at a O(T − 1
+4 ) rate (where T is the number of epochs) on non-convex strongly-concave problems (Lin et al., 2020a; Mahdavinia et al., 2022) and even slower on non-convex non-concave problems (Mah
+davinia et al., 2022). This is much slower than the O(1/√T ) rate of SAM (Andriushchenko & Flammarion, 2022).
+3.2. Lookahead-SAM and Its Variants
+3.2.1. LOOKAHEAD-SAM
+Recall that the maximization subproblem in (1) has an approximated solution (2). We can directly use this approximate maximizer instead of performing gradient descent in (12) and (14), leading to:
+εˆt = ε∗(wt−1) and εt = ε∗(wˆt). (18)
+To further reduce gradient computation, we remove the update of εt in (14) and replace εt−1 in (13) by εˆt in (18). The whole update rule is then:1
+εˆt = ε∗(wt−1), (19)
+wˆt = wt−1 − η′
+t∇wt−1 L(wt−1 + εˆt), (20)
+wt = wt−1 − ηt∇wˆt L(wˆt + εˆt). (21)
+In other words, we first compute the perturbation εˆt in (19), take a lookahead step wt−1 + εˆt in (20), and then update wt−1 using L(wˆt + εˆt) via (21). This procedure, which will be called Lookahead-SAM, is shown in Algorithm 1. In Sections 4.1 and 4.2, we will show theoretically that it can better avoid saddle points than SAM while having the same convergence rate.
+Note that the update (19)-(21) can also be rewritten as:
+wt=wt−1−ηt∇wt−1L(wt−1−η′
+t ⊥[∇wt−1L(wt−1+εˆt)]+εˆt),
+where ⊥ is the stop-gradient operator2 Compared to SAM, it reduces the perturbation from εˆt toεˆt − ηt′∇wt−1 L(wt−1 + εˆt). Intuitively, this is desirable as larger perturbations can make the model more prone to being trapped in saddle points (Kim et al., 2023; Compagnoni et al., 2023). Figures 1a and 1b empirically demonstrate this on the toy problem in (11). Figure 1c shows the norms of the perturbations. As can be seen, when the iterate is close to the saddle point (before epoch 7), the perturbations from Lookahead-SAM are smaller than those from SAM.
+3.2.2. OPTIMISTIC LOOKAHEAD-SAM
+Similar to EG, Lookahead-SAM has to compute the gradient w.r.t. w twice in each iteration, which can be expen
+1Note that we also allow the learning rates in (20) and (21) to be different. 2In other words, ∇x ⊥[g(x)] ≡ 0 for any differentiable g.
+3
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+(a) Trajectory. (b) Objective. (c) Norm of perturbation.
+Figure 1: Example showing that SAM can be trapped in a saddle point.
+Algorithm 1: Lookahead SAM and Optimistic Lookahead-SAM. Input: Training set S, number of epochs T , batch size b, w0, ε0 = 0.
+1 Sample a minibatch It from S with size b; 2 for t = 1, 2, . . . , T do
+3 εˆt = ρt∇wt−1
+1 b
+P
+i∈It li(wt−1)
+∥∇wt−1
+1 b
+P
+i∈It li(wt−1)∥ ;
+4 if Lookahead SAM then
+5 wˆt=wt−1 −ηt′ ∇wt−1
+1 b
+P
+i∈It li(wt−1 + εˆt) ;
+6 else if Optimistic Lookahead-SAM then 7 wˆt = wt−1 − ηt′ gt−1 ;
+8 gt = ∇wˆt
+1 b
+P
+i∈It li(wˆt + εˆt) ;
+9 wt = wt−1 − ηtgt ;
+10 return wT .
+sive for large deep networks. Following the idea of optimistic gradient (Popov, 1980), we reuse the past gradient ∇wˆt−1 L(wˆt−1 + εˆt−1) in (20), which then becomes:
+wˆt = wt−1 − η′
+t∇wˆt−1 L(wˆt−1 + εˆt−1), (22)
+and the gradient is only computed once. Note that wˆt in (22) is also equal to
+arg minw
+n
+ηt′ (w · ∇wˆt−1 L(wˆt−1 + εˆt−1)) + ∥w−wt−1∥2
+2 2
+o
+.
+Hence, update (22) can be interpreted as optimistic mirror descent (Chiang et al., 2012; Wei et al., 2021), which improves performance by leveraging information from the past gradient (Rakhlin & Sridharan, 2013), and has been widely used in online learning (Chiang et al., 2012) and game theory (Wei et al., 2021). The procedure (again based on stochastic gradient), called Optimistic Lookahead-SAM (Opt-SAM), and is also shown in Algorithm 1.
+3.2.3. ADAPTIVE LOOKAHEAD-SAM
+Opt-SAM still has to compute the gradient in each iteration, and can be expensive. To alleviate this issue, we fur
+Algorithm 2: Adaptive Optimistic SAM (AO-SAM).
+Input: Training set S, number of epochs T , batch size b, w0, ε0 = 0, μ0 = 0, and σ0 = e−10. 1 for t = 1, 2, . . . , T do
+2 sample a minibatch It from S with size b; 3 gt = 1
+b
+P
+i∈It ∇wt li(wt);
+4 update μt and σt as in AE-SAM (5); 5 if ∥ 1
+b
+P
+i∈It ∇wt li(wt)∥2 ≥ μt + ctσt then
+6 εˆt = ρt∇wt−1
+1 b
+P
+i∈It li(wt−1)
+∥∇wt−1
+1 b
+P
+i∈It li(wt−1)∥ ;
+7 wˆt = wt−1 − ηt′ gt−1 ;
+8 gt = ∇wˆt
+1 b
+P
+i∈It li(wˆt + εˆt) ;
+9 wt = wt−1 − ηtgt;
+10 return wT .
+ther integrate the adaptive policy in AE-SAM (Jiang et al., 2023) with Opt-SAM. Assume that ∥ 1
+b
+P
+i∈It ∇wt li(wt)∥2
+follows the normal distribution N (μt, σt2) with mean μt
+and variance σt2. If ∥ 1
+b
+P
+i∈It ∇wt li(wt)∥2 is large (i.e., ≥ μt + ctσt, where ct is varied as in (6)), we use Opt-SAM. Otherwise, SGD (i.e., ERM) is used instead.
+Recall that in (22), we need to access ∇wˆt−1 L(wˆt−1 +
+εˆt−1) at iteration t. If ∥ 1
+b
+P
+i∈It−1 ∇wt−1 li(wt−1)∥2 <
+μt−1 + ct−1σt−1 in iteration t − 1, SAM is not used, and ∇wˆt−1 L(wˆt−1 + εˆt−1) is not computed. In that case, we replace ∇wˆt−1 L(wˆt−1 + εˆt−1) with ∇wt−1 L(wt−1). The whole procedure, which will be called Adaptive lookaheadSAM (AO-SAM), is shown in Algorithm 2.
+4. Theoretical Analysis
+4.1. Region of attraction (ROA)
+In this section, we show theoretically that the proposed method is less likely than SAM to be trapped in a saddle
+4
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+point. We consider the following minimization problem which has been widely used in the theoretical analysis of SAM and SGD (Compagnoni et al., 2023; Kim et al., 2023):
+minw w⊤Hw. (23)
+Recall that the ordinary differential equation (ODE) of SAM is (Compagnoni et al., 2023): dwτ =
+−H wτ + ρHwτ
+||Hwτ || dτ , where τ is the time. For a given
+w′, its region of attraction (ROA) is the set of w such that any trajectory starting inside it converges to w′ (Mao, 2007). The ROA of SAM is given by the following.
+Proposition 4.1. (Compagnoni et al., 2023) For a non
+singular H, the ROA for SAM is
+n
+wτ |ρ ≥ − ∥H wτ ∥
+λmin
+o
+,
+where λmin is the minimum eigenvalue of H.
+The following Proposition provides the ODE and ROA of Lookahead-SAM. Proof is in Appendix A.1.
+Proposition 4.2. The ODE for Lookahead-SAM is:
+dwτ=−H wτ−η′
+τ H wτ + ρHwτ
+∥Hwτ ∥ + ρHwτ
+∥Hwτ ∥ dτ,
+where η′τ is a function of τ . For a non-singular H,
+when η′τ > 0, ∀τ , the ROA of Lookahead-SAM is:
+n
+wτ |(1 + η′τ λmin)ρ ≥ 1
+λmin ||Hwτ ||(η′τ λmin − 1)
+o
+.
+The following Corollary shows that Lookahead-SAM has a smaller ROA than SAM. In other words, Lookahead-SAM has a smaller chance of being trapped in a saddle point.
+Corollary 4.2.1. For non-singular H, Lookahead-SAM has a smaller ROA than SAM.
+As an illustration, Fig. 2 compares the ROAs of SAM and Lookahead-SAM at the saddle point [0, 0] on the toy function in (11).
+Figure 2: ROAs for SAM and Lookahead-SAM at saddle point.
+4.2. Convergence Analysis
+In this section, we study the convergence properties of Lookahead-SAM, Opt-SAM, and AO-SAM. Note that our analysis is different from those in the literature on extragradient (EG) (Gidel et al., 2019; Bohm et al., 2022; Jelassi et al., 2020; Pethick et al., 2022; Gorbunov et al., 2022; Cai et al., 2022) and optimistic gradient (OG) (Gidel et al., 2019; Liang & Stokes, 2019; Daskalakis & Panageas, 2018; Daskalakis et al., 2018; Mahdavinia et al., 2022). EG and OG assume that f in (7) is (strongly) convex w.r.t. x, and (strongly) concave, (strongly) monotonic or co-coercive w.r.t. y (Gorbunov et al., 2022; Cai et al., 2022; Mahdavinia et al., 2022). In the context of SAM optimization, x corresponds to w, and y corresponds to ε. Obviously, these assumptions do not hold for deep networks.
+On the other hand, the following analysis does not need to assume convex loss, and only uses the common assumptions in smooth and non-convex analysis for stochastic gradient methods. Specifically, Assumptions 4.3 and 4.4 below are from (Andriushchenko & Flammarion, 2022; Bottou et al., 2018; Cutkosky & Orabona, 2019), while Assumption 4.5 follows (Bottou et al., 2018; Hazan & Kale, 2014; Huang et al., 2021). Assumptions 4.3, 4.4 and 4.5 are employed collectively in the convergence analysis of SAM (Mi et al., 2022; Zhang et al., 2023b; Yue et al., 2023; Mueller et al., 2023; Si & Yun, 2023; Zhang et al., 2023a).
+Assumption 4.3. (Bounded variance) There exists σ ≥ 0 s.t. Ei∼U([1,n])∥∇li(w) − ∇L(w)∥2 ≤ σ2. Here, U ([1, n]) is the uniform distribution over {1, 2, . . . , n}, and n is the number of samples.
+Assumption 4.4. (β-smoothness) There exists β ≥ 0 s.t. ∥∇li(w) − ∇li(v)∥ ≤ β∥w − v∥ for all w, v ∈ Rm and i = 1, 2, . . . , n.
+Assumption 4.5. (Uniformly Bounded Gradient) There exists G ≥ 0 s.t. Ei∼U([1,n])∥∇li(w)∥2 ≤ G2.
+The following Theorems provide convergence rates on Lookahead-SAM, Opt-SAM, and AO-SAM. Proofs are in Appendices A.3, A.4 and A.5 respectively. Note that we set ρt related to T in our proofs, which is a necessary step as shown in (Si & Yun, 2023).
+Theorem 4.6. In Algorithm 1, set ρt = √1T and
+ηt = ηt′ = min √1T , 1
+2β . Lookahead-SAM satisfies
+1 T
+PT
+t=0 E∥∇wt L(wt)∥2 = O √1T b .
+Theorem 4.7. In Algorithm 1, set ρt = min 1
+β , √1T
+and ηt = ηt′ = min √1T , 1
+β . Opt-SAM satisfies
+1 T
+PT
+t=0 E∥∇wt L(wt)∥2 = O √1T b .
+Theorem 4.8. In Algorithm 2, set ρt = min 1
+β , √1T
+5
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+(a) CIFAR-10. (b) CIFAR-100. (c) CIFAR-10. (d) CIFAR-100.
+Figure 3: Convergence on CIFAR-10 and CIFAR-100 (with ResNet-18 backbone).
+Table 1: Testing accuracy and fraction of SAM updates (%SAM) on CIFAR-10 using ResNet-18. The best accuracy is in bold.
+accuracy %SAM
+SAM 96.52 ±0.12 100.0 ±0.0 EG 96.45 ±0.05 200.0 ±0.0 OG 96.52 ±0.03 100.0 ±0.0 Lookahead-SAM 96.81 ±0.01 150.0 ±0.0 Opt-SAM 96.79 ±0.02 100.0 ±0.0 AO-SAM 96.82 ±0.04 61.1 ±0.0
+Table 2: Testing accuracy and fraction of SAM updates (%SAM) on CIFAR-100 using ResNet-18. The best accuracy is in bold.
+accuracy %SAM
+SAM 80.17 ±0.05 100.0 ±0.0 EG 79.91 ±0.16 200.0 ±0.0 OG 79.92 ±0.08 100.0 ±0.0 Lookahead-SAM 80.79 ±0.13 150.0 ±0.0 Opt-SAM 80.76 ±0.15 100.0 ±0.0 AO-SAM 80.70 ±0.14 61.2 ±0.0
+and ηt = ηt′ = min √1T , 1
+2β . AO-SAM satisfies
+1 T
+PT
+t=0 E∥∇wt L(wt)∥2 = O √1T b .
+In summary, Lookahead-SAM, Opt-SAM, and AO-SAM have the same O( √1T b ) convergence rate as SAM (Andriushchenko & Flammarion, 2022) and its variant AESAM
+(Jiang et al., 2023), and is faster than the O(log T /√T ) rate of GSAM (Zhuang et al., 2022) and SSAM (Mi et al., 2022).
+5. Experiments
+In this section, we empirically demonstrate the performance of the proposed methods on a number of standard benchmark datasets.
+Recall that for SAM-based algorithms, the training speed is mainly determined by how often the SAM update is used. As in (Jiang et al., 2023), we evaluate efficiency by measuring the fraction of SAM updates used: %SAM ≡ 100 × (PT
+t=1 #{SAMs} used at epoch t)/T , where T is the number of epochs and is the same for all methods. Note that as EG takes two SAM steps ((12), (13) and (14), (15)) in every epoch, its %SAM is 200. Similarly, for LookaheadSAM, its %SAM is 150.
+5.1. CIFAR-10 and CIFAR-100
+In this experiment, we use the popular image classification datasets CIFAR-10 and CIFAR-100 (Krizhevsky et al., 2009).
+10% of the training set is used for validation.
+First, we compare SAM with the direct adaptation of EG and its OG variant (Section 3.1), and the proposed LookaheadSAM, Opt-SAM, AO-SAM. Experiment is performed on the ResNet-18 backbone, and repeated 5 times with different random seeds.
+Following the setup in (Jiang et al., 2023; Foret et al., 2021), we use batch size 128, initial learning rate 0.1, cosine learning rate schedule (Loshchilov & Hutter, 2017), and SGD optimizer. Learning rate ηt′ is always set to ηt. The number of training epochs is 200. For the proposed methods, we select ρ ∈ {0.01, 0.05, 0.08, 0.1, 0.5, 0.8, 1, 1.5, 1.8, 2} by using CIFAR-10’s validation set on ResNet-18. The selected ρ is then directly used on CIFAR-100 and the other backbones. For the ct schedule in (6), since different SAM variants yield different %SAM’s, we vary the hyper-parameters (κ1, κ2) so that the %SAM obtained by AO-SAM matches their %SAM values. Hyper-parameters for the other baselines are the same as their original papers.
+5.1.1. COMPARISON WITH DIRECT USE OF EG AND OG
+Figure 3 shows the convergence of the testing accuracy with number of epochs. First, we focus on SAM and the direct adaptations of EG and OG. As can be seen from Figures 3a and 3b, on CIFAR-10, EG and OG only converge slightly faster than SAM. On CIFAR-100, EG is only slightly faster than SAM, while OG is even slower. This is because, EG
+6
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+(a) ERM. (b) SAM. (c) Lookahead-SAM. (d) Opt-SAM. (e) AO-SAM.
+Figure 4: Hessian spectra obtained by ERM, SAM, Lookahead-SAM, Opt-SAM, and AO-SAM on CIFAR-10 with ResNet18.
+and OG belong to the GDA family (as discussed in Section 3.2.1). In contrast, as can be seen from Figures 3c and 3d, Lookahead-SAM, Opt-SAM, and AO-SAM converge faster than SAM on both datasets.
+Tables 1 and 2 show the testing accuracies versus %SAM for CIFAR-10 and CIFAR-100, respectively. Though Lookahead-SAM has the highest accuracy on CIFAR-100 and the second highest on CIFAR-10, it also has a higher %SAM. On the other hand, Opt-SAM is as fast as SAM w.r.t. %SAM but is more accurate. AO-SAM is as accurate as Opt-SAM, but is even faster. Hence, we will only focus on OPT-SAM and AO-SAM in the sequel.
+5.1.2. COMPARISON WITH SAM VARIANTS
+Following (Jiang et al., 2023), we compare AO-SAM and Opt-SAM with: (i) ERM; (ii) SAM (Foret et al., 2021); and its variants (iii) ESAM (Du et al., 2022a), (iv) ASAM (Kwon et al., 2021), (v) SS-SAM (Zhao, 2022), (vi) AE-SAM (Jiang et al., 2023), and (vii) GSAM (Zhuang et al., 2022). As different SAM variants yield different %SAM’s, we vary the (κ1, κ2) values in (6) for AESAM and AO-SAM so as to attain comparable %SAM values for fairer comparison. Following the SAM literature (Jiang et al., 2023; Mi et al., 2022; Kwon et al., 2021), we use the commonly-used ResNet-18 (He et al., 2016), and WideResNet-28-10 (Zagoruyko & Komodakis, 2016) as backbones. We also include deeper network models including the PyramidNet-110 (Han et al., 2017) and vision transformer Vit-S16 (Dosovitskiy et al., 2021).
+Results are shown in Table 3. As can be seen, Opt-SAM and AO-SAM are consistently more accurate than SAM and its variants on all datasets and backbones. Moreover, The improvements obtained over the second-best baseline are statistically significant (achieving a p-value of less than 0.05 in t-test) across all network architectures.
+To study the method’s robustness to label noise, it is common to use datasets with label noise in the SAM literature (Jiang et al., 2023; Kwon et al., 2021; Foret et al., 2021; Yue et al., 2023; Zhang et al., 2023b). We randomly flip a certain fraction (20%, 40%, 60% and 80%) of the training labels in CIFAR-10 and CIFAR-100.
+Results are shown in Tables 8 and 9 in Appendix B. As can be seen, on both datasets, AO-SAM and Opt-SAM outperform all baselines at all label noise ratios. Moreover, the accuracy improvement gets larger as the label noise ratio increases. This demonstrates the superiority of AO-SAM and Opt-SAM, particularly in difficult learning environments.
+5.1.3. TIME AND MEMORY.
+Table 4 compares the total training time and GPU memory for the proposed SAM variants with SAM and ERM (i.e., SGD), using CIFAR-10 with the ResNet-18 backbone.
+As can be seen, ERM is the fastest, while Lookahead-SAM is the slowest. Opt-SAM is comparable to SAM, while AOSAM is faster than SAM. These are also consistent with the observations in Table 3 based on the %SAM, verifying that %SAM is a useful metric. For GPU memory usage, SAM and the proposed variants are very similar.
+5.1.4. FLAT MINIMA
+In this section, we demonstrate the abilities of LookaheadSAM, Opt-SAM and AO-SAM to avoid saddle points, using CIFAR-10 with the ResNet-18 backbone.
+Following (Mi et al., 2022; Foret et al., 2021), Figure 4 shows the eigenvalue spectra of the Hessians at the converged solutions of the various methods. As can be seen, the Hessian’s eigenvalues of Lookahead-SAM, Opt-SAM, and AO-SAM are smaller than those of ERM and SAM, indicating that the loss landscapes at the converged solutions of these SAM variants are flatter compared to SAM and ERM.
+As in (Foret et al., 2021; Mi et al., 2022), Table 5 shows the largest eigenvalue of the Hessian (λ1) and the ratio λ1/λ5 (where λ5 is the 5th largest eigenvalue). As can be seen, Lookahead-SAM, Opt-SAM, and AO-SAM have smaller λ1 and λ1/λ5 than ERM and SAM, again indicating that they have flatter minima than SAM and ERM.
+5.2. ImageNet
+In this experiment, we perform experiments on the ImageNet dataset using ResNet-50 (He et al., 2016), ResNet-100 (He et al., 2016), and ViT-S/32 (Dosovitskiy et al., 2021) back
+7
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Table 3: Testing accuracies (mean and standard deviation) and fractions of SAM updates on CIFAR-10 and CIFAR-100. Methods with similar %SAM’s are grouped together for easier comparison. Results of ERM, SAM, and ESAM are from (Jiang et al., 2023), while the other baseline results are obtained with the corresponding authors’ codes. The best accuracy is in bold. ∗ means the improvements over the second-best baseline are statistically significant (achieving a p-value of less than 0.05 in t-test).
+CIFAR-10 CIFAR-100
+Accuracy % SAM Accuracy % SAM
+ResNet-18
+ERM 95.41 ±0.03 0.0 ±0.0 78.17 ±0.05 0.0 ±0.0
+SAM (Foret et al., 2021) 96.52 ±0.12 100.0 ±0.0 80.17 ±0.15 100.0 ±0.0 ESAM (Du et al., 2022a) 96.56 ±0.08 100.0 ±0.0 80.41 ±0.10 100.0 ±0.0 ASAM (Kwon et al., 2021) 96.55 ±0.14 100.0 ±0.0 80.52 ±0.13 100.0 ±0.0 GSAM (Zhuang et al., 2022) 96.70 ± 0.01 100.0 ±0.0 80.48 ± 0.11 100.0 ±0.0 Opt-SAM 96.79 ±0.02 100.0 ±0.0 80.76∗ ±0.15 100.0 ±0.0
+SS-SAM (Zhao, 2022) 96.64 ±0.02 60.0 ±0.0 80.49 ±0.10 60.0 ±0.0 AE-SAM (Jiang et al., 2023) 96.66 ±0.02 61.3 ±0.1 79.96 ±0.08 61.3 ±0.0 AO-SAM 96.82∗ ±0.04 61.1 ±0.0 80.70 ±0.14 61.2 ±0.0
+WideResNet-28-10
+ERM 96.34 ±0.12 0.0 ±0.0 81.56 ±0.14 0.0 ±0.0
+SAM (Foret et al., 2021) 97.27 ±0.11 100.0 ±0.0 83.42 ±0.05 100.0 ±0.0 ESAM (Du et al., 2022a) 97.29 ±0.11 100.0 ±0.0 84.51 ±0.02 100.0 ±0.0 ASAM (Kwon et al., 2021) 97.38 ±0.09 100.0 ±0.0 84.48 ±0.10 100.0 ±0.0 GSAM (Zhuang et al., 2022) 97.44 ± 0.07 100.0 ±0.0 84.50 ± 0.12 100.0 ±0.0 Opt-SAM 97.56∗ ±0.03 100.0 ±0.0 84.74 ±0.02 100.0 ±0.0
+SS-SAM (Zhao, 2022) 97.32 ±0.03 60.0 ±0.0 84.39 ±0.04 60.0 ±0.0 AE-SAM (Jiang et al., 2023) 97.37 ±0.08 61.3 ±0.0 84.23 ±0.08 61.3 ±0.0 AO-SAM 97.49 ±0.02 61.2 ±0.0 84.80∗ ±0.11 61.2 ±0.0
+PyramidNet-110
+ERM 96.62 ±0.10 0.0 ±0.0 81.89 ±0.15 0.0 ±0.0
+SAM (Foret et al., 2021) 97.30 ±0.10 100.0 ±0.0 84.46 ±0.05 100.0 ±0.0 ESAM (Du et al., 2022a) 97.81 ±0.01 100.0 ±0.0 85.56 ±0.05 100.0 ±0.0 ASAM (Kwon et al., 2021) 97.71 ±0.09 100.0 ±0.0 85.55 ±0.11 100.0 ±0.0 GSAM (Zhuang et al., 2022) 97.74 ± 0.02 100.0 ±0.0 85.25 ± 0.11 100.0 ±0.0 Opt-SAM 97.79 ±0.04 100.0 ±0.0 85.74∗ ±0.14 100.0 ±0.0
+SS-SAM (Zhao, 2022) 97.62 ±0.03 60.0 ±0.0 85.41 ±0.11 60.0 ±0.0 AE-SAM (Jiang et al., 2023) 97.52 ±0.07 61.4 ±0.1 85.43 ±0.08 61.4 ±0.1 AO-SAM 97.87∗ ±0.02 61.2 ±0.0 85.60 ±0.07 61.2 ±0.12
+ViT-S16
+ERM 86.69 ±0.11 0.0 ±0.0 62.42 ±0.22 0.0 ±0.0
+SAM (Foret et al., 2021) 87.37 ±0.09 100.0 ±0.0 63.23 ±0.25 100.0 ±0.0 ESAM (Du et al., 2022a) 84.27 ±0.11 100.0 ±0.0 62.11 ±0.15 100.0 ±0.0 ASAM (Kwon et al., 2021) 82.25 ±0.41 100.0 ±0.0 63.26 ±0.18 100.0 ±0.0 GSAM (Zhuang et al., 2022) 83.62 ± 0.11 100.0 ±0.0 59.82 ± 0.12 100.0 ±0.0 Opt-SAM 87.91 ±0.26 100.0 ±0.0 63.78 ±0.22 100.0 ±0.0
+SS-SAM (Zhao, 2022) 83.36 ± 0.04 60.0 ±0.0 54.04 ±5.09 60.0 ±0.0 AE-SAM (Jiang et al., 2023) 77.37 ±0.07 61.4 ±0.0 57.13 ±2.87 61.3 ±0.0 AO-SAM 88.27∗ ±0.12 61.3 ±0.0 64.45∗ ±0.23 61.2 ±0.0
+8
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Table 4: Comparison on training time (seconds) and GPU memory usage (GB) on CIFAR-10 with ResNet-18 backbone.
+ERM SAM Lookahead-SAM Opt-SAM AO-SAM training time 3,630 6,780 10,946 6,994 4,704 GPU memory 2.7 2.7 2.8 2.8 2.8
+Table 5: Eigenvalues of the Hessian on CIFAR-10 with ResNet18 backbone. The smallest is in bold.
+λ1 λ1/λ5
+ERM 88.8 3.3 SAM 29.6 3.3 Lookahead-SAM 10.2 1.8 Opt-SAM 13.1 2.0 AO-SAM 11.1 1.8
+Table 6: Performance on MRPC with Bert-Large.
+Accuracy F1-score %SAM
+ERM 87.3 91.1 0.0 SAM 87.9 91.4 100.0 Opt-SAM 89.1 92.2 100.0 AO-SAM 88.7 91.9 60.8
+bones. The batch size is 512, and the number of training epochs is 90. The other experimental setup is the same as in Section 5.1. Hyper-parameters for the other baselines are the same as their original papers. The experiment is repeated 3 times with different random seeds. Table 7 shows the testing accuracy and %SAM. As can be seen, the proposed AO-SAM again outperforms all the baselines.
+5.3. NLP Paraphrase Identification
+Following (Zhong et al., 2022), we perform NLP paraphrase identification using the pre-trained Bert-Large (Devlin et al., 2018) on the Microsoft Research Paraphrase Corpus (MRPC) dataset (Dolan & Brockett, 2005). The learning rate is 2 × 10−5, batch size is 16, and the number of epochs is 10. The other experiment setup follows (Zhong et al., 2022).
+Table 6 shows the accuracy, F1-score and %SAM for ERM, SAM, Opt-SAM and AO-SAM. As can be seen, Opt-SAM is the best, while AO-SAM still outperforms SAM and ERM and has a smaller %SAM than Opt-SAM.
+Table 7: Testing accuracies and fractions of SAM updates (%SAM) on ImageNet. Results of ERM, SAM and ESAM on ResNet-50 are from (Jiang et al., 2023), ASAM is from (Kwon et al., 2021), GSAM is from (Zhuang et al., 2022), while the other baseline results are obtained by the corresponding authors’ codes. The best accuracy is in bold. † means that the original papers do not provide standard deviation. We do not report ASAM on ResNet-101 and Vit-S/32, and GSAM on Vit-S/32 because they are not provided in the original papers.
+Accuracy %SAM
+ResNet-50
+ERM 77.11 ± 0.14 0.0
+SAM 77.47 ± 0.12 100.0 ESAM 77.25 ± 0.75 100.0 ASAM 76.63 ± 0.18 100.0 GSAM 77.2† 100.0
+AO-SAM 77.68 ± 0.04 61.1
+ResNet-101
+ERM 77.80† 0.0
+SAM 78.90† 100.0 ESAM 79.09† 100.0 GSAM 78.9† 100.0
+AO-SAM 79.38 ± 0.10 61.2
+ViT-S/32
+ERM 67.0† 0.0
+SAM 69.1† 100.0 ESAM 66.1† 100.0
+AO-SAM 69.38 ± 0.24 61.6
+6. Conclusion
+In this paper, we integrate lookahead into SAM. The lookahead mechanism has been proven effective in game theory and optimization. It enables the model to gain more information about the loss landscape, thus alleviating the problem of convergence instability in SAM’s minimax optimization process. Theoretical results show that the proposed method can converge to a stationary point and is not easy to be trapped in saddle points. Experiments on standard benchmark datasets also verify that the proposed method outperforms the SOTAs and converges more effectively to flat minima.
+In the future, we will study the performance of the proposed methods in scenarios with distribution shift.
+9
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Impact Statement
+This paper advances the machine learning field. While it may have societal consequences, we believe specific highlights are not necessary here.
+Acknowledgement
+This work was supported in part by the Research Grants Council of the Hong Kong Special Administrative Region, China (Grants 16200021 and HKU C7004-22G). Youzhi Zhang is supported by the InnoHK Fund.
+References
+Andriushchenko, M. and Flammarion, N. Towards understanding sharpness-aware minimization. In ICML, 2022.
+Apostol, T. M. Calculus, Volume 1. John Wiley & Sons, 1991.
+Bohm, A., Sedlmayer, M., Csetnek, E. R., and Bot, R. I. Two steps at a time – taking GAN training in stride with Tseng’s method. SIMODS, 2022.
+Bottou, L., Curtis, F. E., and Nocedal, J. Optimization methods for large-scale machine learning. SIAM Review, 2018.
+Butcher, J. C. Numerical Methods for Ordinary Differential Equations. John Wiley & Sons, 2016.
+Cai, Y., Oikonomou, A., and Zheng, W. Tight last-iterate convergence of the extragradient and the optimistic gradient descent-ascent algorithm for constrained monotone variational inequalities. In NeurIPS, 2022.
+Chatterji, N. S., Neyshabur, B., and Sedghi, H. The intriguing role of module criticality in the generalization of deep networks. In ICLR, 2020.
+Chaudhari, P., Choromanska, A., Soatto, S., LeCun, Y., Baldassi, C., Borgs, C., Chayes, J., Sagun, L., and Zecchina, R. Entropy-SGD: Biasing gradient descent into wide valleys. Journal of Statistical Mechanics: Theory and Experiment, 2019.
+Chiang, C.-K., Yang, T., Lee, C.-J., Mahdavi, M., Lu, C.-J., Jin, R., and Zhu, S. Online optimization with gradual variations. In COLT, 2012.
+Compagnoni, E. M., Biggio, L., Orvieto, A., Proske, F. N., Kersting, H., and Lucchi, A. An SDE for modeling SAM: Theory and insights. In ICML, 2023.
+Cutkosky, A. and Orabona, F. Momentum-based variance reduction in non-convex SGD. In NeurIPS, 2019.
+Daskalakis, C. and Panageas, I. The limit points of (optimistic) gradient descent in min-max optimization. In NeurIPS, 2018.
+Daskalakis, C., Ilyas, A., Syrgkanis, V., and Zeng, H. Training gans with optimism. In ICLR, 2018.
+Devlin, J., Chang, M.-W., Lee, K., and Toutanova, K. Bert: Pre-training of deep bidirectional transformers for language understanding. Preprint arXiv:1810.04805, 2018.
+Dolan, B. and Brockett, C. Automatically constructing a corpus of sentential paraphrases. In International Workshop on Paraphrasing, 2005.
+Dosovitskiy, A., Beyer, L., Kolesnikov, A., Weissenborn, D., Zhai, X., Unterthiner, T., Dehghani, M., Minderer, M., Heigold, G., Gelly, S., et al. An image is worth 16x16 words: Transformers for image recognition at scale. In ICLR, 2021.
+Du, J., Yan, H., Feng, J., Zhou, J. T., Zhen, L., Goh, R. S. M., and Tan, V. Y. Efficient sharpness-aware minimization for improved training of neural networks. In ICLR, 2022a.
+Du, J., Zhou, D., Feng, J., Tan, V., and Zhou, J. T. Sharpnessaware training for free. In NeurIPS, 2022b.
+Dziugaite, G. K. and Roy, D. M. Computing nonvacuous generalization bounds for deep (stochastic) neural networks with many more parameters than training data. In UAI, 2017.
+Foret, P., Kleiner, A., Mobahi, H., and Neyshabur, B. Sharpness-aware minimization for efficiently improving generalization. In ICLR, 2021.
+Fudenberg, D. and Tirole, J. Game Theory. MIT press, 1991.
+Ghadimi, S. and Lan, G. Stochastic first-and zeroth-order methods for nonconvex stochastic programming. SIAM Journal on Optimization, 23(4):2341–2368, 2013.
+Gidel, G., Berard, H., Vignoud, G., Vincent, P., and LacosteJulien, S. A variational inequality perspective on generative adversarial networks. In ICLR, 2019.
+Gorbunov, E., Taylor, A., and Gidel, G. Last-iterate convergence of optimistic gradient method for monotone variational inequalities. In NeurIPS, 2022.
+Han, D., Kim, J., and Kim, J. Deep pyramidal residual networks. In CVPR, 2017.
+Hazan, E. and Kale, S. Beyond the regret minimization barrier: Optimal algorithms for stochastic strongly-convex optimization. Journal of Machine Learning Research, 2014.
+10
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+He, K., Zhang, X., Ren, S., and Sun, J. Deep residual learning for image recognition. In CVPR, 2016.
+Huang, F., Li, J., and Huang, H. Super-ADAM: faster and universal framework of adaptive gradients. In NeurIPS, 2021.
+Jelassi, S., Domingo-Enrich, C., Scieur, D., Mensch, A., and Bruna, J. Extragradient with player sampling for faster Nash equilibrium finding. In NeurIPS, 2020.
+Jiang, W., Yang, H., Zhang, Y., and Kwok, J. An adaptive policy to employ sharpness-aware minimization. In ICLR, 2023.
+Jiang, Y., Neyshabur, B., Mobahi, H., Krishnan, D., and Bengio, S. Fantastic generalization measures and where to find them. In ICLR, 2020.
+Kaddour, J., Liu, L., Silva, R., and Kusner, M. J. When do flat minima optimizers work? NeurIPS, 35:16577–16595, 2022.
+Kim, H., Park, J., Choi, Y., and Lee, J. Stability analysis of sharpness-aware minimization. Preprint arXiv:2301.06308, 2023.
+Korpelevich, G. M. The extragradient method for finding saddle points and other problems. Matecon, 12:747–756, 1976.
+Krizhevsky, A., Hinton, G., et al. Learning multiple layers of features from tiny images. Technical report, University of Toronto, 2009.
+Kwon, J., Kim, J., Park, H., and Choi, I. K. ASAM: Adaptive sharpness-aware minimization for scale-invariant learning of deep neural networks. In ICML, 2021.
+LeCun, Y., Bengio, Y., and Hinton, G. Deep learning. Nature, 2015.
+Lee, C.-W., Kroer, C., and Luo, H. Last-iterate convergence in extensive-form games. In NeurIPS, 2021.
+Leng, C., Dou, Z., Li, H., Zhu, S., and Jin, R. Extremely low bit neural network: Squeeze the last bit out with ADMM. In AAAI, 2018.
+Liang, T. and Stokes, J. Interaction matters: A note on nonasymptotic local convergence of generative adversarial networks. In AISTATS, 2019.
+Lin, T., Jin, C., and Jordan, M. On gradient descent ascent for nonconvex-concave minimax problems. In ICML, 2020a.
+Lin, T., Kong, L., Stich, S., and Jaggi, M. Extrapolation for large-batch training in deep learning. In ICML, 2020b.
+Liu, Y., Mai, S., Chen, X., Hsieh, C.-J., and You, Y. Towards efficient and scalable sharpness-aware minimization. In CVPR, 2022.
+Liu, Z., Li, S., Lee, W. S., Yan, S., and Xu, Z. Efficient offline policy optimization with a learned model. In ICLR, 2023.
+Loshchilov, I. and Hutter, F. SGDR: Stochastic gradient descent with warm restarts. In ICLR, 2017.
+Mahdavinia, P., Deng, Y., Li, H., and Mahdavi, M. Tight analysis of extra-gradient and optimistic gradient methods for nonconvex minimax problems. In NeurIPS, 2022.
+Mao, X. Stochastic Differential Equations and Applications. Elsevier, 2007.
+Mi, P., Shen, L., Ren, T., Zhou, Y., Sun, X., Ji, R., and Tao, D. Make sharpness-aware minimization stronger: A sparsified perturbation approach. In NeurIPS, 2022.
+Mokhtari, A., Ozdaglar, A., and Pattathil, S. A unified analysis of extra-gradient and optimistic gradient methods for saddle point problems: Proximal point approach. In AISTATS, 2020.
+Mueller, M., Vlaar, T., Rolnick, D., and Hein, M. Normalization layers are all that sharpness-aware minimization needs. In NeurIPS, 2023.
+Neyshabur, B., Bhojanapalli, S., McAllester, D., and Srebro, N. Exploring generalization in deep learning. In NeurIPS, 2017.
+Pethick, T., Patrinos, P., Fercoq, O., Cevhera ̊, V., and Latafat, P. Escaping limit cycles: Global convergence for constrained nonconvex-nonconcave minimax problems. In ICLR, 2022.
+Petzka, H., Kamp, M., Adilova, L., Sminchisescu, C., and Boley, M. Relative flatness and generalization. In NeurIPS, 2021.
+Popov, L. D. A modification of the Arrow-Hurwicz method for search of saddle points. Mathematical Notes of the Academy of Sciences of the USSR, 1980.
+Rakhlin, S. and Sridharan, K. Optimization, learning, and games with predictable sequences. NeurIPS, 2013.
+Si, D. and Yun, C. Practical sharpness-aware minimization cannot converge all the way to optima. In NeurIPS, 2023.
+Tan, C., Zhang, J., Liu, J., Wang, Y., and Hao, Y. Stabilizing sharpness-aware minimization through a simple renormalization strategy. Preprint arXiv:2401.07250, 2024.
+11
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Wang, B., Nguyen, T., Sun, T., Bertozzi, A. L., Baraniuk, R. G., and Osher, S. J. Scheduled restart momentum for accelerated stochastic gradient descent. SIAM Journal on Imaging Sciences, 15(2):738–761, 2022.
+Wei, C.-Y., Lee, C.-W., Zhang, M., and Luo, H. Linear last-iterate convergence in constrained saddle-point optimization. In ICLR, 2021.
+Yue, Y., Jiang, J., Ye, Z., Gao, N., Liu, Y., and Zhang, K. Sharpness-aware minimization revisited: Weighted sharpness as a regularization term. Preprint arXiv:2305.15817, 2023.
+Zagoruyko, S. and Komodakis, N. Wide residual networks. In BMVC, 2016.
+Zhang, C., Bengio, S., Hardt, M., Recht, B., and Vinyals, O. Understanding deep learning (still) requires rethinking generalization. In Communications of the ACM, 2021.
+Zhang, M., Lucas, J., Ba, J., and Hinton, G. E. Lookahead optimizer: k steps forward, 1 step back. In NeurIPS, 2019.
+Zhang, X., Xu, R., Yu, H., Dong, Y., Tian, P., and Cui, P. Flatness-aware minimization for domain generalization. In ICCV, pp. 5189–5202, 2023a.
+Zhang, X., Xu, R., Yu, H., Zou, H., and Cui, P. Gradient norm aware minimization seeks first-order flatness and improves generalization. In CVPR, 2023b.
+Zhao, Y. Randomized sharpness-aware training for boosting computational efficiency in deep learning. Preprint arXiv:2203.09962, 2022.
+Zhong, Q., Ding, L., Shen, L., Mi, P., Liu, J., Du, B., and Tao, D. Improving sharpness-aware minimization with fisher mask for better generalization on language models. In Findings of EMNLP, 2022.
+Zhou, P., Yan, H., Yuan, X., Feng, J., and Yan, S. Towards understanding why lookahead generalizes better than SGD and beyond. In NeurIPS, 2021.
+Zhuang, J., Gong, B., Yuan, L., Cui, Y., Adam, H., Dvornek, N. C., s Duncan, J., Liu, T., et al. Surrogate gap minimization improves sharpness-aware training. In ICLR, 2022.
+12
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+A. Proofs
+A.1. Proof of Proposition 4.2
+Lemma A.1. The Euler’s discretization of
+dwτ=−H wτ−η′
+τ H wτ + ρHwτ
+∥Hwτ ∥ + ρHwτ
+∥Hwτ ∥ dτ (24)
+is (21).
+Proof. Given an ODE dy = f (y(τ ))dτ , recall that the main process of Euler’s discretization (Sec. 2.1, (Butcher, 2016)) is to first set y0 = y(τ0), choose h as the step size along the τ -axis, and set τt+1 = τt + h. Then, we have the discretized
+version of dy
+dτ : yt+1 = yt + hf (yt).
+For (24), we take the same approach and set h = ηt−1. We then have
+wt = wt−1 − ηt−1 H wt−1 − η′
+t−1H wt−1 + ρH wt−1
+∥Hwt−1∥ + ρHwt−1
+∥Hwt−1∥ . (25)
+Note that when L(w) = w⊤Hw, we have the following equation:
+L wt − η′
+t−1 ⊥ (∇wt−1 L wt−1 + ρ∇wt−1 L(wt−1)
+∥∇wt−1 L(wt−1)∥ + ρ∇wt−1 L(wt−1)
+∥∇wt−1 L(wt−1)∥ )
+= H wt − η′
+t−1H wt−1 + ρH wt−1
+∥Hwt−1∥ + ρHwt−1
+∥Hwt−1∥ .
+Therefore, (25) is exactly (21). We obtain the desired result.
+Next, we provide the proof of Lookahead-SAM ODE:
+Lemma A.2. (Lookahead-SAM ODE) For (23), if (1 + η′τ λi)ρ ≥ 1
+λi ||Hwτ ||(η′τ λi − 1), ∀i, τ , and H is non-singular, the
+ROA for Lookahead-SAM is:
+n
+wτ |(1 + η′τ λmin)ρ ≥ 1
+λmin ||Hwτ ||(η′τ λmin − 1)
+o
+, where λmin is the smallest eigenvalue
+of H.
+Proof. Let V (wτ ) := w⊤
+τ Kwτ
+2 be the Lyapunov function of Lookahead-SAM, where K is a diagonal matrix with positive diagonal entries (k1, . . . , kd). We have
+V (wτ ) = 1
+2
+d
+X
+i=1
+kiw2
+i,τ > 0,
+and
+V ̇ (wτ ) := dV (wτ )
+dτ
+=
+d
+X
+i=1
+kiwi,τ
+dwi,τ
+dτ
+(a=)
+d
+X
+i=1
+q2
+iikiwi,τ −λi wi,τ − η′
+τ λiwi,τ + ρη′τ λ2
+i wi,τ
+||Hwτ || + ρλiwi,τ
+||Hwτ ||
+=
+d
+X
+i=1
+q2
+iiki(−λi) 1 − η′
+τ λi + ρη′τ λ2
+i
+||Hwτ || + ρλi
+||Hwτ || (wi,τ )2 dτ.
+13
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+(a) holds because H is symmetric and can be decomposed as H = Q⊤Λ Q (Theorem 5.11 in (Apostol, 1991)), where Q is an orthogonal matrix (with elements [qij]), and Λ is diagonal matrix containing the eigenvalues of H. Then, dwi,τ
+dτ can be
+written as dwi,τ
+dτ = q2
+iiki(−λi) 1 − η′τ λi + ρη′
+τ λ2
+i
+||Hwτ || + ρλi
+||Hwτ || (wi,τ )2.
+For the term q2
+iiki(−λi) 1 − η′τ λi + ρη′
+τ λ2
+i
+||Hwτ || + ρλi
+||Hwτ || (wi,τ )2, when λi < 0, , we use 1 − η′τ λi + ρη′
+τ λ2
+i
+||Hwτ || + ρλi
+||Hwτ || ≤
+0, ∀i to ensure V ̇ (wτ ) ≤ 0, and thus (1 + η′τ λi)ρ ≥ 1
+λi ||Hwτ ||(η′τ λi − 1).
+Similarly, when λi > 0, we have 1 − η′τ λi + ρη′
+τ λ2
+i
+||Hwτ || + ρλi
+||Hwτ || ≥ 0 to ensure V ̇ (wτ ) ≤ 0, and thus we also have
+(1 + η′τ λi)ρ ≥ 1
+λi ||Hwτ ||(η′τ λi − 1).
+Therefore, when (1 + η′τ λi)ρ ≥ 1
+λi ||Hwτ ||(η′τ λi − 1), ∀i, we have V (wτ ) > 0 and V ̇ (wτ ) ≤ 0. Using Theorem 1.1
+(Mao, 2007), the dynamics of wτ is bounded inside this set and cannot diverge if V (wτ ) > 0 and V ̇ (wτ ) ≤ 0.
+Since (1 + η′τ λmin)ρ ≥ 1
+λmin ||Hwτ ||(η′τ λmin − 1) implies (1 + η′τ λi)ρ ≥ 1
+λi ||Hwτ ||(η′τ λi − 1), ∀i, by the definition of
+ROA, we conclude that the ROA for Lookahead-SAM is:
+n
+wτ |(1 + η′τ λmin)ρ ≥ 1
+λmin ||Hwτ ||(η′τ λmin − 1)
+o
+.
+Now, we state the proof of Proposition 4.2.
+Proof. This can be directly obtained by using the results of lemma A.2 and lemma A.1.
+A.2. Proof of Corollary 4.2.1
+Proof. Recall that a non-singular saddle point has both positive and negative eigenvalues (Theorem 9.6. in (Apostol, 1991)). Note that for the minimum eigenvalue λmin of H, we have
+(1 + η′
+τ λmin)ρ ≥ 1
+λmin
+∥Hwτ ∥(η′
+τ λmin − 1)
+⇒ (λmin + η′
+τ λ2
+min)ρ ≤ ∥Hwτ ∥(η′
+τ λmin − 1)
+⇒ −λminρ ≥ ∥Hwτ ∥(1 − η′
+τ λmin) + η′
+τ λ2
+minρ
+⇒ −λminρ ≥ ∥Hwτ ∥(1 − η′
+τ λmin) + η′
+τ λ2
+minρ ≥ ∥Hwτ ∥
+⇒ −λminρ ≥ ∥Hwτ ∥.
+The second last inequality is due to the fact that −∥Hwτ ∥η′τ λmin + η′τ λ2
+minρ ≥ 0.
+Using Proposition 4.1, the ROA for SAM is:
+n
+wτ |ρ ≥ − ∥H wτ ∥
+λmin
+o
+. The ROA for Lookahead-SAM is:
+n
+wτ |(1 + η′τ λmin)ρ ≥ 1
+λmin ||Hwτ ||(η′τ λmin − 1)
+o
+, using the results of Lemma A.2. Since (1 + η′τ λmin)ρ ≥
+1
+λmin ∥Hwτ ∥(η′τ λmin − 1) implies −λminρ ≥ ∥Hwτ ∥, we have
+n
+wτ |(1 + η′τ λmin)ρ ≥ 1
+λmin ||Hwτ ||(η′τ λmin − 1)
+o
+⊂
+n
+wτ |ρ ≥ − ∥H wτ ∥
+λmin
+o
+, which implies that Lookahead-SAM has a smaller ROA than SAM.
+A.3. Proof of Theorem 4.6
+Let Lt(w) := 1
+b
+P
+i∈It li(w) be the mini-batch version of L(w) at epoch t, where w ∈ Rm, It is the mini-batch, and li(w)
+is the loss for sample i. Let wt−1/2 := wˆt + εˆt = wt−1 − ηt′ ∇wt−1 L wt−1 + ρ∇wt−1L(wt−1)
+∥∇wt−1L(wt−1)∥ + ρ∇wt−1L(wt−1)
+∥∇wt−1L(wt−1)∥ .
+Note that the update of Lookahead-SAM in (21) can be rewritten as: wt = wt−1 − ηt∇wt−1/2 Lt(wt−1/2). In the following, we assume that ρ, η, β > 0 3. We define ⟨A, B⟩ as the inner product of vectors A and B. Lemma A.3.
+∇L w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ ) , ∇L(w) ≥ −βρ∥∇L(w)∥ − η2
+2 G2 + 1
+2 ∥∇L(w)∥2.
+3To simplify notations, we drop the subscript t from ηt and ρt.
+14
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Proof.
+∇L w − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ ) + ρ ∇L(w)
+∥∇L(w)∥ , ∇L(w)
+= ∥∇L(w)∥
+ρ ∇L w − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ ) + ρ ∇L(w)
+∥∇L(w)∥ − ∇L(w − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ )), ρ ∇L(w)
+∥∇L(w)∥
++⟨∇L(w − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ )), ∇L(w)⟩
+≥ −β∥∇L(w)∥ρ|| ∇L(w)
+∥∇L(w)∥ ||2 + ⟨∇L(w − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ )) − ∇L(w), ∇L(w)⟩
+= −βρ∥∇L(w)∥ + ⟨∇L(w − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ )) − ∇L(w), ∇L(w)⟩
+≥ −βρ∥∇L(w)∥ − η2
+2 G2 + 1
+2 ∥∇L(w)∥2.
+The first equation is due to the fact that ⟨∇L(w), ∇L(w)⟩ = ∥∇L(w)∥2, while the first inequality uses the property of the smooth function L, i.e., ⟨∇L (w1) − ∇L (w2) , w1 − w2⟩ ≥ −β||w1 − w2||2 for smooth L (Lemma 7 in (Andriushchenko & Flammarion, 2022)). The last inequality is based on the following inequalities:
+⟨∇L(w − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ )), ∇L(w)⟩
+= ⟨∇L(w − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ )) − ∇L(w), ∇L(w)⟩ + ∥∇L(w)∥2
+≥ −1
+2 ||∇L(w − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ )) − ∇L(w)||2 − 1
+2 ||∇L(w)||2 + ∥∇L(w)∥2
+≥ −η2
+2 ||∇L(w + ρ ∇L(w)
+∥∇L(w)∥ )||2 + 1
+2 ∥∇L(w)∥2,
+where the first inequality based on the Young’s inequality.
+Lemma A.4.
+∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥ − η∇Lt(w + ρ ∇Lt(w)
+∥∇Lt(w)∥ ) , ∇L(w) ≥ −βρ∥∇L(w)∥ − η2
+2 G2 + 1
+2 ∥∇L(w)∥2 − β2σ2η2
+2b − ρ2β2.
+Proof. Note that
+∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥ − η∇Lt(w + ρ ∇Lt(w)
+∥∇Lt(w)∥ ) , ∇L(w)
+= ∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥ − η∇Lt(w + ρ ∇Lt(w)
+∥∇Lt(w)∥ ) − ∇Lt w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w + ρ ∇Lt(w)
+∥∇Lt(w)∥ ) , ∇L(w)
+− −∇Lt w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w + ρ ∇Lt(w)
+∥∇Lt(w)∥ ) , ∇L(w) .
+15
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+In the following, we bound the first term and second term of the RHS separately. For the first term,
+−E ∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥ − η∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥
+−∇Lt w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L w + ρ ∇Lt(w)
+∥∇Lt(w)∥ , ∇L(w)
+≤1
+2 E ∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥ − η∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥
+−∇Lt w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L w + ρ ∇Lt(w)
+∥∇Lt(w)∥
+2
++1
+2 ∥∇L(w)∥2
+≤ β2
+2 E ρ ∇Lt(w)
+∥∇Lt(w)∥ − η∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥
+− ρ ∇L(w)
+∥∇L(w)∥ − η∇L w + ρ ∇Lt(w)
+∥∇Lt(w)∥
+2
++1
+2 ∥∇L(w)∥2
+(b)
+≤ β2σ2η2
+2b + ρ2β2 + 1
+2 ∥∇L(w)∥2.
+(a) is based on the Young’s inequality, (b) is using the triangle inequality and Assumption 4.4.
+For the second term, on using Lemma A.3,
+∇L w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ ) , ∇L(w)
+≥ −βρ∥∇L(w)∥ − η2
+2 G2 + 1
+2 ∥∇L(w)∥2.
+Combining them together, we obtain the result.
+Lemma A.5. With assumptions 4.3, 4.4 and 4.5, and also assume η < 1
+2β , we have
+η(1 − ηβ) 1
+2 ∥∇L(w)∥2 ≤ EL(wt) − EL(wt+1) + η2β3ρ2 + G2η3β3 + βηρ∥∇L(w)∥ + η2
+2 G2 + η2β σ2
+b.
+Proof. Using the property of smooth function L (Assumption (4.4)), we have:
+EL(wt+1) ≤ EL(wt) − ηE⟨∇L(wt−1/2), ∇L(wt)⟩ + η2β
+2 E∥∇Lt(wt−1/2)∥2
+≤ EL(wt) − ηE⟨∇L(wt−1/2), ∇L(wt)⟩ + η2β
+2 E∥∇Lt(wt) − ∇L(wt−1/2)∥2
++ η2β
+2 E∥∇L(wt−1/2)∥2
+≤ EL(wt) − ηE⟨∇L(wt−1/2), ∇L(wt)⟩ + η2β σ2
+2b + η2β
+2 E∥∇L(wt−1/2)∥2.
+The first inequality is using the property of smooth function (Assumption (4.4)) and take the expectation on both sides.
+16
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Then,
+EL(wt+1)
+(a)
+≤ EL(wt) − η2β
+2 E∥∇L(wt)∥2 + η2β
+2 E∥∇L(wt−1/2) − ∇L(wt)∥2
+−η(1 − ηβ)E < ∇L(wt−1/2), ∇L(wt) > +η2β σ2
+2b
+(b)
+≤ EL(wt) − η2β
+2 E∥∇L(wt)∥2 + η2β3
+2 E∥wt−1/2 − wt∥2
+−η(1 − ηβ) −βρ∥∇L(w)∥ − η2
+2 G2 + 1
+2 ∥∇L(w)∥2 − β2σ2η2G
+2b − ρ2β2G
++η2β σ2
+2b
+(c)
+≤ EL(wt) − η2β
+2 E∥∇L(wt)∥2 + 1
+2 η2β3ρ2 + 1
+2 G2η3β3
+− η2β − η βρ∥∇L(w)∥ − η2β − η η2
+2 G2 + η2β − η 1
+2 ∥∇L(w)∥2
++η2 η2β − η β2σ2
+2b G + ρ2β2 η2β − η G + η2β σ2
+b
+≤ EL(wt) − η2β
+2 E∥∇L(wt)∥2 + η2β3ρ2 + G2η3β3 + (1 − ηβ)βηρ∥∇L(w)∥ − (1 − ηβ) η2
+2 G2
++ η2β − η 1
+2 ∥∇L(w)∥2 + η2β σ2
+b.
+(a) is by using ∥∇L(wt−1/2)∥2 = −∥∇L(wt)∥2 + ∥∇L(wt−1/2) − ∇L(wt)∥2 + 2⟨∇L(wt−1/2), ∇L(wt)⟩. (b) is the smooth property, the assumption 1 > 2ηβ > ηβ, and the Lemma A.4. (c) is by using the trick: E∥wt−1/2 − wt∥2 =
+E||η∇L(wt + ρ ∇L(wt)
+∥∇L(wt)∥ ) + ρ ∇L(wt)
+∥∇L(wt)∥ ||2 ≤ ρ2 + ηG2. The last inequality is by the assumption that 1 > 2ηβ > ηβ,
+which implies η2β − η < 0. Finally, after simplification, we obtain the result.
+Now, we state the proof for Theorem 4.6.
+Proof. First, note that 1 − 2ηβ > 0. Then from Lemma A.5, there exists a positive constant c such that
+c1
+2 ∥∇L(w)∥2 ≤ 1
+η [EL(wt) − EL(wt+1)] + ηβ3ρ2 + G2η2β3 + βρ∥∇L(w)∥ + η
+2 G2 + ηβ σ2
+b.
+Set ρ = √1T and ηt = min 1
+2β , √1T . By telescoping from t = 1 to T , and divide by T , we have
+1 T
+T
+X
+t=1
+E∥∇L(wt)∥2 ≤ 1
+c[ 1
+T
+T
+X
+t=1
+EL(wt) − EL(wt+1)
+η + ηβ2ρ2
++ηβ3ρ2 + G2η2β3 + βρG + η
+2 G2 + ηβ σ2
+b]
+≤ EL(w0)
+√T c + β2
+cT √T + β3
+cT √T + β3G2
+cT √T + √βTGc + G2
+2√T c + 2βσ2c
+c√T b
+= O √1T b .
+The second inequality uses the fact that 2ηβE
+D
+∇L(ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w + ρ ∇L(w)
+∥∇L(w)∥ )), ∇L(w)
+E
+≤ 2ηβG2.
+A.4. Proof of Theorem 4.7
+Recall the update scheme of Opt-SAM in Alg. 1:
+17
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+εˆt = ρ∇wt−1 L(wt−1)
+∥∇wt−1 L(wt−1)∥ , (26)
+wˆt = wt−1 − η′
+t∇wˆt−1 L (wˆt−1 + εˆt−1) (27)
+wt = wt−1 − ηt∇wˆt L(wˆt + εˆt). (28)
+Recall from Section A.3 that Lt(w) := 1
+b
+P
+i∈It li(w). In the following, we assume ρ, η, β > 0, and setting ηt′ = ηt, ∀t. Also, we use assumptions 4.3, 4.4 and 4.5.
+Lemma A.6. The update scheme of Opt-SAM is equivalent to
+wˆt = wˆt−1 − 2ηt∇wˆt−1 L
+
+wˆt−1 + εˆt−1
+εˆt−1= ρ∇wt−1 L(wt−1)
+∥∇wˆt−1 L(wt−1)∥
+
+
++ηt−1∇wˆt−2 L
+
+wˆt−2 + εˆt−2
+εˆt−2= ρ∇wt−2 L(wt−2)
+∥∇wt−2 L(wt−2 )∥
+
+.
+Proof. Recall that in Opt-SAM, we have:
+wˆt = wt−1 − ηt∇wˆt−1 L(wˆt−1 + εˆt−1), (29)
+and
+wt−1 = wt−2 − ηt∇wˆt L(wˆt−1 + εˆt−1). (30)
+Substitute wt−1 in (29) by (30), we have
+wˆt = wt−2 − 2ηt∇wˆt−1 L(wˆt−1 + εˆt−1). (31)
+Also, note that in Opt-SAM,
+wˆt−1 = wt−2 − ηt−1∇wˆt−2 L(wˆt−2 + εˆt−2). (32)
+Substitute (32) into (31), we have:
+wˆt = wˆt−1 − 2ηt∇wˆt−1 L(wˆt−1 + εˆt−1| εˆt−1 = ρ∇wt−1 L(wt−1)
+∥∇wt−1 L(wt−1)∥ )
++ηt−1∇wˆt−2 L(wˆt−2 + εˆt−2|εˆt−2 = ρ∇wt−2 L(wt−2)
+∥∇wˆt−2 L(wt−2)∥ ),
+which is the desired result.
+Lemma A.7.
+∇L w + ρ ∇L(w)
+∥∇L(w)∥ , ∇L(w) ≥ ∥∇L(w)∥2 − βρ∥∇L(w)∥.
+Proof.
+∇L(w + ρ ∇L(w)
+∥∇L(w)∥ ), ∇L(w)
+= ∇L w + ρ ∇L(w)
+∥∇L(w)∥ − ∇L(w), ∇L(w) + ∥∇L(w)∥2
+= ∥∇L(w)∥
+ρ ∇L(w + ρ ∇L(w)
+∥∇L(w)∥ ) − ∇L(w), ρ
+∥∇L(w)∥ ∇L(w) + ∥∇L(w)∥2
+(a)
+≥ 1 − βρ
+∥∇L(w)∥ ∥∇L(w)∥2
+(b)
+≥ ∥∇L(w)∥2 − βρ∥∇L(w)∥.
+(a) is based on Lemma 7 in (Andriushchenko & Flammarion, 2022). (b) is by simple calculation.
+18
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Lemma A.8.
+E ∇wt−1 [L(wt−1)], ∇wt−1 Lt wt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥
+≥1
+2 ∥∇L(wt−1)∥2 − βρ∥∇L(wt−1)∥ − ρ2β2.
+Proof. Similar to the proof of Lemma A.14, note that
+∇Lt wt−1 + ρ ∇Lt(wt−1)
+∥∇Lt(wt−1)∥ , ∇L(wt−1)
+= ∇Lt wt−1 + ρ ∇Lt(wt−1)
+∥∇Lt(wt−1)∥ − ∇Lt(wt−1 + ρ ∇L(wt−1)
+∥∇L(wt−1)∥ ), ∇L(wt−1)
+− −∇Lt(wt−1 + ρ ∇L(wt−1)
+∥∇L(wt−1)∥ ), ∇L(wt−1) .
+To bound the RHS,
+−E ∇Lt wt−1 + ρ ∇Lt(wt−1)
+∥∇Lt(wt−1)∥ − ∇Lt(wt−1 + ρ ∇L(wt−1)
+∥∇L(wt−1)∥ ), ∇L(wt−1)
+≤1
+2 E∥∇Lt wt−1 + ρ ∇Lt(wt−1)
+∥∇Lt(wt−1)∥ − ∇Lt wt−1 + ρ ∇L(wt−1)
+∥∇L(wt−1)∥ ∥2 + 1
+2 ∥∇L(wt−1)∥2
+≤ β2
+2 E ρ ∇Lt(wt−1)
+∥∇Lt(wt−1)∥ − ρ ∇L(wt−1)
+∥∇L(wt−1)∥
+2
++1
+2 ∥∇L(wt−1)∥2
+≤ ρ2β2 + 1
+2 ∥∇L(wt−1)∥2.
+The first inequality is by the Young’s inequality. Also, it has been proven in Lemma A.7 that
+∇Lt(wt−1 + ρ ∇L(wt−1)
+∥∇L(wt−1)∥ ), ∇L(wt−1) ≥ ∥∇L(wt−1)∥2 − βρ∥∇L(wt−1)∥.
+Combining the two inequalities together, we obtain the desired result.
+Lemma A.9.
+E ∇wˆt−1 L(wˆt−1),
+∇wˆt−2 Lt−1 wˆt−2 + ρ ∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ − ∇wt−1 Lt wt−1 + ρ ∇wˆt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥
+≤ G β2ρ2 + 5β2η2G2
+2
+1 2
+.
+Proof.
+E
+"*
+∇wˆt−1 [L(wˆt−1)], ∇wˆt−2 Lt−1(wˆt−2 + ρ
+∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ ) − ∇wˆt−1 [Lt(wˆt−1 + ρ
+∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ )]
++#
+≤ E∥∇wˆt−1 [L(wˆt−1)]∥2
+1
+2 E∥ ∇wˆt−2 Lt−1(wˆt−2 + ρ
+∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ ) − ∇wˆt−1 [Lt(wˆt−1 + ρ
+∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ )]∥2
+!1
+2
+≤ G β2ρ2 + β2
+2E
+"
+∥ 2η∇wˆt−2 [Lt−1(wˆt−2 + ρ
+∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ ) − η∇wˆt−3 [Lt−2(wˆt−3 + ρ
+∇wt−3 Lt−2(wt−3)
+∥∇wt−3 Lt−2(wt−3)∥ )∥2
+#!2! 1
+2
+≤ G β2ρ2 + 5β2η2G2
+2
+!1
+2 .
+The first inequality uses the Cauchy-Schwartz inequality. The last inequality uses the triangle inequality.
+19
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Lemma A.10. With assumptions 4.3, 4.4 and 4.5,
+E 2η∇wˆt−1 Lt(wˆt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ ) − η∇wˆt−2 Lt−1(wˆt−2 + ρ ∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ )
+2
+≤ 4η2β2ρ2
+b + 4η2σ2
+b + η2G2.
+Proof. This can be done by using the triangle inequality:
+E 2η∇wˆt−1 Lt(wˆt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ ) − η∇wˆt−2 Lt−1(wˆt−2 + ρ ∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ )
+2
+≤ E∥2η∇wˆt−1 Lt(wˆt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ )∥2 + E∥η∇wˆt−2 Lt−1(wˆt−2 + ρ ∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ )∥2
+≤ 4η2E ∇wˆt−1 Lt(wˆt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wˆt−1)∥ ) − ∇wt−1 Lt(wˆt−1)∥2 + η2E∥∇wˆt−1 Lt(wˆt−1) − ∇wˆt−1 L(wˆt−1)
+2
++η2G2
+≤
+4η2β2E
+h
+∥ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ ∥2
+i
+b + 4η2σ2
+b + η2G2
+≤ 4η2β2ρ2
+b + 4η2σ2
+b + η2G2.
+Lemma A.11. If ρ < 1
+2β ,
+E[L(wt−1)] ≤ E[L(wˆt)] + βηt2
+2 ||gt−1∥2 + ηtG2.
+Proof. Based on the update scheme of Opt-SAM, wt−1 = wˆt +ηtgt−1. By the smoothness assumption on Assumption 4.4,
+L(wt−1) − L(wˆt) − ηt⟨∇L(wˆt), ∇Lt(wt)⟩ ≤ βηt2
+2 ||gt−1∥2 + ηtG2.
+Also, based on the Young’s inequality and assumption 4.5,
+E [⟨∇L(wt−1 + ηtgt−1), ∇Lt(wt−1)⟩] ≤ G2
+Therefore,
+E[L(wt−1)] ≤ E[L(wˆt)] + βηt2
+2 ||gt−1∥2 + ηtG2.
+Lemma A.12. With assumptions 4.3, 4.4 and 4.5, we have:
+1
+2 ηE∥∇L(wˆt−1)∥2 ≤ E[L(wˆt−1)] − E[L(wˆt)] + ηβρE∥∇L(wˆt)∥ + ηρ2β2
++η
+"
+G β2ρ2 + 5β2η2G2
+2
+1 2
+#
++β
+2
+4η2β2ρ2
+b + 4η2σ2 + η2G2 .
+20
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Proof. Using the definition of smoothness on Assumption (4.4) and taking the expectation on both sides, we have:
+E[L(wˆt)] ≤ E[L(wˆt−1)]
+−ηE ∇wˆt−1 [L(wˆt−1)], 2∇wˆt−1 [Lt(wˆt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ ) − ∇wˆt−2 [Lt−1(wt−2 + ρ ∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ )
++β
+2 E 2η∇wˆt−1 [Lt(wˆt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ ) − η∇wˆt−2 [Lt−1(wˆt−2 + ρ ∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ )
+2
+≤ E[L(wˆt−1)] − ηE ∇wˆt−1 [L(wˆt−1)], ∇wˆt−1 [Lt−1(wˆt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ )
++ηE ∇wˆt−1 [L(wˆt−1)], ∇wˆt−2 [Lt−1(wˆt−2 + ρ ∇wt−2 Lt(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ ) − ∇wˆt−1 [Lt(wt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wˆt−1)∥ )]
++ η2β
+2 E 2∇wˆt−1 [Lt(wˆt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ ) − ∇wˆt−2 [Lt−1(wˆt−2 + ρ ∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ )
+2
+.
+Using Lemmas A.10, A.9 and A.8 to the above RHS,
+E[L(wˆt)] ≤ E[L(wˆt−1)] − ηE ∇wˆt−1 [L(wˆt−1)], ∇wˆt−1 [Lt(wˆt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ )
++ηE ∇wˆt−1 [L(wˆt−1)], ∇wˆt−2 [Lt−1(wˆt−2 + ρ ∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ ) − ∇wˆt−1 [Lt(wˆt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ )]
++β
+2 E 2η∇wˆt−1 [Lt(wˆt−1 + ρ ∇wt−1 Lt(wt−1)
+∥∇wt−1 Lt(wt−1)∥ ) − η∇wˆt−2 [Lt−1(wˆt−2 + ρ ∇wt−2 Lt−1(wt−2)
+∥∇wt−2 Lt−1(wt−2)∥ )
+2
+≤ E[L(wˆt−1)] − ηE ∥∇L(wˆt−1)∥2 − βρ∥∇L(wˆt−1)∥ − ρ2β2
++ηE
+"
+G β2ρ2 + 5β2η2G2
+2
+1 2
+#
++ βη2
+2
+4β2ρ2
+b + 4σ2 + G2 .
+This can then be simplified as:
+1
+2 ηE∥∇L(wˆt−1)∥2 ≤ E[L(wˆt−1)] − E[L(wˆt)] + ηβρE∥∇L(wˆt)∥ + ηρ2β2
++η
+"
+G β2ρ2 + 5β2η2G2
+2
+1 2
+#
++β
+2
+4η2β2ρ2
+b + 4η2σ2 + η2G2 ,
+which is the desired result.
+Now, we state the proof for Theorem 4.7:
+Proof. Using Lemma A.12, and with ρt = min √1T , 1
+β , ηt = min √1T , 1
+β , and the fact that √a + b ≤ √a + √b, we
+have
+E∥∇L(wˆt−1)∥2 ≤ 2[E[L(wˆt−1)] − E[L(wˆt)]
+η + 2βρG + 2ρ2β2 +
+2 βρ + 5βηG
+2 + 2ηβ 4β2ρ2
+b + 4σ2 + G2 .
+Telescoping from 1 to T , and substitute ηT to √1T , we have:
+1 T
+T
+X
+t=1
+E∥∇L(wˆt)∥2 ≤ 2(E[L(wˆ0)] − E[L(wˆt+1)])
+√T η + 2√βTG + 2ρ2β2
+T
++ √2βT + 5√βTG +
+2β 4β2ρ2
+b + 4σ2 + G2
+T
+≤ O √1T b .
+21
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+We obtain:
+1 T
+T
+X
+t=0
+E∥∇wˆt L(wˆt)∥2 = O √1T b .
+Finally, using Lemma A.11, we have:
+1 T
+T
+X
+t=0
+E∥∇wt L(wt)∥2 ≤ 1
+T
+T
+X
+t=0
+E∥∇wˆt L(wˆt)∥2 + β + √T G2
+T = O √1T b .
+A.5. Proof of Theorem 4.8
+First, we prove the convergence of a surrogate update scheme, named Surrogate Lookahead-SAM, which will be used in the proof of AO-SAM:
+wˆt = wt−1 − ηt∇wt−1
+1 b
+X
+i∈It
+li(wt−1), (33)
+εˆt = ρ∇wt−1
+1 b
+P
+i∈It li(wt−1)
+∥∇wt−1
+1 b
+P
+i∈It li(wt−1)∥ , (34)
+wt = wt−1 − ηt∇wˆt
+1 b
+X
+i∈It
+li(wˆt + εˆt). (35)
+Let Lt(w) := 1
+b
+P
+i∈It li(w) be the mini-batch version of L(w) at epoch t. Let wt−1/2 := wˆt + εˆt = wt−1 +
+ρ ∇Lt(wt−1)
+||∇Lt(wt−1)∥ − η∇Lt(wt−1). Note that the update scheme of Surrogate Lookahead-SAM can be rewritten as: wt =
+wt−1 − ηt∇Lt(wt−1/2). In the following, we assume that ρ, η, β > 0.
+Lemma A.13.
+∇L w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w) , ∇L(w) ≥ (1 + βη)∥∇L(w)∥2 − βρ∥∇L(w)∥.
+Proof.
+∇L(w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w)), ∇L(w)
+= ⟨∇L(w + (ρ − η∥∇L(w)∥) ∇L(w)
+∥∇L(w)∥ ) − ∇L(w), ∇L(w)⟩ + ∥∇L(w)∥2
+= ∥∇L(w)∥
+ρ − η∥∇L(w)∥ ⟨∇L(w + (ρ − η∥∇L(w)∥) ∇L(w)
+∥∇L(w)∥ ) − ∇L(w), (ρ − η∥∇L(w)∥)
+∥∇L(w)∥ ∇L(w)⟩
++∥∇L(w)∥2
+(a)
+≥ (1 − β(ρ − η∥∇L(w)∥)
+∥∇L(w)∥ )∥∇L(w)∥2
+≥ (1 + ηβ)∥∇L(w)∥2 − βρ∥∇L(w)∥.
+The first equation is based on the fact that ⟨∇L(w), ∇L(w)⟩ = ∥∇L(w)∥2, while (a) uses Lemma 7 in (Andriushchenko & Flammarion, 2022).
+Lemma A.14.
+E⟨∇Lt(w + ρ∇Lt(w)/∥∇Lt(w)∥ − η∇Lt(w)), ∇L(w)⟩ ≥ ( 1
+2 + ηβ)∥∇L(w)∥2 − βρ∥∇L(w)∥ − β2σ2η2
+2b − ρ2β2.
+22
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Proof. Note that
+D
+∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥ − η∇Lt(w) , ∇L(w)
+E
+=
+D
+∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥ − η∇Lt(w) − ∇Lt(w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w)), ∇L(w)
+E
+−
+D
+−∇Lt(w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w)), ∇L(w)
+E
+.
+In the following, we bound the first term and second term of the RHS separately. For the first term,
+−E ∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥ − η∇Lt(w) − ∇Lt(w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w)), ∇L(w)
+(a)
+≤1
+2 E∥∇Lt w + ρ ∇Lt(w)
+∥∇Lt(w)∥ − η∇Lt(w) − ∇Lt(w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w))∥2
++1
+2 ∥∇L(w)∥2
+≤ β2
+2 E∥ρ ∇Lt(w)
+∥∇Lt(w)∥ − η∇Lt(w) − (ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w))∥2 + 1
+2 ∥∇L(w)∥2
+(b)
+≤ β2σ2η2
+2b + ρ2β2 + 1
+2 ∥∇L(w)∥2.
+(a) is based on the Young’s inequality, (b) is using the triangle inequality and Assumption 4.4.
+For the second term, on using Lemma A.13,
+E ∇Lt(w + ρ ∇L(w)
+∥∇L(w)∥ − η∇L(w)), ∇L(w)
+≥ (1 + βη)∥∇L(w)∥2 − βρ∥∇L(w)∥.
+Combining them together, we obtain the result.
+Lemma A.15. With assumptions 4.3, 4.4 and 4.5, and also assume η ≤ 1
+2β , we have:
+η ηβ − η3β3 − 2ηβ 1
+2 + ηβ + 1
+2 + ηβ E∥∇L(wt)∥2
+≤ EL(wt) − EL(wt+1) + η2β3ρ2 + η(1 − 2ηβ)βρG + η(1 − 2ηβ) β2σ2
+2b
++2ρ2β2η(1 − 2ηβ) + η2β σ2
+b.
+Proof. Using the property of smooth function L (Assumption (4.4)), we have:
+EL(wt+1) ≤ EL(wt) − ηE⟨∇L(wt−1/2), ∇L(wt)⟩ + η2β
+2 E∥∇Lt(wt−1/2)∥2
+≤ EL(wt) − ηE⟨∇L(wt−1/2), ∇L(wt)⟩ + η2β
+2 E∥∇Lt(wt−1/2) − ∇L(wt−1/2)∥2
++ η2β
+2 E∥∇L(wt−1/2)∥2
+≤ EL(wt) − ηE⟨∇L(wt−1/2), ∇L(wt)⟩ + η2β σ2
+2b + η2β
+2 E∥∇L(wt−1/2)∥2.
+The first inequality is using the property of smooth function (Assumption (4.4)) and take the expectation on both sides.
+23
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Then,
+EL(wt+1)
+(a)
+≤ EL(wt) − η2βE∥∇L(wt)∥2 + η2βE∥∇L(wt−1/2) − ∇L(wt)∥2
+−η(1 − 2ηβ)E⟨∇L(wt−1/2), ∇L(wt)⟩ + η2β σ2
+2b
+(b)
+≤ EL(wt) − η2βE∥∇L(wt)∥2 + η2β3E∥wt−1/2 − wt∥2
+−η(1 − 2ηβ) −βρE∥∇L(wt)∥ + 1
+2 + ηβ E∥∇L(wt)∥2 − β2σ2η2
+2b − ρ2β2
++η2β σ2
+2b
+≤ EL(wt) − η2βE∥∇L(wt)∥2 + η2β3ρ2 + η4β3 E∥∇L(wt)∥2
++η(1 − 2ηβ)βρE∥∇L(wt)∥ − η(1 − 2ηβ) 1
+2 + ηβ E∥∇L(wt)∥2
++η3(1 − 2ηβ) β2σ2
+2b + 2ρ2β2η(1 − 2ηβ) + η2β σ2
+b.
+(a) is by using the trick: ∥∇L(wt−1/2)∥2 = −∥∇L(wt)∥2 + ∥∇L(wt−1/2) − ∇L(wt)∥2 + 2⟨∇L(wt−1/2), ∇L(wt)⟩. (b) is by using Lemma A.14. The last inequality is based on the fact that β2E∥wt−1/2 − wt∥2 ≤ β2E∥(ρ −
+η∥∇L(wt)∥) ∇L(wt)
+∥∇L(wt)∥ ∥2 ≤ β2ρ2 + η2β2E∥∇L(wt)∥2, and the assumption η ≤ 1
+2β . Finally, after simplification, we obtain the result.
+Theorem A.16. Assume that ηt = min 1
+2β , √1T , ρ = √1T , then Surrogate Lookahead-SAM satisfies
+1 T
+PT
+t=0 E∥∇wt L(wt)∥2 = O √1T b .
+Proof. With ηt = min 1
+2β , 2.99
+4β = 1
+2β , we have ηβ − ηβ3 − 2ηβ 1
+2 + ηβ + 1
+2 + ηβ > 0. By further using
+Lemma A.15 and the above analysis, there exists a positive constant C such that:
+CηE∥∇L(wt)∥2 ≤ EL(wt) − EL(wt+1) + η3(1 − 2ηβ) β2σ2
+2b + 2ρ2η(1 − 2ηβ) + η2β σ2
+b +η2β3ρ2 + ηβρG.
+Setting ρ = √1T and ηt = min 1
+2β , √1T . By telescoping from t = 1 to T , and divide by T ,
+C T
+T
+X
+t=1
+E∥∇L(wt)∥2
+≤ L(w0) − EL(wT +1)
+ηT + η2 β2σ2
+2b + 2ρ2(1 − 2ηβ) + ηβ σ2
+b + ηβ3ρ2 + βρG
+= L(w0) − EL(wT +1)
+√T +
+β2σ2b/√T + 2b/√T + 2βσ2 + 2bβ2/T + 2βG
+2√T b
+= O √1T b .
+Now we state the proof of Theorem 4.8:
+Proof. Note that for AO-SAM,
+1. If ∥ 1
+b
+P
+i∈It ∇wt li(wt)∥2 < μt + ctσt, then it is the SGD update scheme on epoch t.
+24
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+2. If gt−1 in step 7 of Algorithm 2 is the gradient obtained by Opt-SAM, and ∥ 1
+b
+P
+i∈It ∇wt li(wt)∥2 ≥ μt + ctσt, i.e.,
+gt−1 = ∇wˆt−1
+h1 b
+P
+i∈It−1 li (wˆt−1 + εˆt−1)
+i
+, then it is the Opt-SAM update scheme on epoch t.
+3. If gt−1 in step 7 of Algorithm 2 is the gradient obtained by SGD, and ∥ 1
+b
+P
+i∈It ∇wt li(wt)∥2 ≥ μt + ctσt, then
+it is Surrogate Lookahead-SAM update scheme on epoch t. The reason is that when the last step is SGD, gt−1 = ∇wt−1 Lt (wt−1), by following steps 7-8 in Algorithm 2, Therefore,
+wt = wt−1 − ηtgt
+= wt−1 − ηt∇wt
+1 b
+X
+i∈It
+li
+
+wt−1 − ηt∇wt−1 Lt (wt−1) +
+ρ∇wt−1 1
+b
+P
+i∈It li (wt−1)
+∇wt−1
+1 b
+P
+i∈It li (wt−1)
+
+,
+which is exactly Surrogate Lookahead-SAM.
+Therefore, our goal is to combine these three different schemes together. Define ζt1 ∈ {0, 1}, ζt2 ∈ {0, 1} and ζt3 ∈ {0, 1} to
+indicate which update scheme is used in epoch t: ζt1 = 1 means that Opt-SAM is used; ζt2 = 1 means that SGD is used;
+while ζt3 = 1 means that Surrogate Lookahead-SAM is used. Obviously, ζt1 + ζt2 + ζt3 = 1.
+Recall that in Theorem A.16, we have:
+CE∥∇L(wt)∥2 ≤ EL(wt) − EL(wt+1) + η2(1 − 2ηβ) β2σ2
+2 + 2ρ2η(1 − 2ηβ) + η2β σ2
+b +η2β3ρ2 + ηβρG.
+Recall that in Theorem 4.7, we have:
+E∥∇L(wt−1)∥2 ≤ 2[E[L(wt−1)] − E[L(wt)]]
+η + 2βρG + 2ρ2β2
+2 βρ + 5βηG
+2 + 2ηβ 4β2ρ2
+b + 4σ2 + G2 + βηt2
+2 ||gt−1∥2 + ηtG2.
+Also, from (2.9) in Theorem 2.1 of (Ghadimi & Lan, 2013),
+ηt − L
+2 η2
+t ∥∇L(wt−1)∥2 ≤ L(wt−1) − L(wt) + β
+2 η2
+t σ2
+for SGD. By simple calculation and using assumption 4.5, we have
+∥∇L(wt−1)∥2 ≤ E[L(wt−1)] − E[L(wt)]
+ηt
++β
+2 ηtσ2 + β
+2 ηtG2.
+Therefore,
+E∥∇L(wt−1)∥2
+≤ ζ1
+t
+E[L(wt−1)] − E[L(wt)]
+η + 2βρG + 2ρ2β2 + 2 βρ + 5βηG
+2 + 2ηβ 4β2ρ2
+b + 4σ2 + G2 + βη2
+t
+2 ||gt−1∥2 + ηtG2
++ζ 2
+t
+E[L(wt−1)] − E[L(wt)]
+η +β
+2 ησ2 + β
+2 ηG2
++ζ3
+t
+C E[L(wt−1)] − E[L(wt)] + η(1 − 2ηβ) β2σ2
+2 + 2ρ2η2(1 − 2ηβ) + η2β σ2
+b + η2β3ρ2 + Gβρη
+≤ E[L(wt−1)] − E[L(wt)]
+η + 2βρG + 2ρ2β2 + 2 βρ + 5βηG
+2 + 2ηβ 4β2ρ2
+b + 4σ2 + G2 + βη2
+t
+2 ||gt−1∥2 + ηtG2
++ E[L(wt−1)] − E[L(wt)]
+η +β
+2 ησ2 + β
+2 ηG2
++1
+C E[L(wt−1)] − E[L(wt)] + η2(1 − 2ηβ) β2σ2
+2 + 2ρ2η(1 − 2ηβ) + η2β σ2
+b + η2β3ρ2 + Gβρη .
+25
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Table 8: Testing accuracies and fractions of SAM updates on CIFAR-10 with different levels of label noise. Results of ERM, SAM, and ESAM with ResNet-18 and ResNet-32 are from (Jiang et al., 2023) (standard derivations for some baselines are not provided in (Jiang et al., 2023)), while the other baseline results are obtained with the authors’ codes. The best accuracy is in bold.
+noise = 20% noise = 40% noise = 60% noise = 80% accuracy %SAM accuracy %SAM accuracy %SAM accuracy %SAM
+ResNet-18
+ERM 87.92 0.0 70.82 0.0 49.61 0.0 28.23 0.0
+SAM (Foret et al., 2021) 94.80 100.0 91.50 100.0 88.15 100.0 77.40 100.0 ESAM (Du et al., 2022a) 94.19 100.0 91.46 100.0 81.30 100.0 15.00 100.0 ASAM (Kwon et al., 2021) 91.17 ± 0.19 100.0 87.38 ± 0.61 100.0 83.22 ± 0.41 100.0 71.03 ± 0.88 100.0 GSAM (Zhuang et al., 2022) 94.54 ± 0.18 100.0 91.72 ± 0.05 100.0 87.70 ± 0.02 100.0 24.70 ± 10.69 100.0 Opt-SAM 95.12 ± 0.12 100.0 92.16 ± 0.35 100.0 88.45 ± 0.53 100.0 77.47 ± 0.65 100.0
+SS-SAM (Zhao, 2022) 94.61 ± 0.16 60.0 91.81 ± 0.13 60.0 78.67 ± 0.42 60.0 62.94 ± 1.01 60.0 AE-SAM (Jiang et al., 2023) 92.13 ± 0.14 61.4 86.02 ± 0.62 61.4 75.95 ± 1.30 61.4 67.28 ± 1.66 61.4 AO-SAM 95.02 ± 0.04 61.2 92.62 ± 0.18 61.3 89.36 ± 0.12 61.2 78.12 ± 0.38 61.2
+ResNet-32
+ERM 87.43 0.0 70.82 0.0 46.26 0.0 29.00 0.0
+SAM (Foret et al., 2021) 95.08 100.0 91.01 100.0 88.90 100.0 77.32 100.0 ESAM (Du et al., 2022a) 93.42 100.0 91.63 100.0 82.73 100.0 10.09 100.0 ASAM (Kwon et al., 2021) 92.04 ± 0.09 100.0 88.83 ± 0.11 100.0 83.90 ± 0.56 100.0 75.64 ± 0.75 100.0 GSAM (Zhuang et al., 2022) 94.12 ± 0.09 100.0 91.74 ± 0.05 100.0 89.23 ± 0.06 100.0 31.16 ± 2.77 100.0 Opt-SAM 95.25 ± 0.04 100.0 92.11 ± 0.07 100.0 88.36 ± 0.22 100.0 77.61 ± 0.39 100.0
+SS-SAM (Zhao, 2022) 95.03 ± 0.23 60.0 90.59 ± 0.30 60.0 87.22 ± 0.46 60.0 48.89 ± 1.02 60.0 AE-SAM (Jiang et al., 2023) 92.04 ± 0.27 61.3 86.83 ± 0.49 61.3 73.90 ± 0.44 61.2 67.64 ± 1.34 61.3 AO-SAM 95.32 ± 0.12 61.2 91.73 ± 0.65 61.2 89.40 ± 0.44 61.2 77.78 ± 0.84 61.2
+WideResNet-28-10
+ERM 90.07 ± 0.36 0.0 86.02 ± 0.33 0.0 80.98 ± 0.52 0.0 67.67 ± 0.72 0.0
+SAM (Foret et al., 2021) 94.47 ± 0.12 100.0 91.74 ± 0.04 100.0 88.35 ± 0.21 100.0 71.37 ± 1.55 100.0 ESAM (Du et al., 2022a) 95.09 ± 0.04 100.0 89.16 ± 0.21 100.0 42.64 ± 0.55 100.0 20.14 ± 0.69 100.0 ASAM (Kwon et al., 2021) 91.25 ± 0.16 100.0 88.08 ± 0.07 100.0 83.45 ± 0.12 100.0 71.44 ± 0.46 100.0 GSAM (Zhuang et al., 2022) 95.19 ± 0.07 100.0 92.04 ± 0.07 100.0 88.11 ± 0.33 100.0 57.42 ± 4.99 100.0 Opt-SAM 95.31 ± 0.06 100.0 92.67 ± 0.13 100.0 88.37 ± 0.58 100.0 77.86± 1.83 100.0
+SS-SAM (Zhao, 2022) 94.47 ± 0.09 60.0 91.90 ± 0.11 60.0 88.43 ± 0.37 60.0 74.64 ± 0.79 60.0 AE-SAM (Jiang et al., 2023) 93.49 ± 0.14 61.3 90.36 ± 0.12 61.3 85.95 ± 0.47 61.3 71.21± 1.56 61.3 AO-SAM 95.52 ± 0.24 61.1 92.68 ± 0.10 61.2 89.29 ± 0.28 61.2 77.13 ± 0.72 61.2
+The second equation is due to the fact that ζ1, ζ2, ζ3 ≤ 1. Note that the summation of RHS from t = 0 to T is exactly the summation of Surrogate Lookahead-SAM, Opt-SAM, and SGD together, which has been shown to have O( √1T b ), O( √1T b ),
+and O( √1T ) rates in Theorem A.16, Theorem 4.7, and Theorem 2.1 in (Ghadimi & Lan, 2013), respectively. As the finite
+summation of O( √1T b ) is still O( √1T b ), the result follows.
+B. Supplementary Experimental Results
+Tables 8 and 9 show the testing accuracies on CIFAR-10 and CIFAR-100, respectively, with label noise. As can be seen, AO-SAM and Opt-SAM outperform all baselines at all label noise ratios.
+26
+
+
+Improving Sharpness-Aware Minimization by Lookahead
+Table 9: Testing accuracy and fraction of SAM updates on CIFAR-100 with different levels of label noise. All baseline results are obtained with the authors’ provided code. The best accuracy is in bold.
+noise = 20% noise = 40% noise = 60% noise = 80% accuracy %SAM accuracy %SAM accuracy %SAM accuracy %SAM
+ResNet-18
+ERM 66.83 ± 0.21 0.0 54.58 ± 0.96 0.0 47.98 ± 0.36 0.0 26.21 ± 3.40 0.0
+SAM (Foret et al., 2021) 69.60 ± 0.19 100.0 59.85 ± 0.53 100.0 52.50 ± 0.25 100.0 23.79 ± 3.21 100.0 ESAM (Du et al., 2022a) 75.33 ± 0.19 100.0 67.75 ± 0.83 100.0 4.79 ± 3.58 100.0 1.29 ± 0.10 100.0 ASAM (Kwon et al., 2021) 67.76 ± 0.86 100.0 57.13 ± 0.06 100.0 48.69 ± 0.04 100.0 29.46 ± 0.10 100.0 GSAM (Zhuang et al., 2022) 70.30 ± 0.32 100.0 61.15 ± 0.01 100.0 53.08 ± 0.05 100.0 6.42 ± 0.70 100.0 Opt-SAM 75.45 ± 0.27 100.0 68.01 ± 0.19 100.0 56.63 ± 0.10 100.0 29.77 ± 1.08 100.0
+SS-SAM (Zhao, 2022) 75.68 ± 0.62 60.0 64.72 ± 0.20 60.0 55.55 ± 1.49 60.0 23.90 ± 5.63 60.0 AE-SAM (Jiang et al., 2023) 68.69 ± 0.35 61.4 57.35 ± 0.24 61.4 47.95 ± 1.01 61.4 27.11 ± 0.57 61.4 AO-SAM 75.69 ± 0.35 61.2 68.35 ± 0.21 61.3 56.95 ± 1.00 61.2 29.76 ± 1.21 61.3
+ResNet-32
+ERM 69.33 ± 0.24 0.0 55.77 ± 0.74 0.0 46.96 ± 0.93 0.0 25.67 ± 0.98 0.0
+SAM (Foret et al., 2021) 70.88 ± 0.32 100.0 60.40 ± 0.07 100.0 53.10 ± 0.36 100.0 10.66 ± 5.56 100.0 ESAM (Du et al., 2022a) 77.09 ± 0.22 100.0 66.17 ± 1.78 100.0 3.02± 0.26 100.0 1.85± 0.73 100.0 ASAM (Kwon et al., 2021) 69.64 ± 1.36 100.0 57.88 ± 0.61 100.0 48.79 ± 0.24 100.0 28.06± 1.05 100.0 GSAM (Zhuang et al., 2022) 71.69 ± 0.04 100.0 63.23 ± 0.04 100.0 54.22 ± 0.51 100.0 3.03 ± 0.88 100.0 Opt-SAM 78.05 ± 0.23 100.0 66.74 ± 0.19 100.0 56.06 ± 0.13 100.0 29.55 ± 2.08 100.0
+SS-SAM (Zhao, 2022) 71.34 ± 0.32 60.0 61.45 ± 1.36 60.0 51.76 ± 0.04 60.0 13.96± 3.17 60.0 AE-SAM (Jiang et al., 2023) 68.94 ± 0.12 61.3 58.41± 1.89 61.3 51.48± 1.08 61.2 28.44 ± 0.76 61.3 AO-SAM 78.11 ± 0.14 61.2 68.71 ± 0.46 61.2 54.58 ± 0.30 61.2 29.78± 0.42 61.2
+WideResNet-28-10
+ERM 74.31 ± 0.61 0.0 62.31 ± 0.41 0.0 48.23 ± 0.92 0.0 29.96 ± 0.21 0.0
+SAM (Foret et al., 2021) 76.04 ± 0.38 100.0 64.65 ± 0.79 100.0 56.03 ± 0.76 100.0 29.48 ± 0.23 100.0 ESAM (Du et al., 2022a) 80.06 ± 0.12 100.0 72.03 ± 0.79 100.0 9.75 ± 2.12 100.0 1.16 ± 0.08 100.0 ASAM (Kwon et al., 2021) 74.37 ± 0.18 100.0 62.91 ± 0.71 100.0 51.35 ± 0.31 100.0 33.12 ± 0.16 100.0 GSAM (Zhuang et al., 2022) 75.90 ± 0.06 100.0 64.57 ± 0.16 100.0 56.80 ± 0.39 100.0 11.72 ± 0.25 100.0 Opt-SAM 80.14 ± 0.29 100.0 72.79± 0.51 100.0 57.01± 0.34 100.0 36.33± 1.68 100.0
+SS-SAM (Zhao, 2022) 75.48 ± 0.26 60.0 64.72 ± 0.25 60.0 54.83 ± 0.48 60.0 35.88 ± 3.23 60.0 AE-SAM (Jiang et al., 2023) 75.46 ± 0.36 61.3 63.04 ± 0.68 61.3 52.29 ± 0.63 61.3 33.72 ± 0.62 61.3 AO-SAM 80.32 ± 0.07 61.2 72.10 ± 0.48 61.2 56.89 ± 0.30 61.2 36.03 ± 0.59 61.2
+27

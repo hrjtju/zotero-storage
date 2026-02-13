@@ -1,0 +1,633 @@
+Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+Contents lists available at ScienceDirect
+Communications in Nonlinear Science and Numerical Simulation
+journal homepage: www.elsevier.com/locate/cnsns
+Research paper
+Controlling mean exit time of stochastic dynamical systems based on quasipotential and machine learning
+Yang Li a, Shenglan Yuan b,∗, Shengyuan Xu a
+a School of Automation, Nanjing University of Science and Technology, Nanjing 210094, China b Institut für Mathematik, Universität Augsburg, 86135, Augsburg, Germany
+article info
+Article history:
+Received 15 December 2022 Received in revised form 17 April 2023 Accepted 10 July 2023 Available online 14 July 2023
+MSC: 37N35 37M05
+Keywords:
+Stochastic control Machine learning Quasipotential Mean exit time
+abstract
+The mean exit time escaping basin of attraction in the presence of white noise is of practical importance in various scientific fields. In this work, we propose a strategy to control mean exit time of general stochastic dynamical systems to achieve a desired value based on the quasipotential concept and machine learning. Specifically, we develop a neural network architecture to compute the global quasipotential function. Then we design a systematic iterated numerical algorithm to calculate the controller for a given mean exit time. Moreover, we identify the most probable path between metastable attractors with the help of the effective Hamilton–Jacobi scheme and the trained neural network. Numerical experiments with various dimensions and structures demonstrate that our control strategy is effective and sufficiently accurate. © 2023 Elsevier B.V. All rights reserved.
+1. Introduction
+Throughout history, scientists have attempted to model practical systems using mathematical equations. This has been quite successful in some scientific fields, but not in all. Stochastic dynamical systems have become an important modeling tool in numerous areas of science and engineering. For example, ecosystems [1,2], Hamiltonian mechanics [3], fluid dynamics [4], biological neurons [5], physical applications [6] and many others [7–9] are often modeled as stochastic dynamical systems. Mathematical modeling of dynamical systems under uncertainty usually leads to stochastic differential equations (SDEs); see Protter [10]. When the noise intensity in multistable equilibrium systems is non-vanishing, the stochastic effects induce stochastic dynamics which destabilize those attractors and lead to random transitions between its coexisting basins of attraction [11]. This situation is analogous to an escape dynamics from metastable wells [12]. There are many possible escape/switching paths, but there is a path along which switching or escape is most likely to occur. Characterization of the most probable transition path of stochastic dynamical system enables the determination of the mean time to transit from a metastable state to another metastable state [13]. The effect of external noise is often described using a Langevin equation or the associated Fokker–Planck equation. We can formulate a variational problem, either analytically or numerically, to find the optimal path of escape or switching that ultimately reduces to considering trajectories of an auxiliary Hamiltonian dynamical system [14]. The mean exit time can measure the escape over a potential barrier of the vector field, i.e., drift coefficient. The trajectories from the left hand well to the right hand well, take most of the time actually surmounting the barrier. We
+∗ Corresponding author. E-mail addresses: liyangbx5433@163.com (Y. Li), shenglan.yuan@math.uni-augsburg.de (S. Yuan), syxu@njust.edu.cn (S. Xu).
+https://doi.org/10.1016/j.cnsns.2023.107425 1007-5704/© 2023 Elsevier B.V. All rights reserved.
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+want to evaluate the mean exit time in going over the barrier for analysis of dynamical systems perturbed by small noise. Due to the weakness of the noise, the stochastic trajectory follows the deterministic flow approaching the stable fixed point and then fluctuates within its neighborhood for a long time, if initiating at the attracting domain. Occasionally, it will cross the barrier and finish the exit event. Thus the mean exit time is quite insensitive to the initial point as long as it is far from the boundary. For the Freidlin–Wentzell large deviation theory of the nongradient SDEs with small white noise, the quasipotential is a key concept [15]. In a recent development, there are novel and exciting applications in cardiology, population dynamics, communications, engineering, laser technology, space research, and genetic switches. Aurell and Sneppen [16] examined the problem of escaping from a stable equilibrium and its bifurcation with changing parameter in more than one dimension, and demonstrated how this determines the stability and the robustness of states in genetic networks. Using a nontrivial adjustment of the ordered upwind method (OUM), Cameron computed the quasipotential on a mesh to find the most probable paths based on geometric action [17]. Chen et al. [18] considered the noise-induced escape in an excitable system possessing a quasi-threshold manifold, along which there exists a certain point of minimal quasipotential. Dahiya and Cameron [19] performed numerical computation of the quasipotential for SDEs with multiplicative noise on a mesh, and discussed an application to the Maier–Stein model with anisotropic diffusion. Lv et al. [20] characterized the metastability of gene regulatory system perturbed by intrinsic noise, and constructed the global quasipotential energy landscape to calculate the optimal transition paths between the on and off states based on the large deviation theory. Nolting and Abbott [21] visualized stable states in stochastic systems using a ball-in-cup diagram, and provided the quasipotential as a practical tool to quantify stability in stochastic systems. Yang et al. [22] analyzed the ordered line integral method with midpoint rule for finding the quasipotential in 3D by use of Karush–Kuhn–Tucker theory for rejecting unnecessary simplex updates, and conducted an upgraded hierarchical update strategy to prune the number for admissible simplexes and a fast search of them. A neural network is a powerful parallel information-processing system and a universal approximation map [23]. It is composed of neurons and is trained to search for the minimum of the loss function during the learning process by gradient descent method. Neural networks are being used extensively in the fields of aeronautics, robotics, defense, engineering, telecommunications, manufacturing, medicine, insurance, psychology, banking, security, marketing, and finance [24]. These artificial networks may be used for predictive modeling, adaptive control and applications where they can be trained via a dataset [25]. Self-learning resulting from experience can occur within networks, which can derive conclusions from a complex and seemingly unrelated set of information [26]. It is worth pointing out that machine learning provides a means of tackling nondeterministic systems, where the equations used to model the system are not known [27]. It is meaningful to investigate the mean exit time that describes the escape time of stochastic process from a basin of attraction. Our goal is to control the mean exit time of stochastic dynamical systems to achieve a desired value based on the quasipotential and machine learning. The process of the control strategy visualizes the dynamics, and allows us to find most probable transition paths and estimate stationary probability density. Kularatne et al. [28] presented a limited control strategy, depending on the basin boundaries of the stable equilibrium of the deterministic system. Heckman et al. [29] exhibited the potential of optimal control strategies that work in combination with the endemic stochastic environment. To advance the control strategy, our method requires minimal energy consumption, and the most probable path remains unchanged after adding control. The greatest difficulty stems from the computation of the quasipotential function, especially for high-dimensional systems. We design a neural network architecture to achieve this goal and apply it to a three-dimensional stochastic double-well example successfully for illustration. This paper is organized as follows. In Section 2, we make a portrait of the quasipotential as the potential component of orthogonal decomposition for the nongradient SDEs with a finite number of isolated attractors by decomposing a smooth nongradient vector field to a potential component and a rotational component in each basin of attraction. In Section 3, we give a description of the control strategy and devise a new technique to control the mean exit time of stochastic dynamical systems by utilizing the quasipotential and neural network. In Section 4, we perform numerical experiments to demonstrate the effectiveness of our control strategy by computing the quasipotential and the most probable paths in stochastic Maier–Stein model having two distinct stable states. In Section 5, we characterize the quasipotential and mean exit time of three-dimensional double-well system. In Section 6, we draw the conclusions from the discussions and summarize the future challenges.
+2. Quasipotential
+We consider the n-dimensional physical model described by the following SDE
+x ̇(t) = F (x(t)) + η(t), (2.1)
+where F : Rn → Rn represents a continuously differentiable vector field, and η(t) is regarded as an additive randomly distributed noise, perturbing the state x(t). In a formal sense, ηi(t), i = 1, 2, . . . , n is equated with the time derivative ∂t Bi of a Brownian motion Bi(t), resulting in paths xi(t) that are continuous everywhere but differentiable nowhere. The Euler–Maruyama scheme is
+∆x = F (x(t))∆t + ∆B,
+2
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+where ∆x = x(t + ∆t) − x(t). It is thoughtful of us to investigate the statistics of finite increments ∆Bi = Bi(t + ∆t) − Bi(t), i = 1, 2, . . . , n. Those real-valued random variables are normally distributed, whose Gaussian distribution has finite mean and variance determined by
+E[∆Bi] = 0 and E[(∆Bi)2] = σ ∆t,
+where σ is the noise intensity. Now we use the Euler–Maruyama scheme to generate a random walk approximating a diffusion process expressed in the SDE (2.1). When ∆t → 0, we have (i, j = 1, 2, . . . , n)
+E[ηi(t)] = 0 and E[ηi(t)ηj(s)] = σ δijδ(t − s),
+where δ is the Dirac delta function, and δij denotes the Kronecker delta. The probability density for the Gaussian noise η(t) can be expressed as follows
+P[η(t)] ∝ exp
+( −
+1 2σ
+∫T
+0
+|η|2 dt
+)
+,
+where ∝ denotes the logarithmic equivalence relation. Since η = x ̇ − F (x), we get
+P[x(t)] ∝ exp
+( −
+1 2σ
+∫T
+0
+| ̇x − F (x)|2 dt
+)
+.
+The Freidlin–Wentzell action functional [15] of x(t), t ∈ [0, T ], is the line integral
+ST [x(t)] =
+∫T
+0
+L(x, x ̇)dt, (2.2)
+where the Lagrangian is given by L(x,  ̇x) = 1
+2 | ̇x − F (x)|2. Minimization with respect to path and time can be done
+analytically leading to the minimum action [30]. Performing this minimization over paths from points x0 to  ̄x yields the quasipotential
+V (x ̄) := Tin>f0 inf
+x∈C[0,T ]
+{
+ST [x] : x(0) = x0, x(T ) = x ̄
+}
+, V (x0) = 0, (2.3)
+which characterizes the difficulty of the random state fluctuating to the point x ̄.
+Remark 2.1. The quasipotential function V (x) provides an asymptotic estimate for the stationary probability density within the basin of attractors for x ̇ = F (x) in the limit σ → 0. Moreover, the mean exit time TE exponentially depends on the minimal value V0 of the quasipotential on the boundary of basin domain D (generally the transition state  ̄x located at the saddle point), i.e.,
+TE = beV0/σ , V0 := xi∈n∂fD V (x), (2.4)
+where TE := Eτexit with the exit time τexit := inf{t > 0 |x(0) = x0, x(t) ∈/ D}.
+According to
+P[x(t)] ∝ exp
+( −
+ST [x(t)] σ
+)
+,
+finding the most probable path is transformed into the minimization problem of the action functional ST [x(t)]. For σ sufficiently small, the optimal path xopt (solution of this minimization problem) can be obtained from (2.2) using the calculus of variations. The optimal path xopt maximizes P[x(t)] by minimizing ST [x(t)]. Upon demanding that the first variation δST [x] = 0, we get
+δST [x] = ST [x + δx] − ST [x] =
+∫T
+0
+L(x + δx, x ̇ + δx ̇)dt −
+∫T
+0
+L(x, x ̇)dt
+=
+∫T
+0
+(∂L
+∂x · δx +
+∂L ∂
+x ̇ · δ ̇x
+)
+dt =
+∫T
+0
+[∂L
+∂x −
+d
+dt
+(∂L
+∂
+ ̇x
+)]
+· δxdt,
+where we expanded L in a Taylor series, and integrated by parts to isolate δx. Since the variation δx is arbitrary, δST [x] vanishes if and only if
+∂L ∂x −
+d
+dt
+(∂L
+∂
+x ̇
+)
+=  ̈x −
+(
+∇F (x))⊤F (x) = 0.
+Here and in the following, ∇F (x) represents the Jacobian matrix with components (∇F (x))ij = ∂Fi(x)/∂xj, i, j = 1, 2, . . . , n. Then xopt is a solution of the second-order Euler–Lagrange differential equation
+ ̈x =
+(
+∇F (x))⊤F (x), x(0) = x0, x(T ) = x ̄.
+3
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+Note that this is a boundary value problem and not a traditional initial value problem. The dimensions of the EulerLagrange equation are twice the dimensions of the original SDE system (2.1). The conjugate momentum p is defined as
+p :=
+∂L ∂
+x ̇ = x ̇ − F (x).
+Then,  ̇x = F (x) + p, illustrates the connection between the optimal fluctuation η and the classical momentum p. The Legendre transformation from the Lagrangian L to the Hamiltonian H is characterized by
+H(x, p) = p ·  ̇x − L(x, x ̇) =
+(
+x ̇ − F (x))
+·  ̇x −
+1
+2
+(
+ ̇x − F (x))2
+=
+1
+2
+(
+x ̇ − F (x))2
++
+(
+ ̇x − F (x))
+· F (x) =
+1
+2 p2 + p · F (x).
+The inverse of the Legendre transformation [31] can be used to obtain the Lagrangian from the Hamiltonian, i.e., L(x, x ̇) = p · x ̇ − H(x, p).
+Lemma 2.1 (Hamiltonian Formulation). If x(t) is a stationary point of the action functional ST [x(t)] as in (2.2), then it satisfies Hamilton’s equations.
+Proof. Rewriting the action functional in (2.2) into
+ST [x, p] =
+∫T
+0
+(p · x ̇ − H(x, p))dt.
+Since ST is stationary, δST must vanish. Consequently,
+δST [x, p] = ST [x + δx, p + δp] − ST [x, p]
+=
+∫T
+0
+[(p + δp) · (x ̇ + δx ̇) − H(x + δx, p + δp)]dt −
+∫T
+0
+(p · x ̇ − H(x, p))dt
+=
+∫T
+0
+(
+δp ·  ̇x + p · δx ̇ −
+∂H
+∂x · δx −
+∂H
+∂p · δp
+)
+dt
+=
+∫T
+0
+[(
+x ̇ −
+∂H ∂p
+)
+· δp −
+(
+ ̇p +
+∂H ∂x
+)
+· δx
+]
+dt = 0,
+where the third equality holds by using the expansion and keeping only those that are of the first order in the small quantities δx and δp. The fourth equality holds by isolating δx, integrating the term p · δ  ̇x by parts, and rearranging these terms. For p · δx ̇ = d
+dt (p · δx) −  ̇p · δx, the integral of the total derivative term vanishes since δx is zero vector at the
+endpoints, i.e.,
+∫T
+0
+d
+dt (p · δx)dt = p(T ) · δx(T ) − p(0) · δx(0) = p(T ) · δx ̄ − p(0) · δx0 = 0.
+Because δx and δp are arbitrary and independent functionals, and the integrand is continuous, each of the parenthesized terms above must vanish in order to obtain the last equality. Therefore, the path x(t) satisfies Hamilton’s equations
+{
+x ̇ = ∂H
+∂p = p + F (x),
+ ̇p = − ∂H
+∂x = −(∇F )⊤p. □ (2.5)
+In addition, there is an another method, the so-called WKB approximation [32], to derive the Hamiltonian formulation. Its kernel idea is to express the stationary or quasi-stationary distribution as the WKB form
+ps(x) ∼ C (x)exp
+{
+−
+V (x) σ
+}
+, (2.6)
+where V (x) is the quasipotential defined in Eq. (2.3), and C (x) is an exponential prefactor. Substituting it into the stationary Fokker–Planck equation 1
+2 ∆p(x) − ∇p(x) · F (x) = 0 and collecting the lowest-order terms of σ yield a nonlinear partial
+differential equation called Hamilton–Jacobi equation
+H (x, ∇V (x)) :=
+⟨
+∇V (x), F (x)⟩
++
+1
+2
+⟨
+∇V (x), ∇V (x)⟩
+= 0. (2.7)
+There exists an ordered upwind method for solving the Hamilton–Jacobi equation; see Sethian and Vladimirsky [33].
+Remark 2.2. The quasipotential is one of the solutions for (2.7). But it is never unique! A simple observation shows that Eq. (2.7) always has a trivial solution V = 0.
+4
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+Fig. 1. Orthogonal decomposition of vector field.
+Note that there exists a geometric meaning in Eq. (2.7). That is, ∇V (x) is perpendicular to F (x) + 1
+2 ∇V (x). Assuming
+l(x) := 1
+2 ∇V (x) + F (x) leads to an orthogonal decomposition of the vector field,
+F (x) = −
+1
+2 ∇V (x) +
+(1
+2 ∇V (x) + F (x)
+)△
+=−
+1
+2 ∇V (x) + l(x). (2.8)
+Remark 2.3. The orthogonal decomposition (2.8) of the vector field F (x) is unique. It can be seen as the rotation component l(x) plus the potential component − 1
+2 ∇V (x) (derived from the quasipotential gradient). If l(x) ≡ 0, then the
+vector field F (x) = − 1
+2 ∇V (x) is reduced as a gradient field.
+The quasipotential can be calculated via applying method of characteristics to the Hamilton–Jacobi equation (2.7) and integrated by
+V ̇ = p ·  ̇x =
+1
+2 pT p (2.9)
+along with the parameterized trajectories of (2.5), where the momentum p = ∇V (x). If we know the quasipotential V (x), then the most probable path is computed by utilizing
+x ̇ = F (x) + p = F (x) + ∇V (x) =
+1
+2 ∇V (x) + l(x). (2.10)
+In other words, the most probable paths are determined by ∥x ̇∥ = ∥ 1
+2 ∇V (x) + l(x)∥. Denote G(x) := 1
+2 ∇V (x) + l(x), x ̇ is
+roughly parallel to G(x). Suppose l(x) is not identically zero in (2.8). As shown in Fig. 1, l(x) is orthogonal to ∇V (x), where F (x) is a smooth nongradient vector field with a finite number of isolated attractors. The situation is more complicated. The effect of noise is equivalent to keeping the rotation component unchanged, but flipping the inward potential component outward, so that it can consume the least energy to push the system out of the basin for attraction. Note that the estimates for the invariant probability measure, most probable transition path, and mean exit time from basins of attractors, rely on the computation of quasipotential, according to Remark 2.1 and Eq. (2.10). Unfortunately, the decomposition of F (x) can be done analytically only in special cases. Hence, we develop deep learning methods to compute the quasipotential based on the Hamilton–Jacobi equation and then devise a control strategy to control mean exit time to achieve a desired value.
+3. Control strategy
+Thus far, as a powerful tool of machine learning or deep learning, the field of neural networks has generated a phenomenal amount of interest from a broad range of scientific disciplines. One of the reasons for this is adaptability. Innovative architectures and new training rules have been tested on powerful computers. The disciplines of networks and nonlinear dynamics have increasingly coalesced. The neural network algorithms have been proved to be useful for a wide range of real-world applications, including document classification, gene analysis, pattern recognition, computer vision, credit card fraud, prediction and forecasting, disease recognition, facial and speech recognition, the consumer home entertainment market, psychological profiling, predicting wave over-topping events, data-driven modeling, and control problems. The aim of this section is to show that the system (2.1) can achieve the desired mean exit time as we wish after adding the control term. To gain the desired mean exit time, we set
+ ̇x = u + F (x) + η. (3.11)
+The control u is designed to be proportional to the gradient of quasipotential. We choose u = c∇V (x), where c ≤ 1
+2 are
+used as controllers. According to the orthogonal decomposition (2.8) of the vector field F (x), the new quasipotential of Eq. (3.11) is controlled by the parameter c. Thus the desired mean exit time can be conveniently achieved via adjusting the parameter c based on the relation between mean exit time and quasipotential, which will be explained later.
+5
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+Fig. 2. Architecture of the feedforward artificial neural network with L hidden layers for connecting neurons. The input is the coordinate x, the output is the momentum p and the quasipotential V , and a(l)
+j denotes the value of the jth neuron in lth hidden layer for j = 1, . . . , nl, l = 1, . . . , L.
+Remark 3.1. There are two advantages of this control strategy. On one hand, the shape of quasipotential does not change after adding this control, so the most probable path does not change. On the other hand, since the rotational component does not contribute to the mean exit time, the control varying the potential component directly costs minimum energy input.
+How to compute quasipotential and gradient of quasipotential? Traditional methods of computing quasipotential and its gradient include action plot, string method and OUM.
+• The action plot method [34] is to take a small circle around the stable fixed point. Integrating both the Hamiltonian system and Eq. (2.8) yields (x(t), p(t), V (t)). But unfortunately there are two disadvantages, one is that the quasipotential and the momentum can only be calculated on the characteristic line, and consequently the direct mapping relationship between the quasipotential or the momentum and the coordinates cannot be obtained; the other is that when the integrated Lagrange manifold is folded, the multiple local extrema of the action functional appear and thus we obtain several quasipotential values, of which the actual quasipotential is the smallest one, i.e., the global extremum. • The string method [35] iteratively calculates the most probable path starting from a given initial path by way of fixing two endpoints. It allows us to get the quasipotential value of the endpoint at the same time. The disadvantage is that it can only be used to calculate the quasipotential of one point, and then the global quasipotential structure cannot be displayed. • The OUM [36] ensures that the quasipotential of the whole field can be obtained by discretizing the phase space into a mesh and calculating the quasipotential of the nodes point by point. However, the calculation is extremely time-consuming.
+Remark 3.2. The action plot method, the string method and the OUM have their flaws. In contrast, the advantage of machine learning lies in a architecture allowing for very fast computational and response times. The benefits of using machine learning are well documented. Therefore, in this section, we design a machine learning method for computing quasipotential and its gradient (i.e., momentum) using neural networks and automatic differentiation techniques [37].
+As depicted in Fig. 2, the schematic for the structure of the neural network is made up of three basic components: the input x, L hidden layers composed of multiple neurons, the outputs p and V , which are linked by edges. The activation function of the hidden layer characterized by the hyperbolic tangent function tanh(x), and the activation function of the output layer is chosen as the identity function. It should be pointed out that the numbers of neurons in all layers do not necessarily need to be the same in the architecture. Next, we should define the loss function for training the neural network. The main difficulty stems from the realization of the gradient in the loss function. We achieve it via automatic differentiation. According to the properties of quasipotential, the post-training quasipotential V ̃(x) and momentum  ̃p(x) need to satisfy three constraints: p = ∇V (x), Hamilton–Jacobi equation, and the quasipotential of the stable fixed point xs being zero. These constraints need to be realized in the loss function. The first two constraints are valid in the phase space everywhere. We are able to choose NH collocation points uniformly in the region of interest to form the loss function. Thus the approximation on the finite points can be used to approach the quasipotential function. However, it should be noted that the solution of the quasipotential and the momentum, which are identically equal to 0, always satisfies these three constraints. In order to exclude this trivial solution, we use the action plot method to integrate Eqs. (2.5) and (2.9), and then gain a part of the data as the fourth part of the loss function. To rule out the influence of the local extreme value for the action calculated by the action plot method due to singularity, we can adopt the following method. We discretize the phase space first and keep the grid not too dense. Then we select enough points from the small circle near the fixed point, and compute the integral to obtain a large number of extreme paths. In each
+6
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+grid, we collect the points of the extreme paths located in this grid and record the coordinate xi, momentum pi and quasipotential V i of the point corresponding to the minimum value of the quasipotential among these points, which are taken as a set of data. The total number of the data is Nd. Above all, the loss function is designed as follows. The first part of the loss function is
+Lp =
+1
+NH
+NH
+∑
+i=1
+⏐
+⏐ ̃p(xi) − ∇V ̃(xi)⏐
+⏐
+2 , (3.12)
+where the gradient of the quasipotential is realized via automatic differentiation technique. The second part of the loss function is
+LH =
+1
+NH
+NH
+∑
+i=1
+H
+(xi, ̃p(xi))2 . (3.13)
+The third part of the loss function is
+L0 = V ̃(xs)2. (3.14)
+The fourth part of the loss function is
+Ld =
+1
+Nd
+Nd
+∑
+i=1
+[⏐
+⏐ ̃p(xi) − pi⏐
+⏐
+2 +
+(
+V ̃(xi) − V i)2]
+. (3.15)
+Therefore, the total loss function is computed as
+Lall = Lp + LH + L0 + Ld. (3.16)
+The trained neural network can output the momentum and quasipotential at the specified position. Since the lowest point of the quasipotential on the boundary is usually the saddle point. We start from the point near the saddle point to calculate the time-reverse integral of Eq. (2.10), where we use neural network calculation to get the momentum value. Eventually, we obtain the most probable path for the system to leave the attractive basin. Next we present our control strategy to realize the aim of controlling mean exit time of stochastic systems via adjusting the parameter c based on the functionality of the neural network. After adding u = c∇V (x) to x ̇ = F (x),
+x ̇ = F (x) + c∇V (x) = −
+1
+2 ∇V (x) + l(x) + c∇V (x) = −
+1
+2 (1 − 2c)∇V (x) + l(x).
+For this reason, the new quasipotential is (1−2c)V (x). Particularly the new quasipotential at the saddle point is (1−2c)V0, where we utilize neural networks to calculate V0. Assume that our desired time is Td. We notice that under the control,
+Td ∼ exp
+{ (1 − 2c)V0 σ
+}
+, (3.17)
+and then it follows that
+c≈
+1
+2−
+σ 2V0
+ln Td. (3.18)
+Considering the influence of the prefactor b, we advance the algorithm by updating the value of c. Given c1 = 1
+2− σ
+2V0 ln Td,
+inserting it into (3.11) gives  ̇x = c1∇V (x) + F (x) + η. Based on the gradient of quasipotential computed by neural network and Monte Carlo method, we simulate some sample trajectories to exit the considered domain and calculate the mean exit time T1 by averaging these random exit times. Note that
+T1 = b exp
+{ (1 − 2c1)V0 σ
+}
+, Td = b exp
+{ (1 − 2cd)V0 σ
+}
+.
+Hence, we have
+cd = c1 +
+σ 2V0
+ln T1
+Td
+. (3.19)
+This process can be iterated continuously if the accuracy of Eq. (3.19) is not sufficiently satisfactory. It needs to be emphasized that this strategy can achieve any desired mean exit time when we choose appropriate constant c. When c = 1/2, the potential well of the system is zero, and thus the system exits quickly. When c tends to negative infinity, the mean exit time goes to infinity. Therefore, our control strategy can make it possible for the mean exit time to take a certain value from small positive number to infinity.
+7
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+Fig. 3. Vector fields of Maier–Stein system for γ = 1 and γ = 5, where SN1 and SN2 denote two stable nodes and US indicates a unstable saddle.
+4. Maier-Stein system
+We now demonstrate how the update strategy of constant c could help us to further improve on the performance of the algorithm. Take the Maier–Stein system [38] as an example to verify the effectiveness of the control strategy
+{
+x ̇1 = x1 − x3
+1 − γ x1x2
+2+
+√σ η1(t),
+ ̇x2 = −
+(1 + x2
+1
+)x2 +
+√σ η2(t), (4.20)
+where the system parameter γ > 0. We are able to rewrite it in the form of (2.1), if we identify
+x :=
+(x1 x2
+)
+, F (x) :=
+(
+x1 − x3
+1 − γ x1x2
+2
+−
+(1 + x2
+1
+)x2
+)
+, Σ :=
+√σ
+(1 0
+01
+)
+, η(t) :=
+(η1 (t )
+η2 (t )
+)
+.
+When σ = 0, we locate the fixed points of the deterministic model x ̇ = F (x) by solving the equations x ̇1 = x ̇2 = 0.
+Hence  ̇x2 = 0 if x2 = 0, and then x ̇1 = 0 if x1 − x3
+1 = 0, which has solutions x1 = 0 and x1 = ±1. Therefore, there are
+three fixed points (0, 0) and (±1, 0). Linearizing by finding the Jacobian matrix, we have
+J=
+(1 − 3x2
+1 − γ x2
+2 −2γ x1x2
+−2x1x2 −(1 + x2
+1)
+)
+.
+and its value at the origin is
+J(0,0) =
+(1 0
+0 −1
+)
+.
+There is one positive and one negative eigenvalue, thus this fixed point is a saddle point. For other fixed points,
+J(±1,0) =
+(
+−2 0 0 −2
+)
+.
+There are two distinct negative eigenvalues and hence the fixed points are stable nodes. Note that the matrices J(0,0) and J(±1,0) are in diagonal form. The eigenvectors for both fixed points are (1, 0)T and
+(0, 1)T . Thus in a small neighborhood around each fixed point, the stable and unstable manifolds are tangent to the lines generated by the eigenvectors through each fixed point. Therefore, near each fixed point the manifolds are horizontal and vertical. The manifolds of the nonlinear system Ws and Wu need not be straight lines but are tangent to the subspaces Es and Eu at the relevant fixed point.
+Consider the isoclines. Now x ̇2 = 0 on x2 = 0, and on this line x ̇1 = x1 − x3
+1. Thus if x1 > 1 or −1 < x1 < 0, then
+x ̇1 < 0, and if x1 < −1 or 0 < x1 < 1, then x ̇1 > 0. Also,  ̇x1 = 0 on the circle x ̇2
+1 + γ  ̇x2
+2 = 1 with γ > 0, and on this curve
+x ̇2 = (γ x ̇2
+2 − 2)x2. Thus if x2 > √2/γ or −
+√2/γ < x2 < 0, then  ̇x2 > 0, and if x2 < −
+√2/γ or 0 < x2 < √2/γ , then x ̇2 < 0. The slope of the trajectories is given by
+dx2
+dx1
+=
+−
+(1 + x2
+1
+)x2
+x1 − x3
+1 − γ x1x2
+2
+.
+As can be seen from Fig. 3, we clearly illustrate the structure of the deterministic system x ̇ = F (x) using phase portraits with US at (0, 0), SN1 at (−1, 0) and SN2 at (1, 0). Due to the left–right symmetry of the system, we only need to consider the case of escaping from the basin of SN1 to the right.
+8
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+Fig. 4. Comparison between Learned and True quasipotential for γ = 1.
+Fig. 5. The most probable path denoted by red line and extreme paths for γ = 1.
+Parameter settings allow us to customize various values to suit our needs. The neural network is composed of 4 hidden layers, each layer has 20 neurons, the optimizer selects Adam, the learning rate is 0.05, and the training contains 50,000 steps. There are 5000 points selected randomly in the area [−1.5, 0] × [−0.6, 0.6], i.e., NH = 5000. Divide this area into a 20 × 20 grid, i.e., Nd = 400. Utilizing the action plot method, 2000 starting points are uniformly selected on the small circle near the fixed point, and 2000 parameterized trajectories are obtained by integration. The coordinate, momentum and quasipotential of the point with the smallest quasipotential falling in each grid are extracted, and then 400 groups of data are collected. We consider two cases of γ = 1 and γ = 5 respectively. Case A. γ = 1 corresponds to the gradient system or equilibrium system with a potential function
+U(x) =
+1
+4
+[
+(x2
+1 − 1)2
++ 2x2
+2
+(x2
+1 + 1)
+]
+.
+According to the Freidlin–Wentzell large deviation theory, the quasipotential in this case is exactly twice of the potential function, i.e., V (x) = 2U(x). The loss function after training is reduced to the order of 10−5. Fig. 4 shows a comparison of Learned and True quasipotentials, which are very consistent. It demonstrates how Learned quasipotential may be used to compute True quasipotential in a manner entirely compatible with modern architectures. The most probable path is found by reverse-time integration of Eq. (2.10) starting from a point near the left of the saddle point (0, 0), as illustrated in Fig. 5. Since the potential system satisfies the detailed balance condition, the most probable path starting from the stable fixed point (−1, 0) to the saddle US is exactly the time reverse of the deterministic trajectory starting from the saddle to the fixed point, which is the horizontal line. It is seen that our experiment results are consistent with the theoretical ones. Next we examine our control strategy and describe the process of the algorithm. From the list items in Table 1, we choose three noise intensities σ = 0.15, 0.1 and 0.05 such that the uncontrolled mean exit time T0 = 58.08 is less than 100, T0 = 270.43 is greater than 100 but less than 1000, and T0 = 39 157.98 is far greater than 1000. To estimate the mean exit time, we simulate 1000 random trajectories and calculate the expected value. When the desired mean exit
+9
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+Table 1
+Controlling mean exit time for γ = 1.
+σ T0 Td c1 Tc1 c2 Tc2
+0.15 58.08 100 −0.1901 136.94 −0.1430 104.43 0.1 270.43 100 0.0399 202.07 0.1102 115.74 0.05 39 157.98 100 0.2700 417.52 0.3414 146.26 0.15 58.08 1000 −0.5351 877.87 −0.5546 950.71 0.1 270.43 1000 −0.1901 1296.43 −0.1642 1014.83 0.05 39 157.98 1000 0.1550 2645.23 0.2035 1191.72
+Fig. 6. For the specific parameter γ = 5: (a) Learned quasipotential; (b) The most probable paths denoted by red line and extreme paths.
+time is Td = 100, we have Tc1 = 136.94, 202.07 and 417.52 if we set c1 = −0.1901, 0.0399 and 0.2700 respectively. We
+can make far more precise correction to get Tc2 = 104.43, 115.74 and 146.26 with c2 = −0.1430, 0.1102 and 0.3414. It is
+worthy to note that Tc2 is closer to Td = 100 than Tc1 for all the three cases. When the desired mean exit time is Td = 1000,
+we get Tc1 = 877.87, 1296.43 and 2645.23 if we set c1 = −0.5351, −0.1901 and 0.1550 respectively. Furthermore, we
+obtain Tc2 = 950.71, 1014.83 and 1191.72 with c2 = −0.5546, −0.1642 and 0.2035. After a correction, the mean exit
+time is almost as big as the desired value Td = 1000. If the accuracy of the correction is not enough, such as in the case of σ
+= 0.05, Td = 100, multiple corrections can be further executed by taking c3 = 0.3604 to gain Tc3 = 113.70. Therefore,
+our control strategy can customize the mean exit time to reach the desired value. Case B. γ = 5 corresponds to non-gradient system or non-equilibrium system without a potential function.
+The loss function after training is reduced to the order of 10−4. Learned quasipotential for γ = 5 is plotted in Fig. 6(a). The most probable path is obtained by reverse-time integration starting from a point near the left of the saddle point, as demonstrated in Fig. 6(b). In this case, the most probable path bifurcates into two black upper and lower paths symmetrically because of the singularity of the Lagrangian manifold.
+Remark 4.1. For the non-gradient system in Case B, the quasipotential function has no theoretical solution. Luckily, we can compute the most probable paths to confirm the results of the quasipotential subtly.
+Now we test our control strategy again and specify the content of Table 2. We select three noise intensities σ = 0.1, 0.075 and 0.05, such that the quantities of the uncontrolled mean exit time are T0 = 70.52, 306.06 and 6244.60. When the desired mean exit time is Td = 100, we have Tc1 = 65.04, 71.19 and 81.60 if c1 = 0.0241, 0.1430 and 0.2620. We
+are able to make far more precise correction to get Tc2 = 83.54, 88.76 and 96.38 with c2 = −0.0204, 0.1167 and 0.2515.
+It is worth pointing out that Tc2 is closer to Td = 100 than Tc1 . When the desired mean exit time is Td = 1000, we get
+Tc1 = 404.54, 446.47 and 519.54 if c1 = −0.2139, −0.0354 and 0.1430. After a correction, we obtain Tc2 = 911.13, 884.27
+and 889.52 with c2 = −0.3074, −0.0979 and 0.1092. The mean exit time basically is close to the desired value. Similarly, if the accuracy of the correction is not enough, such as in the case of σ = 0.075, Td = 1000, multiple corrections can be performed to acquire Tc3 = 1007.68 with c3 = −0.1075. As a result, the mean exit time will be getting much nearer to
+the desired value.
+5. Three-dimensional double-well system
+The difference between the eigenvalues of the fixed point usually leads to a sharp increase of the quasipotential in some directions of high-dimensional systems. Thus the quasipotential computed by OUM may only focus on a shin slice of the
+10
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+Table 2
+Controlling mean exit time for γ = 5.
+σ T0 Td c1 Tc1 c2 Tc2
+0.1 70.52 100 0.0241 65.04 −0.0204 83.54 0.075 306.06 100 0.1430 71.19 0.1167 88.76 0.05 6244.60 100 0.2620 81.60 0.2515 96.38 0.1 70.52 1000 −0.2139 404.54 −0.3074 911.13 0.075 306.06 1000 −0.0354 446.47 −0.0979 884.27 0.05 6244.60 1000 0.1430 519.54 0.1092 889.52
+state space (see Fig. 9 in Ref. [22] for example). This is a challenge for the traditional method to calculate the quasipotential of high-dimensional systems since we may only obtain a small portion of information for the quasipotential. However, our proposed method can avoid this problem since the minimization of the loss function can restrict the quasipotential of every point. We apply our method to a three-dimensional system as an example to discover its effectiveness and accuracy for high-dimensional systems. Now we try to compute the quasipotential for three-dimensional SDE (2.1) with the noise η = (η1, η2, η3) and the nongradient vector field [22]
+F (x) =
+⎛
+⎜ ⎝
+−2(x3
+1 − x1) − ρ(x2 + x3)
+−x2 + 2ρ(x3
+1 − x1)
+−x3 + 2ρ(x3
+1 − x1)
+⎞
+⎟
+⎠ , (5.21)
+where we choose the parameter value ρ = 0.3 that determines the location and shape of the curve on the plot. It should be emphasized that this system is selected since the quasipotential has an analytical solution to examine our results, while it is hard to compute the quasipotential of general three-dimensional systems. It follows from F (x) = 0 that the deterministic system x ̇ = F (x) has three fixed points P−1 = (−1, 0, 0), P0 = (0, 0, 0) and P1 = (1, 0, 0). To classify the stability of those equilibria, we consider the Jacobian matrix
+J=
+⎛
+⎜ ⎝
+−2(3x2
+1 − 1) −0.3 −0.3
+0.6(3x2
+1 − 1) −1 0
+0.6(3x2
+1 − 1) 0 −1
+⎞
+⎟
+⎠.
+The Jacobian matrix at P0 is equal to
+JP0 =
+⎛
+⎝
+2 −0.3 −0.3
+−0.6 −1 0
+−0.6 0 −1
+⎞
+⎠.
+It has eigenvalues λ = −1 and λ± = 0.5 ±
+√
+2.61. One of them is positive, and two of them are negative. Thus, P0 is an unstable saddle point. The stability of P±1 is determined by considering the eigenvalues of the Jacobian matrices
+JP±1 =
+(−4 −0.3 −0.3 1.2 −1 0 1.2 0 −1
+)
+.
+The eigenvalues for P±1 are given by λ = −1 and λ± = −2.5 ±
+√
+1.53. Both of them are negative, hence the equilibria P
+±1 are stable. The vector field F (x) as in (5.21) can be split into the potential and the rotational components
+−
+1
+2 ∇V (x) =
+⎛
+⎜ ⎝
+−2(x3
+1 − x1)
+−x2
+−x3
+⎞
+⎟
+⎠ , l(x) = ρ
+⎛
+⎜ ⎝
+−(x2 + x3)
+2(x3
+1 − x1)
+2(x3
+1 − x1)
+⎞
+⎟
+⎠ (5.22)
+with the vertical relationship ∇V (x) ⊥ l(x) by showing that
+∇V (x) =
+⎛
+⎝
+4(x3
+1 − x1)
+2x2
+2x3
+⎞
+⎠ H⇒ ∇V (x) · l(x) = ρ (4(x3
+1 − x1) 2x2 2x3
+)
+⎛
+⎜ ⎝
+−(x2 + x3)
+2(x3
+1 − x1)
+2(x3
+1 − x1)
+⎞
+⎟
+⎠ = 0.
+Thus F (x) has an orthogonal decomposition
+F (x) = −
+1
+2 ∇V (x) + l(x).
+11
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+Fig. 7. Comparison between Learned and True quasipotential. (a) True quasipotential in section x1 = −1. (b) Learned quasipotential in section x1 = −1. (c) True quasipotential in section x3 = 0. (d) Learned quasipotential in section x3 = 0.
+Therefore, the quasipotential has an analytical solution V (x) = x4
+1 − 2x2
+1 + x2
+2 + x2
+3 + 1. To ensure that the quasipotential is zero at the equilibria P±1, we add the constant 1 in the expression of V (x). As for the parameter selection, there are 4 hidden layers in the neural network with 20 neurons in each layer. The optimizer is Adam, the learning rate is 0.05, and the training step is 20 000. We choose NH = 50 000 random collocation points in the region [−1.6, 0] × [−0.8, 0.8] × [−0.8, 0.8] and divide this area into a 20 × 20 × 20 grid. By utilizing the action plot method, 400 starting points are uniformly chosen on a small sphere near the stable equilibrium point P−1. Through recording the points located at every grid with the smallest quasipotential, we obtain Nd = 1609 groups of data. Note that it is difficult to visualize the quasipotential of the three-dimensional dynamical system. Thus we portray the quasipotential landscape on some cross-sections. As indicated in Fig. 7, the block diagrams of the Learned and True quasipotential with two cross-sections are produced when x1 = −1 and x3 = 0, which are used to compare with the theoretical results to verify the accuracy of the created experimental method. As we see, the numerical quasipotential by our method is sufficiently consistent with the theoretical one, which confirms the effectiveness of our deep learning method for computing the quasipotential of even three-dimensional systems. According to the theoretical and numerical results of quasipotential, we sketch the most probable paths from the stable equilibrium point P−1 to the saddle point P0 by calculating the inverse time integration starting from P0 based on Eq. (2.10), as clarified in Fig. 8. It is seen that they are close to each other, and the error is within an acceptable range, which implies that our method can be used to compute the most probable paths of high-dimensional systems. Now we probe our control strategy for three-dimensional double-well system with the nongradient vector field (5.21), and display the data in Table 3. For three decreasing noise intensities σ = 0.25, 0.16 and 0.1, the quantities of the uncontrolled mean exit time are T0 = 68.38, 616.85 and 24 976.09. In the case that the desired mean exit time is Td = 100, we gain Tc1 = 97.10, 155.24 and 212.57 if c1 = −0.0641, 0.1390 and 0.2743. We can update the mean
+exit time to Tc2 = 102.08, 105.54 and 113.01 with c2 = −0.0677, 0.1734 and 0.3113. It is so enjoyable for us to observe that Tc2 is much closer to Td = 100 than Tc1 . In the situation where the desired mean exit time is Td = 1000, we obtain
+Tc1 = 616.09, 945.03 and 1365.00 if c1 = −0.3462, −0.0416 and 0.1615. We are able to make more precise predictions
+with Tc2 = 988.54, 974.18 and 1040.01 when c2 = −0.4055, −0.0460 and 0.1768. It is very important that there are less
+12
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+Fig. 8. The numerical and theoretical solutions of most probable path denoted by red and blue lines.
+Table 3
+Controlling mean exit time for three-dimensional double-well system.
+σ T0 Td c1 Tc1 c2 Tc2
+0.25 68.38 100 −0.0641 97.10 −0.0677 102.08 0.16 616.85 100 0.1390 155.24 0.1734 105.54 0.1 24 976.09 100 0.2743 212.57 0.3113 113.01 0.25 68.38 1000 −0.3462 616.09 −0.4055 988.54 0.16 616.85 1000 −0.0416 945.03 −0.0460 974.18 0.1 24 976.09 1000 0.1615 1365.00 0.1768 1040.01
+differences between the mean exit time and the desired value after two updates. Therefore, our proposed control strategy is effective and accurate to control the mean exit time of stochastic dynamical systems to a given value.
+6. Conclusion and outlook
+In this paper, we developed a feedforward multilayer network for stimulating the mean exit time that is dominant in stimulating a process to escape a bounded domain. Meanwhile, we devised a machine learning framework to compute the quasipotential and most probable paths of metastable transition events. We proposed an iterative control strategy to steer the mean exit time to reach a desired value. A typical architecture was shown in Fig. 2. This work generated a huge amount of interest. Pragmatically, we illustrated the effectiveness and accuracy of the control strategy with the practical examples about the two-dimensional Maier–Stein system and three-dimensional double-well system. We can generalize these two-dimensional and three-dimensional cases by further considering the rather cumbersome/difficult cases of general multi-dimensional or time-dependent vector fields. We even suggest a possible treatment in high dimensions by looking for a low-dimensional manifold near which the dynamics are focused. In many variable situations, stochastic neural network can be set up as a type of artificial neural network built by introducing random variations into the network, either by appending the network’s artificial neurons stochastic transfer functions, or by giving them stochastic weights. This makes them become useful tools for optimization problems, since the random fluctuations accelerate the escape of the network from local minima. The expectations are high for future applications in a broad range of disciplines. To be honest, the theories and experiments do not hold for SDE driven by multiplicative noise since the orthogonal decomposition (2.8) of the vector field is only valid for additive noise. We should explore new methods and technologies to handle multiplicative situations.
+CRediT authorship contribution statement
+Yang Li: Validation, Formal analysis, Visualization, Software, Methodology, Investigation, Conceptualization, Writing review & editing, Data curation. Shenglan Yuan: Writing – original draft, Methodology, Resources, Investigation, Formal analysis, Supervision, Conceptualization, Data curation. Shengyuan Xu: Supervision, Formal analysis, Writing – review & editing.
+Declaration of competing interest
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+Data availability
+Numerical algorithms source code that support the findings of this study are openly available in GitHub, Ref. [39].
+13
+
+
+ Y. Li, S. Yuan and S. Xu Communications in Nonlinear Science and Numerical Simulation 126 (2023) 107425
+Acknowledgments
+The authors are happy to thank Haitao Xu for fruitful discussions on Hamiltonian systems.
+Funding
+The authors acknowledge support from the Natural Science Foundation of Jiangsu Province, China (grant BK20220917).
+References
+[1] Qiao M, Yuan S. Analysis of a stochastic predator–prey model with prey subject to disease and Lévy noise. Stoch Dyn 2019;19:1950038. [2] Yuan S, Li Y, Zeng Z. Stochastic bifurcations and tipping phenomena of insect outbreak systems driven by α-stable Lévy processes. Math Model Nat Phenom 2022;17:34. [3] Yuan S, Blömker D. Modulation and amplitude equations on bounded domains for nonlinear SPDEs driven by cylindrical α-stable Lévy processes. SIAM J Appl Dyn Syst 2022;21:1748–77. [4] Yuan S, Blömker D, Duan J. Stochastic turbulence for Burgers equation driven by cylindrical Lévy process. Stoch Dyn 2022;22:2240004. [5] Yuan S, Zeng Z, Duan J. Stochastic bifurcation for two-time-scale dynamical system with α-stable Lévy noise. J Stat Mech Theory Exp 2021;033204. [6] Zulfiqar H, Yuan S, He Z, Duan J. Slow manifolds for a nonlocal fast-slow stochastic system with stable Lévy noise. J Math Phys 2019;60:091501. [7] Chao Y, Wei P, Yuan S. Invariant foliations for stochastic dynamical systems with multiplicative stable Lévy noise. Electron J Differ Equ 2019;1–21. [8] Tesfay A, Tesfay D, Yuan S, Brannan J, Duan J. Stochastic bifurcation in single-species model induced by α-stable Lévy noise. J Stat Mech Theory Exp 2021;103403. [9] Yuan S, Hu J, Liu X, Duan J. Slow manifolds for dynamical systems with non-Gaussian stable Lévy noise. Anal Appl 2019;17:477–511. [10] Protter PE. Stochastic integration and differential equations. New York: Springer; 2004. [11] Hänggi P, Talkner P, Borkovec M. Reaction-rate theory: fifty years after kramers. Rev Modern Phys 1990;62:251. [12] Forgoston E, Moore RO. A primer on noise-induced transitions in applied dynamical systems. SIAM Rev 2018;60:969–1009. [13] Huang Y, Chao Y, Yuan S, Duan J. Characterization of the most probable transition paths of stochastic dynamical systems with stable Lévy noise. J Stat Mech Theory Exp 2019;063204. [14] Li Y, Duan J, Liu X, Zhang Y. Most probable dynamics of stochastic dynamical systems with exponentially light jump fluctuations. Chaos 2020;30:063142. [15] Freidlin MI, Wentzell AD. Random perturbations of dynamical systems. Berlin: Springer; 2012. [16] Aurell E, Sneppen K. Epigenetics as a first exit problem. Phys Rev Lett 2002;88:048101. [17] Cameron MK. Finding the quasipotential for nongradient SDEs. Physica D 2012;241:1532–50. [18] Chen Z, Zhu J, Liu X. Crossing the quasi-threshold manifold of a noise-driven excitable system. P Roy Soc A - Math Phy 2017;473:20170058. [19] Dahiya D, Cameron M. An ordered line integral method for computing the quasi-potential in the case of variable anisotropic diffusion. Physica D 2018;382:33–45. [20] Lv C, Li X, Li F, Li T. Constructing the energy landscape for genetic switching system driven by intrinsic noise. PLoS one 2014;9:e88167. [21] Nolting BC, Abbott KC. Balls, cups, and quasi-potentials: quantifying stability in stochastic systems. Ecology 2016;97:850–64. [22] Yang S, Potter SF, Cameron MK. Computing the quasipotential for nongradient SDEs in 3D. J Comput Phys 2019;379:325–50. [23] Li Y, Duan J. A data-driven approach for discovering stochastic dynamical systems with non-Gaussian Lévy noise. Physica D 2021;417:132830. [24] Sethian JA. A fast marching level set method for monotonically advancing fronts. Proc Natl Acad Sci USA 1996;93:1591–5. [25] Li Y, Duan J, Liu X. Machine learning framework for computing the most probable paths of stochastic dynamical systems. Phys Rev E 2021;103:012124. [26] Turchetti C. Stochastic models of neural networks. IOS Press; 2004. [27] Li Y, Xu S, Duan J, Liu X, Chu Y. A machine learning method for computing quasi-potential of stochastic dynamical systems. Nonlinear Dyn 2022;109:1877–86. [28] Kularatne D, Forgoston E, Hsieh MA. Using control to shape stochastic escape and switching dynamics. Chaos 2019;29:053128. [29] Heckman CR, Ani Hsieh M, Schwartz IB. Going with the flow: Enhancing stochastic switching rates in multigyre systems. J Dyn Syst Meas Control 2015;137:031006. [30] Heymann M, Vanden-Eijnden E. The geometric minimum action method: A least action principle on the space of curves. Commun Pur Appl Math 2008;61:1052–117. [31] Yuan S, Duan J. Action functionals for stochastic differential equations with Lévy noise. Commun Stoch Anal 2019;13:10. [32] Kessler DA, Shnerb NM. Extinction rates for fluctuation-induced metastabilities: a real-space WKB approach. J Stat Phys 2007;127:861–86. [33] Sethian JA, Vladimirsky A. Ordered upwind methods for static Hamilton–Jacobi equations: Theory and algorithms. SIAM J Numer Anal 2003;41:325–63. [34] Beri S, Mannella R, Luchinsky DG, Silchenko AN, McClintock PVE. Solution of the boundary value problem for optimal escape in continuous stochastic systems and maps. Phys Rev E 2005;72:036131. [35] Tao M. Hyperbolic periodic orbits in nongradient systems and small-noise-induced metastable transitions. Physica D 2018;363:1–17. [36] Shum A, Morris K, Khajepour A. Convergence rate for the ordered upwind method. J Sci Comput 2016;68:889–913. [37] Raissi M, Perdikaris P, Karniadakis GE. Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations. J Comput Phys 2019;378:686–707. [38] Maier RS, Stein DL. Limiting exit location distributions in the stochastic exit problem. SIAM J Appl Math 1997;57:752–90. [39] Li Y. Code. Github 2022; https://github.com/liyangnuaa/Controlling-mean-exit-time-of-stochastic-dynamical-systems.
+14

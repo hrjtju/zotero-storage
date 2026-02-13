@@ -1,0 +1,360 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 1
+Illumination Controllable Dehazing Network based
+on Unsupervised Retinex Embedding
+Jie Gui, Xiaofeng Cong, Lei He, Yuan Yan Tang, James Tin-Yau Kwok
+Abstract—On the one hand, the dehazing task is an illposedness problem, which means that no unique solution exists. On the other hand, the dehazing task should take into account the subjective factor, which is to give the user selectable dehazed images rather than a single result. Therefore, this paper proposes a multi-output dehazing network by introducing illumination controllable ability, called IC-Dehazing. The proposed IC-Dehazing can change the illumination intensity by adjusting the factor of the illumination controllable module, which is realized based on the interpretable Retinex theory. Moreover, the backbone dehazing network of IC-Dehazing consists of a Transformer with double decoders for high-quality image restoration. Further, the prior-based loss function and unsupervised training strategy enable IC-Dehazing to complete the parameter learning process without the need for paired data. To demonstrate the effectiveness of the proposed IC-Dehazing, quantitative and qualitative experiments are conducted on image dehazing, semantic segmentation, and object detection tasks. Code is available at https://github.com/Xiaofeng-life/ICDehazing.
+Index Terms—Image Dehazing, Illumination Controllable, Retinex, Unsupervised Prior, Transformer
+I. INTRODUCTION
+H
+AZE is a natural phenomenon that causes the quality of the image to decrease as the haze concentration increases. The purpose of dehazing task is to recover clear scene content from hazy images. In order to accurately remove the haze in the hazy image and restore the scene information as completely as possible, image dehazing has been explored by many recent studies [49], [16], [26], [20], [43], [54], [56], [52], [28], [32]. Existing studies have achieved impressive image restoration performance in terms of providing a single dehazed image during the inference stage. Here, we define the research scope of single-output and multi-output dehazing models from the perspective of users. A single-output dehazing network provides a single dehazed result, while a multi-output dehazing network can output different dehazed images at the inference stage. Thus, the division of single-output and multi-output here is based on whether the inference stage can provide users
+J. Gui is with the School of Cyber Science and Engineering, Southeast University and with Purple Mountain Laboratories, Nanjing 210000, China (e-mail: guijie@seu.edu.cn). X. Cong is with the School of Cyber Science and Engineering, Southeast University, Nanjing 210000, China (e-mail: cxf svip@163.com). L. He is with the Purple Mountain Laboratories, Nanjing 210000, China (e-mail: helei@pmlabs.com.cn). Y. Tang is with the Department of Computer and Information Science, University of Macau, Macau 999078, China (e-mail: yuanyant@gmail.com). J. Kwok is with the Department of Computer Science and Engineering, The Hong Kong University of Science and Technology, Hong Kong 999077, China. (e-mail: jamesk@cse.ust.hk).
+with a variety of dehazed results, regardless of the behavior of the training process. The research in this paper expands the conventional research goal, that is, to generate multi-output by introducing the illumination controllable ability, and the visual effects are shown in Fig. 1, Fig. 2 and Fig. 3. The atmospheric scattering model [36], [40] is a physical model widely used in image dehazing algorithms. It describes the relationship between the hazy image I(x) and the corresponding clear image J(x) as following
+I(x) = J(x)t(x) + A(1 − t(x)), (1)
+where A and t(x) represent global atmospheric light and transmission map, respectively. Since the formation of haze can be approximated by atmospheric scattering model, [13], [59] employ physical priors to estimate the parameters required for the dehazing process. However, physical priors are not always valid and they may work well on some images but not others. Meanwhile, when Convolutional Neural Networks (CNNs) [11] are explored in computer vision research, various deep learning-based supervised dehazing methods [11] are proposed. Different network construction strategies [14], [55], [41] in CNNs are applied to the image dehazing architectures.
+Existing studies [7], [21], [47], have explored a few effective unsupervised dehazing methods. The perceptual loss is used by CycleDehaze [7] to optimize the dehazing network. The zeroshot learning and atmospheric scattering model are combined by ZID [21] and YOLY [20]. USID-Net [25] introduces attention mechanism and disentangled representation into the adversarial training process. Deep DCP [10] designs an energy function suitable for unsupervised dehazing. D4 [51] designs a method for estimating the scattering coefficient and depth information for the dehazing process. SNSPGAN [47] proposes a cyclic self-perceptual loss which is computed from unpaired data. However, similar to the supervised methods, these unsupervised dehazing methods also lack researches of the multi-output. As stated by [24], the dehazing task is an illposedness problem, which means that single-output may not be suitable. Here, we think there are two issues that need to be considered as follows. • For a specific scene in the real world, there will be a certain time interval between the formation of hazy and haze-free image. During this time interval, the lighting will change. Therefore, for a given hazy image, the dehazing algorithm should not only output a single dehazed result with fixed illumination condition. • If the dehazing algorithm can output different dehazed images, the generating process should be interpretable.
+arXiv:2306.05675v1 [cs.CV] 9 Jun 2023
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 2
+(a) Hazy (b) 0.42 (c) 0.44 (d) 0.45 (e) 0.46 (f) 0.47 (g) 0.48
+(h) 0.49 (i) 0.50 (j) 0.51 (k) 0.52 (l) 0.53 (m) 0.54 (n) 0.56
+Fig. 1: Visual dehazing results with different controllable parameters on SOTS indoor [23].
+(a) Hazy (b) 0.42 (c) 0.44 (d) 0.45 (e) 0.46 (f) 0.47 (g) 0.48
+(h) 0.49 (i) 0.50 (j) 0.51 (k) 0.52 (l) 0.53 (m) 0.54 (n) 0.56
+Fig. 2: Visual dehazing results with different controllable parameters on SOTS outdoor [23].
+(a) Hazy (b) 0.42 (c) 0.44 (d) 0.45 (e) 0.46 (f) 0.47 (g) 0.48
+(h) 0.49 (i) 0.50 (j) 0.51 (k) 0.52 (l) 0.53 (m) 0.54 (n) 0.56
+Fig. 3: Visual dehazing results with different controllable parameters on RTTS [23].
+Considering the above two problems, this paper proposes a model by using the Retinex model [18], [19], [50], [8] to control illumination. On one hand, the training process of the IC-Dehazing utilizes the data learning ability of deep neural networks and prior statistical knowledge. The SwinTransformer [35] block and prior knowledge [13] are embedded into Retinex-based dehazing network to obtain highquality dehazed outputs. On the other hand, using the Retinex model to obtain different outputs is sufficiently interpretable. By choosing different lighting control parameters in the inference stage, IC-Dehazing obtains a variety of user-acceptable outputs as shown in Fig. 1, Fig. 2 and Fig. 3. The main difference among dehazed images of the same scene is the effect of illumination intensity on scene reflections, such as the table in Fig. 1, the sky in Fig. 2 and the road in Fig. 3.
+Overall, the main contributions of this paper are listed as follows.
+• Considering that the illumination information of clear images can not be uniquely determined, an illumination controllable dehazing network is proposed, called ICDehazing. The core component of IC-Dehazing is the illumination controllable module. Selecting different illumination weights during the inference phase can provide various outputs, which represent a variety of high-quality dehazed images. • Using dark channel prior [13] to construct pseudo-labels, a pre-trained model-based loss that decays with the number of iterations is designed, which can promote the performance of the dehazing network. • The IC-Dehazing with the Transformer architecture can be trained in a completely unsupervised manner, which means that pairs of hazy and haze-free images are not required. The research in this paper shows that Transformer can be embedded into the unsupervised dehazing pro
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 3
+cess. Ablation experiments show that Transformer-based unsupervised architecture performs better on dehazing task than conventional convolution-based unsupervised architecture.
+To verify the performance of IC-Dehazing, extensive quantitative and qualitative experiments are conducted on a variety of dehazing algorithms. Further, the impact of image dehazing on semantic segmentation and object detection is analyzed. Compared to state-of-the-art unsupervised methods, IC-Dehazing achieves better quantitative and qualitative results. As for stateof-the-art supervised algorithms, IC-Dehazing also achieves competitive performance.
+II. RELATED WORK
+Image dehazing algorithms can be roughly divided into two types: pair-based and non-pair-based dehazing, which usually mean supervised and unsupervised. pair-based methods usually use supervised CNNs [41], [2], [22], while non-pair-based methods can be based on statistical assumptions [13], [4], [33], [60] or unsupervised CNNs [25], [21], [47], [3]. This section will review researches on dehazing, both pair-based and non-pair-based algorithms. Further, multi-output dehazing and Retinex theory are investigated to illustrate why the ICDehazing is proposed.
+A. Pair-based Dehazing
+Dehazing methods based on paired data usually employ a supervised learning strategy, which usually use groundtruth clear images or transmission maps as labels. Different powerful network structures [41], [2] are proposed for feature extraction and clean image reconstruction. 4KDehazing [57] using bilateral grid learning designs a fast dehazing model for high-resolution images. Guided by contrastive learning, AECR-Net [49] proposed a contrastive regularization strategy to improve the similarity between dehazed images and groundtruth labels. MSBDN [5] introduces boosting and error feedback into the training process, which improves the ability to recover spatial information. Transformer-based architectures have been applied to image denoising [53], [48], object detection [6], and image segmentation [35] tasks. Meanwhile, there are relatively few studies on Transformer-based dehazing. DeHamer [12] combines CNNs and Transformer, which adds CNNs encoder and decoder to the overall dehazing process. AIDTransformer [17] utilizes deformable multi-head attention with spatially attentive offset extraction based solution for the designing of the dehazing architecture. The recently proposed DehazeFormer [46] uses the Swin-Transformer [35] to build the U-shape architecture. DehazeFormer proved that cyclic shift is not suitable for dehazing problem. It uses reflection padding instead of cyclic shift, which IC-Dehazing follows. The IC-Dehazing proposed in this paper also uses Swin-Transformer to build a dehazing network. However, IC-Dehazing and DehazeFormer have three notable differences as follows. First, unlike DehazeFormer that has a single dehazed result by using the atmospheric scattering model, IC-Dehazing’s dehazing module contains two decoded outputs for Retinex fusing, which are designed
+to control illumination information. Second, DehazeFormer utilizes various improvements, including SK [27] fusion, soft reconstruction, rescale layer normalization, additional convolution, improved nonlinear activation function, which are not used in IC-Dehazing. Third, DehazeFormer proves that Transformer can be used for supervised dehazing training, whereas IC-Dehazing proves that Transformer can be embedded into unsupervised dehazing training process.
+B. Non-pair-based Dehazing
+Research that is not based on paired data mainly includes methods based on physical priors and methods based on deep learning, or utilizes both. He [13] proposed the dark channel prior (DCP) based on the statistics experience of the image, which inspired the research of unsupervised dehazing methods based on deep learning. Golts et al. [10] designed Deep DCP on the basis of DCP, which is an unsupervised model that can be directly optimized in an end-to-end manner. Mo et al. [39] utilizes the dark channel loss as an auxiliary loss term to guide model optimization, which can obtain higher quality generated image. The IC-Dehazing proposed in this paper also uses the DCP to construct pseudo-label for optimizing the dehazing model. Unlike [10] and [39], IC-Dehazing adopts a featurebased dark channel decay loss based on a pre-trained model to provide the guidance for dehazing network. PDI2A [28] proposes a physically disentangled joint intraand inter-domain adaptation paradigm, which adopts a semisupervised training process. USID-Net [25] designs multiscale feature attention and maps the data into the latent space in a shared form. In USID-Net, unsupervised dehazing is achieved with the help of an adversarial training process. D4 [51] proposes a method for estimating the scattering coefficient and depth information contained in hazy and clean images during the training of the dehazing network. SNSPGAN [47] develops a cyclic self-perceptual loss that can be computed from unpaired data. ZID [21] and YOLY [20] simultaneously utilize zero-shot learning, unsupervised learning and atmospheric scattering models to design an end-to-end dehazing model that do not require training data. Although they reduce the model’s reliance on large amounts of data, they require hundreds of iterations to train for each new hazy image.
+C. Multi-output Dehazing and Retinex Theory
+The quantitative evaluation of image dehazing algorithms is based on the ground-truth image [1], so the hazy image and the ground-truth are taken “simultaneously”. Therefore, for the quantitative evaluation of dehazing task [41], the observer can clearly indicate whether the dehazed image is close to the ground truth. In the real-world application, the observer cannot take pictures of hazy and haze-free images “simultaneously”. Haze affects the reflection process of light, changing the illumination intensity of the image, thus causing color distortion, contrast reduction and brightness imbalance in the image. Given a hazy image, since dehazing is an illposedness problem [24], the color and brightness of the image after dehazing cannot be uniquely identified. Therefore, we
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 4
+argues that in real-world application, the algorithm should fully consider the control of illumination. Specifically, the dehazing results for different illumination values should be presented to the observer. To the best of our knowledge, two multi-output dehazing models have been proposed, that are pWAE [16] and DehazeFlow [24]. The core network of pWAE is pixel-wise Wasserstein autoencoders [16], which uses the idea of style transfer. The purpose of DehazeFlow is to learn the conditional distribution of a clear image from a hazy image, and its main contribution is to use normalizing flow for image dehazing tasks. For DehazeFlow, the mapping of its training process is the conditional distribution from clean images to noise, while the inference process is the opposite. Unlike pWAE and DehazeFlow, the proposed IC-Dehazing is a combination of physical model and unsupervised neural network, that is, using Retinex theory, dark channel prior and unsupervised Transformer together. Therefore, compared to pWAE and DehazeFlow, which lack physical interpretability, the different outputs of IC-Dehazing clearly represent different lighting conditions. As mentioned earlier, the illumination controllability of IC-Dehazing is based on the Retinex theory. Galdran [9] proposed that the atmospheric scattering model and Retinex have a duality under the assumption that the atmospheric light value is a fixed constant. With the help of model duality, Retinex is successfully used for non-data-driven dehazing tasks. Compared with the widely used atmospheric scattering model [36], the application of Retinex theory to deep neural network dehazing [26] is relatively less explored.
+III. METHODS
+To be able to control the illumination of the dehazed image, a model for Retinex fusion is proposed. The dehazing task requires the generated restored images to be of high quality. Thus, the Transformer-based encoder-decoder network is designed for the dehazing process. Meanwhile, the acquisition of real-world pairwise hazy and haze-free data is relatively difficult, so IC-Dehazing is designed in an unsupervised manner, which is inspired by CycleGAN [58]. Since the training process of unsupervised illumination controllable is difficult, a loss based on dark channel prior is proposed to assist the initial training of the model. This section will introduce the details of the dehazing algorithm, including the illumination controllable Transformer, the loss module with prior guidance, the unsupervised training framework, and the overall loss function. I and J represent the hazy and haze-free domain, where x ∈ I and y ∈ J.
+A. Illumination Controllable Module with Retinex
+The output of dehazing should not be unique since we do not know the specific lighting conditions of a haze-free scene. Based on the Retinex theory, a continuously controllable module of the illumination map is designed. [26] uses the Retinex model for image dehazing, which proposes that hazy
+image x and the dehazed image yˆ can be described by the following model
+x = R ∗ Lh, yˆ = R ∗ Ldh, (2)
+where Lh and Ldh are the illumination maps corresponding to x and yˆ, respectively. The ∗ is element-wise multiplication. The reflectance R is illumination invariant. Therefore, the following relationship can be established between the hazy image and the dehazed image
+x = R ∗ Ldh ∗ Lh
+Ldh
+= yˆ ∗ Lh
+Ldh
+. (3)
+Therefore, a hazy image can be obtained by the formula, that is, x = yˆ ∗ Lr, where Lr = Lh
+Ldh . [26] calls Lr a residual illumination map. Here, we fuse Retinex mapping and direct mapping together, instead of using Eq. (3) directly. For a given input x, the Transformer encoding module used for feature extraction is denoted as φ(·), and the corresponding intermediate feature map is φ(x). Then, two decoders are used to learn direct mapping and Retinex mapping. The first decoding function φd(·) is
+od(x) = φd(φ(x)). (4)
+The encoding and decoding paths above are used to obtain a direct mapping from a hazy image to a haze-free image. As described above, a hazy image can be described as x = yˆ∗ Lr according to Retinex theory. Therefore, a dehazed image can be obtained by yˆ = x ∗ Lr−1 = x ∗ Lir, where the inverted
+residual illumination map Lir = Lr−1 (For convenience, Lir is hereinafter also referred to as the illumination map). The second decoding function φr(·) based on the Retinex model is
+or(x) = φr(φ(x)) ∗ x = Lir ∗ x. (5)
+Lir = φr(φ(x)) is learned by Transformer network, based on the Retinex theory that can describe the human visual perception system. Finally, the direct decoding and the Retinex decoding layer are linearly fused. Meanwhile, the output is mapped to (−1, 1) by the hyperbolic tangent function as
+of (x) = α × od(x) + (1 − α) × or(x), (6)
+o(x) = eof (x) − e−of (x)
+eof (x) + e−of (x) . (7)
+Therefore, the final result of dehazing model is a linear superposition of the two parts. The training phase of ICDehazing includes the reconstruction process of x → yˆ → xr as shown in Fig. 6. Therefore, α should be set to a fixed value during the training process to ensure the accuracy of reconstruction process. In the inference stage, different α values can be selected from an interval to obtain the output of different illuminations. For convenience, we refer to the fusion process represented by Eq. (6) and Eq. (7) as CI Module.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 5
+A×A×A A
+Patch Partition
+Transformer
+Blocks
+Patch Embed
+Transformer
+Blocks
+Patch Embed
+Transformer
+Blocks
+Transformer
+Blocks
+Patch UpEmbed
+Transformer
+Blocks
+Patch UpEmbed
+Transformer
+Blocks
+Patch UpEmbed
+Transformer
+Blocks
+AA A
+AA A
+A
+2 ×A
+2 × 2A A
+4 ×A
+4 × 4A A
+2 ×A
+2 × 2A
+A×A×A
+A×A×A
+A×A×A
+A=A A
+Patch Project Patch Project
+A×A×A
+A×A×A
+A𡠀A𨐀A 1 A𡠀A𨐀A 2 A𡠀A𨐀A 3 A𡠀A𨐀A 4 A𡠀A𨐀A 5
+A𡠀A𨐀A 6
+A×A×A
+Fig. 4: Network details of CIDM.
+A×A×A
+y
+Patch Partition
+Transformer
+Blocks
+Patch Embed
+Transformer
+Blocks
+Patch Embed
+Transformer
+Blocks
+Transformer
+Blocks
+Patch UpEmbed
+Transformer
+Blocks
+Patch UpEmbed
+Transformer
+Blocks
+A
+A
+2 ×A
+2 × 2A A
+4 ×A
+4 × 4A A
+2 ×A
+2 × 2A
+A×A×A
+A×A×A
+Patch Project
+A×A×A
+A𡠀A𨐀A 1 A𡠀A𨐀A 2 A𡠀A𨐀A 3 A𡠀A𨐀A 4 A𡠀A𨐀A 5 A𡠀A𨐀A 6
+Fig. 5: Network details of HSM.
+B. Overall Network Structure
+IC-Dehazing consists of an illumination controllable dehazing module (CIDM), a haze synthesis module (HSM) and two discriminators. The backbone network corresponding to the CIDM and HSM comes from Swin-Transformer [35]. Both CIDM and HSM are hierarchical Transformer architectures with 6 stages. Each stage is composed of multiple Transformer Blocks. The overall structure of the CIDM and HSM are shown in Fig. 4 and Fig. 5. 1) CIDM and HSM: CIDM consists of two downsampling and two upsampling processes. The input and output dimensionalities of CIDM are H × W × C, where H, W , and C represent the height, width, and number of channels of the image, respectively. During downsampling, both the height and width of the feature map are reduced to half of the previous layer, namely H
+2 ×W
+2 × 2L and H
+4 ×W
+4 × 4L, where L denotes the feature dimensionality. The size of the feature map increases continuously during the upsampling process until it is restored to H × W × C. Both CIDM and HSM contain 6 stages and the difference is that CIDM contains CI Module that HSM does not have. Stages 1-4 of CIDM and HSM represent the encoding process, and the features of the image are extracted through the Transformer block. Meanwhile, their Stage 5 and Stage 6 represent the decoding process. In particular, it should be pointed out that the two decoders of CIDM φd(·) and φr(·) share the weight of Stage 5. Through the hierarchical encoding and decoding process, high-quality dehazed image can be obtained by CIDM. Table I gives the network parameter configuration of CIDM and HSM. In order to reduce the number of parameters of
+TABLE I: Network configuration of CIDM and HSM.
+Stage Blocks Embed Attention Heads 1 4 24 1/4 2 2 8 48 1/2 4 3 8 96 1/2 4 4 8 96 1/2 4 5 4 48 1/4 2 6 4 24 1/4 1
+the network, like [46], several blocks do not add Attention. Specifically, the latter Transformer blocks of each stage use Attention while the former ones do not. For blocks without Attention, standard convolutions are used for feature extraction. Stage 6 of the CIDM contains two identically structured parts, both consistent with the last row of Table I.
+2) Patch Partition, Patch Embed, Patch UpEmbed and Patch Project: Patch Partition is used to project the image into feature space, which is realized by a single convolution layer with stride 1. Patch Embed and Patch UpEmbed are used for dimensionality reduction and upscaling process, respectively. Since dehazing is a pixel-level image restoration task, standard convolution is used in Patch Embed and Patch UpEmbed to preserve the spatial information of feature maps. For Patch Embed, a single-layer convolution with stride of 2 is employed. Inspired by [29], [53], pixel shuffle [42] is used for the upscaling. For an input x with m channels, assume that the desired number of output channels is n. Patch UpEmbed maps the number of channels of x to n × 22, and then obtains the output of n channels by pixel shuffle with an upscale factor of 2. The Patch Project is used to obtain the final output, reducing the number of channels from L to 3 by a single
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 6
+layer convolution with stride of 1. 3) Transformer Block: For an input feature map, it is projected to Q (query), K (key) and V (value) within M × M local windows, where d is the query/key dimensionality and
+Q, K, V ∈ RM2×d. Then, the self attention is obtained as
+Attention(Q, K, V ) = sof tmax( QKT
+√d + B)V, (8)
+where B is the relative positional encoding. The Transformer block consists of window-based multi-head self attention (WMSA) and multi-layer perceptron (MLP). For an input zl−1, it first goes through W-MSA and LayerNorm (LN) [35] layers. The obtained intermediate feature maps are summed with the original input to form residual connections. Then, the final output zl is calculated using LN and MLP with two fully connected layers, where residual connections are also utilized. The overall calculation process is
+zˆl = W − M SA(LN (zl−1)) + zl−1, (9)
+zl = M LP (LN (zˆl)) + zˆl. (10)
+4) Discriminator Networks: For the discriminator networks, the residual discriminator of [58] is adopted by the proposed IC-Dehazing. For an input image with 3 channels, we first use convolution with stride 1 to obtain a feature map with 64 channels. Then after 4 convolutions with stride 2 (followed by BatchNorm and LeakyReLU), the feature map size is reduced by half and the number of channels is doubled after each convolution. The final output patch with channel number 1 is obtained by a 3x3 convolution with stride 1.
+C. Loss Module with Prior Guidance
+Since the training process of IC-Dehazing is unsupervised, in order to help Transformer-based CIDM learn the mapping from hazy to haze-free images at the early stage of training, the prior loss Lθ is used to guide CIDM. The parameters of CIDM are randomly initialized at the beginning of training, thus using prior law to guide CIDM can play a warm-up role. As the training process progresses, the weight of Lθ is continuously reduced, so that CIDM mainly learns the dehazing mapping from the data. DCP [13] has been shown to be effective for dehazing task. For a given image J, DCP can be expressed as
+J dark(u) = min
+y∈Ω(u)
+( min
+c∈{r,g,b}
+Jc(y)), (11)
+where Jc denotes a color channel of J, Ω(u) means a local patch. Ω(u) is centered at u. Here, a perceptual loss based on DCP is proposed. DCP is denoted as θ(·), and the corresponding pseudo-label is θ(x), where x is a hazy image. In order to take advantage of prior knowledge and data-driven strategy simultaneously, the loss function Lθ(θ(x), o(x)) is designed in a decaying form as
+Lθ(θ(x), o(x)) = γ||ψ(θ(x)) − ψ(o(x))||2, (12)
+where ψ(·) represents the pretrained classification network with the fully connected layers removed, and VGG19 [45] is chosen in this paper. Here we do not directly calculate the distance between o(x) and θ(x), but calculate the distance
+AA
+AA AA
+A𝠀A🀀(AA) AA
+A𞰀🀀(AA)
+(a) The reconstruction process of x, which is denoted as P1.
+AA
+AA
+A𞰀A(AA) AA
+A𝠀AA(AA)
+(b) The reconstruction process of y, which is denoted as P2.
+Fig. 6: The overall training process of IC-Dehazing, where Lθ denotes the prior constraint. xr and yr represent the reconstructed x and y, respectively.
+between the features of the two. The reason for this is that the purpose of the prior loss is to keep the dehazing result consistent with the regularity of clear image at the feature level. The value of Lθ is constantly decaying with iterations, and γ is the decay coefficient for each epoch. It will be set to different values for different datasets and details can be found in the experiments section.
+D. Overall Training Process and Loss Functions
+The training of IC-Dehazing is an unsupervised process that does not require pairwise data. The training method is inspired by [58]. However, unlike [58], considering the specificity of the dehazing task, IC-Dehazing uses a well-designed prior loss to constrain CIDM, which is introduced in Section III-C. CIDM and HSM are denoted as GJ and GI , respectively. The two discriminators are marked as DJ and DI , respectively. As shown in Fig. 6, take P1 as an example, send x to CIDM to obtain dehazed images yˆ (o(x) in Fig. 4), then calculate Lθ and adversarial loss by pre-training model and DJ , respectively. Further, put yˆ to the HSM to obtain the reconstructed images xr. For P2, the difference from P1 is that there is no Lθ. Therefore, parameter for CIDM and HSM are updated by adversarial loss, prior loss and cycle consistency loss. The adversarial loss is
+L(GJ , DJ ) = Ey∼py [(DJ (y) − 1)2] + Ex∼px [DJ (GJ (x))2],
+(13)
+L(GI , DI ) = Ex∼px [(DI (x) − 1)2] + Ey∼py [DI (GI (y))2]. (14)
+In order to ensure that the content of the scene during reconstruction remains unchanged, the cycle consistency loss and identity loss [58] are used
+Lr(GI , GJ ) = Ex∼px [||GI (GJ (x)) − x||2]+
+Ey∼py [||GJ (GI (y)) − y||2]+
+Ex∼px [||GI (x) − x||2]+
+Ey∼py [||GJ (y) − y||2].
+(15)
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 7
+A prior-based decay loss function is designed in Section III-C. Therefore, the overall loss function is the sum of adversarial loss, cycle consistent loss and prior loss:
+Lall = L(GJ , DJ ) + L(GI , DI ) + Lr(GI , GJ ) + λLθ, (16)
+where λ is the initial weight of Lθ. It is worth noting that the training of IC-Dehazing is not completely “symmetric”. For the dehazing process, its output is not only assisted by adversarial training, but also constrained by the prior, since the generated images should be in accordance with the statistical laws of natural haze-free images. For the process of synthesizing haze, its output is mainly guided by the statistical law of the data learned by the adversarial process.
+IV. EXPERIMENTS
+To demonstrate the effectiveness of the proposed ICDehazing, quantitative and qualitative experimental analyses of multiple baseline algorithms are performed on different datasets.
+A. Baselines and Settings
+In order to compare the performance of different methods intuitively and fairly, we compare our method with Pair-based and Non-pair-based algorithms. Pair-based methods include DeHamer [12], FFA [41], GCANet [2], GridDehazeNet [34], MSBDN [5] and 4KDehazing [57]. Non-pair-based algorithms include CANCB [4], CEEF [33], FME [60], CycleDehaze [7], ZID [21] and SNSPGAN [47]. The 12th Gen Intel Core i512400f and Matlab 2019b are used as the execution environment for non-deep learning algorithms, which are CANCB, CEEF and FME. NVIDIA Tesla V100 32GB and PyTorch 1.8 framework are used as experimental platforms for deep learning algorithms.
+B. Image Dehazing Evaluation
+This section evaluates the performance of IC-Dehazing from multiple perspectives. The datasets for evaluation are ITS/OTS/RTTS [23], NYU-Seg-Haze [1] and 4K [57], respectively. A brief introduction is described as follows.
+• The indoor dataset ITS from RESIDE [23]: The training set contains 13,990 pair images and the testing set contains 500 pair images (SOTS indoor). Each hazy image has an accurate ground-truth clear label. • The outdoor dataset OTS from RESIDE [23]: The training set contains 72,135 pair images, and the testing set comes from the latest 500 outdoor pair images (SOTS outdoor) provided by the paper website. • 4K [57] dataset, which contains high-resolution (3,840 × 2,160) hazy and haze-free outdoor images. According to the latest published data on the website, 14,605 pair images are selected as the training set and 1,001 pair images are selected as the test set. • Real-world hazy image dataset RTTS without labels, 4,322 in total, is also from [23]. • To evaluate dehazing and semantic segmentation simultaneously, [1] is used as one of the dehazing datasets. For
+convenience, the hazy dataset [1] and the corresponding segmentation dataset [44] are denoted as NYU-Seg-Haze. A randomly selected 1,399 pair images are used as the training set, and the remaining 100 pair images are used as the test set.
+The parameter optimization process of all sub-modules of IC-Dehazing adopts the Adam optimizer, where the values of β1 and β2 are 0.9 and 0.999, respectively. The learning rate is 0.0001 for all datasets. Total epochs are 15 (OTS), 25 (ITS/NYU-Seg-Haze) and 45 (4K), respectively. During training, images are randomly cropped to 256 × 256 before being put into the network, forming a batch size of 2. The γ is introduced to control the attenuation of the prior loss weight. The choice of γ is different for different datasets, and it is a hyperparameter that needs to be tuned. γ is empirically chosen to be 0.98, 0.95, 0.90, 0.98 for ITS, OTS, 4K, and NYU-Seg-Haze, respectively. In addition, the initial weight value λ of Lp(G) is fixed to 1. The evaluation metrics for dehazing results are PSNR and SSIM, which are widely used in dehazing tasks [41], [34], [7], [5]. Higher PSNR and SSIM values represent better image restoration performance. For RTTS dataset without ground truth clear images, the dehazing results are evaluated using blind image quality assessment metrics NIQE [38] and BRISQUE [37]. Smaller NIQE and BRISQUE values represent better image quality [47]. The PSNR and SSIM values obtained by all dehazing algorithms are given in Table II. The results of ZID/Deep DCP [10] on ITS and OTS are consistent with [25]. The results of FFA/GridDehazeNet/GCANet/MSBDN on ITS and OTS are consistent with [46]. RTTS does not contain pairs of hazy and haze-free images, so it can not be used in a supervised training process. Therefore, for all deep learning-based dehazing methods, the pre-trained models trained on OTS are directly used for RTTS inference. The experimental results in Table II show that the proposed IC-Dehazing can achieve competitive performance compared to supervised dehazing algorithms. In particular, the PSNR and SSIM obtained by ICDehazing on the 4K dataset are 23.355 and 0.936, respectively, which are higher than most supervised algorithms. Since ICDehazing does not use pairwise supervision information, it is reasonable that its PSNR and SSIM are slightly lower than supervised algorithms on other datasets. Meanwhile, among different unsupervised algorithms, IC-Dehazing achieves the best overall performance. On the ITS, NYU-Seg-Haze, and 4K datasets, IC-Dehazing achieves the highest values for both quality evaluation metrics. Figs. 7-10 show the visual dehazing effects of ITS, OTS, 4K and RTTS, respectively. Different colored rectangles are used to emphasize certain areas in the dehazed images. The visual results show that IC-Dehazing can restore the details and texture information of the images very well. It can be concluded that IC-Dehazing is better than the Non-pair-based methods, and can obtain the recovery performance close to the Pair-based algorithms.
+C. Real-world Object Detection Evaluation
+On one hand, the existence of haze will cause the objects in the image to become blurred, which affects the visual effect
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 8
+TABLE II: Quantitative dehazing results obtained by various dehazing algorithms. ↑ means that the value is directly proportional to the picture quality, while ↓ is the opposite.
+Category Methods ITS OTS NYU-Seg-Haze 4K RTTS
+SSIM↑ PSNR↑ SSIM↑ PSNR↑ SSIM↑ PSNR↑ SSIM↑ PSNR↑ NIQE↓ BRISQUE↓
+Non-pair-based
+CANCB 0.869 19.830 0.862 17.229 0.773 14.855 0.790 15.746 4.287 33.010 CEEF 0.770 18.187 0.789 16.589 0.692 13.409 0.706 13.612 4.062 29.375 FME 0.790 17.461 0.869 19.667 0.738 13.755 0.795 15.694 4.124 29.529 CycleDehaze 0.810 18.870 0.881 23.347 0.713 13.585 0.886 21.067 4.923 16.103 ZID 0.835 19.830 0.633 13.520 0.536 12.313 0.506 12.499 5.166 35.649 Deep DCP 0.832 19.250 0.933 24.080 - - - - - SNSPGAN 0.788 17.747 0.925 24.280 0.692 12.856 0.714 14.045 5.596 34.348 IC-Dehazing 0.894 22.558 0.929 24.562 0.774 15.867 0.936 23.355 4.489 25.152
+Pair-based
+DeHamer 0.988 36.680 0.986 35.180 0.895 23.867 0.957 26.437 5.083 35.383 FFA 0.989 36.890 0.984 33.570 0.792 18.171 0.948 25.935 5.504 34.737 GCANet 0.980 30.230 0.945 29.912 0.742 17.539 0.895 23.543 5.297 23.719 GridDehazeNet 0.984 32.160 0.982 30.860 0.782 18.051 0.939 22.710 5.510 29.957 MSBDN 0.985 33.670 0.982 33.480 0.754 19.346 0.914 24.081 5.407 27.363 4KDehazing 0.931 26.753 0.958 29.182 0.786 18.318 0.903 21.824 5.344 31.986
+(a) Hazy (b) CANCB (c) CEEF (d) FME (e) CycleDehaze
+(f) ZID (g) SNSPGAN (h) IC-Dehazing (i) DeHamer (j) FFA
+(k) GCANet (l) GridDehazeNet (m) MSBDN (n) 4KDehazing (o) Clear
+Fig. 7: Visual dehazing results on ITS.
+of the image. On the other hand, for object detection tasks, blurred objects may lead to a decrease in detection accuracy. Therefore, the experiments in this section compare the effects of various dehazing algorithms on the object detection task. The detection evaluation data used is real-world taskdriven testing set (RTTS) from RESIDE [23], which contains detection box annotation files corresponding to 4,322 realworld hazy images. RTTS contains five classes, that is person, bicycle, car, motorbike and bus. The currently popular and reliable yolov5 [15] algorithm is selected as the detection model, which is pre-trained on the COCO [31] dataset. The metric of detection task is mAP.5, which is computed by the default setting of yolov5. The results of the five class targets on the original hazy image are 0.813, 0.607, 0.734, 0.637 and 0.578, respectively. The corresponding mAP.5 is 0.674. The results in Table III show that IC-Dehazing achieve the overall best performance. Furthermore, an important and interesting phenomenon is that some dehazing methods lead
+to the reduction of the object detection performance, while ICDehazing does not. Fig. 11 shows the dehazing visual effects of different algorithms and the corresponding object detection results. The first scene contains multiple people, as well as a motorbike on the left. The second scene contains multiple vehicles. According to the visual results, IC-Dehazing does not miss the target (some methods do not detect motorbike successfully). Moreover, IC-Dehazing has relatively high detection confidence.
+D. Semantic Segmentation Evaluation
+Semantic segmentation algorithms based on a single image usually take images containing multiple targets as input and predict the class label corresponding to each pixel position, which is a high-precision semantic understanding task. Since the main purpose here is not to study which semantic segmentation model is more effective, we adopt the classic RefineNet [30] as the baseline model.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 9
+(a) Hazy (b) CANCB (c) CEEF (d) FME (e) CycleDehaze
+(f) ZID (g) SNSPGAN (h) IC-Dehazing (i) DeHamer (j) FFA
+(k) GCANet (l) GridDehazeNet (m) MSBDN (n) 4KDehazing (o) Clear
+Fig. 8: Visual dehazing results on OTS.
+(a) Hazy (b) CANCB (c) CEEF (d) FME (e) CycleDehaze
+(f) ZID (g) SNSPGAN (h) IC-Dehazing (i) DeHamer (j) FFA
+(k) GCANet (l) GridDehazeNet (m) MSBDN (n) 4KDehazing (o) Clear
+Fig. 9: Visual dehazing results on 4K.
+TABLE III: Quantitative detection results on RTTS.
+Category Methods Person Bicycle Car Motorbike Bus mAP.5↑
+Non-pair-based
+CANCB 0.812 0.611 0.733 0.645 0.558 0.672 CEEF 0.808 0.596 0.735 0.626 0.556 0.664 FME 0.806 0.616 0.724 0.626 0.561 0.667 CycleDehaze 0.768 0.583 0.668 0.581 0.490 0.618 ZID 0.791 0.551 0.724 0.584 0.532 0.636 SNSPGAN 0.811 0.614 0.726 0.650 0.568 0.674 IC-Dehazing 0.815 0.608 0.738 0.643 0.572 0.675
+Pair-based
+DeHamer 0.809 0.615 0.724 0.651 0.559 0.672 FFA 0.804 0.599 0.717 0.630 0.547 0.659 GCANet 0.795 0.601 0.697 0.626 0.535 0.651 GridDehazeNet 0.804 0.605 0.719 0.634 0.547 0.662 MSBDN 0.805 0.600 0.717 0.628 0.546 0.659 4KDehazing 0.805 0.602 0.718 0.634 0.547 0.661
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 10
+(a) Hazy (b) CANCB (c) CEEF (d) FME (e) CycleDehaze
+(f) ZID (g) SNSPGAN (h) IC-Dehazing (i) DeHamer (j) FFA
+(k) GCANet (l) GridDehazeNet (m) MSBDN (n) 4KDehazing
+Fig. 10: Visual dehazing results on RTTS.
+To perform dehazing and semantic segmentation tasks simultaneously, datasets with accurate depth information and semantic information are required. According to NYU’s [44] file naming rules, small targets contained in scenes with continuous file name may be duplicated, while scenes with large numerical naming differences have fewer identical targets. For semantic segmentation tasks, the target distributions for training and testing should be as consistent as possible. The scene of ITS [23] comes from NYU, but the validation set of ITS comes from 50 consecutive images of NYU. Thus, it is not suitable as a dataset for the dehazing & semantic segmentation joint task. Therefore, D-Hazy [1] and NYU [44] are chosen as evaluation datasets for dehazing and segmentation, which are called NYU-Seg-Haze. NYU can provide 40 classes of objects, which is a very complex dataset containing many small objects. For the evaluation of segmentation results, mean pixel accuracy (mPA) and mean intersection over union (mIoU) are selected as quantitative metrics.
+Semantic segmentation experimental results on Table IV show that the negative impact of haze on pixel-level understanding of images is obvious. The mPA and mIoU obtained when the clear image is used as input to the segmentation network are 0.571 and 0.445, respectively. However, mPA and mIoU are only 0.421 and 0.303 when hazy images are input to the algorithm. Although the PSNR and SSIM values obtained by IC-Dehazing on the NYU-Seg-Haze dataset do not exceed the best supervised algorithm, it achieves the second highest segmentation quantitative evaluation values of 0.463 and 0.353, respectively. The possible reason is that the dehazing module of IC-Dehazing is composed of a windowbased attention mechanism, which is more natural for the restoration of local objects. Fig. 13 shows the segmentation results of the scene corresponding to Fig. 12. In hazy conditions, there is a large area of wrong segmentation of sofas and cabinets. Misrecognition is the least on the clear image, which are the closest to the ground-truth semantic label. The
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 11
+(a) Hazy (b) CANCB (c) CEEF (d) FME (e) CycleDehaze
+(f) ZID (g) SNSPGAN (h) IC-Dehazing (i) DeHamer (j) FFA
+(k) GCANet (l) GridDehazeNet (m) MSBDN (n) 4KDehazing
+Fig. 11: Visual detection results on RTTS (Please zoom in to see the values!).
+(a) Hazy (b) Clear (c) Label
+Fig. 12: Randomly selected example from the NYU-Seg-Haze dataset.
+segmentation results corresponding to various dehazing algorithms are misidentified at the location of the wall (the top of the picture), but IC-Dehazing does not. Overall, IC-Dehazing achieves impressive object segmentation performance.
+E. Ablation Study
+This section will analyze the role of various components included in IC-Dehazing. As introduced in this paper, IC
+TABLE IV: Quantitative segmentation results on NYU-SegHaze.
+Category Methods mPA↑ mIoU↑
+Non-pair-based
+Clear 0.571 0.445 Hazy 0.421 0.303 CANCB 0.441 0.334 CEEF 0.436 0.322 FME 0.438 0.320 CycleDehaze 0.429 0.310 ZID 0.347 0.259 SNSPGAN 0.402 0.289 IC-Dehazing 0.463 0.353
+Pair-based
+DeHamer 0.467 0.357 FFA 0.410 0.307 GCANet 0.395 0.282 GridDehazeNet 0.426 0.312 MSBDN 0.408 0.306 4KDehazing 0.404 0.290
+Dehazing mainly includes three components. First, a dehazing network which is built based on Transformer. Second, a CI
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 12
+(a) Hazy (b) CANCB (c) CEEF (d) FME (e) CycleDehaze
+(f) ZID (g) SNSPGAN (h) IC-Dehazing (i) DeHamer (j) FFA
+(k) GCANet (l) GridDehazeNet (m) MSBDN (n) 4KDehazing (o) Clear
+Fig. 13: Visual segmentation results on NYU-Seg-Haze.
+Module for obtaining different lighting outputs. Third, a prior loss that can assist unsupervised model training. For simplicity, the above three items are denoted as Former, CI and Prior, respectively. Therefore, the purpose of the ablation experiment is to prove that Former and Prior can promote the overall performance of dehazing. It is worth noting that the role of CI is to obtain different illuminations, which is not intended to improve quantitative results. The training process of ICDehazing is inspired by CycleGAN, [58] denoted as Res, which represents CycleGAN built by the residual generator. Therefore, the overall ablation experiment consists of 4 parts:
+• (A) Res: Architecture that uses CycleGAN entirely. • (B) Former: Replace the generator of Res with the Transformer architecture, which is equivalent to HSM. • (C) Former + CI: Add CI module to the Former. • (D) Former + CI + Prior: IC-Dehazing with complete configuration.
+Ablation experiments use indoor ITS and outdoor OTS/4K datasets, and the hyperparameters such as learning rate and batch size are consistent for all experiments. The quantitative results in Table V suggest three important conclusions. First, compared A with B, we can conclude that using a Transformer-based architecture performs better than a conventional convolution-based architecture. Second, compared to configuration B, configuration C adds CI, which has a slight negative impact on the model. This result is reasonable, since the purpose of CI is not to improve the performance of the model, but to obtain the output of different illuminations, so it may increase the difficulty of model training. Third, compared to B and C, D is able to further improve the performance of the dehazing network with CI and Former, which proves that Prior is effective. Further, we compare the difference between computing prior
+loss in feature space and pixel space. The results are shown in Table VI. The quality of the dehazed image is determined by the reconstruction loss, adversarial loss and prior loss. The reconstruction loss is at the pixel level, and the adversarial loss and the prior loss are at the feature level. From the experimental results, it can be seen that computing the prior loss in the feature space is a better strategy than pixel space. The reason is that prior knowledge can reflect the overall feature level statistical laws of a large number of images, rather than precisely for each pixel. Therefore, it is a reasonable strategy to use feature-level prior loss and adversarial loss with pixel-level reconstruction loss.
+F. Analysis of Illumination Controllable Property
+In this section, four aspects of lighting controllable property will be studied. First, the visual dehazing effects obtained by different α are shown. Second, a quantitative evaluation of different α is performed to demonstrate that the structural information of the image is not destroyed when α is changed. Third, whether the Transformer network has learned illumination map Lir will be verified. Fourth, using different weights α for Lir, the pixel distribution relationship between the predicted image and the clear image will be studied.
+1) Visual Results of Different Illumination Parameters: Fig. 1, Fig. 2 and Fig. 3 show the visual results corresponding to different α. It can be seen that as α increases, the lighting of the scene changes and a series of acceptable dehazed images are produced. This proves that IC-Dehazing, which provides multiple outputs, is effective for ill-posedness dehazing problem. More results on testset [23] are shown in Fig. 14. There are illumination differences in the visual effects of sky, lake and buildings in the same scene of different images.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 13
+TABLE V: Ablation study on prior loss and illumination controllable module.
+Config ITS OTS 4K
+SSIM↑ PSNR↑ SSIM↑ PSNR↑ SSIM↑ PSNR↑ A: Res 0.793 19.332 0.885 23.875 0.856 22.112 B: Former 0.880 21.545 0.920 23.774 0.921 22.546 C: Former + CI 0.873 20.665 0.918 23.717 0.917 22.364 D: Former + CI + Prior 0.894 22.558 0.929 24.562 0.936 23.355
+(a) Hazy (b) 0.42 (c) 0.44 (d) 0.45 (e) 0.46 (f) 0.47 (g) 0.48
+(h) 0.49 (i) 0.50 (j) 0.51 (k) 0.52 (l) 0.53 (m) 0.54 (n) 0.56
+(a) Hazy (b) 0.42 (c) 0.44 (d) 0.45 (e) 0.46 (f) 0.47 (g) 0.48
+(h) 0.49 (i) 0.50 (j) 0.51 (k) 0.52 (l) 0.53 (m) 0.54 (n) 0.56
+(a) Hazy (b) 0.42 (c) 0.44 (d) 0.45 (e) 0.46 (f) 0.47 (g) 0.48
+(h) 0.49 (i) 0.50 (j) 0.51 (k) 0.52 (l) 0.53 (m) 0.54 (n) 0.56
+(a) Hazy (b) 0.42 (c) 0.44 (d) 0.45 (e) 0.46 (f) 0.47 (g) 0.48
+(h) 0.49 (i) 0.50 (j) 0.51 (k) 0.52 (l) 0.53 (m) 0.54 (n) 0.56
+Fig. 14: Visual dehazing results with different controllable parameters. From top to bottom in the figure, there are four different scenes divided by horizontal lines and marked as A, B, C and D respectively. It can be seen that when selecting different controllable parameters, there are differences in the illumination of the corresponding images.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 14
+TABLE VI: Ablation study that computes prior loss in pixel space and feature space.
+Config ITS OTS 4K
+SSIM↑ PSNR↑ SSIM↑ PSNR↑ SSIM↑ PSNR↑ Pixel 0.881 22.571 0.915 23.050 0.914 22.789 Feature 0.894 22.558 0.929 24.562 0.936 23.355
+TABLE VII: Quantitative dehazing results of different α.
+Parameters ITS OTS 4K
+SSIM↑ PSNR↑ SSIM↑ PSNR↑ SSIM↑ PSNR↑ α = 0.42 0.850 18.559 0.906 21.537 0.909 19.814 α = 0.44 0.868 19.900 0.915 22.449 0.919 21.028 α = 0.45 0.875 20.580 0.918 22.886 0.924 21.637 α = 0.46 0.882 21.230 0.922 23.358 0.928 22.211 α = 0.47 0.888 21.809 0.925 23.773 0.931 22.707 α = 0.48 0.891 22.263 0.928 24.126 0.934 23.082 α = 0.49 0.894 22.532 0.929 24.385 0.935 23.304 α = 0.50 0.894 22.558 0.929 24.562 0.936 23.355 α = 0.51 0.892 22.311 0.930 24.481 0.935 23.227 α = 0.52 0.888 21.810 0.928 24.262 0.934 22.931 α = 0.53 0.881 21.121 0.927 23.846 0.931 22.504 α = 0.54 0.872 20.317 0.924 23.240 0.926 21.991 α = 0.56 0.844 18.557 0.912 21.576 0.914 20.862
+2) Quantitative Evaluation of Different Illumination Parameters: Table VII shows the quantitative evaluation results obtained on different datasets for different α. On one hand, it shows that dehazing works best when α is equal to 0.5. This conclusion is expected since α is set to 0.5 during network optimization and the ground-truth image is uniquely determined. On the other hand, Table VII also shows that when α varies, that is, when dehazed images with different illuminations are generated, the dehazed images corresponding to each α and the ground-truth still maintain a high degree of structural similarity. This result proves that the contents of the dehazed images are not destroyed when IC-Dehazing changes the illumination value.
+3) Visualization of Illumination Map: As introduced in this paper, od(x) and Lir = or(x)/x can be obtained when the model performs forward computing. Since od(x) and Lir are not normalized, their numerical interval may be arbitrary. To visualize od(x), Lir and or(x), max-min normalization is used to obtain image formats with values ranging from 0 to 255. Further, the weighted od(x) and or(x) are also visualized, that is α×od(x) and (1−α)×or(x). For an image u, the max-min normalization can be expressed as
+unorm(i, j) = u(i, j) − min(u)
+max(u) − min(u) ∗ 255, (17)
+where i and j denotes pixel location. The Lir shown in Fig. 15 can express the brightness difference information of different objects in the image (where α is chosen as 0.5). Moreover, (1 − α) × or(x) represents the overall content of the image and the outline details of the object. By combining α × od(x) and (1 − α) × or(x), the haze in the final predicted image is removed. 4) Pixel Histogram: As shown in Fig. 2, there are obvious visual effect differences among the images when different α are selected. To quantitatively investigate the source of this visual difference, pixel histograms corresponding to different predicted images are plotted. The results shown in Fig. 16 indicate that the number and distribution of pixels of the Red (R), Green (G) and Blue (B) components corresponding
+to different α are different. When α = 0.44, the relative distribution trends of the three color components are closest to the true labels (Clear). When α = 0.56, the proportion of the red component is significantly higher. Therefore, the pixel distribution changes from R, G and B reflect why the visual effects corresponding to different α are different.
+V. CONCLUSION
+This paper proposes an illumination controllable unsupervised dehazing model called IC-Dehazing. To obtain highquality dehazing results and control the illumination conditions of images, IC-Dehazing designs three effective strategies include the encoder-decoder dehazing network with the Transformer architecture, the illumination control module and the prior loss. To verify the performance of the proposed model, quantitative and qualitative experiments are conducted on dehazing, object detection and semantic segmentation. The results show that the proposed IC-Dehazing can obtain the state-of-the-art unsupervised dehazing effect.
+ACKNOWLEDGMENT
+We thank the Big Data Computing Center of Southeast University for providing the facility support on the numerical calculations in this paper. This work was supported in part by National Key R&D Program of China under Grant 2022YFB3104301; the grant of the National Science Foundation of China under Grant 62172090; Start-up Research Fund of Southeast University under Grant RF1028623097; CAAIHuawei MindSpore Open Fund. All correspondence should be directed to Xiaofeng Cong.
+REFERENCES
+[1] C. Ancuti, C. O. Ancuti, and C. De Vleeschouwer. D-hazy: A dataset to evaluate quantitatively dehazing algorithms. In IEEE International Conference on Image Processing, pages 2226–2230, 2016.
+[2] D. Chen, M. He, Q. Fan, J. Liao, L. Zhang, D. Hou, L. Yuan, and G. Hua. Gated context aggregation network for image dehazing and deraining. In 2019 IEEE Winter Conference on Applications of Computer Vision, pages 1375–1383, 2019. [3] X. Cong, J. Gui, K.-C. Miao, J. Zhang, B. Wang, and P. Chen. Discrete Haze Level Dehazing Network, pages 1828–1836. New York, NY, USA, 2020. [4] S. K. Dhara, M. Roy, D. Sen, and P. K. Biswas. Color cast dependent image dehazing via adaptive airlight refinement and non-linear color balancing. IEEE Transactions on Circuits and Systems for Video Technology, 31(5):2076–2081, 2020. [5] H. Dong, J. Pan, L. Xiang, Z. Hu, X. Zhang, F. Wang, and M.-H. Yang. Multi-scale boosted dehazing network with dense feature fusion. In IEEE Conference on Computer Vision and Pattern Recognition, pages 2157–2167, 2020. [6] X. Dong, J. Bao, D. Chen, W. Zhang, N. Yu, L. Yuan, D. Chen, and B. Guo. Cswin transformer: A general vision transformer backbone with cross-shaped windows. In IEEE Conference on Computer Vision and Pattern Recognition, pages 12124–12134, 2022. [7] D. Engin, A. Gen ̧c, and H. Kemal Ekenel. Cycle-dehaze: Enhanced cyclegan for single image dehazing. In IEEE Conference on Computer Vision and Pattern Recognition Workshops, pages 825–833, 2018.
+[8] T. Fan, C. Li, X. Ma, Z. Chen, X. Zhang, and L. Chen. An improved single image defogging method based on retinex. In 2017 2nd International Conference on Image, Vision and Computing, pages 410–413, 2017. [9] A. Galdran, A. Alvarez-Gila, A. Bria, J. Vazquez-Corral, and M. Bertalmı ́o. On the duality between retinex and image dehazing. In IEEE Conference on Computer Vision and Pattern Recognition, pages 8212–8221, 2018.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 15
+(a) Hazy (b) od(x) (c) Lir (d) α × od(x) (e) (1 − α) × or(x) (f) Prediction
+Fig. 15: Illumination maps and intermediate outputs.
+(a) Hazy (b) α = 0.42 (c) α = 0.44 (d) α = 0.45
+(e) α = 0.46 (f) α = 0.48 (g) α = 0.50 (h) α = 0.52
+(i) α = 0.53 (j) α = 0.54 (k) α = 0.56 (l) Clear
+Fig. 16: Pixel histograms corresponding to different α in the OTS dataset.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 16
+[10] A. Golts, D. Freedman, and M. Elad. Unsupervised single image dehazing using dark channel prior loss. IEEE Transactions on Image Processing, 29:2692–2701, 2020. [11] J. Gui, X. Cong, Y. Cao, W. Ren, J. Zhang, J. Zhang, J. Cao, and D. Tao. A comprehensive survey and taxonomy on single image dehazing based on deep learning. ACM Computing Surveys, 2022. [12] C.-L. Guo, Q. Yan, S. Anwar, R. Cong, W. Ren, and C. Li. Image dehazing transformer with transmission-aware 3d position embedding. In IEEE Conference on Computer Vision and Pattern Recognition, pages 5812–5820, 2022. [13] K. He, J. Sun, and X. Tang. Single image haze removal using dark channel prior. IEEE Transactions on Pattern Analysis and Machine Intelligence, 33(12):2341–2353, 2010. [14] M. Hong, Y. Xie, C. Li, and Y. Qu. Distilling image dehazing with heterogeneous task imitation. In IEEE Conference on Computer Vision and Pattern Recognition, pages 3462–3471, 2020.
+[15] G. Jocher, A. Chaurasia, A. Stoken, J. Borovec, NanoCode012, Y. Kwon, TaoXie, J. Fang, imyhxy, K. Michael, Lorna, A. V, D. Montes, J. Nadar, Laughing, tkianai, NONG, P. Skalski, Z. Wang, A. Hogan, C. Fati, L. Mammana, A. Wang, D. Patel, D. Yiwei, F. You, J. Hajek, L. Diaconu, and M. T. Minh. ultralytics/yolov5: v6.1 - TensorRT, TensorFlow Edge TPU and OpenVINO Export and Inference, Feb. 2022. [16] G. Kim, S. W. Park, and J. Kwon. Pixel-wise wasserstein autoencoder for highly generative dehazing. IEEE Transactions on Image Processing, 30:5452–5462, 2021. [17] A. Kulkarni and S. Murala. Aerial image dehazing with attentive deformable transformers. In IEEE Winter Conference on Applications of Computer Vision, pages 6305–6314, 2023. [18] E. H. Land. The retinex theory of color vision. Scientific american, 237(6):108–129, 1977. [19] E. H. Land and J. J. McCann. Lightness and retinex theory. Josa, 61(1):1–11, 1971. [20] B. Li, Y. Gou, S. Gu, J. Z. Liu, J. T. Zhou, and X. Peng. You only look yourself: Unsupervised and untrained single image dehazing neural network. International Journal of Computer Vision, 129(5):1754–1767, 2021. [21] B. Li, Y. Gou, J. Z. Liu, H. Zhu, J. T. Zhou, and X. Peng. Zero-shot image dehazing. IEEE Transactions on Image Processing, 29:84578466, 2020. [22] B. Li, X. Peng, Z. Wang, J. Xu, and D. Feng. Aod-net: All-in-one dehazing network. In IEEE International Conference on Computer Vision, pages 4780–4788, oct 2017. [23] B. Li, W. Ren, D. Fu, D. Tao, D. Feng, W. Zeng, and Z. Wang. Benchmarking single-image dehazing and beyond. IEEE Transactions on Image Processing, 28(1):492–505, 2018. [24] H. Li, J. Li, D. Zhao, and L. Xu. Dehazeflow: Multi-scale conditional flow network for single image dehazing. In ACM International Conference on Multimedia, pages 2577–2585, 2021. [25] J. Li, Y. Li, L. Zhuo, L. Kuang, and T. Yu. Usid-net: Unsupervised single image dehazing network via disentangled representations. IEEE Transactions on Multimedia, pages 1–1, 2022.
+[26] P. Li, J. Tian, Y. Tang, G. Wang, and C. Wu. Deep retinex network for single image dehazing. IEEE Transactions on Image Processing, 30:1100–1115, 2021. [27] X. Li, W. Wang, X. Hu, and J. Yang. Selective kernel networks. In IEEE Conference on Computer Vision and Pattern Recognition, pages 510–519, 2019. [28] Y. Li, Y. Chang, Y. Gao, C. Yu, and L. Yan. Physically disentangled intra-and inter-domain adaptation for varicolored haze removal. In IEEE Conference on Computer Vision and Pattern Recognition, pages 58415850, 2022. [29] J. Liang, J. Cao, G. Sun, K. Zhang, L. Van Gool, and R. Timofte. Swinir: Image restoration using swin transformer. In IEEE International Conference on Computer Vision, pages 1833–1844, 2021.
+[30] G. Lin, A. Milan, C. Shen, and I. Reid. Refinenet: Multi-path refinement networks for high-resolution semantic segmentation. In IEEE conference on Computer Vision and Pattern Recognition, pages 1925–1934, 2017. [31] T.-Y. Lin, M. Maire, S. Belongie, J. Hays, P. Perona, D. Ramanan, P. Dolla ́r, and C. L. Zitnick. Microsoft coco: Common objects in context. In European Conference on Computer Vision, pages 740–755, 2014. [32] H. Liu, Z. Wu, L. Li, S. Salehkalaibar, J. Chen, and K. Wang. Towards multi-domain single image dehazing via test-time training. In IEEE Conference on Computer Vision and Pattern Recognition, pages 58315840, 2022. [33] X. Liu, H. Li, and C. Zhu. Joint contrast enhancement and exposure fusion for real-world image dehazing. IEEE Transactions on Multimedia, 24:3934–3946, 2021.
+[34] X. Liu, Y. Ma, Z. Shi, and J. Chen. Griddehazenet: Attentionbased multi-scale network for image dehazing. In IEEE International Conference on Computer Vision, pages 7313–7322, 2019.
+[35] Z. Liu, Y. Lin, Y. Cao, H. Hu, Y. Wei, Z. Zhang, S. Lin, and B. Guo. Swin transformer: Hierarchical vision transformer using shifted windows. In IEEE International Conference on Computer Vision, pages 10012–10022, 2021. [36] E. J. McCartney. Optics of the atmosphere: scattering by molecules and particles. New York, 1976. [37] A. Mittal, A. K. Moorthy, and A. C. Bovik. No-reference image quality assessment in the spatial domain. IEEE Transactions on Image Processing, 21(12):4695–4708, 2012. [38] A. Mittal, R. Soundararajan, and A. C. Bovik. Making a “completely blind” image quality analyzer. IEEE Signal Processing Letters, 20(3):209–212, 2012. [39] Y. Mo, C. Li, Y. Zheng, and X. Wu. Dca-cyclegan: Unsupervised single image dehazing using dark channel attention optimized cyclegan. Journal of Visual Communication and Image Representation, page 103431, 2021. [40] S. K. Nayar and S. G. Narasimhan. Vision in bad weather. In IEEE international Conference on Computer Vision, volume 2, pages 820–827, 1999. [41] X. Qin, Z. Wang, Y. Bai, X. Xie, and H. Jia. Ffa-net: Feature fusion attention network for single image dehazing. AAAI Conference on Artificial Intelligence, 34(7):11908–11915, 2020. [42] W. Shi, J. Caballero, F. Husza ́r, J. Totz, A. P. Aitken, R. Bishop, D. Rueckert, and Z. Wang. Real-time single image and video superresolution using an efficient sub-pixel convolutional neural network. In IEEE conference on computer vision and pattern recognition, pages 1874–1883, 2016. [43] P. Shyam, K.-J. Yoon, and K.-S. Kim. Towards domain invariant single image dehazing. In AAAI Conference on Artificial Intelligence, pages 9657–9665, 2021. [44] N. Silberman, D. Hoiem, P. Kohli, and R. Fergus. Indoor segmentation and support inference from rgbd images. In European Conference on Computer Vision, pages 746–760, 2012. [45] K. Simonyan and A. Zisserman. Very deep convolutional networks for large-scale image recognition. In International Conference on Learning Representations, pages 1–14, May 2015. [46] Y. Song, Z. He, H. Qian, and X. Du. Vision transformers for single image dehazing. arXiv preprint arXiv:2204.03883, 2022.
+[47] Y. Wang, X. Yan, D. Guan, M. Wei, Y. Chen, X.-P. Zhang, and J. Li. Cycle-snspgan: Towards real-world image dehazing via cycle spectral normalized soft likelihood estimation patch gan. IEEE Transactions on Intelligent Transportation Systems, 2022.
+[48] Z. Wang, X. Cun, J. Bao, W. Zhou, J. Liu, and H. Li. Uformer: A general u-shaped transformer for image restoration. In IEEE Conference on Computer Vision and Pattern Recognition, pages 17683–17693, 2022. [49] H. Wu, Y. Qu, S. Lin, J. Zhou, R. Qiao, Z. Zhang, Y. Xie, and L. Ma. Contrastive learning for compact single image dehazing. In IEEE Conference on Computer Vision and Pattern Recognition, pages 1055110560, 2021. [50] M. Xue, Y. Ji, Z. Yuyan, L. Weiwei, and Z. Jiugen. Video image dehazing algorithm based on multi-scale retinex with color restoration. In International Conference on Smart Grid and Electrical Automation, pages 195–200, 2016. [51] Y. Yang, C. Wang, R. Liu, L. Zhang, X. Guo, and D. Tao. Selfaugmented unpaired image dehazing via density and depth decomposition. In IEEE Conference on Computer Vision and Pattern Recognition, pages 2037–2046, 2022. [52] S. Yin, X. Yang, Y. Wang, and Y.-H. Yang. Visual attention dehazing network with multi-level features refinement and fusion. Pattern Recognition, 118:108021, 2021. [53] S. W. Zamir, A. Arora, S. Khan, M. Hayat, F. S. Khan, and M.-H. Yang. Restormer: Efficient transformer for high-resolution image restoration. In IEEE Conference on Computer Vision and Pattern Recognition, pages 5728–5739, 2022. [54] J. Zhang, W. Ren, S. Zhang, H. Zhang, Y. Nie, Z. Xue, and X. Cao. Hierarchical density-aware dehazing network. IEEE Transactions on Cybernetics, pages 1–13, 2021. [55] S. Zhang, W. Ren, X. Tan, Z.-J. Wang, Y. Liu, J. Zhang, X. Zhang, and X. Cao. Semantic-aware dehazing network with adaptive feature fusion. IEEE Transactions on Cybernetics, pages 1–14, 2021.
+[56] X. Zhang, J. Wang, T. Wang, and R. Jiang. Hierarchical feature fusion with mixed convolution attention for single image dehazing. IEEE Transactions on Circuits and Systems for Video Technology, 32(2):510522, 2021.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021 17
+[57] Z. Zheng, W. Ren, X. Cao, X. Hu, T. Wang, F. Song, and X. Jia. Ultrahigh-definition image dehazing via multi-guided bilateral learning. In IEEE Conference on Computer Vision and Pattern Recognition, pages 16180–16189, 2021. [58] J. Zhu, T. Park, P. Isola, and A. A. Efros. Unpaired image-to-image translation using cycle-consistent adversarial networks. In International Conference on Computer Vision, pages 2223–2232, 2017.
+[59] Q. Zhu, J. Mai, and L. Shao. A fast single image haze removal algorithm using color attenuation prior. IEEE Transactions on Image Processing, 24(11):3522–3533, 2015. [60] Z. Zhu, H. Wei, G. Hu, Y. Li, G. Qi, and N. Mazur. A novel fast single image dehazing algorithm based on artificial multiexposure image fusion. IEEE Transactions on Instrumentation and Measurement, 70:123, 2020.

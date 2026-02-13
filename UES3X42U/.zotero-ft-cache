@@ -1,0 +1,404 @@
+Exponential Convergence of Langevin Distributions and Their Discrete Approximations
+Gareth O. Roberts; Richard L. Tweedie
+Bernoulli, Vol. 2, No. 4. (Dec., 1996), pp. 341-363.
+Stable URL: http://links.jstor.org/sici?sici=1350-7265%28199612%292%3A4%3C341%3AECOLDA%3E2.0.CO%3B2-K
+Bernoulli is currently published by International Statistical Institute (ISI) and Bernoulli Society for Mathematical Statistics and Probability.
+Your use of the JSTOR archive indicates your acceptance of JSTOR's Terms and Conditions of Use, available at http://www.jstor.org/about/terms.html. JSTOR's Terms and Conditions of Use provides, in part, that unless you have obtained prior permission, you may not download an entire issue of a journal or multiple copies of articles, and you may use content in the JSTOR archive only for your personal, non-commercial use.
+Please contact the publisher regarding any further use of this work. Publisher contact information may be obtained at http://www.jstor.org/journals/isibs.html.
+Each copy of any part of a JSTOR transmission must contain the same copyright notice that appears on the screen or printed page of such transmission.
+The JSTOR Archive is a trusted digital repository providing for long-term preservation and access to leading academic journals and scholarly literature from around the world. The Archive is supported by libraries, scholarly societies, publishers, and foundations. It is an initiative of JSTOR, a not-for-profit organization with a mission to help the scholarly community take advantage of advances in technology. For more information regarding JSTOR, please contact support@jstor.org.
+http://www.jstor.org Tue Jan 22 10:07:03 2008
+
+
+Bernoulli 2(4), 1996, 341-363
+Exponential convergence of Langevin
+distributions and their discrete
+approximations
+GARETH 0 . ROBERTS'* andRICHARD L. TWEEDIE~
+t tat is tical Laboratory, Department of Pure Mathematics and Mathematical Statistics, 16 Mill Lane, Cambridge CB2 l S B , UK ' ~ e ~ a r t r n e onft Statistics, Colorado State University, Fort Collins CO 80523, USA
+In this paper we consider a continuous-time method of approximating a given distribution .irusing the
+Langevin diffusion dL, = dW, + $ V log~(L,)dt.We find conditions under this diffusion converges exponentially quickly to .ir or does not: in one dimension, these are essentially that for distributions
+with exponential tails of the form ~ ( xm) e ~ ~ ( - ~ l x l '0) ,< P < co,exponential convergenceoccurs if
+and only if P > 1. We then consider conditions under which the discrete approximations to the diffusion converge. We first show that even when the diffusion itself converges, naive discretizations need not do so. We then consider a 'Metropolis-adjusted' version of the algorithm, and find conditions under which this also converges at an exponential rate: perhaps surprisingly, even the Metropolized ve~sionneed not converge exponentially fast even if the diffusion does. We briefly discuss a truncated form of the algorithm which, in practice, should avoid the difficulties of the other forms.
+Keywords: diffusions;discrete approximations; geometric ergodicity; Hastings algorithms; irreducible Markov processes; Langevin models; Markov chain Monte Carlo; Metropolis algorithms; posterior distributions
+1. The Langevin method for Markov chain Monte Carlo methods
+There has recently been a real explosion in the use of the Hastings and Metropolis algorithms, which allow simulation of a probability density ~ ( xw) hich is known only up to a factor: that is, when only T ( x ) / T ( ~ )is known. This is especially relevant when T is the posterior distribution in a Bayesian context: see Besag and Green (1993), Besag et al. (1995), Mengersen and Tweedie (1996), Roberts and Tweedie (1996), Smith and Roberts (1993) and Tierney (1994) for a variety of approaches and properties of such methods, and their applications in statistical modelling.
+*To whom correspondence should be addressed.
+1350-7265 0 1996 Chapman & Hall
+
+
+342 G.O. Roberts and R.L. Tweedie
+The class of Hastings-Metropolis algorithms is very broad. As a consequence,the user is often faced with a choice between a 'plain vanilla' algorithm such as the random walk Metropolis algorithm, where the candidate dynamics are chosen to be those of a random walk, independently of the target distribution, and a more 'shaped' candidate distribution, designed for the particular T in the problem. The former is easy to implement, and it can be demonstrated that the random walk algorithm has rather robust theoretical properties. A more problem-specific algorithm may converge more rapidly. We will be concerned here with one such class of algorithms. Langevin algorithms, which are derived from diffusion approximations, use information about the target density (in the form of the gradient of log T) to construct such a problem-specific proposal distribution. We study the convergence properties of these algorithms; and as a precursor to this, we consider the convergence properties of the diffusions themselves, which have recently been suggested as a continuous-time method of approach to this simulation problem (see Grenander and Miller 1994). In this paper, our main aim will be to study geometric convergence properties of these algorithms. For a discussion of some of the stability properties enjoyed by geometrically ergodic chains in simulation, which motivate our evaluations, we refer the reader to Roberts and Tweedie (1996). We note, for example that such chains have central limit theorems and the like available, which makes it much easier to assess the algorithms. One particularly important consequence of our work is that, whereas the genuinely continuous-time processes often perform well on large classes of target densities, the situation is much more delicate for the approximations which would be used in practice. In particular, naive discretizations of the continuous-time models may lose not only the geometric rates of convergence but also all convergence properties, even for quite standard densities T.We indicate a truncated and 'Metropolized' form of the discretization which, in practical circumstances, will avoid such rather surprising pathologies. We do not consider here the problem of how to choose the scaling of such discrete approximations to diffusions. This problem is considered in Roberts and Rosenthal (1995a). In order to describe the approach, it is useful to outline the standard construction of the Hastings and Metropolis algorithms (see Metropolis et al. 1953;Hastings 1970).These first consider a candidate transition kernel with densities q(x,y),x,y E X, which generates potential transitions for a discrete-timeMarkov chain evolving on X. Here we will generally think of Xas a subset of IRk equipped with the Bore1 o-field 9l,and both ~ ( ya)nd q(x,y) will be densitieswith respect to Lebesgue measure pLeb, although more general formulations are possible.
+A 'candidate transition' to y generated according to the density q(x,.) is then accepted with probability a ( x ,y), given by
+Thus actual transitions of the Hastings chain, which we denote by a,, take place according
+
+
+Convergence of Langevin dzusions 343
+to a law P with transition probability densities
+P(X, Y) = 4%y)ff(x,Y), Y # x,
+and with probability of remaining at the same point given by
+With this choice of cu we have that T is invariant: that is, satisfies T(A) =
+J ~ ( x ) P ( xA,)dx,x E X, A E a.Provided the chain is suitably irreducible and aperiodic, it is then standard (Meyn and Tweedie 1993a, Chapter 13; Roberts and Smith 1994) that the
+n-step transition probabilities, defined for each n 2 1 by Pn(x,A) = P(@, E A]@,,= x), x E X, A E a , converge to T in the total variation norm: that is, for T-almost all x
+In this paper we consider special forms of the density q based on the Langevin diffusion model below, and find conditions leading to geometric convergence in (4): in the cases where q(x,y) = q(lx - yl) (the Metropolis algorithm) this has been addressed in Mengersen and Tweedie (1996) and Roberts and Tweedie (1996) and our results for the Langevinbased models can be compared with those. Other recently proposed algorithms such as hybrid-Monte Carlo algorithms (see, for example, Neal 1994),are related to the class of Langevin algorithms, although in this paper we will content ourselves with a detailed study of the simplest kind of Langevin algorithm, constructed from the natural reversible diffusion process. Methods induced by nonreversible diffusion can certainly be analysed similarly to those considered in this paper, and will suffer similar problems caused by sensitivity to the tails of the target density. However, it is worth remarking that often methods induced by non-reversible methods can be shown to converge more quickly than their reversible counterparts (see, for example, Sheu 1992).
+1.2. THE LANGEVIN DIFFUSION
+The form of the candidate density which we study is derived from the Langevin dzffusion, which is itself constructed so that in continuous time it converges to T under suitable regularity conditions. In principle this should be a good choice of q, since even before being 'Metropolized' using (I), the candidate chain approximates one with stationary distribution T. The improvement in using this algorithm rather than a simple random walk candidate is also considered in Roberts and Rosenthal (1995b), from different perspectives. We assume that T is everywhere non-zero and differentiable so that V l o g ~ ( x i)s well defined. Then the Langevin diffusion L, is defined by the k-dimensional stochastic differential equation
+dL, = dW, + ;V log ~ ( L , ) d t ,
+where W, is k-dimensional standard Brownian motion. When T is suitably smooth, it can be
+
+
+344 G.O. Roberts and R.L. Tweedie
+shown that L , has .rr as a stationary measure, and also that
+l I P t ( ~ l . )- 41 + 0 (5)
+for all x , where here P t ( x ,A ) = P(L, E AILo = x ) ,t 2 0: we give details in Section 2.1. We will be interested in when the convergence in (5) is exponentially fast, and also in when such exponential convergence occurs for higher moments of the process: this last can be seen as a useful byproduct of our approach.
+1.3. EXPONENTIAL EXAMPLES
+Our results are probably most easily demonstrated by considering the following examples, which we use repeatedly.
+1.3.1. The one-dimensional class &(P,y )
+Suppose .rr is one-dimensional. We will say that .rr E &(P,y ) if for some xo, and some
+constants y > 0 and 0 < /3 < m , .rr takes the form
+so that for 1x1 > xo
+v log ~ ( x=)-yp sgn ( x )1x1~-' (7)
+We will also assume that T is smooth enough for 1x1 5 xo so that any assumptions on differentiability are satisfied, although in practice we expect that these can be avoided in specific examples. Then we shall see in Section 2.3 that the diffusion L, converges to .rr exponentially quickly
+when .rr E b(P,y ) if and only if P > 1: that is, if and only if the tails of .rr are no heavier than exponential. This is exactly similar behaviour to the symmetric or random walk algorithm as shown in Theorem 3.5 of Mengersen and Tweedie (1996).
+1.3.2. The multidimensional exponential class 9,
+For higher-dimensional models we consider the exponential family 9, introduced and studied in the context of the random walk Metropolis algorithm in Roberts and Tweedie (1996), and consisting of sufficiently smooth densities with the form (at least for large 1x1)
+where p is a polynomial of degree m of the following type. Decompose p as
+where qm-l is a polynomial of degree 5 m - 1, so that p, consists of the full-degreeterms in p. Then we say that T E 9, if p,(x) + m as 1x1 + m : this is a positive definiteness
+condition, and we note that this condition requires that m 2 2.
+
+
+Convergence of Langevin dzfusions 345
+We will see that there is exponential convergence of the multidimensional diffusion if .ir E 9,. This behaviour is identical to that exhibited by the multidimensional random walk algorithm, as shown in Roberts and Tweedie (1996).
+1.4. DISCRETE APPROXIMATIONS TO L,
+In practice, of course, one implements a discrete approximation to the diffusion L,, and we will also consider when such discrete approximations converge to T, and when they do so
+geometrically fast. Two different 'h-approximations' are defined below for fixed h > 0: we shall see in Section 3 that the more naive approximation (ULA) may not even converge for
+light-tailed T (that is, when P > 2 in b(P,y)), and certainly need not always converge geometrically; and the Metropolized algorithm (MALA), although it must converge, can fail to do so geometrically quickly even when the diffusion itself converges at an exponential rate.
+1.4.1. The unadjusted Langevin algorithm
+The unadjusted Langevin algorithm (ULA) is a discrete-time Markov chain U, which is the natural discretization of the ordinary Langevin diffusion L,. Any naive algorithm using (11) below might be constructed in this way, as in Parisi (1981) or Grenander and Miller (1994). We shall see that the algorithm may have some undesirable convergence properties, although since its implementation may involve less computational expense than some of its more robust alternatives, it may still have practical merit. To form this chain, given U,-l, we simply construct U, according to
+As noted by Besag (1994), this chain only approximately maintains the invariance of .ir : as a
+graphic example, if .ir is itself N(0, 1) on R, then when h = 2, we have each U, - N(O,2) so
+that clearly if the discretization step h is this coarse then we get immediate 'convergence', but to a quite unintended distribution. We show below in Section 3 that the ULA chain may in fact behave quite badly: for example, it may converge but not geometrically quickly even when the original diffusion is exponentially ergodic, or quite startlingly it may actually be a transient chain even though L, has a very well-behaved invariant distribution.
+1.4.2. The Metropolis-adjusted Langevin algorithm
+Following Besag (1994), we therefore introduce a further modification, and follow the structure in (1) and (2) to construct a Metropolis-based Langevin algorithm (MALA). This is a Hastings-Metropolis chain M, which uses ULA to construct the candidate chain. Thus U, given M,-I is first taken as a variable distributed as
+
+
+346 G.O. Roberts and R.L. Tweedie
+Call this proposal density q(M,-, ,U,). Now carry out an acceptlreject step, accepting U, with probability
+If U, is accepted then set M, = U,, otherwise, let M, = MnP1. By the Hastings construction as in (2) and (3), the MALA chain converges to T, in the sense that
+llPh(x,-1 - TI1 - 0 (11)
+for T-almost all x where we write P&(x,A) = P(M, E AIMo = x): this follows since the chain is clearly pLeb-irreducibleand aperiodic from Roberts and Tweedie (1996). As a minor but useful by-product of our results we show that in the geometrically ergodic case the convergence also holds from all starting points. Our interest is again in finding conditions under which convergence in (11) occurs geometrically quickly and from every starting point. We will prove that (roughly speaking) when ULA is transient MALA is not exponentially ergodic; but that it is geometrically ergodic otherwise unless the tails of the target density are heavier than exponential.
+1.4.3. The Metropolis-adjustedLangevin truncated algorithm
+Finally, we mention briefly a simple adjustment to the algorithm which is designed to try to capture the best properties of both the random walk Metropolis algorithm, and the 'targeted' Langevin candidate ULA. We call this MALTA (the Metropolis-adjusted Langevin truncated algorithm). This revised algorithm involves replacing the first ULA approximation by choosing the truncated candidate distribution
+Tn WMn-1 + R(Mn-11, hlk), (12) where the drift term is now DV log n(x) R(Mn)= 2(D V V log a(x)1)
+for some constant D > 0. The candidate jump T, is then adjusted to ensure the correct stationary distribution holds, as in (10). With MALTA, the chain has much more robust geometric ergodicity properties. We do not pursue a detailed analysis of MALTA, merely pointing out that the methods employed in this paper and in Roberts and Tweedie (1996) are readily transportable to the analysis of this algorithm.
+2. Exponential convergence of the Langevin diffusion algorithm
+2.1. GENERAL CONVERGENCE RESULTS
+In this section we apply convergence properties of general diffusions to the Langevin
+
+
+Convergence of Langevin dzfusions 347
+diffusion. For the concepts of pLeb-irredu~ibilitya,periodicity and small sets, the reader should see Meyn and Tweedie (1993b).
+Theorem 2.1. Suppose that Vlog ~ ( x i)s continuously dzfferentiable and that, for some
+N , a , b < m,
+Then the Langevin diffusion L, satisfies the following:
+(a) The dgusion is non-explosive, pLeb-irreducible, aperiodic, strong Feller and all compact sets are small. (b) The measure .rr is invariant for L and, moreover,for all x,
+Proof. Under (14) a simple comparison argument, comparing IL,I with an appropriate Ornstein-Uhlenbeck process, demonstrates that the radial component of L, is nonexplosive. It follows that L, is also non-explosive. From the conditions on .rr and the constant diffusion coefficient we then have that the diffusion drift is locally bounded. Therefore the chain is pLeb-irreducibleand strong Feller, by a straightforward extension (which is possible by non-explosivity)of Theorem 2.1 of Bhattacharya (1978), which is due to Stroock and Varadhan. The strong Feller result plus the irreducibility gives that all compact sets are small (see Tweedie 1994, Theorem 5.1). The aperiodicity is then obvious since all skeleton chains are also pLeb-irreducible. Under these conditions it follows that .rr is invariant for L, from Section 5.4 of Ikeda and Watanabe (1989), that is, .rr is invariant for P,since by construction it is invariant for the generator of the Langevin diffusion given by
+d Lf (x) = ( i V log.rr(x))Vf(x) + 1V2f(x) (16)
+for any twice continuously differentiable function f . (These functions form a distributiondetermining class for a non-explosive diffusion.) Since the process has a stationary distribution it is at least recurrent, from Tweedie (1994, Theorem 2.3), and the continuity of the sample paths ensures that this extends to Harris recurrence. The total variation norm convergence in (15) then follows from Meyn and Tweedie (1993b, Theorem 6.1) for all x, and we have the result.
+The operator d L , over a domain that contains at least all functions satisfying (16), is easily checked to be the extended generator of L, as described in Davis (1993). For our purposes we do not need the exact form of the domain, but merely the form (16) of dL. Note that (14) is certainly not necessary for non-explosivity. However, it should be appropriate for virtually all commonly encountered target densities. The limiting result (15) is basically the result that justifies the use of the Langevin diffusion model: the drift on this diffusion is specifically designed to ensure convergence to T . We now turn to new results in this area that ensure that the limit is exponentially fast.
+
+
+348 G.O. Roberts and R.L. Tweedie
+2.2. EXPONENTIAL ERGODICITY OF L,
+We will use the following approach for exponential ergodicity (see Meyn and Tweedie
+1993b; Down et al. 1995).When V 2 1 is a measurable function on X, we define V-uniform ergodicity by requiring that for all x
+IIPt(., 0 ) - .I1 v 5 V(x)Rpt, t 2 0, (17)
+for some R < m , p < 1, where
+for any signed measure A. As is shown in Meyn and Tweedie (1993b), this strong form of
+exponential ergodicity is in fact implied (for some V 2 1) by the seemingly simpler requirement that
+for some R x < co,p < 1 and all x. We will use relationships between geometric ergodicity, 'exponential recurrence' and the existence of an exponential form of 'drift function' equation involving the generator of the process. Many more of these are given in Meyn and Tweedie (1993b), Down et al. (1995), and the full force of (17) is described there in detail. These results, in this specific case, give us the following theorem.
+Theorem 2.2. Suppose that L, satisjies the conditions of Theorem 2.1.
+(a) The Langevin diffusion L, is V-uniformly ergodicfor any twice continuously dzfferenti
+able V 2 1, such that
+d L V 5 -cV + b l c (19)
+for some constants b,c > 0, andsome compact non-empty set C , where thefunctional operator d Lis defned as in (16). (b) I f the Langevin dzfusion is exponentially ergodic in the sense that (18) holds, then for
+some compact non-empty set C there exist constants K > 1,S > 0, such that
+sup E[K'~] < m
+xEC
+where
+7: = infit 2 S : L, E C)
+for any x E X.
+Proof. Recall that a set C is small if there exists a positive constant E, an integer no and a probability measure v such that
+P" (x, .) 2 EV(.).
+
+
+Convergence of Langevin diffusions 349
+Since C is small, (a) follows from Theorem 5.2 of Down et al. (1995) or Theorem 6.1 of Meyn and Tweedie (1993b): note that since the chain is non-explosive from Theorem 2.l(a) above, we do not need V to be 'normlike' as in that theorem. To see (b), note that if (18) holds, then any 6-skeleton is also geometrically ergodic. The hitting time on C for the 6-skeleton is at least as large as 7: and since any compact nonempty C is small for the skeleton because L, is strong Feller, we have that (20) follows from Theorem 15.0.1 of Meyn and Tweedie (1993a).
+We now use these results to classify the behaviour of L, in much more concrete terms.
+Theorem 2.3. Suppose there exists S > 0 such that I.rr(x)l is bounded for 1x1 2 S . Then a suficient conditionfor the Langevin difsusion L, to be exponentiallyergodic is that there exists
+0 < d < 1 such that
+lim inf(1 - d)lV log.rr(x)12+ V2log ~ ( x>) 0.
+1x1 + 2.c
+Proof. To use Theorem 2.2(a), we try the test function V = .rr-d for some fixed 0 < d < 1. Then 2 d L V= v ( I v ~ o ~ T-~d )*-( d~V~210g.ir). (23)
+Since V is bounded away from zero for large 1x1 by hypothesis, it is sufficient for (19) that (22) holds for the chosen d.
+In the other direction we can show the following:
+Theorem 2.4. If IV log ~ ( xI -)+0, then L, is not exponentially ergodic.
+Proof. Suppose that L, is exponentially ergodic. Then from Theorem 2.2(b) there exists a
+compact set C such that (20) holds. Choose R large enough so that IV log ~ ( xI )L 2(log K ) ' ~ ~
+for 1x1 2 R, and fix
+S 2 sup 1x1v R.
+x€C
+Now consider TC = :T for starting points lyl 2 2 s . Also define the radial process for L,, 2, = lLtl which satisfies the stochastic differential equation
+for some standard Brownian motion W, and a drift coefficient a(-) satisfying
+a(L, > -(logn)li2 for /L,I > S. So if B, denotes W, - (logn)li2t, and a(X) denotes the first hitting time of S by any process X, then o ( Z )2 a(B) almost surely. Therefore,
+
+
+350 G.O. Roberts and R.L. Tweedie
+where @ denotes the standard normal distribution function, and the final inequality follows from the Bachelier-LCvy formula (see, for example, Lerche 1986). Denoting the density of a(B)by f , it is therefore easy to check that
+which contradicts (20). Therefore the process is not exponentially ergodic.
+For distributions .rr with essentially exponentially decreasing 'tails' the results above give a fairly thorough classification of the behaviour of the Langevin algorithm.
+2.3.1. The one-dimensionalclass b(P,y)
+Let us apply these results to the class of densities b(P, y)given by (6). As in (7), we have that
+(1 - d)lVlog.rr(x)12+ v2logr(x) = (1 - d )a2,02~2-Pa-P2(P - 1)xPP2.
+Therefore:
+(a) for 1 5 /3 < m , the diffusion is exponentially ergodic by Theorem 2.3;
+(b) for 0 < ,Ll< 1, IV log .rr(x)1 + 0 so that, by Theorem 2.4, the diffusion is not exponentially ergodic.
+This mimics exactly the behaviour found in Section 3 of Mengersen and Tweedie (1996) for Metropolis algorithms in one dimension: the exponential convergence is governed by the tails of the target density, and occurs if and only if those tails decrease at least exponentially quickly. We remark that there are a number of ways in which the Langevin diffusion can be considered to be the weak limit of an appropriate sequence of Metropolis algorithms (see, for example, Roberts et al. 1994).
+2.3.2. The multidimensional class 9,
+For higher-dimensional models our results are not as complete. We consider the exponential class 9,introduced in (8). Now, it is easy to show that, by the positive definiteness condition,
+lim inf ~vlogr(x)12= m
+1x1-02 1v2log 7r(x)I and
+liminf(1 - d ) I Vlog.rr(x)12> 0
+1x1'02
+for all 0 < d < 1. Exponential convergence of the Langevin diffusion for all .rr E 9, therefore follows from Theorem 2.3.
+
+
+Convergence of Langevin dzflusions 351
+Continuing to follow the type of example contained in Roberts and Tweedie (1996), we examine the situation where .ir has the exponential form (8), but where the positive definiteness condition does not hold. Specifically, consider such a two-dimensional density where
+2 22 2
+p(z,y) = a z + z y + y .
+Note that here the dominant term is z2y2,which does not go to co along either of the
+2
+rays (z,0) or (0,y). Now, lvp12= 4z2(a+y2)2+ 4y2(1+ z212, and V p =
+2(a + 1 + z2+y2).Hence lvp12will dominate v2(-p) except along the coordinate axes.
+Setting y = 0, therefore, we find that if 2(1 - d ) a 2> 1 for some 0 < d < 1, then we can
+ensure exponential convergence by Theorem 2.3: hence a > 1 / f i is sufficient for exponential ergodicity. In contrast, other polynomials failing to satisfy the positive definiteness condition of 9, above will never satisfy the hypothesis of Theorem 2.3: consider, for instance,
+which can never achieve (22) along the ray y = 0. Hence, if we are to show that such models are exponentially ergodic, some other method of proof needs to be found.
+3. The unadjusted Langevin algorithm
+3.1.CONVERGENCE OF ULA
+The naive way to implement the diffusion algorithms in practice is to use the unadjusted Langevin algorithm (ULA): that is, use a first-order Gaussian approximation to the diffusion distributions on a grid of size h and construct
+as in Parisi (1981). This is easily seen to be pLeb-irreducibleand weak Feller, provided Vlog.rr(x) is continuous, and hence, as in Chapter 6 of Meyn and Tweedie (1993a), all compact sets are small, and it suffices for geometric ergodicity from Theorem 15.0.1 of Meyn and
+Tweedie (1993a) to find a function V 2 1 such that for some compact set C and some A < l,b<co,
+Note that this is the discrete version of (19). Under some circumstances the discrete approximation is well behaved and under others it is not. We will only describe the range of behaviour when the chain is on R rather than in higher dimensions: since the ULA is only an approximation, and since it can be shown to convergein general to a stationary distribution which is not .rr, there is a limit to the extent of
+
+
+352 G.O. Roberts and R.L. Tweedie
+our interest in the rate of such convergence. However, it is the simple and natural discretization and thus its behaviour warrants careful analysis. Conditions under which the chain can be evaluated are mostly easily described when, for some fixed d , the limits
+lim t h~ log T ( X ) X - ~= ~ d +
+X'02
+and
+lim i h v ~ o ~ T ( x )=~ Sx; I - ~
+'X -02
+exist. Clearly the results below can easily be extended to other situations where ~ d fS,; are
+replaced by lim sup or lim inf in appropriate combinations, and where the exponent d varies for positive and negative x.
+Theorem 3.1. The ULA chain U, or R is geometrically ergodic gone of thefollowing holds:
+(a)for some d E [0,I), both ~ d +< 0 and Sd > 0 exist;
+(b)for d = 1, both S$ < 0 and S; > 0 exist and
+Proof. In the first instance for (a), consider d = 0. We compare the ULA model with a random walk [0,oo) for positive x: the result follows by symmetry for negative x. We have that, if W 1is an N ( 0 ,h) variable, then, for all large enough positive Uo= x ,
+U,=Uo+Sx+ W,,
+where Sx E ( S i - E , ~ d ++ E ) and E is small enough that 0 > + E. We can then show, exactly as in the argument in Meyn and Tweedie (1993a, pp. 318-319), that for some sufficiently small s the function V ( y )= eSylsatisfies (29), and geometric ergodicity follows. For d E ( 0 , l )the argument is virtually identical. The mean increment at x is now even
+more negative, with the new mean position being approximately x + s , f x d ;nevertheless, since d E (0,I), for large enough x this will still be sufficiently positive that the truncation approximations needed to emulate the proof above still go through, and we omit details.
+For (b), note again that, for large Uo > xo > 0, we can write
+u1= Uo[1+ Sx]+ W l,
+while for Uo < -xo < 0 we have
+U1= Uo[l- Bx]+ W l
+where now S, E (Sd+- E, S$ + E ) < 0 ,Bx E (S; - E, S i + E ) < 0 and this time we choose
+E such that ( 1 + S x )(1 - B,) < 1 , which is possible from (32). Now, rather than the random walk, the analogue we use in this case is the SETAR (selfexciting threshold autoregression) model in nonlinear time series. Following the proof of Proposition 11.4.5 of Meyn and Tweedie (1993a) (see also Meyn and Tweedie, 1993a, p.
+505), let us choose V ( x )= a x , x > xo and V ( x )= blxl,x 5 - x o Then we have that (29) again holds because of (32), and so the chain is again geometrically ergodic.
+
+
+Convergence of Langevin dzfusions 353
+The interesting case in (b) is perhaps not when sd+E (-2, O),Sd E (0,2), for then both negative and positive sides of the algorithm behave like simple autoregressions; rather, it is when one of the values (say, s;) is strictly less than -2, so that from the positive side one makes a long negativejump; but then the next value satisfies (32) and so compensates either by drifting back towards zero like a positive-coefficientsimple autoregression or by making a jump back over the origin while being centred around a smaller absolute value than the initial point, after these two steps. Thus we have that geometric ergodicity is possible in a range of cases of ULA. Conversely, we can show that in selected cases the ULA chain is not geometrically ergodic, and, of rather more concern, may not even be ergodic at all. We illustrate this with two different results.
+Theorem 3.2. (a) The ULA chain on JR is ergodic but not geometrically ergodic if,for some
+d E (-1,0), both ~ d +< 0 and S i > 0 exist.
+(b) The ULA chain on JR is not ergodic, and is indeed transient, if, for some d > 1, both
+sd+< 0 and S; > 0 exist, or if,for d = 1, both sd+< -2 and Si > 2 exist.
+Proof. The second, transient, case (b) is rather obvious, although disturbing. When d = 1,
+from a large positive value of x the next position is approximately (1 + S;)X < -x, and then the next oscillation is to a positive but still more extreme value, and so on; while for
+d > 1 and x sufficiently large the same pattern repeats but more strongly. Again the formal verification follows the proof of transience for the SETAR model: see Meyn and Tweedie (1993a, p. 222). The other case (a) requires rather more subtlety. To see the chain cannot be geometrically ergodic, we use Theorem 15.0.1of Meyn and Tweedie (1993a). Note first that, for large x, from Uo = x the expected increment is
+approximately s i x d --t 0, x --t oo. Thus for any E > 0, there is a large enough xo that the mean next step is to the right of x - E when we start above xo.From x 2 xothe ULA chain is therefore always stochastically larger than a random walk with increments N(-E, h), at least until the first time to hit the set Co = (-oo, x o )The time taken by the random walk to hit Co is also correspondingly longer than that of a Brownian motion with constant drift - ~ / h ,since the random walk can be viewed as the embedded h-skeleton of the Brownian motion. Finally, since E is arbitrary we can use the Bachelier-Levy formula as in (24) to show that these hitting times do not have exponential tails. So none of the chains above are geometrically ergodic. And yet, in this case the ULA model is indeed ergodic. We take V(x) = x 2in the Foster drift criterion (see, for example, Meyn and Tweedie 1993a, p. 262) to show this: following the argument in Lamperti (1963), and being careful with truncations, we see that ergodicity will follow if, writing pk(x) = E[(Un+l- U , ) ~ ~ U=, x], we can show
+2 ~ ~ 1 I -E, (33)
+(x)+ P ~ ( x )
+for large enough x > 0 and some E > 0 (with a symmetric drift for negative x). But now
+we have that for d E (- 1,O),2xp1(x) = 2s;x which is increasingly large and negative,
+
+
+354 G.O. Roberts and R.L. Tweedie
+while p2(x)"N h + [sd+xd12-h- , fior large x. Thus ergodicity is indeed maintained in this model.
+Note that if, for d = 0, we have Sdf = 0 or S i = 0, then by the same proof there can be no geometric ergodicity. Depending on finer structure, one may find that the chain is ergodic from a condition such as (33); or conversely, is not ergodic if the mean drift becomes very quickly close to zero, so the chain behaves too closely like a zero-drift random walk. Clearly other behaviour is possible for sufficiently pathologically constructed tail behaviour of n: as in the SETAR examples in Meyn and Tweedie (1993a), various combinations of null recurrence and positive recurrence may occur. We do not pursue this here: our goal was to show that the ULA model is not guaranteed to behave well, more or less independently in most cases of the choice of h. We conclude from this analysis that the ULA model is not to be recommended without considerable care and knowledge of the behaviour of T.
+Again for a one-dimensional distribution n E &(P,y), as in (6), we have a rather complete evaluation of the categories above. We find, since V log ~ ( x=) -ypxB-' for positive x:
+(a) For 0 < ,B < 1, when the tails are heavy, it follows from Theorem 3.2 that the ULA chain is ergodic but not exponentially ergodic; thus the ULA approximation mimics the behaviour of the diffusion.
+(b) For 1 5 p < 2, the ULA is geometrically ergodic, again as for the diffusion; the exponential case ,B = 1 follows from Theorem 3.l(a) with d = 0, and the cases between exponential and Gaussian tails follow from Theorem 3.l(a) with d E (0,l).
+(c) For p = 2, when the tails are like those of a symmetric Gaussian, the behaviour is
+surprisingly mixed. From Theorem 3.l(b) we have that if yh < 2 then the chain is
+exponentially ergodic; but from Theorem 3.2, if yh > 2 then the chain is transient. Thus the choice of h is crucial here, as it is not in most models. We have not classified the chain at yh = 2, though we would expect that this might be null recurrent.
+(d) For p > 2, when the tails are light, it follows from Theorem 3.2 that (perhaps surprisingly at first sight) the ULA chain is transient: this is in contrast to the case with the random walk Metropolis algorithm in Mengersen and Tweedie (1996), where such chains are shown to be geometrically ergodic. In this situation the ULA over-corrects for the light tails by throwing the chain in increasing oscillations. The underlying diffusion, since it has continuous sample paths, cannot of course have such aberrant behaviour even though it does 'drift' very quickly from the tail regions, but is then forced to 'slow down' in the centre of the space and is exponentially ergodic, as shown in Section 2.
+4. The Metropolis-adjusted Langevin algorithm
+4.1. CONDITIONS FOR EXPONENTIAL CONVERGENCE OF MALA
+The need for some form of correction of the simple ULA models is now quite apparent
+
+
+Convergence of Langevin dzfusions 355
+since even the finest discrete approximation of the Langevin diffusion can lead to the approximating Markov chain behaving radically differently from the diffusion process it is trying to approximate. One way of preserving the stationarity of IT in any discrete approximation is to introduce
+a Hastings-Metropolis accept-reject step, and, for any fixed h > 0, this algorithm is described in Section 1.4. In order to develop a positive result on geometric convergence of MALA algorithms, especially in higher dimensions, we need some constraints on the way in which proposed moves are accepted. The following covers many standard examples, although in other situations variations on the approach will be needed: we do not strive for total generality here. We write A ( x ) for the acceptance region of MALA from the point x: that is, A ( x ) is the region in which proposed moves are always accepted. Thus
+where q is the ULA density for a candidate move, given by (28).We also write R ( x ) for A(x)', the 'potential rejection' region. Denote by Z(x) the points interior to x: that is,
+Z(x) = {Y; I Y I 5 1x1). We say that A(.) converges inwards in q if
+where we denote the symmetric difference ( AU B)\(A n B) by AAB. For densities IT that have this property we have a simple and intuitively plausible condition that guarantees geometric ergodicity.
+Theorem 4.1. Suppose that c ( x ) = x + $ hV logn(x)is the mean 'next candidate position' and that
+Assume A(.) converges inwards in q. I f V s ( x )= eSIXIt,hen the MALA chain is Vs-uniformly
+ergodicfor s < 2hq.
+Proof. We will check (29)for the function V,. Splitting the integral over obvious regions, we find:
+
+
+G.O. Roberts and R.L. Tweedie
+Now exp(s((x1- Ic(x)l)) times the first term on the right-hand side asymptotes to exp(s2/2h), so that limsup of the first term is less than 1. Moreover, the second term asymptotically converges to zero since A(.) converges inwards in q. Hence
+PVAx) < I ;
+lim sup
+lxl+cc Vs(x)
+so that, noting that compact sets are small from Roberts and Tweedie (1996), geometric convergence in V,-norm is guaranteed by Theorem 15.0.1 of Meyn and Tweedie (1993a).
+We note from the steps of the proof that condition (35) is far from necessary. In fact it is quite easy to relax (35) to find that the following condition is sufficient for geometric
+convergence in V,-norm for sufficiently small s: there exists E > 0 such that
+I(x) = {y : a(x,Y) > E )
+asymptotically has q-measure zero. We omit the details of this. Condition (36) is implied by some obvious conditions on V loga(x). For example, the following two conditions together imply (36):
+lim sup n,.V log a(x) < 0,
+I x I ' ~ (38)
+and lim n,.Vloga(x) - 1x1 = 0,
+I x I ' ~ (39)
+where n, = x/lxl denotes the outward normal vector at x. Other conditions are clearly available, although they are more usefully pursued when specific models are being considered. The 'inward converging' property is also often easy to evaluate. It is possible to rewrite A(x) as
+A(x) = {y : 1;v log a(z)dz 5 (x - y).(V log a(x) + V log ~ ( y ) )
+h (40)
+f 6(lV10g'(x)12 - ~ ~ l o g ~ ( y ) ~ ' ) ) .
+Here the line integral can be interpreted along any curve between x and y, but most conveniently along the straight line, where this expression for A ( . ) offers interpretation in terms of notions of convexity.
+
+
+Convergence of Langevin diffusions 357
+We will illustrate this interpretation in Section 4.3 below. Before doing so, we consider conditions under which MALA does not converge geometrically quickly.
+The following theorem implies (essentially) that when ULA is transient (for example, when the tails of T are lighter than Gaussian), MALA is not exponentially ergodic.
+Theorem 4.2. I ~ iTs bounded, and lim inf IVlogT(x)l > 4
+1x1-+m 1x1 h
+then the M A L A chain is not exponentially ergodic.
+Proof. Let r ( x ) to be the rejection probability from each point as in (3): we know from Roberts and Tweedie (1996) that if ess sup r ( x ) = 1 then the algorithm is not geometrically ergodic. Assume, then, for contradiction that the algorithm is exponentially ergodic, so that by
+the continuity of T and q, there exists E > 0 such that
+r(x)5 1 -c1
+for all x E IRk. Now choose T such that
+E
+P [ N ( O ,hIk)l 2 1 5 2 1
+and S large enough such that there exists M > 4 / h such that
+and ( M - 4 / h ) S > T . Define
+B(x)= {y;ly- x - i h V l o g ~ ( x ) l5 T ) :
+we will show that
+lim sup q ( y - ,x ) = 0.
+IxI -+my E B(x) q(x1 Y )
+To see this, first note that the denominator in (42)is uniformly bounded away from zero.
+Therefore it is sufficient to consider the numerator. Now for 1x1 > S ,
+
+
+358 G.O. Roberts and R.L. Tweedie
+since lyl > 1x1 for y E B ( x ) . Therefore since [ i h ~- ]4 ~> 0,
+1
+sup q ( y ,x ) 5 sup ( 2 r h ) ~ ~elx'p{- -( [ i h ~-~4 )"l y 1 2 }
+Y E ~ ( x ) Y E ~ ( x ) 2h
+as 1x1 + oo,as required.
+Now define a sequence of points recursively in the following way. Let lxol > S be such
+that r ( x o ) > 0, and let
+It is easy to check that { x , ) + cc so that
+q ( ~xn, )
+lim sup -- 0.
+X + ~ Y E B ( X , ) q ( x n lY)
+Now
+so choose N large enough so that
+q(y,xn) E
+sup ---< 4,
+yEB(x) dxn, Y)
+for n 2 N. Then we have
+so that T ( X , + ~ ) 2 2 r ( x n ) ,demonstrating that r is unbounded: and thus we have our contradiction.
+
+
+Convergence of Langevin difSisions 359
+This result covers light-tailed densities.In the other direction, if T has heavy tails, MALA looks too much like a random walk on JRk to be geometrically ergodic. Specifically, we will be able to use the following theorem.
+Theorem 4.3. If V log ~ ( x )+ 0, then MALA is not geometrically ergodic.
+Proof. This follows by a similar argument to that used in the proof of Theorem 2.4. We only sketch the ideas here. Suppose MALA is geometrically ergodic. Then, for some bounded set
+of positive measure under T, C say, there exists K > 1 such that for all x E JRk,
+E , [ K ~<~ ]co.
+However if V log ~ ( x )+ 0, then it is easy to check that r(x) + 0 as 1x1 -+co, so that the process behaves like a random walk with normally distributed increments. More specifi
+cally, we can find N large enough such that ePIMis a submartingale for IMI > N, and such
+that ,f3 is small enough so that, when TX denotes inf{n; IM,I < N), the collection of random
+variables {epxn"~n, > 1) are uniformly integrable, so that optional stopping applies for a contradiction.
+4.3. EXPONENTIAL MODELS
+We conclude by applying the results above to the exponential models that we have analysed for our previous algorithms.
+4.3.1. The one-dimensionalclass €(P, y)
+In order to use Theorem 4.1, we need to consider the orientation of A(x), and whether it 'converges inwards': this depends on the convexity properties of ~ ( x )a,s shown in (40). In order to give some intuition about convergence inwards, we will indicate how this behaviour occurs in one dimension, even for those chains for which Theorem 4.1 fails. Let T E b(P,y) and recall that T is bounded over compacta when assessing A(x) for large 1x1.Note also that because the ULA candidate is a normal distribution with fixed variance, to check if (35) will be satisfied we need to evaluate whether the ULA step is centred near values in A(x)AI(x) or not. We then have the following description:
+(a) For 0 < ,f3 < 1, we have limn,,IV log ~ ( x1 )= 0 and we get non-geometric convergence by Theorem 4.3, as we did with ULA. In this case, using (40), we have that the set
+{lyl > 1x1) approximates A(x) for 1x1 large: since the candidate density q(x,y) is concentrated near x for 1x1 large, we see that the set A(x) does not converge inwards in q.
+(b) At p = 1,for x > 0, we see that q(x,y) is concentrated around x - hy/2 for x positive.
+Using (40), we have that, for large 1x1, we acceptjumps in A(x) = {y > -x), so that in this
+situation A(x)AI(x) = {y > x) and so (35) fails since the integral is constant and positive for all x; thus the model does not converge inward in q, and we cannot use Theorem 4.1. However, since we accept essentially all proposals in this case, the MALA chain from
+
+
+360 G.O. Roberts and R.L. Tweedie
+positive x is in effect just a random walk with negative drift on the positive half-line and with (more than) exponentially decreasing right tails; and this can be shown to be geometrically ergodic using the argument in Meyn and Tweedie (1993a, Section 16.1.3).
+(c) For 1 < /3 < 2 and for x > 0, the candidate density q(x,y) is concentrated near x - [hyp/2]xP-', and this is a value between 0 and x for x large. Since V log ~ ( xis) convex for x positive, and concave for x negative, A(.) converges inwards as 1x1 + oo. From Theorem 4.1 we have geometric ergodicity for this case.
+(d) The Gaussian case P = 2 is again a threshold case, as it was for ULA. From (40) we
+have that, for 1x1large, A(x) = {lyl I1x1) so that A(x) always converges inwards in q. Now
+if hy < 2 Theorem 4.1 shows that we have geometric ergodicity. If hy > 2, however, (36) is violated; but we can now use Theorem 4.2, since (41) holds in exactly this case, to see that the chain is not geometrically ergodic.
+(e) Finally, in the light-tailed case, P > 2, the term involving h dominates (40) and A(.) converges inwards as 1x1 + oo. But again (36) is violated, and indeed in this case
+lim inf,, ,IV log ~ ( xl/l)xl = GO, so that the Markov chain is not geometrically ergodic by Theorem 4.2.
+4.3.2. The multidimensional class 9,
+Next consider the multidimensional case with ~ ( xE) 9,, m > 2. Then
+l
+lim inf IV 1% 4 ~ )
+nim 1x1 = oo,
+so that MALA is not geometrically ergodic, no matter how small h is chosen to be. Note that in contrast, the random walk Metropolis algorithm is always geometricfor T E 9, (see Roberts and Tweedie 1996).
+4.3.3. A slowly converging Bayesian algorithm
+The examples we have used so far are all simple, although they do indicate the range of good and bad behaviours we might expect.We conclude with an example of a density T that occurs naturally as a Bayesian posterior density and where the arguments above show lack of geometric convergence of the MALA chain M,.
+Let Yo,Y,, . . . be conditionally i.i.d. N(p, T-') variables and let T, p have the conditional conjugate priors
+CL - N(PO,Ti1), - F(a0,Po).
+Then the posterior density T is given by
+
+
+Convergence of Langevin dzfusions
+so that
+This is typical of the structure in hierarchical models. By the same arguments used above, the MALA chain would perform badly here. This example is not quite covered explicitly above but it is easy to show that geometric convergence will not hold: to see this, merely choose T and /I large enough that the
+algorithm proposes steps further into the tail, by setting r h and h C(yi- /I)~large, say. The
+detailed justification that we can make the rejection probabilities r(., .) as close to unity as we wish in this case then follows as in the proof of Theorem 4.2, and we leave the details to the reader.
+5. Concluding remarks
+Although using the Langevin candidate ULA seems like a good strategy for generating a 'targeted' initial dynamic, and although Metropolizing to get the MALA chain guarantees convergence, we have shown that in many cases this gives an algorithm which is not guaranteed to converge geometrically fast even in situations when the simpler random walk candidate is known to do so. This is not very appealing, but we do note that it is a product of bad behaviour in the far reaches of the space. We therefore conclude by recalling the MALTA algorithm with drift defined by (12). Like MALA and the random walk Metropolis algorithm, MALTA is aLeb-irreducibleand Feller, and therefore converges in total variation to the target density. But since the MALTA drift is truncated, the problems with MALA are not encountered, and MALTA enjoys more stable geometrically ergodic properties, central limit theorems and the like,just as the random walk-based algorithms do, for target densities that are not heavy-tailed. Moreover, since the algorithm behaves like MALA except in extreme situations, it will inherit most of the other desirable rapid convergence properties of MALA, and, for example, the complexity result of Roberts and Rosenthal (1995a) for high-dimensional MALA algorithms will also hold for MALTA. For practical purposes, this truncated algorithm thus seems the most desirable version of this class of algorithms.
+Acknowledgements
+Work on this paper was supported in part by NSF grants DMS-9205687 and DMS9504561, and by Nuffield Foundation grant SCI/180/91/84/G. We are grateful to Julian
+
+
+362 G.O. Roberts and R.L. Tweedie
+Besag for raising with us the question of convergence of the Langevin diffusion and the related chains, and to Osnat Stramer for conversations on the general ergodic behaviour of diffusions. We are grateful to the referees for useful comments.
+References
+Besag, J.E. (1994) Comments on 'Representations of knowledge in complex systems' by U. Grenander and M.I. Miller. J. Roy. Statist. Soc. Ser. B, 56, 591-592. Besag, J.E. and Green, P.J. (1993) Spatial statistics and Bayesian computation (with discussion). J. Roy. Statist. Soc. Ser. B, 55, 25-38.
+Besag, J.E., Green, P.J., Higdon, D. and Mengersen, K.L. (1995) Bayesian computation and stochastic systems (with discussion). Statist. Sci., 10, 3-66. Bhattacharya, R.N. (1978) Criteria for recurrence and existence of invariant measures for multidimensional diffusions. Ann. Probab., 6 , 541-553. Davis, M.H.A. (1993) Markov Models and Optimizations. London: Chapman & Hall. Down, D., Meyn, S.P. and Tweedie, R.L. (1995) Geometric and uniform ergodicity of Markov processes. Ann. Probab., 23, 1671-1691. Grenander, U. and Miller, M.I. (1994) Representations of knowledge in complex systems (with discussion). J. Roy. Statist. Soc. Ser. B, 56, 549-603.
+Hastings, W.K. (1970) Monte Carlo sampling methods using Markov chains and their applications. Biometrika, 57, 97-109. Ikeda, N. and Watanabe, S. (1989) Stochastic Dzfferential Equations and Dzyusion Processes. Amsterdam: Elsevier. Lamperti, J. (1963) Criteria for stochastic processes 11:Passage time moments. J.Math. Anal. Appl., 7, 127-145. Lerche, H.R. (1986) Boundary Crossings of Brownian Motion. Berlin: Springer-Verlag. Mengersen, K.L. and Tweedie, R.L. (1996) Rates of convergence of the Hastings and Metropolis algorithms. Ann. Statist., 24, 101-121.
+Metropolis, N., Rosenbluth, A., Rosenbluth, M., Teller , A. and Teller, E. (1953) Equations of state calculations by fast computing machines. J. Chem. Phys., 21, 1087-1091. Meyn, S.P. and Tweedie, R.L. (1993a) Markov Chainsand Stochastic Stability. London: Springer-Verlag. Meyn, S.P. and Tweedie, R.L. (1993b) Stability of Markovian processes 11: Continuous time processes and sampled chains. Adv. Appl. Probab., 25, 487-517. Neal, R. (1994) An improved acceptance procedure for the hybrid Monte Carlo algorithm. J. Comp. Phys., 11, 194-203. Parisi, G. (1981) Correlation functions and computer simulations. Nuclear Phys. B, 180, 378-384. Roberts, G.O. and Rosenthal, J.S. (1995a) Optimal scaling of discrete approximations to Langevin diffusions. Submitted for publication. Roberts, G.O. and Rosenthal, J.S. (1995b) Shift-coupling and convergence rates of ergodic averages. Submitted for publication. Roberts, G.O. and Smith, A.F.M. (1994) Simple conditions for the convergence of the Gibbs sampler and Hastings-Metropolis algorithms. Stochastic Process. Appl., 49, 207-216. Roberts, G.O. and Tweedie, R.L. (1996) Geometric convergence and central limit theorems for multidimensional Hastings and Metropolis algorithms. Biometrika, 83, 96-1 10. Roberts, G.O., Gelman, A. and Gilks, W.R. (1994) Weak convergence and optimal scaling of Hastings-Metropolis algorithms. Ann. Appl. Prob. To appear.
+
+
+Convergence of Langevin dzfusions 363
+Sheu, S.-J. (1992) Some estimates of the transition density of a non-degenerate diffusion Markov process. Ann. Probab., 19, 538-561. Smith, A.F.M. and Roberts, G.O. (1993) Bayesian computation via the Gibbs sampler and related Markov chain Monte Carlo methods (with discussion). J. Roy. Statist. Soc. Ser. B, 55, 3-24. Tierney, L. (1994) Markov chains for exploring posterior distributions (with discussion). Ann. Statist., 22, 1701-1762.
+Tweedie, R.L. (1994) Topological conditions enabling use of Harris methods in discrete and continuous time. Acta Appl. Math., 34, 175-188.
+Received October 1995 and revised April 1996
+
+
+You have printed the following article:
+Exponential Convergence of Langevin Distributions and Their Discrete Approximations Gareth O. Roberts; Richard L. Tweedie Bernoulli, Vol. 2, No. 4. (Dec., 1996), pp. 341-363. Stable URL: http://links.jstor.org/sici?sici=1350-7265%28199612%292%3A4%3C341%3AECOLDA%3E2.0.CO%3B2-K
+This article references the following linked citations. If you are trying to access articles from an off-campus location, you may be required to first logon via your library web site to access JSTOR. Please visit your library's website or contact a librarian to learn about options for remote access to JSTOR.
+References
+Monte Carlo Sampling Methods Using Markov Chains and Their Applications W. K. Hastings Biometrika, Vol. 57, No. 1. (Apr., 1970), pp. 97-109. Stable URL: http://links.jstor.org/sici?sici=0006-3444%28197004%2957%3A1%3C97%3AMCSMUM%3E2.0.CO%3B2-C
+Geometric Convergence and Central Limit Theorems for Multidimensional Hastings and Metropolis Algorithms
+G. O. Roberts; R. L. Tweedie Biometrika, Vol. 83, No. 1. (Mar., 1996), pp. 95-110. Stable URL: http://links.jstor.org/sici?sici=0006-3444%28199603%2983%3A1%3C95%3AGCACLT%3E2.0.CO%3B2-H
+http://www.jstor.org
+LINKED CITATIONS
+- Page 1 of 1

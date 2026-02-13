@@ -1,0 +1,774 @@
+I2SB: Image-to-Image Schro ̈dinger Bridge
+Guan-Horng Liu * 1 Arash Vahdat 2 De-An Huang 2 Evangelos A. Theodorou 1 Weili Nie † 2 Anima Anandkumar † 2 3
+Abstract
+We propose Image-to-Image Schro ̈dinger Bridge (I2SB), a new class of conditional diffusion models that directly learn the nonlinear diffusion processes between two given distributions. These diffusion bridges are particularly useful for image restoration, as the degraded images are structurally informative priors for reconstructing the clean images. I2SB belongs to a tractable class of Schr ̈odinger bridge, the nonlinear extension to score-based models, whose marginal distributions can be computed analytically given boundary pairs. This results in a simulation-free framework for nonlinear diffusions, where the I2SB training becomes scalable by adopting practical techniques used in standard diffusion models. We validate I2SB in solving various image restoration tasks, including inpainting, super-resolution, deblurring, and JPEG restoration on ImageNet 256×256 and show that I2SB surpasses standard conditional diffusion models with more interpretable generative processes. Moreover, I2SB matches the performance of inverse methods that additionally require the knowledge of the corruption operators. Our work opens up new algorithmic opportunities for developing efficient nonlinear diffusion models on a large scale. Project page and codes: https://i2sb.github.io/.
+1. Introduction
+Image restoration is a crucial problem in vision and image processing with applications in optimal filtering (Motwani et al., 2004), data compression (Wallace, 1991), adversarial defense (Nie et al., 2022), and safety-critical systems such as medicine and robotics (Song et al., 2021b; Li et al., 2021). Common image restoration tasks are known to be
+*Work done in part as a research intern at NVIDIA. †Equal advising. 1Georgia Institute of Technology 2NVIDIA 3California Institute of Technology. Correspondence to: <ghliu@gatech.edu>.
+Proceedings of the 40 th International Conference on Machine Learning, Honolulu, Hawaii, USA. PMLR 202, 2023. Copyright 2023 by the author(s).
+Deblurring
+Input I2SB output Reference
+JPEG restoration
+Inpainting
+Super-resolution
+Figure 1. Outputs of our proposed Image-to-Image Schro ̈dinger Bridge (I2SB) on ImageNet 256×256 validation set for various image restoration tasks.
+ill-posed (Banham & Katsaggelos, 1997; Richardson, 1972) and typically solved by modern data-driven approaches with conditional generation (Mirza & Osindero, 2014; Khan et al., 2022), i.e., by learning to sample the underlying (clean) data distribution given the degraded distribution.
+Diffusion and score-based generative models (SGMs; SohlDickstein et al. (2015); Song et al. (2020b)) have emerged as powerful conditional generative models with their remarkable successes in synthesizing high-fidelity data (Dhariwal & Nichol, 2021; Rombach et al., 2022; Vahdat et al., 2021). These models rely on progressively diffusing data to noise, and learning the score functions (often parameterized by neural networks) to reverse the processes (Anderson, 1982); the reversed processes enable generation from noise to data.
+1
+arXiv:2302.05872v3 [cs.CV] 26 May 2023
+
+
+Image-to-Image Schro ̈dinger Bridge
+64 128 256 Image Resolution
+0
+5
+Runtime (sec/itr)
+64 128 256 Image Resolution
+25
+50
+Memory (GB)
+SGM SB
+Figure 2. Complexity of SGM and SB (Chen et al., 2021a) On 256×256 resolution, SB is 6× slower and consumes 3× memory.
+Schrödinger Bridge
+Tractable SB
+transport between general X! ∼ pA, X# ∼ pB
+I2SB SGM X# ∼ N(0, I)
+X# ∼ pB ⋅ |X!
+Figure 3. I2SB belongs to a tractable class of SB that shares the same computational framework of SGM and rebases the terminal distribution beyond simple Gaussian priors.
+Saharia et al. (2021; 2022) show that these generative processes can be adopted for image restoration by feeding degraded images as extra inputs to the score network so that the processes are biased toward the corresponding intact images. Alternatively, when the mapping between clean and degraded images is known, the tasks can be reformulated as inverse problems that restore the underlying clean signal from the degraded measurement, based on the diffusion priors (Kawar et al., 2022a;b; Wang et al., 2022b).
+Notably, all of the aforementioned diffusion models for image restoration begin their generative denoising processes with Gaussian white noise, which has little or no structural information of the clean data distribution. Despite arising naturally from unconditional generation, it remains unclear whether this default setup best suits image-to-image translation problems especially like image restoration, where the degraded images are much more structurally informative compared to random noise.
+An alternative that better leverages the problem structure is to directly start the generative processes from degraded images, and build diffusion bridges between clean and degraded data distributions. This shares similarity with imageto-image translation GANs (Zhu et al., 2017; Huang et al., 2018). Constructing these diffusion bridges often necessitates a new computational framework for reversing general diffusion processes. It has been recently explored in Schro ̈dinger bridge (SB; De Bortoli et al. (2021); Chen et al. (2021a)), a generalized nonlinear score-based model which defines optimal transport between two arbitrary distributions and generalizes beyond Gaussian priors.
+Despite the mathematical generalization, computational frameworks for solving SB (Chen et al., 2021b) have been developed independently (hence distinctly) from how diffusion models are typically trained. This makes SB computationally unfavorable compared to its score-based counterpart especially in high-dimensional regimes (see Figure 2), where SB is known to suffer from, e.g., discretization error
+Degraded image
+Clean image
+Prior Image-to-Image Diffusion Models
+feed degraded image via conditioning or inverse guidance
+directly bridge from degraded to clean image
+Image-to-Image Schrödinger Bridge
+Figure 4. Illustration of I2SB. Rather than generating images from random noise as in prior diffusion models, I2SB directly learns the diffusion bridges between degraded and clean distributions, yielding more interpretable generation effective for image restoration.
+(De Bortoli et al., 2021), high variance (Chen et al., 2021a), or even divergence (Fernandes et al., 2021). It remains an open question whether SB can be made practical for learning complex nonlinear diffusions on a large scale.
+In this work, we propose Image-to-Image Schr ̈odinger Bridge (I2SB), a sub-class of SB with nonlinear diffusion models that share the same computational framework used in standard score-based models. Consequently, practical techniques from diffusion models for learning highdimensional data distributions (Karras et al., 2022; Song & Ermon, 2020) can be adopted to train nonlinear diffusions. This is achieved by exploiting the linear structure hidden in the nonlinear coupling of SB to construct tractable SBs for transporting between individual clean images and their corresponding degraded distributions, i.e., I2SB. We show that the marginal distributions of I2SB admit analytic solutions given boundary pairs (i.e., clean and degraded image pairs), thereby yielding a simulation-free framework that avoids unfavorable complexity (Chen et al., 2021a). Furthermore, we demonstrate that I2SB can be simulated at test time using DDPM (Ho et al., 2020). Finally, we characterize in how I2SB reduces to an optimal transport ODE (Peyr ́e et al., 2019) when the diffusion vanishes, strengthening the algorithmic connection among dynamic generative models.
+We validate our method in many image restoration tasks including super-resolution, deblurring, inpainting, and JPEG restoration on ImageNet 256×256 (Deng et al., 2009); see Figure 1. Through extensive experiments, we show that I2SB surpasses standard conditional diffusion models (Saharia et al., 2022) and matches diffusion-based inverse models (Kawar et al., 2022a;b) without exploiting the corruption operators. With these more interpretable generative processes, I2SB enjoys little or no performance drops as the
+2
+
+
+Image-to-Image Schro ̈dinger Bridge
+number of function evaluation (NFE) decreases.
+In summary, we present the following contributions.
+• We introduce I2SB, a new class of conditional diffusion models that learns fully nonlinear diffusion bridges between two domain distributions.
+• We build I2SB on a simulation-free computational framework that adopts scalable techniques from standard diffusion models to train nonlinear diffusion processes.
+• I2SB sets new records in many restoration tasks, including super-resolution, deblurring, inpainting, and JPEG restoration. It yields more interpretable generation and enjoys little performance drops as the NFE decreases.
+2. Preliminaries
+Notation: Let Xt ∈ Rd be a d-dimensional stochastic process indexed by t ∈ [0, 1] and denote the discrete time step by 0 = t0 < · · · tn · · · < tN = 1, we shorthand Xn ≡ Xtn . The Wiener process and its reversed counterpart (Anderson, 1982) are denoted by Wt, W t ∈ Rd. The identity matrix is denoted by I ∈ Rd×d.
+2.1. Score-based Generative Model (SGM)
+SGM (Sohl-Dickstein et al., 2015; Ho et al., 2020; Song et al., 2020b) is an emerging class of dynamic generative models that, given data X0 sampled from some domain pA, constructs stochastic differential equations (SDEs),
+dXt = ft(Xt)dt + pβtdWt, (1)
+whose terminal distributions at t = 1 approach an approximate Gaussian, i.e., X1 ∼ N (0, I). This is achieved by properly choosing the diffusion βt ∈ R and setting the base drift ft linear in Xt. It is known that reversing (1) yields another SDE traversing backward in time (Anderson, 1982):
+dXt = [ft − βt∇ log p(Xt, t)]dt + pβtdW t, (2)
+where p(·, t) is the marginal density of (1) at time t and ∇ log p is its score function. The SDE (2) is known as the “reversed process of (1)” in the sense that its path-wise measure equals almost surely to the one induced by (1); thus, the two SDEs also share the same marginal densities.
+In practice, given a tuple (X0, t, Xt) where X0 ∼ pA, t ∼ U ([0, 1]), and Xt sampled analytically from (1), one can parameterize ε(Xt, t; θ) with, e.g., U-Net (Ronneberger et al., 2015), and regress its output w.r.t. the rescaled version of denoising score-matching objective (Vincent, 2011),
+∥ε(Xt, t; θ) − σt∇ log p(Xt, t|X0)∥, (3)
+where ∇ log p(Xt, t|X0) can be computed analytically and σt2 is the variance of Xt|X0, induced by (1), that rescales the regression target to unit variance (Ho et al., 2020).
+Other advanced parameterizations that better account for practical training (Karras et al., 2022) have also been explored recently. Importantly, they all produce some ways to predict intact data at t = 0 from the network outputs. In other words, the mapping ε(Xt, t; θ) 7→ X0ε is readily
+available once ε is trained.1 With this, popular samplers like DDPM (Ho et al., 2020) can be written compactly as recursive posterior sampling:
+Xn ∼ p(Xn|Xε
+0, Xn+1), XN ∼ N (0, I). (4)
+2.2. Schro ̈dinger Bridge (SB)
+SB (Schr ̈odinger, 1932; L ́eonard, 2013) is an entropyregularized optimal transport model that considers the following forward and backward SDEs:
+dXt = [ft + βt ∇ logΨ(Xt, t)]dt + pβtdWt, (5a)
+dXt = [ft − βt ∇ logΨb (Xt, t)]dt + pβtdW t, (5b)
+where X0 ∼ pA and X1 ∼ pB are drawn from boundary distributions in two distinct domains. The functions Ψ, Ψb ∈ C2,1(Rd, [0, 1]) are time-varying energy potentials that solve the following coupled PDEs,
+
+
+
+∂Ψ(x,t)
+∂t = −∇Ψ⊤f − 1
+2 β∆Ψ
+∂
+Ψb (x,t)
+∂t = −∇ · (Ψb f ) + 1
+2 β∆Ψb
+(6a)
+s.t. Ψ(x, 0)Ψb (x, 0)=pA(x), Ψ(x, 1)Ψb (x, 1)=pB(x) (6b)
+In this case, the path measure induced by SDE (5a) equals almost surely to the one induced by SDE (5b), similar to SDEs (1,2). Hence, their marginal densities, denoted by q(·, t) hereafter, are also equivalent.
+SGM as a Special Case of SB It is known that SB generalizes SGM to nonlinear structure (Chen et al., 2021a). Indeed, the SDEs between SGM (1,2) and SB (5) differ only by the additional nonlinear forward drift ∇ logΨ, which allows the processes to transport samples beyond Gaussian priors. In such cases, the backward drift ∇ logΨb is no longer the score function of (5a), yet they relate to each other via the Nelson’s duality (Nelson, 1967)
+Ψ(x, t)Ψb (x, t) = q(x, t)
+⇒∇ logΨ(x, t) − ∇ log q(x, t) = −∇ logΨb (x, t).
+(7)
+One can verify that reversing (5a) yields
+dXt=[ft + βt ∇ logΨ − βt∇ log q]dt+pβtdW t, (8)
+which indeed equals (5b) after substituting (7). Hence, (5b) reverses the nonlinear forward SDE (5a), and vice versa.
+1In all cases, we can write Xt = atX0 + btε for some at, bt ∈
+R depending on (1) so that the mapping can be defined as Xε
+0 := (Xt − btεθ)/at given any trained εθ.
+3
+
+
+Image-to-Image Schro ̈dinger Bridge
+3. Image-to-Image Schro ̈dinger Bridge (I2SB)
+We propose a tractable class of SB that directly constructs diffusion bridges between two domains, making it suitable for image-to-image translation such as image restoration. All proofs are left to Appendix A due to space constraint.
+3.1. Mathematical Framework
+Solving SB using SGM Framework Despite the fact that SB generalizes SGM in theory, numerical methods for SB and SGM have been developed independently on distinct computational frameworks. Due to the coupling constraints in (6b), modern SB models often adopt iterative projection methods (Kullback, 1968; Chen et al., 2021b), which have unfavorable complexity as the dimension grows (see Figure 2). It is unclear whether practical techniques in the SGM computational framework can be transferred to efficiently learn nonlinear diffusions.
+Let us reexamine the SB theory in detail, but this time through the computational framework of SGM. Notice that
+• The nonlinear drifts in (5) resemble the score function in (2) when we view Ψ(·, t) and Ψb (·, t) as the densities.
+• Equation (6a) gives the solution to the Fokker-Plank equation (Risken, 1996) that characterizes the marginal density induced by the linear SDE in (1).
+With these, we can reformulate PDEs (6) in a manner that makes SB more compatible with the SGM framework:
+Theorem 3.1 (Reformulating SB drifts as score functions). When the Schro ̈dinger systems (6) hold, ∇ logΨb (Xt, t) and ∇ logΨ(Xt, t) are the score functions of the following linear SDEs, respectively:
+dXt = ft(Xt)dt + pβt dWt, X0 ∼ Ψb (·, 0), (9a)
+dXt = ft(Xt)dt + pβt dW t, X1 ∼ Ψ(·, 1). (9b)
+Theorem 3.1 suggests that the backward drift ∇ logΨb in SDE (5b) that transports samples from pB to pA can also be used to reverse the forward SDE (9a). Crucially, the above linear SDEs (9) have different boundary distributions from nonlinear SDEs (5). Essentially, the nonlinearity of ∇ logΨb —as the combination of the nonlinear forward drift and its score function (c.f. (7))—is absorbed into the initial condition Ψb (·, 0), leaving it compactly as the score function of another linear SDE. Hence, if we can draw samples from X0 ∼ Ψb (·, 0), we can parameterize ∇ logΨb with the score network and apply practical techniques from SGM to learn ∇ logΨb . Similar reasoning applies to ∇ logΨ.
+A Tractable Class of SB Theorem 3.1 is encouraging yet not immediately useful as the boundaries Ψb (·, 0) and Ψ(·, 1) remain intractable due to the couplings in (6b). Below, we present a tractable case that eliminates one of the couplings.
+log (Xt, t|X0)
+t = 0 t = 0.25 t = 0.5 t = 0.75 t = 1
+q(Xt|X0, X1)
+Figure 5. Top: The backward drift ∇ logΨb (Xt, t|X0=a) transporting pB toward a (denoted ×) corresponds to the score function of a tractable Gaussian (density marked green). Bottom: Simulating the backward SDE (5b) with this ∇ logΨb yields a diffusion bridge (density marked blue) between X0 = a and X1 ∼ pB, whose mean corresponds to the optimal transport path.
+Corollary 3.2 (Tractable SB with the Dirac delta boundary). Let pA(·) := δa(·) be the Dirac delta distribution centered at a ∈ Rd. Then, the initial distributions in (9) are given by
+Ψb (·, 0) = δa(·), Ψ(·, 1) = pB
+Ψb(·,1) . (10)
+Comparing (10) to (6b), it is clear that Corollary 3.2 breaks the dependency on Ψ for solving Ψb (x, 0). Intuitively, the optimal2 backward drift driving the reverse process of (9a) to the Dirac delta δa(·) always flows toward a, regardless of pB; see Figure 5. The Dirac delta assumption also implicitly appears in the denoising objective (3), which first computes the target ∇ log p(Xt, t|X0=a) for each data point a, as the score between δa(·) and Gaussian, then averages over X0∼pA. In this vein, Corollary 3.2 adopts the same boundary δa(·) on one side and generalizes the other side from Gaussian to arbitrary pB. Indeed, we show in Appendix A that when pB = Ψb (·, 1) ≈ N (0, I), the forward drift vanishes with Ψ(·, t) = 1, reducing the framework to SGM.
+Although the singularity of δa(·) may hinder generalization beyond training samples, in practice, the score network generalizes well to unseen samples from the same distributions, for both SGM and our I2SB, partly due to the strong generalization ability of neural networks (Zhang et al., 2021).
+To summarize, our theories suggest an efficient pipeline for training ∇ logΨb without dealing with the intractability of reversing the nonlinear forward drift. By formulating a tractable SB compatible with the SGM framework, we get both mathematical soundness and computational efficiency.
+3.2. Algorithmic Design
+In this subsection, we discuss practical designs for applying Corollary 3.2 to image restoration. We will adopt similar setups from prior diffusion models (Saharia et al., 2022) and assume pair information is available during training, i.e., p(X0, X1) = pA(X0)pB(X1|X0). From which, we can
+2The optimality is w.r.t. minimum energy; see Appendix B.
+4
+
+
+Image-to-Image Schro ̈dinger Bridge
+Algorithm 1 Training
+1: Input: clean pA(·) and degraded pB(·|X0) datasets 2: repeat
+3: t ∼ U ([0, 1]), X0 ∼ pA(X0), X1 ∼ pB(X1|X0) 4: Xt ∼ q(Xt|X0, X1) according to (11) 5: Take gradient descent step on ε(Xt, t; θ) using (12) 6: until converges
+construct tractable SBs between individual data points X0 and their corresponding degraded distributions pB(X1|X0). As rebasing the terminal distribution from Gaussian to pB(·|X0) makes f unnecessary, we will drop f := 0 and let I2SB learn the full nonlinear drift by itself.
+Sampling Proposal for Training and Generation Training scalable diffusion models requires efficient computation of Xt. The computation is intractable for I2SB, if directly from the nonlinear SDE (5a), since its forward drift ∇ logΨ is not only generally nonlinear but never explicitly constructed. Computing Xt from the linear SDE (9a) whose score function corresponds to ∇ logΨb will not work either. Since the diffusion process in (9a) does not converge to the terminal distribution (i.e., pB(X1|X0)) of I2SB, highprobability regions induced by (9a) can be far away from regions where the generative processes actually traverse; see Figure 5. We address the difficulty in the following result.
+Proposition 3.3 (Analytic posterior given boundary pair). The posterior of (5) given some boundary pair (X0, X1), provided f := 0, admits an analytic form:
+q(Xt|X0, X1) = N (Xt; μt(X0, X1), Σt), (11)
+μt = σ ̄t2
+σ ̄t2 + σt2
+X0 + σt2
+σ ̄t2 + σt2
+X1, Σt = σt2σ ̄t2
+σ ̄t2 + σt2
+· I,
+where σt2:= R t
+0 βτ dτ and σ ̄t2:= R 1
+t βτ dτ are variances accumulated from either sides. Further, this posterior marginalizes the recursive posterior sampling in DDPM (4):
+q(Xn|X0, XN )=
+Z
+ΠN −1
+k=n p(Xk|X0, Xk+1)dXk+1.
+Proposition 3.3 suggests that the analytic posterior of SB given a boundary pair (X0, X1) is the marginal density induced by DDPM, p(Xk|X0ε, Xk+1), when X0ε := X0 and XN ∼ pB. Practically, this suggests that (i) during training when (X0, X1) are available from pA(X0) and pB(X1|X0), we can sample Xt directly from (11) without solving any nonlinear diffusion as in prior SB models (Vargas et al., 2021), and (ii) during generation when only X1 ∼ pB is given, running standard DDPM starting from X1 induces the same marginal density of SB paths so long as the predicted X0ε is close to X0. Therefore, the proposed sampling proposal in (11) is both tractable and able to cover regions traversed by generative processes.
+Algorithm 2 Generation
+1: Input: XN ∼ pB(XN ), trained ε(·, ·; θ) 2: for n = N to 1 do
+3: Predict X0ε using ε(Xn, tn; θ)
+4: Xn−1 ∼ p(Xn−1|X0ε, Xn) according to DDPM (4) 5: end for 6: return X0
+Parameterization & Objective Since I2SB requires no conditioning modules, we adopt the same network parameterization ε(Xt, t; θ) from SGM (Dhariwal & Nichol, 2021). Similar to the objective (3), we can compute the score function for ∇ logΨb (Xt, t|X0) ≡ ∇ log p(9a)(Xt, t|X0), except Xt being drawn from (11). This leads to
+∥ε(Xt, t; θ) − Xt−X0
+σt
+∥ (12)
+as we adopt f := 0. Algorithms 1 and 2 summarize the training and generation procedures of I2SB, respectively.
+3.3. Connection to Flow-based Optimal Transport (OT)
+It is known that the solution to SB, as an entropic optimal transport model, converges weakly to the optimal transport plan (Mikami, 2004) as the diffusion degenerates. The following result characterizes this infinitesimal limit.
+Proposition 3.4 (Optimal Transport ODE; OT-ODE). When βt → 0, the SDE between (X0, X1) reduces to an ODE:
+dXt = vt(Xt|X0)dt, vt(Xt|X0) = βt
+σt2
+(Xt − X0), (13)
+whose solution μt(X0, X1) is the posterior mean of (11).
+Note that the OT-ODE (13) is not a probability flow ODE, which has the same marginal as the corresponding SDE, in the SGM literature (Chen et al., 2018; Song et al., 2021a). Instead, the OT-ODE (13) simulates an OT plan (Peyre ́ et al., 2019) only when the stochasticity of the SDE vanishes.
+Proposition 3.4 suggests that the mean of the posterior q represents the OT-ODE paths. Hence, I2SB can also be instantiated as a simulation-free OT by replacing the posteriors with their means, i.e., by removing the noise injected into Xt in both training and generation (the lines 4 in Al
+gorithms 1 and 2). The ratio βt
+σ2
+t
+characterizes how fast the OT-ODE approaches X0, in a similar vein to the noise scheduler in SGM (Nichol & Dhariwal, 2021). With this interpretation in mind, we introduce our final result, which complements recent advances in flow-matching (Lipman et al., 2022) except for image-to-image problem setups.
+Corollary 3.5. For sufficiently small βt := β that remains constant over t, we have vt = Xt−X0
+t and μt = (1−t)X0 + tX1, which recover the OT displacement (McCann, 1997).
+5
+
+
+Image-to-Image Schro ̈dinger Bridge
+Table 1. Comparison of different diffusion models in boundary distributions and tractability of forward and backward drifts. Note that I2SB requires pair information compared to standard SB.
+Model p(X0) p(X1) ∇ logΨ ∇ logΨb
+(C)SGM pA N (0, I) 0 tractable I2SB pA pB(·|X0) intractable tractable SB pA pB(·) intractable intractable
+3.4. Comparison to Standard Conditional Diffusion Model
+I2SB can be thought of as a new class of conditional diffusion models that better leverages the degraded images as the structurally informative priors. It differs from the standard conditional SGM (CSGM; Rombach et al. (2022); Saharia et al. (2022)), which simply constructs a conditional score function with the newly available information (in this case, the degraded images) as an additional input. The generative denoising process in CSGM remains the same as the SDE (2) in SGM that starts from a Gaussian prior. Intuitively, it is more efficient to learn the direct mappings between clean and degraded images given that they are already close to each other. We summarize the comparison of I2SB with other diffusion models in Table 1.
+4. Related Work
+Conditional SGMs (CSGMs) for image restoration refers to a class of diffusion models that bias the generative processes (Song et al., 2020b) toward the underlying intact image of some degraded measurements. This is typically achieved by conditioning the network with the degraded images via, e.g., concatenation or attention (Rombach et al., 2022). CSGMs have demonstrated impressive results in many restoration tasks such as deblurring (Whang et al., 2022), super-resolution (Saharia et al., 2021), and inpainting (Saharia et al., 2022); yet, all of them start the generative processes from noise, which has little structural information of the clean data distribution. Pandey et al. (2022) explored a new reparametrization of the linear forward SDE to refine a VAE’s output. In contrast, our I2SB is built on a tractable SB framework and is the first to directly bridge clean and degraded image distributions for image restoration.
+Diffusion-based inverse model (DIM) combines inverse problem techniques (Song et al., 2021b) with the diffusion priors (Ramesh et al., 2022; Wang et al., 2022a) and aims to restore the underlying clean image signal from the (noisy) measurement given by the degraded image. DIM typically performs projection at each generative step via, e.g., Baye’s rule (Chung et al., 2022b; Song et al., 2022) so that the generation best aligns with the observed measurement. This, however, requires knowing the degraded operators, whether linear (Kawar et al., 2022a; Wang et al., 2022b) or nonlinear
+(Kawar et al., 2022b; Chung et al., 2022a), in both training and test time. In contrast, our I2SB, similar to other CSGMs, does not require knowing these operators, making it generally applicable without task-specific manipulations.
+5. Experiment
+5.1. Experimental Setup
+0.0 0.5 1.0 time t
+0.6
+1.2
+×10 4 t
+Figure 6. Symmetric noise scheduling.
+Model We parameterize ε(Xt, t; θ) with U-Net (Ronneberger et al., 2015) and initialize the network with the unconditional ADM checkpoint (Dhariwal & Nichol, 2021) trained on ImageNet 256×256. Other parameterization, e.g., preconditioning (Karras et al., 2022), is also applicable upon proper adaptation (see Appendix C.3), yet we observed little performance difference. We set f := 0 and consider a symmetric scheduling of βt where the diffusion shrinks at both boundaries; see Figure 6. This is suggested by prior SB models (De Bortoli et al., 2021; Chen et al., 2021a). By default, we use 1000 sampling time steps for all tasks with quadratic discretization (Song et al., 2020a).
+Baselines We compare I2SB with three classes of diffusion models for image restoration, namely CSGM and DIM discussed in Section 4 and standard SB models. Specifically, we consider Palette (Saharia et al., 2022) and ADM (Dhariwal & Nichol, 2021) for CSGM baselines. For DIM models, we consider DDRM (Kawar et al., 2022a;b), DDNM (Wang et al., 2022b), and ΠGDM (Song et al., 2022), but stress that they require additionally knowing the corruption operators at both training and generation. This is in contrast to CSGM models—including Palette and I2SB. We report the results of DIM models for completeness. Finally, for the SB baseline, we consider CDSB (Shi et al., 2022) which extends the work of De Bortoli et al. (2021) to conditional generation.
+Evaluation We showcase the performance of I2SB in solving various image restoration problems, including inpainting, JPEG restoration, deblurring, and 4× superresolution (64×64 to 256×256), on ImageNet 256×256. For each restoration problem, we consider 2-3 tasks by varying, e.g., the quality factors, filtering kernels, and mask types. We keep the implementation and setup of each restoration task the same as the baselines (Kawar et al., 2022a;b; Saharia et al., 2022) for a fair comparison; see Appendix C for details. For quantitative metrics, we choose the Frechet Inception Distance (FID; Heusel et al. (2017)) and Classifier Accuracy (CA) of a pre-trained ResNet50 (He et al., 2016). Similar to the baselines (Saharia et al., 2022; Song et al., 2022), we report super-resolution results on the full ImageNet validation set and report the remaining results on a 10k validation subset.3
+3https://bit.ly/eval-pix2pix
+6
+
+
+Image-to-Image Schro ̈dinger Bridge
+Table 2. 4× super-resolution results w.r.t different filters. We report FID and Classifier Accuracy (CA, unit:%) on a pre-trained ResNet50. In all Tables 2 to 5, dark-colored rows denote methods requiring additional information such as corruption operators, as opposed to conditional diffusion models like Palette and our I2SB.
+Filter Method FID ↓ CA↑
+Pool
+DDRM (Kawar et al., 2022a) 14.8 64.6 DDNM (Wang et al., 2022b) 9.9 67.1 ΠGDM (Song et al., 2022) 3.8 72.3 ADM (Dhariwal & Nichol, 2021) 3.1 73.4 CDSB (Shi et al., 2022) 13.0 61.3 I2SB (Ours) 2.7 71.0
+Bicubic
+DDRM (Kawar et al., 2022a) 21.3 63.2 DDNM (Wang et al., 2022b) 13.6 65.5 ΠGDM (Song et al., 2022) 3.6 72.1 ADM (Dhariwal & Nichol, 2021) 14.8 66.7 CDSB (Shi et al., 2022) 13.6 61.0 I2SB (Ours) 2.8 70.7
+Table 3. JPEG restoration w.r.t different quality factors (QF).
+QF Method FID-10k ↓ CA↑
+DDRM (Kawar et al., 2022b) 28.2 53.9 ΠGDM (Song et al., 2022) 8.6 64.1 5 Palette (Saharia et al., 2022) 8.3 64.2 CDSB (Shi et al., 2022) 38.7 45.7 I2SB (Ours) 4.6 67.9
+DDRM (Kawar et al., 2022b) 16.7 64.7 ΠGDM (Song et al., 2022) 6.0 71.0 10 Palette (Saharia et al., 2022) 5.4 70.7 CDSB (Shi et al., 2022) 18.6 60.0 I2SB (Ours) 3.6 72.1
+5.2. Experimental Results
+I2SB surpasses standard CSGM on many tasks Tables 2 to 5 summarize the quantitative results on each restoration task. We use the official values reported by each baseline and, if not available, compute them using the official implementations with default hyperparameters, except for Palette on deblurring and inpainting tasks which we implemented by ourselves. I2SB clearly surpasses standard CSGMs such as Palette and ADM on six out of nine tasks, including super-resolution (Bicubic), JPEG restoration (for both QFs), and inpainting (for all masks). Despite that ADM and Palette obtain higher CA on super-resolution (Pool) and both deblurring tasks, I2SB yields lower, hence better, FID.
+I2SB matches DIM without knowing corrupted operators and outperforms standard SB on all tasks Compared to DIM models, I2SB provides a competitive alternative with similar performance yet without knowing the corrupted operators during either training or generation. In fact, I2SB achieves state-of-the-art FID on seven out of nine tasks and set new records for CA on JPEG restoration (both
+Table 4. Inpainting results w.r.t different masks.
+Mask Method FID-10k ↓ CA↑
+DDRM (Kawar et al., 2022a) 24.4 62.1 ΠGDM (Song et al., 2022) 7.3 72.6 Center DDNM (Wang et al., 2022b) 15.1 55.9 128×128 Palette (Saharia et al., 2022) 6.1 63.0 CDSB (Shi et al., 2022) 50.5 49.6 I2SB (Ours) 4.9 66.1
+Freeform 10%-20%
+DDRM (Kawar et al., 2022a) 9.7 67.6 DDNM (Wang et al., 2022b) 3.2 73.6 Palette (Saharia et al., 2022) 4.0 73.7 CDSB (Shi et al., 2022) 8.5 71.2 I2SB (Ours) 2.9 74.9
+DDRM (Kawar et al., 2022a) 8.6 71.9 ΠGDM (Song et al., 2022) 5.3 75.3 Freeform DDNM (Wang et al., 2022b) 4.2 70.8 20%-30% Palette (Saharia et al., 2022) 4.1 71.8 CDSB (Shi et al., 2022) 16.5 64.5 I2SB (Ours) 3.2 73.4
+Table 5. Deblurring results w.r.t different kernels.
+Kernel Method FID-10k ↓ CA↑
+DDRM (Kawar et al., 2022a) 9.9 68.0 DDNM (Wang et al., 2022b) 3.0 75.5 Uniform Palette (Saharia et al., 2022) 4.1 74.0 CDSB (Shi et al., 2022) 15.5 65.1 I2SB (Ours) 3.9 73.7
+DDRM (Kawar et al., 2022a) 6.1 72.5 DDNM (Wang et al., 2022b) 2.9 75.6 Gaussian Palette (Saharia et al., 2022) 3.1 75.4 CDSB (Shi et al., 2022) 7.7 71.1 I2SB (Ours) 3.0 75.0
+QFs) and inpainting (Freeform 10-20%). Finally, I2SB outperforms CDSB on all restoration tasks by a large margin. These results highlight I2SB as the first nonlinear diffusion model that scales to high-dimensional applications.
+I2SB yields interpretable & efficient generation As I2SB directly constructs diffusion bridges between two domains, it generates more interpretable processes that progressively restore the intact images from the degradations; see Figure 7. More interpretable generation also implies sampling efficiency. Since the clean and degraded images are typically close to each other, the generation of I2SB starts from a much more structurally informative prior compared to random noise. We validate these concepts in Figures 8 and 9 by tracking how the performance of I2SB and Palette changes as the number of function evaluation (NFE) decreases in sampling. For a fair comparison, we train both models with 1000 discrete steps and sample with DDPM (4) so that they differ mainly in the boundary distributions, i.e., pB(·|X0) vs. N (0, I). From Figure 8, we see that across
+7
+
+
+Image-to-Image Schro ̈dinger Bridge
+t=1 (input) t = 2/3 t = 1/3 t = 0 (output) Reference
+Figure 7. I2SB features more natural and interpretable generative diffusion processes from degraded to clean images. Top: JPEG restoration (QF=5). Bottom: 4× super-resolution (Bicubic).
+2 10 100 500
+10
+20
+30
+FID-10k
+Inpaint (center)
+2 10 100 500
+10
+In20paint (freeform 20-30%)
+2 10 100 500
+10
+20
+30
+Deblur (uniform)
+2 10 100 500
+55
+60
+CA (%)
+2 10 100 500
+65
+70
+2 10 100 500
+50
+60
+70 Palette I2SB
+Number of function evaluation (NFE) in log-scale
+Figure 8. Quantitative comparison between Palette (Saharia et al., 2022) and our I2SB across different NFEs in sampling. I2SB enjoys much smaller performance drops as NFE decreases.
+Table 6. How the performance of I2SB improves or degrades with OT-ODE, i.e., by sampling Xt from the mean of q(Xt|X0, X1).
+JPEG restoration Deblurring
+QF=5 10 Uniform Gaussian
+FID difference +5.3 +4.2 -0.3 -0.6 CA difference -4.7 -3.8 +6.0 +4.1
+various tasks, I2SB enjoys much smaller performance drops as NFE decreases. On inpainting (Freeform 20-30%), for example, I2SB needs only 2∼10 NFEs while Palette needs at least 100 NFEs to achieve the similar best performance. Qualitatively, Figure 9 also demonstrates that I2SB clearly outperforms Palette in the small NFE regime. Particularly for inpainting, I2SB is able to repaint the masked region with semantic structures with only two NFEs (and further fills in textural details as the NFE increases). On the contrary, Palette tends to generate unnatural images with noisy repainting or contrast shift when the NFE is small.
+5.3. Discussions
+Sampling proposals I2SB shares much algorithmic similarity with SGM except drawing Xt from an interpolation between clean and degraded images according to q(Xt|X0, X1). This posterior differs from the distribution induced by the forward SDE (9a) and, according to Proposition 3.3, better covers regions traversed by the generative processes. To verify this, Figure 10 shows how the perfor
+Reference
+Palette
+NFE=2 NFE=10 NFE=100
+Input
+I2SB (Ours)
+Reference
+Palette
+Input
+I2SB (Ours)
+Figure 9. Qualitative comparison between Palette (Saharia et al., 2022) and our I2SB w.r.t. different NFE on (top) inpainting (Freeform 20%-30%) and (bottom) deblurring (Uniform).
+0.0 0.5 1.0 mixing ratio
+25
+50
+75 corrupt images
+FID-10k Score
+0.0 0.5 1.0 mixing ratio
+25
+50
+75
+corrupt images
+Classifier Accuracy (%)
+Figure 10. Effect of sampling proposal of Xt on JPEG restoration (QF=5). The x-axis is the mixing ratio between (left) the distribution induced by (9a) and (right) the posterior q(Xt|X0, X1). Both metrics improve as the proposal approaches q(Xt|X0, X1).
+mance changes when Xt is sampled by mixing these two distributions with different ratios during training. Clearly, both metrics deteriorate as the sampling proposal deviates from q(Xt|X0, X1) towards the distribution induced by (9a).
+Diffusion vs. OT-ODE Table 6 reports the performance difference when we adopt the OT-ODE in Proposition 3.4, i.e., by sampling Xt with the mean of q(Xt|X0, X1) in both training and generation. Our result suggests that OT-ODE favors restoration tasks where deterministic mapping is possible (e.g., deblurring) yet is biased against those with large uncertainties (e.g., JPEG restoration). It reexamines the role of stochasticity in modern dynamic generative models.
+General image-to-image translation Since our framework does not impose any assumptions or restrictions on the underlying prior distributions, I2SB can be applied to general image-to-image translation by adopting the same training and sampling procedures (Algorithms 1 and 2), except conditioning the network additionally on the inputs, i.e., ε(Xt, t, X1|θ). Aligned with the discussions in Appendix C.3, we found it beneficial when the priors have
+8
+
+
+Image-to-Image Schro ̈dinger Bridge
+t=1 (input) t = 2/3 t = 1/3 t = 0.0 (output) Reference t=1 (input) t = 2/3 t = 1/3 t = 0.0 (output) Reference
+BW Color
+edges shoes
+edges handbags day night
+Figure 11. Application of our I2SB to four general image-to-image translation tasks from Pix2pix (Isola et al., 2017). We consider ImageNet dataset for the colorization task (BW → Color) and adopt the datasets proposed by Isola et al. (2017) for the remaining three tasks, namely edges2shoes, day2night, and edges2handbags. All images are in 256×256 resolution.
+Table 7. Quantitative (FID) results on two general image-to-image translation tasks. Our I2SB matches Pix2pix with only one NFE and quickly outperforms it by refining the generation processes.
+Pix2pix I2SB
+NFE=1 NFE=5 NFE=1000
+edges→shoes 73.9 73.9 54.2 37.8 day→night 196.4 196.3 185.8 153.6
+large information loss. Figure 11 demonstrates the qualitative results, and Table 7 reports the FID w.r.t. the statistics of each validation set. It is clear that our I2SB achieves similar performance to Pix2pix (Isola et al., 2017) with one NFE and quickly outperforms it by refining the generation processes. These results highlight the applicability of I2SB to general image-to-image translation tasks.
+Comparison to inpainting GANs Table 8 reports the generation quality and efficiency between two inpainting GANs, i.e., DeepFillv2 (Yu et al., 2019) and HiFill (Yi et al., 2020), Palette, and our I2SB. For a fair comparison, we reduce the sampling step of all diffusion models to 1. In other words, “I2SB (NFE=1)” generates images with one network call. It is clear that I2SB achieves best generation quality among all models on both tasks. Note that since all models generate images in one network call, the difference in their inference times is mainly due to the network size.
+Limitation Despite these encouraging results, the tractability of I2SB requires knowing paired data (e.g., clean and degraded image pairs) during training. While paired data is typically available at nearly no cost, especially for image restoration tasks, it nevertheless limits the application of I2SB to unpaired image translation tasks like CycleGAN
+Table 8. Comparison between GANs (DFill and HiFill) and our I2SB with one NFE on two inpainting tasks. We include Palette for comparison. The inference time is measured on a V100 16G.
+Mask Method FID ↓ CA ↑ Inference time
+(10k) (%) (sec/image)
+DeepFillv2 6.7 71.6 0.01 Freeform HiFill 7.5 70.1 0.03 10%-20% I2SB (NFE=1) 4.1 73.4 0.14 Palette (NFE=1) 9.6 69.9 0.14
+DeepFillv2 9.4 68.8 0.01 Freeform HiFill 12.4 65.7 0.03 20%-30% I2SB (NFE=1) 6.7 69.9 0.14 Palette (NFE=1) 19.8 61.8 0.14
+(Zhu et al., 2017) or DDIB (Su et al., 2022). Constructing simulation-free diffusion bridges (like our I2SB) under more flexible setups will be an interesting future direction.
+6. Conclusion
+We developed I2SB, a new conditional diffusion model that transport between clean and degraded image distributions based on a tractable class of Schro ̈dinger bridge. I2SB yields interpretable generation, enjoys sampling efficiency, and sets new records on image restoration. It will be interesting to combine I2SB with inverse problem techniques.
+Acknowledgements
+The authors thank Jiaming Song & Yinhuai Wang for experiment clarifications, Jeffrey Smith & Sabu Nadarajan for hardware supports, Tianrong Chen for general discussions, and David Zhang for catching typos in the initial arXiv.
+9
+
+
+Image-to-Image Schro ̈dinger Bridge
+References
+Anderson, B. D. Reverse-time diffusion equation models. Stochastic Processes and their Applications, 12(3):313326, 1982.
+Banham, M. R. and Katsaggelos, A. K. Digital image restoration. IEEE signal processing magazine, 14(2): 24–41, 1997.
+Bishop, C. M. Pattern recognition and machine learning. springer, 2006.
+Caluya, K. and Halder, A. Wasserstein proximal algorithms for the schro ̈dinger bridge problem: Density control with nonlinear drift. IEEE Transactions on Automatic Control, 2021.
+Chen, T., Liu, G.-H., and Theodorou, E. A. Likelihood training of schr ̈odinger bridge using forward-backward sdes theory. arXiv preprint arXiv:2110.11291, 2021a.
+Chen, T. Q., Rubanova, Y., Bettencourt, J., and Duvenaud, D. K. Neural ordinary differential equations. In Advances in Neural Information Processing Systems, pp. 6572–6583, 2018.
+Chen, Y., Georgiou, T. T., and Pavon, M. Stochastic control liaisons: Richard sinkhorn meets gaspard monge on a schro ̈dinger bridge. SIAM Review, 63(2):249–313, 2021b.
+Chung, H., Kim, J., Mccann, M. T., Klasky, M. L., and Ye, J. C. Diffusion posterior sampling for general noisy inverse problems. arXiv preprint arXiv:2209.14687, 2022a.
+Chung, H., Sim, B., Ryu, D., and Ye, J. C. Improving diffusion models for inverse problems using manifold constraints. arXiv preprint arXiv:2206.00941, 2022b.
+Cole, J. D. On a quasi-linear parabolic equation occurring in aerodynamics. Quarterly of applied mathematics, 9(3): 225–236, 1951.
+Dai Pra, P. A stochastic control approach to reciprocal diffusion processes. Applied mathematics and Optimization, 23(1):313–329, 1991.
+De Bortoli, V., Thornton, J., Heng, J., and Doucet, A. Diffusion schro ̈dinger bridge with applications to score-based generative modeling. arXiv preprint arXiv:2106.01357, 2021.
+Deng, J., Dong, W., Socher, R., Li, L.-J., Li, K., and Fei-Fei, L. Imagenet: A large-scale hierarchical image database. In 2009 IEEE conference on computer vision and pattern recognition, pp. 248–255. Ieee, 2009.
+Dhariwal, P. and Nichol, A. Diffusion models beat gans on image synthesis. arXiv preprint arXiv:2105.05233, 2021.
+Evans, L. C. Partial differential equations, volume 19. American Mathematical Soc., 2010.
+Fernandes, D. L., Vargas, F., Ek, C. H., and Campbell, N. D. Shooting schr ̈odinger’s cat. In Fourth Symposium on Advances in Approximate Bayesian Inference, 2021.
+He, K., Zhang, X., Ren, S., and Sun, J. Deep residual learning for image recognition. In Proceedings of the IEEE conference on computer vision and pattern recognition, pp. 770–778, 2016.
+Heusel, M., Ramsauer, H., Unterthiner, T., Nessler, B., and Hochreiter, S. Gans trained by a two time-scale update rule converge to a local nash equilibrium. Advances in neural information processing systems, 30, 2017.
+Ho, J., Jain, A., and Abbeel, P. Denoising diffusion probabilistic models. Advances in Neural Information Processing Systems, 33:6840–6851, 2020.
+Hopf, E. The partial differential equation ut+ uux= μxx. Communications on Pure and Applied mathematics, 3(3): 201–230, 1950.
+Huang, X., Liu, M.-Y., Belongie, S., and Kautz, J. Multimodal unsupervised image-to-image translation. In Proceedings of the European conference on computer vision (ECCV), pp. 172–189, 2018.
+Isola, P., Zhu, J.-Y., Zhou, T., and Efros, A. A. Image-toimage translation with conditional adversarial networks. In Proceedings of the IEEE conference on computer vision and pattern recognition, pp. 1125–1134, 2017.
+Karras, T., Aittala, M., Aila, T., and Laine, S. Elucidating the design space of diffusion-based generative models. arXiv preprint arXiv:2206.00364, 2022.
+Kawar, B., Elad, M., Ermon, S., and Song, J. Denoising diffusion restoration models. arXiv preprint arXiv:2201.11793, 2022a.
+Kawar, B., Song, J., Ermon, S., and Elad, M. Jpeg artifact correction using denoising diffusion restoration models. arXiv preprint arXiv:2209.11888, 2022b.
+Khan, S., Naseer, M., Hayat, M., Zamir, S. W., Khan, F. S., and Shah, M. Transformers in vision: A survey. ACM computing surveys (CSUR), 54(10s):1–41, 2022.
+Kullback, S. Probability densities with given marginals. The Annals of Mathematical Statistics, 39(4):1236–1243, 1968.
+Ledig, C., Theis, L., Husza ́r, F., Caballero, J., Cunningham, A., Acosta, A., Aitken, A., Tejani, A., Totz, J., Wang, Z., et al. Photo-realistic single image super-resolution using a generative adversarial network. In Proceedings
+10
+
+
+Image-to-Image Schro ̈dinger Bridge
+of the IEEE conference on computer vision and pattern recognition, pp. 4681–4690, 2017.
+L ́eonard, C. From the schr ̈odinger problem to the mongekantorovich problem. Journal of Functional Analysis, 262(4):1879–1920, 2012.
+Le ́onard, C. A survey of the schro ̈dinger problem and some of its connections with optimal transport. arXiv preprint arXiv:1308.0215, 2013.
+Li, G., Yang, Y., Qu, X., Cao, D., and Li, K. A deep learning based image enhancement approach for autonomous driving at night. Knowledge-Based Systems, 213:106617, 2021.
+Lipman, Y., Chen, R. T., Ben-Hamu, H., Nickel, M., and Le, M. Flow matching for generative modeling. arXiv preprint arXiv:2210.02747, 2022.
+Liu, G.-H., Chen, T., So, O., and Theodorou, E. A. Deep generalized schr\” odinger bridge. arXiv preprint arXiv:2209.09893, 2022.
+McCann, R. J. A convexity principle for interacting gases. Advances in mathematics, 128(1):153–179, 1997.
+Menon, S., Damian, A., Hu, S., Ravi, N., and Rudin, C. Pulse: Self-supervised photo upsampling via latent space exploration of generative models. In Proceedings of the ieee/cvf conference on computer vision and pattern recognition, pp. 2437–2445, 2020.
+Mikami, T. Monge’s problem with a quadratic cost by the zero-noise limit of h-path processes. Probability theory and related fields, 129(2):245–260, 2004.
+Mirza, M. and Osindero, S. Conditional generative adversarial nets. arXiv preprint arXiv:1411.1784, 2014.
+Motwani, M. C., Gadiya, M. C., Motwani, R. C., and Harris, F. C. Survey of image denoising techniques. In Proceedings of GSPX, volume 27, pp. 27–30, 2004.
+Nelson, E. Dynamical theories of brownian motion. 1967.
+Nelson, E. Dynamical theories of Brownian motion, volume 106. Princeton university press, 2020.
+Nichol, A. Q. and Dhariwal, P. Improved denoising diffusion probabilistic models. In International Conference on Machine Learning, pp. 8162–8171. PMLR, 2021.
+Nie, W., Guo, B., Huang, Y., Xiao, C., Vahdat, A., and Anandkumar, A. Diffusion models for adversarial purification. arXiv preprint arXiv:2205.07460, 2022.
+Pandey, K., Mukherjee, A., Rai, P., and Kumar, A. Diffusevae: Efficient, controllable and high-fidelity generation from low-dimensional latents. arXiv preprint arXiv:2201.00308, 2022.
+Pavon, M. and Wakolbinger, A. On free energy, stochastic control, and schr ̈odinger processes. In Modeling, Estimation and Control of Systems with Uncertainty, pp. 334–348. Springer, 1991.
+Peyr ́e, G., Cuturi, M., et al. Computational optimal transport: With applications to data science. Foundations and Trends® in Machine Learning, 11(5-6):355–607, 2019.
+Ramesh, A., Dhariwal, P., Nichol, A., Chu, C., and Chen, M. Hierarchical text-conditional image generation with clip latents. arXiv preprint arXiv:2204.06125, 2022.
+Richardson, W. H. Bayesian-based iterative method of image restoration. JoSA, 62(1):55–59, 1972.
+Risken, H. Fokker-planck equation. In The Fokker-Planck Equation, pp. 63–95. Springer, 1996.
+Rombach, R., Blattmann, A., Lorenz, D., Esser, P., and Ommer, B. High-resolution image synthesis with latent diffusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 10684–10695, 2022.
+Ronneberger, O., Fischer, P., and Brox, T. U-net: Convolutional networks for biomedical image segmentation. In International Conference on Medical image computing and computer-assisted intervention, pp. 234–241. Springer, 2015.
+Saharia, C., Ho, J., Chan, W., Salimans, T., Fleet, D. J., and Norouzi, M. Image super-resolution via iterative refinement. arXiv preprint arXiv:2104.07636, 2021.
+Saharia, C., Chan, W., Chang, H., Lee, C., Ho, J., Salimans, T., Fleet, D., and Norouzi, M. Palette: Image-to-image diffusion models. In ACM SIGGRAPH 2022 Conference Proceedings, pp. 1–10, 2022.
+S ̈arkk ̈a, S. and Solin, A. Applied stochastic differential equations, volume 10. Cambridge University Press, 2019.
+Schro ̈dinger, E. U ̈ ber die umkehrung der naturgesetze. Verlag der Akademie der Wissenschaften in Kommission bei Walter De Gruyter u . . . , 1931.
+Schr ̈odinger, E. Sur la th ́eorie relativiste de l’ ́electron et l’interpre ́tation de la me ́canique quantique. In Annales de l’institut Henri Poincar ́e, volume 2, pp. 269–310, 1932.
+Shi, Y., De Bortoli, V., Deligiannidis, G., and Doucet, A. Conditional simulation using diffusion schr ̈odinger bridges. In Uncertainty in Artificial Intelligence, pp. 1792–1802. PMLR, 2022.
+Sohl-Dickstein, J., Weiss, E., Maheswaranathan, N., and Ganguli, S. Deep unsupervised learning using nonequilibrium thermodynamics. In International Conference on Machine Learning, pp. 2256–2265. PMLR, 2015.
+11
+
+
+Image-to-Image Schro ̈dinger Bridge
+Song, J., Meng, C., and Ermon, S. Denoising diffusion implicit models. arXiv preprint arXiv:2010.02502, 2020a.
+Song, J., Vahdat, A., Mardani, M., and Kautz, J. Pseudoinverse-guided diffusion models for inverse problems. In International Conference on Learning Representations, 2022.
+Song, Y. and Ermon, S. Improved techniques for training score-based generative models. arXiv preprint arXiv:2006.09011, 2020.
+Song, Y., Sohl-Dickstein, J., Kingma, D. P., Kumar, A., Ermon, S., and Poole, B. Score-based generative modeling through stochastic differential equations. arXiv preprint arXiv:2011.13456, 2020b.
+Song, Y., Durkan, C., Murray, I., and Ermon, S. Maximum likelihood training of score-based diffusion models. arXiv e-prints, pp. arXiv–2101, 2021a.
+Song, Y., Shen, L., Xing, L., and Ermon, S. Solving inverse problems in medical imaging with score-based generative models. arXiv preprint arXiv:2111.08005, 2021b.
+Su, X., Song, J., Meng, C., and Ermon, S. Dual diffusion implicit bridges for image-to-image translation. arXiv preprint arXiv:2203.08382, 2022.
+Vahdat, A., Kreis, K., and Kautz, J. Score-based generative modeling in latent space. arXiv preprint arXiv:2106.05931, 2021.
+Vargas, F., Thodoroff, P., Lawrence, N. D., and Lamacraft, A. Solving schro ̈dinger bridges via maximum likelihood. arXiv preprint arXiv:2106.02081, 2021.
+Vincent, P. A connection between score matching and denoising autoencoders. Neural computation, 23(7):16611674, 2011.
+Wallace, G. K. The jpeg still picture compression standard. Communications of the ACM, 34(4):30–44, 1991.
+Wang, T., Zhang, T., Zhang, B., Ouyang, H., Chen, D., Chen, Q., and Wen, F. Pretraining is all you need for imageto-image translation. arXiv preprint arXiv:2205.12952, 2022a.
+Wang, Y., Yu, J., and Zhang, J. Zero-shot image restoration using denoising diffusion null-space model. arXiv preprint arXiv:2212.00490, 2022b.
+Whang, J., Delbracio, M., Talebi, H., Saharia, C., Dimakis, A. G., and Milanfar, P. Deblurring via stochastic refinement. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 1629316303, 2022.
+Yi, Z., Tang, Q., Azizi, S., Jang, D., and Xu, Z. Contextual residual aggregation for ultra high-resolution image inpainting. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pp. 7508–7517, 2020.
+Yu, J., Lin, Z., Yang, J., Shen, X., Lu, X., and Huang, T. S. Free-form image inpainting with gated convolution. In Proceedings of the IEEE/CVF international conference on computer vision, pp. 4471–4480, 2019.
+Zhang, C., Bengio, S., Hardt, M., Recht, B., and Vinyals, O. Understanding deep learning (still) requires rethinking generalization. Communications of the ACM, 64(3):107115, 2021.
+Zhang, Q. and Chen, Y. Path integral sampler: a stochastic control approach for sampling. arXiv preprint arXiv:2111.15141, 2021.
+Zhu, J.-Y., Park, T., Isola, P., and Efros, A. A. Unpaired image-to-image translation using cycle-consistent adversarial networks. In Proceedings of the IEEE international conference on computer vision, pp. 2223–2232, 2017.
+12
+
+
+Image-to-Image Schro ̈dinger Bridge
+A. Proof
+Proof of Theorem 3.1. Recall that the density evolution of an Itoˆ process,
+dXt = ft(Xt)dt + pβtdWt, X0 ∼ p0 (14)
+can be characterized by the Fokker Plank equation (Risken, 1996),
+∂p(x, t)
+∂t = − ∇ · (ft p) + 1
+2 βt∆p, p(x, 0) = p0(x). (15)
+Comparing (14, 15) to (9a, 6a) readily suggests that the
+PDE ∂Ψb (x,t)
+∂t in (6a) can be viewed as the Fokker Plank
+of the SDE in (9a). The equivalence Ψb ≡ p(9a) holds up to some constant which vanishes upon taking the operator “∇ log” or in the Fokker Plank equation (since all operators are linear). Similar interpretation can be drawn between
+the PDE ∂Ψ(x,t)
+∂t and the SDE in (9b) by noticing that (6a) can be read equivalently from the reversed time coordinate (Chen et al., 2021a; Liu et al., 2022):
+
+
+
+∂Ψ(x,s)
+∂s = ∇ · (Ψb fs) + 1
+2 βs∆Ψ
+∂
+bΨ(x,s)
+∂s = ∇Ψ⊤fs − 1
+2 βs∆Ψb
+, (16)
+where s := 1 − t. This suggests that Ψ(x, s) can be seen as the density (up to some constant) of the SDE
+dXs = −fs(Xs)ds + pβsdWs, X0 ∼ Ψ(·, 0),
+which equals (9b) after substituting back t = 1 − s.
+Proof of Corollary 3.2. It suffices to show that the solutions (10) are consistent with the necessary conditions in (6a), i.e., they are the solutions to the two PDEs with the coupled boundary constraints. Notice that the second PDE
+∂
+Ψb (x,t)
+∂t and the constraint Ψ(·, 1)Ψb (·, 1) = pB(x) are sat
+isfied by construction since Ψb (·, 1) is the Fokker-Plank solution w.r.t. the initial condition Ψb (·, 0) = δa(·). Hence, it remains to be shown that the solution to the following backward PDE
+∂Ψ(x, t)
+∂t = −∇Ψ⊤ft − 1
+2 βt∆Ψ, Ψ(x, 1) = pB(x)
+Ψb (x, 1) (17)
+satisfies the remaining boundary constraint w.r.t. pA. Precisely, since pA(x) = Ψb (x, 0) = δa(x), it suffices to show the solution to (17) being Ψ(a, 0) = 1, which is indeed the case (Zhang & Chen, 2021). For completeness, Zhang & Chen (2021, Theorem 1) identified that the solution to the Hamilton-Jacobi-Bellman (HJB) equation (Evans, 2010), which relates to (17) via exponential transform (Hopf, 1950; Caluya & Halder, 2021), with the terminal cost log pB(x)
+Ψb (x,1)
+is simply 0. Hence, we know that the solution to (17) is Ψ(a, 0) = exp(0) = 1, which concludes the proof.
+How Corollary 3.2 reduces to SGM. When pB := Ψb (·, 1) and f is chosen such that the terminal distribution of the forward SDE converges to a Gaussian, i.e., Ψb (·, 1) ≈ N (0, I), we have Ψ(·, 1) = 1 from (10). In fact, we will have Ψ(·, t) = 1 for all t ∈ [0, 1] since ∂Ψ(x,t)
+∂t = 0. In this case, one can verify that the remaining boundary constraint holds, i.e., pA(·) = Ψ(·, 0)Ψb (·, 0), since we set pA(·) = Ψb (·, 0) = δa(·).
+Proof of Proposition 3.3. Equation (11) arises naturally by first conditioning the Nelson’s duality (Nelson, 2020), i.e., q(·, t) = Ψ(·, t)Ψb (·, t), on a boundary pair (X0, X1),
+q(Xt|X0, X1) = Ψ(Xt, t|X0)Ψb (Xt, t|X1).
+Since Ψ(Xt, t|X0) and Ψb (Xt, t|X1) are solutions to Fokker-Plank equations (see the proof of Theorem 3.1), we can rewrite the posterior as the product of two Gaussians:
+Ψ(Xt, t|X0)Ψb (Xt, t|X1)
+= exp − 1
+2
+∥Xt − X0∥2 σt2
++ ∥Xt − X1∥2
+σ ̄t2
+=N (Xt; σ ̄t2
+σ ̄t2 + σt2
+X0 + σt2
+σ ̄t2 + σt2
+X1, σt2σ ̄t2
+σ ̄t2 + σt2
+· I),
+where σt2 := R t
+0 βτ dτ and σ ̄t2 := R 1
+t βτ dτ are analytic marginal variances (Sa ̈rkka ̈ & Solin, 2019) of the SDEs (9) when f := 0.
+We now prove (by induction) that q(Xt|X0, X1) is the marginal density of DDPM posterior p(Xn|X0, Xn+1). First, notice that when f := 0, p(Xn|X0, Xn+1) has an analytic Gaussian form
+p(Xn|X0, Xn+1)
+= N (Xn; α2n
+α2n + σ2n
+X0 + σ2n
+α2n + σ2n
+Xn+1, σ2nα2n
+α2n + σ2n
+· I),
+where we denote α2n := R tn+1
+tn βτ dτ as the accumulated variance between two consecutive time steps (tn, tn+1). It is clear that at the boundary tn := tN−1, we have
+q(XN−1|X0, XN ) = p(XN−1|X0, XN )
+since αN−1 = R tN
+tN−1 βτ dτ = σ ̄2
+N−1. Suppose the relation also holds at tn+1, it suffices to show that
+q(Xn|X0, XN ) (18)
+?=
+Z
+p(Xn|X0, Xn+1)q(Xn+1|X0, XN )dXn+1.
+Since both p and q are Gaussians, the RHS of (18) is a Gaussian with the mean (Bishop, 2006)
+α2n α2
+n+σ2
+n
+| {z }
+σ2
+n+1
+X0+ σ2n
+α2
+n+σ2
+n
+| {z }
+σ2
+n+1
+σ ̄2n+1 X0
+σ ̄2
+n+1 + σ2
+n+1
+| {z }
+σ ̄ 2n +σ 2n
++ σ2n+1 XN
+σ ̄2
+n+1 + σ2
+n+1
+| {z }
+σ ̄ 2n +σ 2n
+13
+
+
+Image-to-Image Schro ̈dinger Bridge
+= α2n(σ ̄2n+1 + σ2n+1) + σ2nσ ̄2n+1
+σ2n+1(σ ̄2n + σ2n) X0 + σ2n
+σ ̄2n + σ2n
+XN
+= α2nσ2n+1 + σ ̄2n+1(α2n + σ2n)
+σ2n+1(σ ̄2n + σ2n) X0 + σ2n
+σ ̄2n + σ2n
+XN
+= σ ̄2n
+σ ̄2n + σ2n
+X0 + σ2n
+σ ̄2n + σ2n
+XN , (19)
+where we utilize that σ ̄2n + σ2n remains constant for all n
+and that α2n = σ2n+1 − σ2n = σ ̄2n − σ ̄2n+1 by construction. Similarly, the RHS of (18) has the covariance
+α2nσ2n α2n + σ2n
++ σ ̄2n+1σ2n+1
+σ ̄2n+1 + σ2n+1
+σ2n α2n + σ2n
+2
+= α2nσ2n(σ ̄2n + σ2n) + σ ̄2n+1σ4n
+σ2n+1(σ ̄2n + σ2n)
+=
+σ2n α2n(σ ̄2n + σ2n) + (σ ̄2n − α2n)σ2n
+σ2n+1(σ ̄2n + σ2n) = σ2nσ ̄2n
+σ ̄2n + σ2n
+. (20)
+Equations (19) and (20) validate the equality in (18), and we conclude the proof by induction.
+Proof of Proposition 3.4. At the infinitesimal limit when
+βt → 0, the variance of q, i.e., σ2
+t σ ̄2
+t σ ̄ 2
+t +σ2
+t
+, vanishes as the numerator converges faster than the denominator toward zero. On the contrary, its mean remains unchanged as
+both ratios ( σ ̄2
+t σ ̄ 2
+t +σ2
+t
+, σ2
+t σ ̄ 2
+t +σ2
+t
+) preserve. Hence we know the deterministic solution at the infinitesimal limit is simply Xt = μt(X0, X1). In this case, the diffusion of the SDE,
+i.e., “√βttdWt”, vanishes while its drift approaches a vector field of the form:
+βt∇ logΨb (Xt|X0) = βt
+σt2
+(Xt − X0) := vt(Xt|X0).
+Hence, we have the OT-ODE in (13).
+Proof of Corollary 3.5. When βt := β is a sufficiently
+small constant, the ratio βt
+σ2
+t
+decays in the order of O(1/t)
+since σt2 = R t
+0 βτ dτ = β · t. With this, Proposition 3.4
+yields μt = (1 − t)X0 + tX1 and vt = Xt−X0
+t . Intuitively, the OT-ODE trajectories move with a constant velocity from X1 toward X0.
+B. Introduction to Schr ̈odinger Bridge
+The Schro ̈dinger bridge problem was originally introduced quantum mechanics (Schr ̈odinger, 1931; 1932) and later draws broader interests with its connection to optimal transport (L ́eonard, 2013; Dai Pra, 1991). The dynamic Schro ̈dinger bridge (Pavon & Wakolbinger, 1991; Le ́onard, 2012) is typically defined as
+min
+Q∈Π(pA ,pB )
+DKL(Q||P),
+where Π(pA, pB) is a set of path measure with the marginal densities pA and pB at the boundaries. Relating the path measures Q and P respectively to some controlled and uncontrolled diffusion processes leads to the following stochastic optimal control (SOC) formulation:
+min
+u(Xt,t) E
+Z1
+0
+1
+2 ∥u(Xt, t)∥dt
+s.t. dXt = [ft(Xt) + u(Xt, t)]dt + pβtdWt
+X0 ∼ pA, X1 ∼ pB
+(21)
+The programming (21) seeks an optimal control process u(Xt, t) such that the energy cost accumulated over the time horizon [0, 1] is minimized while obeying the distributional boundary constraints. The coupled PDEs in (6a) result directly from applying the Hopf-Cole transform (Hopf, 1950; Cole, 1951) to the necessary conditions to (21). This yields u⋆(Xt, t) = βt∇ logΨ(Xt, t) and hence the SDE in (5a). Similar reasoning applies to (5b), where βt∇ logΨb (Xt, t) serves as the optimal control process to a SOC similar to (21) except running backward in time.
+C. Experiment Details
+Official Pytorch implementation of our I2SB can be found in https://github.com/NVlabs/I2SB.
+C.1. Additional Experimental Setup
+Deblurring and JPEG restoration We adopt the implementation of blurring kernels from Kawar et al. (2022a) and the implementation of JPEG quality factor from Kawar et al. (2022b). Following the baselines (Saharia et al., 2022; Song et al., 2022), the FID is evaluated over the reconstruction results on the 10k ImageNet validation subset,4 and compared against the statistics of the entire ImageNet validation set.
+4× super-resolution We adopt the same implementation of filters from DDRM (Kawar et al., 2022a). We first generate 64×64 images then upsample them to 256×256 before passing into I2SB, since the model transports between clean and degraded images of the same size. Following the baselines (Saharia et al., 2022; Song et al., 2022), the FID is evaluated over the reconstruction results on the entire ImageNet validation set, and compared against the statistics of the entire ImageNet training set.
+Inpainting We use the same freeform masks provided by Palette (Saharia et al., 2022),4 which contains 10000 masks for both 10%-20% and 20%-30% ratios. We randomly select these masks during training and iterate them through the 10k ImageNet validation subst4 for reproducible evaluation. We follow the same instructions from Palette and
+4https://bit.ly/eval-pix2pix
+14
+
+
+Image-to-Image Schro ̈dinger Bridge
+Table 9. Additional ablation study on the effect of stochasticity on inpainting tasks. OT-ODE exhibits severe degradation with noiseless masks but yields slightly better results after injecting additional noise to the masked regions of degraded inputs.
+mask mask + noise
+Center Ff. 20-30% Center Ff. 20-30%
+FID diff. +50.9 +13.0 -0.1 -0.1 CA diff. -14.1 -7.3 0.0 +0.7
+set up I2SB such that (i) the training loss is restricted to only the masked regions, (ii) the masked regions are filled with Gaussian noise as inputs (see Figure 13), and (iii) the model predicts only the masked regions during generation. The FID is evaluated over the reconstruction results on the 10k ImageNet validation subset and compared against the statistics of the entire ImageNet validation set.
+Evaluation We use cleanfid package5 with the option “legacy pytorch” to compute FID values. For the reference statistics, we take the ones provided by ADM (Dhariwal & Nichol, 2021) for the ImageNet training set and compute the ones for the ImageNet validation set by resizing and center-cropping the images to 256×256, similar to ADM. The Classifier Accuracy is based on a pre-trained ResNet50 (He et al., 2016). Following the suggestions from Saharia et al. (2022), we avoid pixel-level metrics like PSNR and SSIM as they tend to prefer blurry regression outputs (Menon et al., 2020; Ledig et al., 2017).
+Palette implementation We implement our own Palette for the results in Tables 4, 5 and 8 and Figures 8 and 9. For all the other tasks, we use the official values reported in their paper. For a fair comparison, we initialize its network of Palette with the same checkpoint from unconditional ADM (Dhariwal & Nichol, 2021) on ImageNet 256×256 and concatenate the first layer with conditional inputs, following Rombach et al. (2022). The SDE uses the same 1000 time steps with quadratic discretization similar to I2SB.
+C.2. Additional Qualitative Results
+Figures 13 to 16 provide additional qualitative results on each restoration tasks, and Figures 17 to 19 provide additional examples comparing between Palette and I2SB w.r.t. various NFE sampling. Finally, Figure 20 demonstrates that I2SB is able to generate diverse samples.
+C.3. Additional Discussions
+More Ablation Study on OT-ODE Table 6 shows how OT-ODE seems to disfavor restoration tasks with large un
+5https://github.com/GaParmar/clean-fid
+0.0 0.5 1.0
+1
+2
+ctin
+0.0 0.5 1.0 time t
+1.0
+1.2
+ctskip
+Eq. (12) Eq. (23)
+0.0 0.5 1.0
+0.0
+0.2
+ctout
+Figure 12. The numerical values of the coefficients cin
+t , cskip
+t , cout
+t
+adopted in (12, 23) for training ε(Xt, t; θ), where Xt interpolates between clean and corrupted image pair (X0, X1).
+certainties. We conjecture that it is due to the severe information lost in degraded inputs that hinders the reconstruction of deterministic mapping. This is validated in Table 9, where we compare the performance difference on inpainting tasks with or without injecting Gaussian noise to the masked regions. OT-ODE exhibits severe degradation without any stochasticity but yields comparable results after injecting additional noise to the masked regions of degraded inputs.
+Other Parameterization In additional to the standard rescaled score function in (12), we may follow Karras et al. (2022) by considering
+∥ε(cin
+t · Xt, t; θ) − cskip
+t · Xt − X0
+ctout
+∥, (22)
+where citn, cskip
+t , ctout ∈ R are time-varying coefficients such that (i) the inputs and outputs of ε have unit variance and (ii) the approximation error induced from ε are minimized. In our cases, since Xt now interpolates between clean and corrupted image pairs (rather than images with i.i.d. noises), we re-derive these coefficients in a more general form given estimated Var[Xt] and Cov[X0, Xt]:
+cin
+t= 1
+√
+Var[Xt] , cskip
+t = Cov[X0,Xt]
+Var[Xt] ,
+cout
+t=
+r
+Var[X0] − Cov[X0,Xt]2
+Var[Xt] .
+(23)
+These coefficients can be obtained by Var[cinXt] = 1 and
+Var cskipXt − X0
+cout
+=1
+⇒ c2
+skipVar[Xt] + Var[X0] − 2cskipCov[Xt, X0] = c2
+out.
+Choosing cskip such that c2
+out is minimized yields (23). Figure 12 summarizes the difference between (12) and (23). In practice, we find their empirical differences negligible. Remark C.1 (How (23) recovers Karras et al. (2022)). In the specific case when Xt := X0 + ε, X0 has variance σ2
+data,
+and ε is i.i.d. noise with variance σ2, we have
+Var[Xt] = σ2
+data + σ2
+Cov[X0, Xt] = Var[X0] + Cov[X0, ε] = σ2
+data. (24)
+Substituting (24) into (23) yields the coefficients suggested in Karras et al. (2022).
+15
+
+
+Image-to-Image Schro ̈dinger Bridge
+Degraded Image t=1 (input) t = 0.75 t = 0.50 t = 0.25 t = 0 (output) Reference
+Figure 13. Generative processes of I2SB on inpainting tasks. Top 3 rows: Center 128×128 mask. Middle 3 rows: Freeform 10%-20% mask. Bottom 3 rows: Freeform 20%-30% mask.
+16
+
+
+Image-to-Image Schro ̈dinger Bridge
+Degraded Image t=1 (input) t = 0.75 t = 0.50 t = 0.25 t = 0 (output) Reference
+Figure 14. Generative processes of I2SB on JPEG restoration tasks. Top 5 rows: QF=5. Bottom 3 rows: QF=10.
+17
+
+
+Image-to-Image Schro ̈dinger Bridge
+Degraded Image t=1 (input) t = 0.75 t = 0.50 t = 0.25 t = 0 (output) Reference
+Figure 15. Generative processes of I2SB on deblurring tasks. Top 5 rows: Uniform kernel. Bottom 3 rows: Gaussian kernel.
+18
+
+
+Image-to-Image Schro ̈dinger Bridge
+Degraded Image t=1 (input) t = 0.75 t = 0.50 t = 0.25 t = 0 (output) Reference
+Figure 16. Generative processes of I2SB on 4× super-resolution tasks. Top 5 rows: Pool filter. Bottom 3 rows: Bicubic filter.
+19
+
+
+Image-to-Image Schro ̈dinger Bridge
+Reference
+Palette
+NFE=2 NFE=10 NFE=100
+Reference
+Palette
+NFE=2 NFE=10 NFE=100
+Input
+I2SB (Ours)
+Input
+I2SB (Ours)
+Reference
+Palette
+Reference
+Palette
+Input
+I2SB (Ours)
+Input
+I2SB (Ours)
+Figure 17. Additional qualitative comparison between I2SB and Palette on inpainting (Center 128×128).
+Reference
+Palette
+NFE=2 NFE=10 NFE=100
+Reference
+Palette
+NFE=2 NFE=10 NFE=100
+Input
+I2SB (Ours)
+Input
+I2SB (Ours)
+Reference
+Palette
+Reference
+Palette
+Input
+I2SB (Ours)
+Input
+I2SB (Ours)
+Figure 18. Additional qualitative comparison between I2SB and Palette on inpainting (Freeform 20%-30%).
+20
+
+
+Image-to-Image Schro ̈dinger Bridge
+Reference
+Palette
+NFE=2 NFE=10 NFE=100
+Reference
+Palette
+NFE=2 NFE=10 NFE=100
+Input
+I2SB (Ours)
+Input
+I2SB (Ours)
+Reference
+Palette
+Reference
+Palette
+Input
+I2SB (Ours)
+Input
+I2SB (Ours)
+Figure 19. Additional qualitative comparison between I2SB and Palette on deblurring (Uniform).
+Masked Input Sample 1 Sample 2 Sample 3 Sample 4 Reference
+Figure 20. Diversity of I2SB outputs on inpainting tasks.
+21

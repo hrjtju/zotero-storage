@@ -1,0 +1,1696 @@
+Sociohydrodynamics: data-driven modelling of social behavior
+Daniel S. Seara,1 Jonathan Colen,1, 2, 3 Michel Fruchart,1, 2, 4 Yael Avni,1 David Martin,5, 6 and Vincenzo Vitelli1, 2, 5
+1University of Chicago, James Franck Institute, 929 E 57th Street, Chicago, IL 60637 2University of Chicago, Department of Physics, 5720 S Ellis Ave, Chicago, IL 60637 3Old Dominion University, Joint Institute on Advanced Computing for Environmental Studies, 1070 University Blvd, Portsmouth, VA, 23703 4ESPCI, Laboratoire Gulliver, 10 rue Vauquelin, 75231 Paris cedex 05 5University of Chicago, Kadanoff Center for Theoretical Physics, 933 E 56th St, Chicago, IL 60637 6University of Chicago, Enrico Fermi Institute, 933 E 56th St, Chicago, IL 60637 (Dated: April 14, 2025)
+Living systems display complex behaviors driven by physical forces as well as decision-making. Hydrodynamic theories hold promise for simplified universal descriptions of socially-generated collective behaviors. However, the construction of such theories is often divorced from the data they should describe. Here, we develop and apply a data-driven pipeline that links micromotives to macrobehavior by augmenting hydrodynamics with individual preferences that guide motion. We illustrate this pipeline on a case study of residential dynamics in the United States, for which census and sociological data is available. Guided by Census data, sociological surveys, and neural network analysis, we systematically assess standard hydrodynamic assumptions to construct a sociohydrodynamic model. Solving our simple hydrodynamic model, calibrated using statistical inference, qualitatively captures key features of residential dynamics at the level of individual US counties. We highlight that a social memory, akin to hysteresis in magnets, emerges in the segregation-integration transition even with memory-less agents. This suggests an explanation for the phenomenon of neighborhood tipping, whereby a small change in a neighborhood’s population leads to a rapid demographic shift. Beyond residential segregation, our work paves the way for systematic investigations of decision-guided motility in real space, from micro-organisms to humans, as well as fitness-mediated motion in more abstract genomic spaces.
+Individual social organisms, from bacteria to ants to humans, display complex behaviors shaped by their interactions with each other and their environment. Groups of such organisms often form large, coherent patterns across space and time [1–5]. This regularity suggests that aspects of social behavior may be captured using generalized hydrodynamic theories that account for individual choices. Hydrodynamic theories are mathematical descriptions of the time evolution of spatially extended systems that involve only a small number of slowly-varying fields [6–9]. This approach, originating in fluid mechanics, has since been applied to living systems ranging from microbial suspensions [10–15] and cellular tissues [16–23] to insect swarms [24, 25] and human crowds [26–28]. In these systems, active mechanical [29, 30] or “social” forces [31–33] between individuals drive the dynamics of the hydrodynamic variables, such as density and polarization. However, we lack a principled way to incorporate cognitive decision-making into hydrodynamic models. Here, we develop a data-driven pipeline to capture the physical manifestations of non-mechanical choices within a hydrodynamic theory. We take inspiration from microeconomics to codify individual preferences (micromotives) into utility functions [34, 35], and then we incorporate them into a “sociohydrodynamic” theory that can account for collective behavior (macrobehavior). We illustrate our approach on the case study of human residential dynamics, focusing on segregation between non-Hispanic White and non-Hispanic Black residents in the United States, for which both sociological research [36–45] and data [46] are available. Theoretical explorations have examined
+the connection between micromotives and macrobehavior [47–54], including recently-proposed hydrodynamic theories [55–57]. In addition, recent work suggests that statistical methods can forecast local trends in segregation observed in US census data [58–60]. Our analysis combines these two perspectives to forecast demographic distributions using a hydrodynamic theory constructed directly from data. We demonstrate that, for a period of four decades, both local and global aspects of the dynamics of US population distributions can be described by an intelligible, analytical model constructed from data. Our model shows that the segregation-integration transition is history-dependent, and suggests a possible mechanism for a phenomenon dubbed “neighborhood tipping”, whereby a small change in a neighborhood’s population leads to a rapid demographic shift [61–63].
+I. THE SOCIOHYDRODYNAMIC PIPELINE
+Figure 1 summarizes our sociohydrodynamic pipeline. First, we identify candidate hydrodynamic variables that evolve slowly both in time and space (Fig. 1A). To be useful, these variables must contain enough information to forecast their own future values – they must be selfpredictive. To test this self-predictability in a modelagnostic way, we train a neural network to forecast the evolution of the candidate hydrodynamic variables and examine whether the forecasting is possible. Examining further the trained neural network allows us to assess
+arXiv:2312.17627v3 [cond-mat.soft] 10 Apr 2025
+
+
+2
+whether the dynamics are local, i.e. whether hydrodynamic variables are only instantaneously influenced by their immediate surroundings (Fig. 1B). This locality, when it holds, considerably simplifies the models we have to consider next. We then construct an analytical, phenomenological model that relates micromotives to macrobehavior using a combination of physics and economic theory (Fig. 1C). Finally, we apply this model to predict real data by first inferring the equation’s coefficients and then checking their numerical solution against experimentally measured trajectories (Fig. 1D). In the sections below, we detail how we apply this pipeline to the case of human residential dynamics. There, we make precise the variables we use, how we check predictability and locality, and the specific model we build to describe the data.
+A. Identifying hydrodynamic variables in social behavior
+Before building a hydrodynamic theory, we must first find suitable hydrodynamic variables. When the collective variables are not easy to guess, data-driven techniques can be used to propose candidates [64–66]. In our example of residential dynamics, a reasonable guess for collective variables are the populations of different groups. Here, we focus on non-Hispanic White and non-Hispanic Black residents. Data from the decennial US Census [46] gives us access to population densities of each group a at position r and time t, ρa(r, t). From these densities, we define a proxy for the local housing capacity h(r) by finding the highest density of people who have lived at each location within a county over time. In this work, we take fill fractions as our hydrodynamic variables, defined as the population densities normalized by the maximum housing availability in the county – φa(r, t) = ρa(r, t)/max(h) (Methods). In order to apply the usual tools of hydrodynamics, we must check that the collective variables are slowly varying both in space and time, compared to the space and time scales we are able to resolve. Qualitatively, we observe that the main features of the population distributions appear unaffected by spatial smoothing over the length-scale of single counties. Quantitatively, fill fractions are correlated over distances four to seven times larger than the typical census tract l in the region (Methods, Fig. 6A,B). In the following analysis, we smooth the fill fractions using a Gaussian filter with a kernel width of 3 km (SI Fig. 1). We also require hydrodynamic variables to vary slowly in time. We assess the temporal change in populations via measurements of segregation using the entropy index, which measures how local demographic distribution differs from the global composition [67–69] (Methods). Qualitatively, maps of the entropy index appear similar over a span of 40 years. Quantitatively, its overall magnitude decreases slowly between the years of 1980-2020, as measured previously [41] (Fig. 6C,D).
+FIG. 1. How to construct a sociohydrodynamic model from data. (A) 1980 Census data of Los Angeles County, California, colored by the difference in relative population density, φW − φB, where φa = ρa/ρmax (left). Right shows the result of smoothing the census data on a regular square lattice for decennial Census data from 1980, 1990, 2000, 2010, and 2020. (B) We test the assumptions made in simple hydrodynamic theories using a model-free, data-driven approach. Namely, we test whether population distributions are predictive of their own future, and if they evolve locally. The prior is determined by the accuracy of the neural network predictions, and the latter is determined by the network’s saliency (see Section I B and Methods). (C) (left) Sociological surveys ask individuals of different groups (red and blue) to give opinions on communities with different compositions of the groups. These choices are discretized into binary decisions, denoting a positive (✓) or negative (×) opinion of the proposed community. (right) We estimate a utility function as a function of the community structure based on the proportion of respondents of each type that give a positive assessment of that community. (D) Constructing our sociohydrodynamic model based on dynamics of ⃗φ (green), with local movements (orange) that are biased according to spatial gradients of utility (purple). (E) We verify our sociohydrodynamic equations by solving them on individual US counties. The coefficients are learned from Census data for each county, and then simulated with the initial condition set as the 1980 US Census data. The results in 2020 are then compared to the 2020 US Census.
+
+
+3
+Together, these two results indicate that human residential dynamics may indeed be described by hydrodynamic variables that evolve slowly over the scale of individual counties and over a time-scale of decades.
+B. Testing hydrodynamic assumptions with neural networks
+1. Self-predictability
+We next test how well the candidate hydrodynamic variables ⃗φ identified in the previous section can predict their own future states (Fig. 1B). Formally, we check whether ∂tφa(r, t) depends only on ⃗φ(r′, t) (for all r′). Testing the self-predictability of collective variables requires a reliable rule for dynamics, which we do not have a priori. To resolve this, we train a neural network on US Census data to map the fields φa to the time derivatives of the fields ∂tφa (Methods). Our dynamical system
+∂tφa(r, t) = f a h⃗φ; h
+i
+(r), (1)
+uses a machine-learned dynamical rule ⃗f for ⃗φ that
+depends on both ⃗φ and the local housing approximation h introduced earlier (Fig. 2A). The predicted population dynamics, obtained by integrating (1), capture qualitative large-scale features of the population distributions of US counties. Fig. 2B shows an example of the predicted White population in Los Angeles County, CA. Similar results are seen for both White and Black populations in 3 additional counties dispersed throughout the US (SI Fig. 2). In the SI, we also quantify the prediction accuracy and show that the neural network out-performs several alternative dynamical rules, including no dynamics, linear growth, and exponential growth (SI Fig. 3).
+2. Locality
+Then, we evaluate whether the dynamics are generated locally (Fig. 1B). Locality allows us to approximate ∂tφa(r, t) as a function of ⃗φ and its gradients, f a[⃗φ] = f a(⃗φ, ∇⃗φ, ...) evaluated at r. To evaluate locality, we consider the saliency
+Kab (r) =
+∂f a (r)
+∂φb(r′) |r−r′|=r
+(2)
+of the machine-learned dynamics. In essence, Kab(r) measures how strongly the predicted dynamics of φa at a point r depends on the value of the field φb at another point a distance r away (Fig. 2C, see Methods) [64, 70]. A Kab(r) that decays rapidly to zero indicates that f uses information within a very narrow region to generate
+FIG. 2. Human residential dynamics are predictable and local. (A) Illustration of neural network training procedure. A convolutional neural network takes processed US Census data, ⃗φ as input, and produces a functional ⃗f . This functional is optimized to provide an accurate prediction of 2020 census data when ⃗φ(1980) is evolved by ⃗f . (B) Example of evolution by neural network for the White population in Los Angeles County. Starting with the 1980 census as an initial condition, populations within individual counties are evolved forward in time using ⃗f to 2020, and then compared with the 2020 census. Scale bar indicates a length of 5 l = 11.5 km. (C) Schematic illustration of saliency Kab as the linear response of the neural network. (D) Saliency measured radially for four regions, Cook County IL, Fulton County GA, Harris County TX, and Los Angeles County CA. Mean ± standard deviation are shown by black line and gray shading, respectively.
+its dynamics. Note that correlation functions would not be sufficient to assess whether the dynamics is local as they do not directly address the evolution rules of the system.
+Indeed, the trained neural network identifies a local rule
+
+
+4
+(Fig. 2D). Kab exhibits a similar structure for all predicted regions and is narrowly peaked at r < 5l, where l is the typical size of a census tract within that county (Fig. 2D). Furthermore, the cross-saliencies (a ̸= b) may echo the preferences underlying residential decision-making. Below, we codify these preferences in “utility functions”. We find that saliencies extracted from a neural network trained on agent-based simulations based on the Schelling model [47] support this claim. Namely, the sign of the saliencies at r = 0 directly reflect the slope of the utility functions input to the simulations (SI Fig. 4). Microscopically, nonlocality can both arise from the fact that agents are influenced by what happens away from them and from the fact that they can move far away. However, microscopic sources of nonlocality do not necessarily lead to a nonlocal effective description. For example, a variant of the Ising model with local interactions but infinite-range displacements [71] is described by a hydrodynamic theory with local motility at a sufficiently coarse-grained level (SI Fig. 5). Indeed, human residential dynamics feature non-local displacements at the individual level: according to the US Census Bureau, 53% of moves were within the same county in 2022, down from 64% in 2012 [72].
+C. Constructing a hydrodynamic theory
+Using the insights and elements extracted from data in the initial steps of our pipeline, we now develop a hydrodynamic model designed to capture universal features of residential dynamics found across US cities.
+1. General theory
+Having identified the collective variables φa(r, t) and verified that they are predictive of their own future, we write a general equation of motion for these variables
+∂tφa(r, t) = −∇ · Ja + Sa (3a)
+in which we have separated the dynamics into two parts: the divergence of a flux Ja that redistributes φa in space, and a source term Sa that changes the total populations. The self-predictability and locality of the dynamics for ⃗φ (Fig. 2) motivates us to write Ja = Ja(⃗φ) and Sa = Sa(⃗φ). The source term Sa in (3a) describes how φa changes locally due to, for example, reproduction or immigration (SI Fig. 6). In addition to human populations, these processes play a crucial role in contexts such as microbiology and ecology [73, 74]. Growth can be related to a local evolutionary “fitness function”, f a, that describes to what extent the environment promotes the growth of a certain group [75–78]. Although the fitness and utility functions share similarities, they have no reason to be identical [79]. We write the flux Ja using a gradient expansion as
+Ja(⃗φ) = φava − Dab∇φb + Γab∇3φb (3b)
+in which we have assumed isotropy, and where Dab[⃗φ] accounts for diffusion of φa down the gradients of φb and Γab[⃗φ] acts like a surface tension, penalizing spatial gradients in φa [80, 81]. Higher order terms in the gradients have been neglected. The first term in (3b) describes advection of φa at a velocity va. We assume that the velocity is proportional to the gradient of a utility function πa,
+va ∝ ∇πa. (3c)
+The proportionality factor will be determined below based on a microscopic, agent-based model. The utility function quantifies the preference of an a individual for the location r at time t, providing a link between motility and socioeconomical incentives. The gradient reflects the propensity of individuals to move towards regions they prefer, i.e. up gradients in their utility. We call this behavior “utility-taxis”, in reference to other guided navigation strategies such as chemotaxis [82–84] or infotaxis [85].
+2. Utility functions
+The question remains – what is πa? Although many socioeconomic and personal factors may contribute [40, 41], here we focus on the impact of neighborhood demographic preferences in driving residential dynamics. In other words, we seek a utility function written as
+πa(r, t) = πa ⃗φ(r, t) . (4)
+This is the key feature of sociohydrodynamics: it establishes a feedback loop between the slowly-evolving hydrodynamic variables and the decision-making processes that lead to motility in the first place. To model these utility functions in the case at hand, we turn to the social science literature measuring neighborhood demographic preferences (Fig. 3). Social scientists have found that residential preferences remained consistent across time over a span of 16 years between 1976 and 1992 in the Detroit metropolitan area [86], and across space over several major US metropolitan areas [87] (Fig. 3). White residents show a monotonic decrease in their preference of neighborhoods with increasing proportion of Black residents. On the other hand, Black residents show a marked preference for mixed neighborhoods, which remains consistent between the two surveys. Qualitatively similar results were obtained in other USbased surveys [52, 86–89] (SI Fig. 7). Thus, we assume that each group a has a distinct, time-invariant utility function written as a non-linear function of ⃗φ.
+3. Coarse-graining the Schelling model
+To further constrain our equations of motion, we construct and coarse-grain an agent-based model for res
+
+
+5
+FIG. 3. Persistent residential preferences from sociological surveys. (top) Reproduction of survey results shown in Figs. 8 & 10 in Ref. [86]. Survey’s taken around Detroit, MI (+). Top plot shows proportion of White respondents “indicating they would be feel comfortable in the neighborhood” with the proportion of Black residents shown on the x-axis. Bottom shows proportion of Black residents ranking a neighborhood with the given proportion of Black residents as either their first or second choice among five options. Hollow circles show results from surveys taken in 1976, and filled circles show results from surveys taken in 1992. Dashed (1976) and solid (1992) lines are linear (top) and quadratic (bottom) fits to each set of data. (bottom) Reproduction of Figs.4 & 7 in Ref. [87], which itself accumulates data from Ref. [90]. White respondents were asked if they would move into a hypothetical neighborhood with the given proportion of Black residents. Black respondents, similarly to Ref. [86], were asked to rank hypothetical neighborhoods and the results for the proportion of respondents ranking each neighborhood as their first choice is shown. Surveys were taken in Detroit, MI (+), Atlanta, GA (□), Los Angeles, CA (△), and Boston, MA (▽). Solid lines are linear (top) and quadratic (bottom) fits to each set of data. Precise wording of survey questions are reproduced from the respective references in the SI.
+idential dynamics, based on the Schelling model [4755, 61, 62]. The same approach has been independently developed in Refs. [55, 56], resulting in hydrodynamic equations similar to ours. In short, it models agents on a lattice that randomly move to adjacent sites with a bias towards increasing their utility (SI). Within a mean-field approximation, coarse-graining this agent-based model leads to (3a) with Sa = 0 and
+va(⃗φ) = φ0∇πa(⃗φ) (5a)
+Dab(⃗φ) = T a(φa + δabφ0) (5b)
+Γab(⃗φ) = Γaδabφbφ0. (5c)
+In the above, φ0 = 1 − P
+b φb is a vacancy fraction that arises because each lattice site has a maximum carrying capacity [91], mimicking the availability of housing. The parameters T a and Γa control the rate of hopping and penalize spatial gradients of ⃗φ(x), respectively (see SI for discussion of the origin of the Γ term, SI Fig. 8).
+D. Applying the sociohydrodynamic model
+To validate our model, we simulate (51) and compare against the observed evolution of human populations in the US (Fig. 4). To do so, we use linear regression to infer the coefficients of our model focusing on the same metropolitan areas as used to train the neural network in Sec. I B (SI Fig. 9). In light of the responses to the social surveys in Fig. 3, we parameterize πa as
+πa(⃗φ) =
+X
+b,c
+κabφb + νabcφbφc. (6)
+This is a Taylor expansion of a non-constant πa around φa = 0. Therefore, we fit 5 coefficients for the utility function of each field κaW , κaB, νaW W , νaW B, νaBB , as well as the diffusion constant T a and the surface tension Γa. The growth term Sa in (51) is fixed by fitting the total population change assuming an exponential growth model, Sa = raφa. This simple model captures the roughly exponential growth rates we empirically measure across US counties (SI Fig. 6), although it neglects growth that may occur from immigration outside of the region. With this growth rate in hand, we fit the mass-conserving portion of (51), −∇ · Ja = ∂tφa − Sa. We then numerically solve (51) using the learned coefficients. We take ⃗φ(r, 1980) as our initial condition and evolve in time until 2020. As shown in Fig. 4A, our simulations capture several qualitative features of observed population dynamics. For example, we predict the increase of the Black in the southwest of Harris county, as well as a decrease in the White population in the southeaster portion of Los Angeles county (see SI Fig. 3 for results from other counties). The fitted coefficients are given in Figs. 4B-C. Across multiple counties, we observed that the fitted diffusion constant of the Black population is larger than that of the White population, T B > T W (Fig. 4B), reflecting that Black families are more likely to move. Analysis by the US Census Bureau indeed found that ∼ 10% of Black residents moved, compared to ∼ 8% of White residents between the years of 2019 and 2020 [92, 93]. The coefficients of the utility functions are also consistent across counties (Fig. 4B). The linear coefficients κab have opposite signs for the two groups, signaling that White and Black residents have incompatible residential preferences. More formally, the utilities πW and πB are incompatible in the sense that
+∂πW
+∂φB ̸= ∂πB
+∂φW . (7)
+When this incompatibility condition is met, our equations of motion are non-equilibrium in the sense that they cannot be derived by optimizing a potential function [50, 94]. These signs are consistent with survey results showing Black residents will move towards areas of higher White
+
+
+6
+FIG. 4. Sociohydrodynamics predicts real population dynamics. (A) (top) Sociohydrodynamic predictions for Harris County, TX. The left column shows fill fractions, φW and φB the 1980 Census data for White and Black populations (first and third rows, respectively), that serve as initial conditions for the simulations. The second column shows the 2020 Census data for White and Black populations, in addition to the total change from the 1980 census, (second and fourth row). The third column show the neural network’s predictions for 2020 fill fractions starting from 1980. The fourth column shows the result from solving (51) with our learned coefficients starting from 1980 and continuing to 2020. (bottom) Similar to left, but for Fulton County, GA. Scale bars indicate 25 km for each county. See SI for results on other counties. (B) Learned coefficients resulting from linear regression on US Census data. Coefficients are scaled by the standard deviation of their corresponding feature (e.g. Ti is normalized by the standard deviation of ∇2φi measured from the data). Dots show results from fitting on the four counties in Fig. 4B, and circles and bars show mean ± standard deviation. Red and Blue symbols show results for Black and White populations, respectively. (C) Utility functions learned by the linear regression, highlighting the presence of non-reciprocity between the two groups. (D) Mean-square errors of various model predictions of human residential dynamics for four US counties; Harris TX (▽), Los Angeles CA (⋄), Cook IL(◦), and Fulton GA (□). All values are normalized to the error measured assuming that there is no change in the population from 1980 to 2020. The second column shows the results from numerically solving (51). The third column shows the errors from the neural network, whose results are shown in Fig. 2. The fourth column shows the results from assuming linear growth, defined as an extrapolation from 1990 - 2020 after a linear spline interpolation between 1980-1990. The final column shows the results from assuming only exponential growth.
+populations, while White residents will move away from areas of higher Black population (Fig. 3). However, the nonlinear terms for the utility of White residents νW bc additionally indicate a preference for neighborhoods with low White populations and high Black populations (Fig. 4C). Such behavior may originate from gentrification, where wealthy residents move into lower-income neighborhoods. Future work could test this hypothesis by supplementing our model with income or housing cost data.
+Figure 4D compares the sociohydrodynamic model’s performance against other time-evolution models, includ
+ing the neural networks in Fig. 2. Despite the simplicity of our sociohydrodynamic equations compared to f a , they
+achieve comparable accuracy to the model-free estimate from the neural networks (see SI Fig. 4 for results from other counties).
+
+
+7
+FIG. 5. Phase diagram for toy sociohydrodynamic model. (A) Toy model utility function coefficients (solid circles) compared to the learned coefficients from Fig. 4 (transparent circles). We consider νabc = 0 for κaa = 1 ∀a, b, c, where a ∈ {X, Y }. We then vary the cross-utilities κab to create our phase diagram. It will prove useful to parameterize our phase space in terms of κ± = κY X ± κXY . Other coefficients are T X = T Y = 0.1 and ΓX = ΓY = 1. (B) Illustration of the linear utility functions for the two groups shown in the left and right subpanels, respectively. Plots show mutual cross-utility coefficient κ+ = κXY + κY X = −0.5, incompatible cross-utility coefficient κ− = κY X − κXY = 1. (C) Phase diagram showing different possible steady state dynamics depending on mutual and incompatible cross-utility coefficients, κ±. We see 4 phases: segregation (purple), migration (orange), integration (green), and bistability of two phases (yellow). The white lines indicate results from a linear stability analysis for the onset of migratory states (details in SI). (D) Kymographs for steady state dynamics in the segregated phase, (κ+, κ−) = (−0.07, 0.02) (left), migrating phase, (κ+, κ−) = (0.02, 0.04) (middle), and integrated phase, (κ+, κ−) = (0.09, −0.06) (right). Plots on the top show the state of the system at the final time. Schematics of the resulting diffusion matrix shown on top of each phase. We set T = 0.1 and the average fill fraction of both types to be ⟨φX ⟩ = ⟨φY ⟩ = 0.25. (e) The emergence of memory, in the form of hysteresis, in our simple model. Keeping κ− = 0, simulations are run starting at κ+ = 2 until a steady state is reached, and then κ+ is slightly decreased. This process is repeated until κ+ = −1.2, and then the process is reversed. The difference in the entropy index on the backward and forward pass of κ+.
+II. A PHASE DIAGRAM FOR SOCIAL BEHAVIOR
+Inspired by the above results, we simplify our residential dynamics equations to a toy model in order to gain a better mathematical understanding of the possible sociohydrodynamic behaviors. We consider two groups a = X, Y whose utility functions πa are linear in the fields φa (νabc = 0, see Fig. 5A,B). The flux in (3b) becomes
+J a(⃗φ) =
+X
+b
+(−Dab + φaφ0κab)∇φb + Γab∇3φb.
+This results in diffusion of φa either up or down gradients of φb, depending on the symmetries of the matrix κab.
+Based on known results on the Schelling model [47–51, 61, 62], we expect to observe segregation (where the two groups concentrate at different places) and integration (where the two groups occupy mainly the same place), depending on the utility functions.
+For every utility function, we solve (51) numerically, and then report the resulting dynamical phase of the system in Fig. 5C (see SI for criteria used in the categorization). We indeed observe the expected static states of segregation and integration (purple and green regions). In addition, we observe a time-dependent steady-state in which both groups continuously migrate (orange region, see also Fig. 5D), in agreement with the results of Ref. [55]. Finally, there are bistable regions (yellow) where multiple phases are observed depending on the initial state of the
+
+
+8
+system (SI Fig. 10).
+The mechanism leading to the migratory states in Fig. 5C,D stems from the incompatibility of the utilities πX and πY in the sense of (7). For compatible utilities, meaning ∂πY /∂φX = ∂πX /∂φY , one can cast the dynamics as a gradient descent in a high-dimensional space (SI and Refs. [50, 94–96]), thereby excluding time-dependent steady states like traveling waves. When the compatibility condition is violated, the corresponding interactions are non-reciprocal, a common ingredient to induce timedependent steady-states [95–106]. More precisely, Fig. 5B shows that the utility of X increases when φY decreases, whereas the utility of Y increases when φX increases. In other words, Y tends to move towards X while X tends to move away from Y . When this tendency is strong enough, a time-dependent steady-state can emerge where the populations X and Y continuously chase or run away from each other.
+To predict the behavior of our simplified model, we perform a linear stability analysis around an initially spatially uniform state for ⃗φ. We find excellent agreement for the onset of pattern formation, when the uniform ⃗φ becomes unstable. The onset of the traveling states is not captured by the linear stability analysis due to the non-linearities that play a role in their propagation. We see that no migration occurs when the overlap between the populations is below a threshold value, even when linear stability would predict migratory states (SI Fig. 11), in agreement with Ref. [55].
+The coexistence regions in Fig. 5C illustrate that a single set of preferences can support multiple states of segregation. Which state is selected depends on the history of the system. To demonstrate this with our measured utility functions, we slowly change preferences of both groups over time. We implement a cycle in the mutual cross-utility κ+ = κXY + κY X (while fixing κXY − κY X ), starting and ending with the same value. Fig. 5E shows the segregation indices measured in the resulting simulations. Some preferences (x-axis of the plot) result in two different segregation indices, depending on whether this preference evolved from a segregated or integrated state. This phenomenon is known as hysteresis: the state of the system depends on its past [107]. This form of socioeconomic memory emerges at the community level, despite the fact that the individuals in our model have no memory. As a result, two communities with an identical set of preferences can be segregated or integrated depending on their histories, and abrupt changes can occur at the edge of the bistability region in phase space. This may shed light on a phenomenon known as “neighborhood tipping” in sociological research, where a threshold demographic distribution induces a rapid demographic shift in a neighborhood [61–63]. We note that the region of phase space exhibiting this hysteresis can qualitatively change if utility functions are non-linear (SI. Fig 12).
+III. CONCLUSION AND OUTLOOK
+To sum up, we introduced a data-driven pipeline to construct hydrodynamic descriptions of socially-driven residential motility. We illustrated this framework on the example of racial segregation in human residential dynamics. After testing the mathematical assumptions that enter a hydrodynamic theory, we validated our model by comparing its predictions to the evolution of demographic distributions in the US Census. We observed that our sociohydrodynamic model is sufficient to capture certain trends of residential dynamics in the US, even though our model neglects many important personal, sociological, and geographical aspects of residential choices. We showed that segregation can persist even in the absence of external influence due to an emergent memory in the population of memoryless agents. More broadly, our work illustrates how to incorporate individual choices in a hydrodynamic theory to provide a precise mathematical mapping from micromotives to macrobehavior [48]. Beyond humans, it could be applied to motile micro-organisms [108–115] evolving [116–118] or adapting [119–121] in spatially extended time-varying environments. Further, our method may also be applied to motion through abstract rather than physical spaces, such as the chase and escape dynamics in antigenic space during hosts and pathogens coevolution [122, 123] or cell fate decisions during development [66, 124, 125].
+IV. METHODS
+A. US Census Data
+Population data is collected from the decennial US census at the census tract level for decades 1980-2020, aggregated using the IPUMS database [46]. Interpolation from census tracts to a square grid is performed using areal-weighted interpolation on population densities in units of #/(10m)2 [126]. Smoothing is then done using a Gaussian filter with width σ. GIS file information are provided in the SI.
+B. Hydrodynamic variables
+We use US Census data at the census tract level to find population densities of each group a ∈ {W, B} at position r at time t, denoted as ρa(r, t). We approximate the housing availability as h(r) = mtax
+P
+a ρa(r, t) . Finally,
+we define the fill fraction as φa(r, t) = ρa(r, t)/N , where N = mrax h(r) acts as a carrying capacity. One could
+consider fill fractions that are normalized by a spatiotemporal capacity to capture how the dynamics of housing availability impacts residential dynamics [57]. This is beyond the scope of this work.
+
+
+9
+FIG. 6. Population distributions are slow variables across the US. (A) Results of smoothing populations in various regions around the US using increasing kernel sizes. From top to bottom, the regions are: Harris County TX and Los Angeles County CA. Colors represent the proportion of local populations that are non-Hispanic White (blue) and non-Hispanic Black (red). Scale bars are 25 km. A Gaussian filter is used to smooth the populations. (B) Autocorrelation functions for White (blue) and Black (red) populations in six US regions (markers). Each set of data is fit to a decaying exponential (dashed line). The x-axis, measuring distance, is normalized by the median linear census tract size, l of each region. Normalizing the correlation length by the l accounts for differing densities, as each census tract is created to contain ∼ 103 residents. The typical correlation lengths for White and Black populations in the regions we analyzed are ⟨ξW ⟩ = 7.3 ± 2.5 l and ⟨ξB⟩ = 4.3 ± 1.0 l. (C) Local segregation, hi ((8)) for the two regions in A, shown from Census Data in 1980, 2000, and 2020. (D) Entropy index, SH ((9b)) measured as the weighted sum of the local segregation (Methods). Markers denote the same counties as B, and the dashed line is a linear fit to all data.
+C. Measuring segregation
+We define the local demographic distribution of census tract i using the probability vector pi, whose mth element gives the proportion of the population at location i belonging to group m. Similarly, we define the demographic distribution of the county using the probability vector p, whose mth element gives the proportion of the county population belonging to group m. We measure the local segregation using the entropy index [68],defined as
+hi = DKL pi||p
+H (p) ≥ 0 (8)
+where DKL pi||p is the Kullback-Leibler divergence and H(p) is the Shannon entropy. The condition for perfect integration is hi = 0, which occurs if a census tract’s demographic distribution matches that of the county, pi = p, not when demographic groups are present in equal numbers. In order to quantify the segregation present in both Census data and simulations, we utilize the entropy index, also called a divergence index [69], which measures how distinct the demographic distribution in a local area (e.g. a census tract) is from the demographic distribution of the entire region (e.g. a county). Let i ∈ [1, 2, . . . , N ] index local areas and m ∈ [1, 2, . . . , M ] index demographic groups. We define
+pm
+i to be the proportion of the population in the local area i that is composed of individuals from group m, and thereby define the probability vector Pi = p1
+i , p2
+i,... .
+Similarly, we define pm to be the proportion of the population in the entire region that is composed of individuals from group m, and thereby define the probability vector P = p1, p2, . . . .
+With these two quantities, we construct the local measure of segregation at location i, hi, that is shown in Fig. 6C,
+hi =
+P
+m
+pm
+i ln pm
+i pm
+−
+P
+m
+pm ln pm = DKL Pi||P
+H (P) (9a)
+where DKL(Pi||P) ≥ 0 is the Kullback-Leibler divergence between Pi and P, and H(P) is the Shannon entropy of P.
+We define a single scalar measure of a region’s segregation, the entropy index, SH, using a weighted mean of hi. Specifically, we weight hi by the fraction of the total population that lives in local area i, fi, giving
+SH =
+X
+i
+fihi. (9b)
+
+
+10
+D. Sociohydrodynamic diffusion matrix
+We provide the full derivation of our sociohydrodynamic theory starting from an agent-based model in the SI, including the effects of altruism. Here, we simply report the diffusion matrix in (51). Assuming that the utility does not have an explicit spatial dependence, i.e. πa = πa(⃗φ), we have
+Ja(x, t) = −
+X
+b
+Dab∂xφb + φaφ0∂xπa + Γab∂3
+xφb (10)
+=−
+X
+b
+Dab∂xφb + Γab∂3
+xφb (11)
+where φ0 = 1 − P
+b φb is the vacancy fraction and Dab are elements of the matrix
+D(⃗φ) = − T 1 − φY φX
+φY 1 − φX + φ0
+
+  
+φX ∂πX
+∂φX φX ∂πX
+∂φY φY ∂πY
+∂φX φY ∂πY
+∂φY
+
+  
+(12) The first term arises due to volume exclusion effects with finite carrying capacity of the lattice sites in the agentbased model. The second term arises from the utility functions. Similarly, we find
+Γab = δabφbφ0, (13)
+where δab is the Kronecker delta.
+E. Numerical methods
+Parameter inference is done using linear regression on US Census data. We first interpolate the US Census data using a 3rd-order spline to estimate populations between decennial census years. We then estimate time derivatives and spatial gradients using finite differences. A feature matrix A is constructed using each term in (51) as a column, and a target vector b is created using the time derivatives. The coefficients in (51) are collected in a vector x, and we invert the equation Ax = b. For the simulations shown in Fig. 4, we solve (51) over county boundaries using a finite-volume method. We construct a triangular mesh over the county geometry using GMSH, and use the Python package FiPy [127] to solve (51). More details can be found in the SI. For the simulations shown in Fig. 5, we simulate (51) in 1 spatial dimension using a finite difference method, with a 4th order discretization in space and 1st order discretization in time. Unless otherwise stated, we set T = 0.1 and Γ = 1, and use a time step of ∆t = 0.1 and ∆x = 0.625.
+F. Linear utility functions
+The linear utility functions used in Fig. 5 are given by
+πa(⃗φ) =
+X
+b
+κabφb (14a)
+κ = κXX κXY
+κY X κY Y (14b)
+The matrix elements κab quantify how the utility of a is affected by the presence of b. We call κXX and κY Y the self-utility coefficients, and κXY and κY X the cross-utility coefficients. We find it convenient to define κ± = κY X ± κXY . We dub κ+ the “mutual” cross-utility coefficient as it measures the degree of mutual (dis)like between the X and Y . Likewise, we call κ− the “incompatible” cross-utility coefficient as it measures the incompatibility of the two utilities with each other (see Fig. 5).
+G. Assessing locality via neural networks
+We used a convolutional neural network to predict the dynamics (∂tφW , ∂tφB) from an initial condition (φW , φB). Briefly, it contains two convolutional modules which computes latent features at the scale of the input data and using a downsampled representation in order to aggregate spatial information over short or long distances. The network predicts the discrete time derivative and forecasts the next time step as
+φa(t + ∆t) = φa(t) + f a [⃗φ(t); h] ∆t (15)
+Here, the population index a ∈ (W, B) and the capacity h is taken as the maximum occupancy at each coordinate over the observed time range. The full network details are given in the SI. We used the trained network to predict population dynamics over the 40-year window spanned by decennial Census data. To assess locality in the predicted dynamics, we computed the output saliencies for the trained network. Saliency is a measure of how much a model’s predictions depend on its inputs and is here defined as [70]
+Kab(ri, rj ) =
+∂f a [⃗φ(ri)]
+∂φb(rj) (16)
+Here a, b are population indices while i, j refer to spatial coordinates within each county. We compute Kab(ri, rj) from each input-output pair in each county dataset, for 100 randomly sampled output points ri and all input points rj. We azimuthally average this into a set of curves Kab(|ra − rb|) which are plotted in Figure 2C.
+[1] T. Reichenbach, M. Mobilia, and E. Frey, Mobility promotes and jeopardizes biodiversity in rock–paper–scissors
+games, Nature 448, 1046 (2007).
+
+
+11
+[2] I. D. Couzin, Collective cognition in animal groups, Trends in Cognitive Sciences 13, 36 (2009). [3] N. T. Ouellette, A physics perspective on collective animal behavior, Physical Biology 19, 021004 (2022). [4] T. Vicsek and A. Zafeiris, Collective motion, Physics Reports 517, 71 (2012). [5] L. M. A. Bettencourt, The origins of scaling in cities, Science 340, 1438 (2013). [6] L. P. Kadanoff and P. C. Martin, Hydrodynamic equations and correlation functions, Annals of Physics 24, 419 (1963). [7] L. D. Landau and E. M. Lifshitz, Fluid Mechanics : Landau and Lifshitz (Elsevier Science & Technology Books, 1987) p. 539. [8] P. W. Anderson, More is different, Science 177, 393 (1972). [9] W. Van Saarloos, V. Vitelli, and Z. Zeravcic, Soft Matter: Concepts, Phenomena and Applications. (Princeton University Press, 2023). [10] A. Sokolov, I. S. Aranson, J. O. Kessler, and R. E. Goldstein, Concentration Dependence of the Collective Dynamics of Swimming Bacteria, Physical Review Letters 98, 158102 (2007). [11] H. H. Wensink, J. Dunkel, S. Heidenreich, K. Drescher, R. E. Goldstein, H. L ̈owen, and J. M. Yeomans, Mesoscale turbulence in living fluids, Proceedings of the National Academy of Sciences 109, 14308 (2012). [12] H. Wioland, F. G. Woodhouse, J. Dunkel, J. O. Kessler, and R. E. Goldstein, Confinement stabilizes a bacterial suspension into a spiral vortex, Physical Review Letters 110, 268102 (2013). [13] H. Li, X.-q. Shi, M. Huang, X. Chen, M. Xiao, C. Liu, H. Chat ́e, and H. P. Zhang, Data-driven quantitative modeling of bacterial active nematics, Proceedings of the National Academy of Sciences 116, 777 (2018). [14] K. Copenhagen, R. Alert, N. S. Wingreen, and J. W. Shaevitz, Topological defects promote layer formation in myxococcus xanthus colonies, Nature Physics 17, 211 (2020). [15] A. I. Curatolo, N. Zhou, Y. Zhao, C. Liu, A. Daerr, J. Tailleur, and J. Huang, Cooperative pattern formation in multi-component bacterial systems through reciprocal motility regulation, Nature Physics 16, 1152 (2020). [16] A. F. Mertz, S. Banerjee, Y. Che, G. K. German, Y. Xu, C. Hyland, M. C. Marchetti, V. Horsley, and E. R. Dufresne, Scaling of traction forces with the size of cohesive cell colonies, Physical Review Letters 108, 198101 (2012). [17] T. B. Saw, A. Doostmohammadi, V. Nier, L. Kocgozlu, S. Thampi, Y. Toyama, P. Marcq, C. T. Lim, J. M. Yeomans, and B. Ladoux, Topological defects in epithelia govern cell death and extrusion, Nature 544, 212 (2017). [18] C. P ́erez-Gonz ́alez, R. Alert, C. Blanch-Mercader, M. G ́omez-Gonz ́alez, T. Kolodziej, E. Bazellieres, J. Casademunt, and X. Trepat, Active wetting of epithelial tissues, Nature Physics 15, 79 (2018). [19] S. J. Streichan, M. F. Lefebvre, N. Noll, E. F. Wieschaus, and B. I. Shraiman, Global morphogenetic flow is accurately predicted by the spatial distribution of myosin motors, eLife 7, 10.7554/elife.27454 (2018). [20] R. Alert, C. Blanch-Mercader, and J. Casademunt, Active fingering instability in tissue spreading, Physical Review Letters 122, 088104 (2019). [21] D. Boocock, N. Hino, N. Ruzickova, T. Hirashima, and
+E. Hannezo, Theory of mechanochemical patterning and optimal migration in cell monolayers, Nature Physics 17, 267 (2020). [22] M. S. Yousafzai, V. Yadav, S. Amiri, M. F. Staddon, Y. Errami, G. Jaspard, S. Banerjee, and M. Murrell, Cell-matrix elastocapillary interactions drive pressurebased wetting of cell aggregates, Physical Review X 12, 031027 (2022). [23] J.-M. Armengol-Collado, L. N. Carenza, J. Eckert, D. Krommydas, and L. Giomi, Epithelia are multiscale active liquid crystals, Nature Physics 19, 1773 (2023). [24] A. Cavagna, L. Di Carlo, I. Giardina, T. S. Grigera, S. Melillo, L. Parisi, G. Pisegna, and M. Scandolo, Natural swarms in 3.99 dimensions, Nature Physics 19, 1043 (2023). [25] D. Gorbonos, F. B. Oberhauser, L. L. Costello, Y. Gu ̈nzel, E. Couzin-Fuchs, B. Koger, and I. D. Couzin, An effective hydrodynamic description of marching locusts, Physical Biology 21, 026004 (2024). [26] R. L. Hughes, The flow of human crowds, Annual Review of Fluid Mechanics 35, 169 (2003). [27] N. Bain and D. Bartolo, Dynamic response and hydrodynamics of polarized crowds, Science 363, 46 (2019). [28] F. Gu, B. Guiselin, N. Bain, I. Zuriguel, and D. Bartolo, Emergence of collective oscillations in massive human crowds, Nature 638, 112 (2025). [29] M. C. Marchetti, J.-F. Joanny, S. Ramaswamy, T. B. Liverpool, J. Prost, M. Rao, and R. A. Simha, Hydrodynamics of soft active matter, Reviews of Modern Physics 85, 1143 (2013). [30] M. t. Vrugt and R. Wittkowski, A review of active matter reviews, arXiv 10.48550/ARXIV.2405.15751 (2024), arXiv:2405.15751. [31] D. Helbing and P. Molna ́r, Social force model for pedestrian dynamics, Physical Review E 51, 4282 (1995). [32] M. Ballerini, N. Cabibbo, R. Candelier, A. Cavagna, E. Cisbani, I. Giardina, V. Lecomte, A. Orlandi, G. Parisi, A. Procaccini, M. Viale, and V. Zdravkovic, Interaction ruling animal collective behavior depends on topological rather than metric distance: Evidence from a field study, Proceedings of the National Academy of Sciences 105, 1232 (2008). [33] A. Corbetta and F. Toschi, Physics of human crowds, Annual Review of Condensed Matter Physics 14, 311 (2023). [34] J. V. Neumann and O. Morgenstern, Theory of Games and Economic Behavior (Princeton University Press, 2007) p. 776. [35] M. J. Osborne and A. Rubinstein, A course in game theory, 12th ed. (MIT Press, Cambridge, Mass. [u.a.], 2006) literaturverz. S. [321] - 339. [36] D. R. Williams and C. Collins, Racial residential segregation: A fundamental cause of racial disparities in health, Public Health Reports 116, 404 (2001). [37] D. Pager and H. Shepherd, The sociology of discrimination: Racial discrimination in employment, housing, credit, and consumer markets, Annual Review of Sociology 34, 181 (2008). [38] S. F. Reardon and A. Owens, 60 years after brown: Trends and consequences of school segregation, Annual Review of Sociology 40, 199 (2014). [39] D. Alexander and J. Currie, Is it who you are or where you live? residential segregation and racial gaps in childhood asthma, Journal of Health Economics 55, 186
+
+
+12
+(2017). [40] C. Z. Charles, The dynamics of racial residential segregation, Annual Review of Sociology 29, 167 (2003). [41] J. Hwang and T. W. McDaniel, Racialized reshuffling: Urban change and the persistence of segregation in the twenty-first century, Annual Review of Sociology 48, 397 (2022). [42] W. E. B. Du Bois, The souls of black folk, Penguin classics (Penguin Books, New York, 2018). [43] D. S. Massey, American apartheid: Segregation and the making of the underclass, American Journal of Sociology 96, 329 (1990). [44] P. A. Jargowsky, Poverty and Place (Russell Sage Foundation, New York, 1998) description based upon print version of record. [45] K. E. Taeuber and A. F. Taeuber, Residential segregation and neighborhood change (Transaction Publishers, 2008). [46] S. Manson, J. Schroeder, D. Van Riper, T. Kugler, and S. Ruggles, National historical geographic information system: Version 17.0 (2022). [47] T. C. Schelling, Dynamic models of segregation, The Journal of Mathematical Sociology 1, 143 (1971).
+[48] T. C. Schelling, Micromotives and macrobehaviour. (W.W.Norton, 1980) p. 256. [49] D. Vinkovic ́ and A. Kirman, A physical analogue of the schelling model, Proceedings of the National Academy of Sciences 103, 19261 (2006). [50] S. Grauwin, E. Bertin, R. Lemoy, and P. Jensen, Competition between collective and individual dynamics, Proceedings of the National Academy of Sciences 106, 20622 (2009). [51] S. Grauwin, F. Goffette-Nagot, and P. Jensen, Dynamic models of residential segregation: An analytical solution, Journal of Public Economics 96, 124 (2012). [52] W. A. V. Clark and M. Fossett, Understanding the social context of the schelling segregation model, Proceedings of the National Academy of Sciences 105, 4109 (2008). [53] M. Fossett, Ethnic preferences, social distance dynamics, and residential segregation: Theoretical explorations using simulation analysis∗, The Journal of Mathematical Sociology 30, 185 (2006). [54] L. Gauvin, J. Vannimenus, and J.-P. Nadal, Phase diagram of a schelling segregation model, The European Physical Journal B 70, 293 (2009). [55] R. Zakine, J. Garnier-Brun, A.-C. Becharat, and M. Benzaquen, Socioeconomic agents as active matter in nonequilibrium sakoda-schelling models, Physical Review E 109, 044310 (2024), 2307.14270. [56] J. Garnier-Brun, R. Zakine, and M. Benzaquen, From nonequilibrium to equilibrium: Insights from a two-population occupation model, arXiv 10.48550/ARXIV.2412.14996 (2024), arXiv:2412.14996. [57] A.-C. Becharat, M. Benzaquen, and J.-P. Bouchaud, The diffusive nature of housing prices, arXiv 10.48550/ARXIV.2412.14624 (2024), arXiv:2412.14624. [58] Y. Chen, Y. A. Kinkhabwala, B. Barron, M. Hall, T. A. Arias, and I. Cohen, Small-area population forecast in a segregated city using density-functional fluctuation theory, arXiv 10.48550/ARXIV.2008.09663 (2020), arXiv:2008.09663. [59] Y. A. Kinkhabwala, B. Barron, M. Hall, T. A. Arias, and I. Cohen, Forecasting racial dynamics at the neighborhood scale using density-functional fluctuation theory, arXiv (2021), arXiv:2108.04084.
+[60] B. Barron, Y. A. Kinkhabwala, C. Hess, M. Hall, I. Cohen, and T. A. Arias, Extending the use of information theory in segregation analyses to construct comprehensive models of segregation, arXiv (2022), arXiv:2212.06980. [61] D. Card, A. Mas, and J. Rothstein, Tipping and the dynamics of segregation, Quarterly Journal of Economics 123, 177 (2008). [62] J. Zhang, Tipping and residental segregation: A unified schelling model, Journal of Regional Science 51, 167 (2011). [63] S. Gualdi, M. Tarzia, F. Zamponi, and J.-P. Bouchaud, Tipping points in macroeconomic agent-based models, Journal of Economic Dynamics and Control 50, 29 (2015). [64] M. S. Schmitt, J. Colen, S. Sala, J. Devany, S. Seetharaman, M. L. Gardel, P. W. Oakes, and V. Vitelli, Zyxin is all you need: Machine learning adherent cell mechanics (2023), arxiv:2303.00176 [cond-mat, physics:physics]. [65] M. S. Schmitt, M. Koch-Janusz, M. Fruchart, D. S. Seara, M. Rust, and V. Vitelli, Information theory for datadriven model reduction in physics and biology, arXiv 10.48550/ARXIV.2312.06608 (2023), 2312.06608 [condmat.stat-mech]. [66] M. Lefebvre, J. Colen, N. Claussen, F. Brauns, M. Raich, N. Mitchell, M. Fruchart, V. Vitelli, and S. J. Streichan, Learning a conserved mechanism for early neuroectoderm morphogenesis, bioRxiv 10.1101/2023.12.22.573058 (2023). [67] O. D. Duncan and B. Duncan, A methodological analysis of segregation indexes, American Sociological Review 20, 210 (1955). [68] S. F. Reardon and D. O’Sullivan, Measures of spatial segregation, Sociological Methodology 34, 121 (2004). [69] E. Roberto, The divergence index: A decomposable measure of segregation and inequality, arXiv 10.48550/ARXIV.1508.01167 (2015), 1508.01167. [70] K. Simonyan, A. Vedaldi, and A. Zisserman, Deep inside convolutional networks: Visualising image classification models and saliency maps (2014), arXiv:1312.6034 [cs.CV]. [71] M. Conti, B. Meerson, A. Peleg, and P. V. Sasorov, Phase ordering with a global conservation law: Ostwald ripening and coalescence, Physical Review E 65, 046117 (2002). [72] US Census Bureau, Cps historical migration/geographic mobility tables, https://www.census.gov/data/ tables/time-series/demo/geographic-mobility/
+historic.html (2023), table A-6. Accessed: 2024-07-22. [73] R. A. Fisher, The wave of advance of advantageous genes, Annals of Eugenics 7, 355 (1937). [74] O. Hallatschek, S. S. Datta, K. Drescher, J. Dunkel, J. Elgeti, B. Waclaw, and N. S. Wingreen, Proliferating active matter, Nature Reviews Physics 5, 407 (2023). [75] J. F. Crow and M. Kimura, An Introduction to Population Genetics Theory (Blackburn Press, 1970) p. 608. [76] M. Kimura, The neutral theory of molecular evolution (Cambridge University Press, 1983). [77] L. S. Tsimring, H. Levine, and D. A. Kessler, RNA virus evolution via a fitness-space model, Physical Review Letters 76, 4440 (1996). [78] V. Mustonen and M. La ̈ssig, From fitness landscapes to seascapes: non-equilibrium dynamics of selection and adaptation, Trends in Genetics 25, 111 (2009).
+
+
+13
+[79] J. Cremer, T. Honda, Y. Tang, J. Wong-Ng, M. Vergassola, and T. Hwa, Chemotaxis as a navigation strategy to boost range expansion, Nature 575, 658 (2019). [80] J. W. Cahn and J. E. Hilliard, Free energy of a nonuniform system. i. interfacial free energy, The Journal of Chemical Physics 28, 258 (1958). [81] P. C. Hohenberg and B. I. Halperin, Theory of dynamic critical phenomena, Reviews of Modern Physics 49, 435 (1977). [82] E. F. Keller and L. A. Segel, Model for chemotaxis, Journal of Theoretical Biology 30, 225 (1971). [83] J. Adler, Chemotaxis in bacteria, Annual Review of Biochemistry 44, 341 (1975). [84] H. C. Berg, Chemotaxis in bacteria, Annual Review of Biophysics and Bioengineering 4, 119 (1975). [85] M. Vergassola, E. Villermaux, and B. I. Shraiman, ‘infotaxis’ as a strategy for searching without gradients, Nature 445, 406–409 (2007). [86] R. Farley, C. Steeh, T. Jackson, M. Krysan, and K. Reeves, Continued racial residential segregation in detroit: ”chocolate city, vanilla suburbs” revisited, Journal of Housing Research 4, 1 (1993). [87] W. A. V. Clark, Ethnic preferences and ethnic perceptions in multi-ethnic settings, Urban Geography 23, 237 (2002). [88] R. Farley, H. Schuman, S. Bianchi, D. Colasanto, and S. Hatchett, ”chocolate city, vanilla suburbs”: Will the trend toward racially separate communities continue?, Social Science Research 7, 319 (1978). [89] W. Clark, Residential preferences and neighborhood racial segregation: A test of the schelling segregation model, Demography 28, 1 (1991). [90] L. Bobo and C. L. Zubrinsky, Attitudes on residential integration: Perceived status differences, mere in-group preference, or racial prejudice?, Social Forces 74, 883 (1996). [91] G. Giacomin and J. L. Lebowitz, Exact macroscopic description of phase segregation in model alloys with long range interactions, Physical Review Letters 76, 1094 (1996). [92] US Census Bureau, Cps historical migration/geographic mobility tables, https://www.census.gov/data/ tables/2020/demo/geographic-mobility/cps-2020. html (2023), table 2. Accessed: 2025-02-24. [93] M. Desmond and T. Shollenberger, Forced displacement from rental housing: Prevalence and neighborhood consequences, Demography 52, 1751 (2015). [94] R. Lemoy, E. Bertin, and P. Jensen, Socio-economic utility and chemical potential, EPL (Europhysics Letters) 93, 38002 (2011). [95] M. Fruchart, R. Hanai, P. B. Littlewood, and V. Vitelli, Non-reciprocal phase transitions, Nature 592, 363 (2021). [96] A. Dinelli, J. O’Byrne, A. Curatolo, Y. Zhao, P. Sollich, and J. Tailleur, Non-reciprocity across scales in active mixtures, Nature Communications 14, 10.1038/s41467023-42713-5 (2023). [97] Z. You, A. Baskaran, and M. C. Marchetti, Nonreciprocity as a generic route to traveling states, Proceedings of the National Academy of Sciences 117, 19767 (2020). [98] S. Saha, J. Agudo-Canalejo, and R. Golestanian, Scalar Active Mixtures: The Nonreciprocal Cahn-Hilliard Model, Physical Review X 10, 041009 (2020). [99] A. V. Ivlev, J. Bartnick, M. Heinen, C.-R. Du,
+V. Nosenko, and H. Lo ̈wen, Statistical mechanics where newton’s third law is broken, Physical Review X 5, 011035 (2015). [100] C. Hargus, J. M. Epstein, and K. K. Mandadapu, Odd diffusivity of chiral random motion, Physical Review Letters 127, 178001 (2021). [101] Y. Baek, A. P. Solon, X. Xu, N. Nikola, and Y. Kafri, Generic long-range interactions between passive bodies in an active fluid, Physical Review Letters 120, 058002 (2018). [102] T. Frohoff-H ̈ulsmann, J. Wrembel, and U. Thiele, Suppression of coarsening and emergence of oscillatory behavior in a cahn-hilliard model with nonvariational coupling, Physical Review E 103, 042602 (2021). [103] F. Brauns and M. C. Marchetti, Nonreciprocal pattern formation of conserved fields, Physical Review X 14, 021014 (2024). [104] C. Scheibner, A. Souslov, D. Banerjee, P. Sur ́owka, W. T. M. Irvine, and V. Vitelli, Odd elasticity, Nature Physics 16, 475 (2020). [105] M. Fruchart, C. Scheibner, and V. Vitelli, Odd viscosity and odd elasticity, Annual Review of Condensed Matter Physics 14, 471 (2023). [106] J. P. Banerjee, R. Mandal, D. S. Banerjee, S. Thutupalli, and M. Rao, Unjamming and emergent nonreciprocity in active ploughing through a compressible viscoelastic fluid, Nature Communications 13, 10.1038/s41467-02231984-z (2022). [107] N. C. Keim, J. D. Paulsen, Z. Zeravcic, S. Sastry, and S. R. Nagel, Memory formation in matter, Reviews of Modern Physics 91, 035002 (2019). [108] B. Kerr, M. A. Riley, M. W. Feldman, and B. J. M. Bohannan, Local dispersal promotes biodiversity in a real-life game of rock–paper–scissors, Nature 418, 171 (2002). [109] G. J. Velicer, Social strife in the microbial world, Trends in Microbiology 11, 330 (2003). [110] M. E. Hibbing, C. Fuqua, M. R. Parsek, and S. B. Peterson, Bacterial competition: surviving and thriving in the microbial jungle, Nature Reviews Microbiology 8, 15 (2009). [111] E. D. Kelsic, J. Zhao, K. Vetsigian, and R. Kishony, Counteraction of antibiotic production and degradation stabilizes microbial communities, Nature 521, 516 (2015). [112] J. D. Van Dyken, M. J. Mu ̈ller, K. M. Mack, and M. M. Desai, Spatial Population Expansion Promotes the Evolution of Cooperation in an Experimental Prisoner’s Dilemma, Current Biology 23, 919 (2013). [113] C. Ratzke, J. Barrere, and J. Gore, Strength of species interactions determines biodiversity and stability in microbial communities, Nature Ecology & Evolution 4, 376 (2020). [114] M. B. Miller and B. L. Bassler, Quorum sensing in bacteria, Annual Review of Microbiology 55, 165–199 (2001). [115] C. M. Waters and B. L. Bassler, Quorum sensing: Cellto-cell communication in bacteria, Annual Review of Cell and Developmental Biology 21, 319 (2005). [116] D. R. Mills, R. L. Peterson, and S. Spiegelman, An extracellular darwinian experiment with a self-duplicating nucleic acid molecule., Proceedings of the National Academy of Sciences 58, 217 (1967). [117] G. P. Smith, Filamentous fusion phage: Novel expression
+
+
+14
+vectors that display cloned antigens on the virion surface, Science 228, 1315 (1985). [118] K. Chen and F. H. Arnold, Enzyme engineering for nonaqueous solvents: Random mutagenesis to enhance activity of subtilisin e in polar organic media, Bio/Technology 9, 1073 (1991). [119] N. Q. Balaban, J. Merrin, R. Chait, L. Kowalik, and S. Leibler, Bacterial persistence as a phenotypic switch, Science 305, 1622 (2004). [120] E. Kussell and S. Leibler, Phenotypic diversity, population growth, and information in fluctuating environments, Science 309, 2075 (2005). [121] A. Murugan, K. Husain, M. J. Rust, C. Hepler, J. Bass, J. M. J. Pietsch, P. S. Swain, S. G. Jena, J. E. Toettcher, A. K. Chakraborty, K. G. Sprenger, T. Mora, A. M. Walczak, O. Rivoire, S. Wang, K. B. Wood, A. Skanata, E. Kussell, R. Ranganathan, H.-Y. Shih, and N. Goldenfeld, Roadmap on biology in time varying environments, Physical Biology 18, 041502 (2021). [122] J. Marchi, M. L ̈assig, A. M. Walczak, and T. Mora, Antigenic waves of virus–immune coevolution, Proceedings of the National Academy of Sciences 118, 10.1073/pnas.2103398118 (2021). [123] M. L ̈assig, V. Mustonen, and A. M. Walczak, Predicting evolution, Nature Ecology and Evolution 1, 10.1038/s41559-017-0077 (2017). [124] Turing, Alan, The chemical basis of morphogenesis, Philosophical Transactions of the Royal Society of London. Series B, Biological Sciences 237, 37 (1952). [125] D. Gilmour, M. Rembold, and M. Leptin, From morphogen to morphogenesis and back, Nature 541, 311–320 (2017). [126] N. S.-N. Lam, Spatial interpolation methods: A review, The American Cartographer 10, 129 (1983). [127] J. E. Guyer, D. Wheeler, and J. A. Warren, Fipy: Partial differential equations with python, Computing in Science & Engineering 11, 6 (2009). [128] W. R. Tobler, Smooth pycnophylactic interpolation for geographical regions, Journal of the American Statistical Association 74, 519 (1979). [129] Code is available online at https://github.com/ jcolen/sociohydro.
+[130] Z. Liu, H. Mao, C.-Y. Wu, C. Feichtenhofer, T. Darrell, and S. Xie, A convnet for the 2020s (2022). [131] V. Verbavatz and M. Barthelemy, The growth equation of cities, Nature 587, 397 (2020). [132] S. M. Reia, P. S. C. Rao, M. Barthelemy, and S. V. Ukkusuri, Spatial structure of city population growth, Nature Communications 13, 10.1038/s41467-022-33527y (2022). [133] R. Farley, E. L. Fielding, and M. Krysan, The residential preferences of blacks and whites: A four-metropolis analysis, Housing Policy Debate 8, 763 (1997).
+[134] E. Bertin, Statistical Physics of Complex Systems A Concise Introduction (Springer International Publishing AG, 2021) p. 291. [135] R. J. Glauber, Time-dependent statistics of the ising model, Journal of Mathematical Physics 4, 294 (1963). [136] J.-P. Bouchaud, Crises and collective socio-economic phenomena: Simple models and challenges, Journal of Statistical Physics 151, 567 (2013). [137] H. Eyring, The activated complex in chemical reactions, The Journal of Chemical Physics 3, 107 (1935). [138] T. Frohoff-H ̈ulsmann, M. P. Holl, E. Knobloch, S. V.
+Gurevich, and U. Thiele, Stationary broken parity states in active matter models, Physical Review E 107, 064210 (2023). [139] M. R. Evans and T. Hanney, Nonequilibrium statistical mechanics of the zero-range process and related models, Journal of Physics A: Mathematical and General 38, R195 (2005).
+
+
+S1
+Supplementary Materials
+I. US CENSUS DATA
+FIG. 1. Census data interpolation. Example of interpolation of Census data to a regular grid, focusing on Black residents of Cook County, Illinois. Starting with Census data (left, 2020), we first convert to population densities (middle) in units of #/dm2. We then use areal-weighted interpolation [128] to interpolate population densities to a regular grid. The same step is also done to interpolate to a triangular grid instead when running finite-volume simulations.
+The US population data are decennial census data at the census tract level for decades 1980-2010 [46]. Populations labeled as “White” or “Black” were taken to be non-Hispanic White and non-Hispanic Black. We further used GIS data to give proper physical coordinates to the population data using the 2008 TIGER/Line GIS for years 1980-2000, and the 2020 TIGER/Line GIS for years 2010 and 2020. To coarse-grain and analyze the population data, we perform an interpolation for each studied region separately. After reading the GIS shapefile, we convert the total population numbers to population densities by dividing by the census tract area. This population density is then interpolated to a regular grid using areal-weighted interpolation [128]. Areal-weighted interpolation is a method developed by geographers to interpolate data aggregated using one one set of spatial units to a different set of spatial units. Consider that we begin with a given set of values ni distributed over spatial units given by si, where i indexes each spatial unit (e.g. a single census tract). We would like to interpolate the values ni to a new set of spatial units s ̃j to give n ̃j. Areal-weighted interpolation says to assign
+ ̃nj = ni
+Aij
+Ai
+,
+where Aij is the area of the intersection of si with sj, and Ai is the area of si. If both sets si and s ̃j cover the same area, then P
+i ni = P
+j  ̃nj and the total number is conserved. In our case, we are working with population numbers na
+i of White and Black populations, a = {W, B} and where i
+indexes the spatial location. The population density is given by ρa
+i = na
+i /Ai. In practice, we read census and GIS shapefiles using geopandas. The areal weighted interpolation is performed using the Python package tobler, treating the population densities as an intensive variable (see SFig. 1). Once on a regular square grid, we can write ρa
+i = ρa(ri),
+where ri denotes the center of grid point i. We then convert from densities to fill fractions, φa(ri) by finding the maximum density within the county over all time,
+ρ∗ = miax
+
+
+X
+a={W,B}
+ρa(ri)
+
+
+We then divide the density field by this normalizing factor, giving φa(ri) = ρa(ri)/ρ∗. We measure the correlation length of the fluctuations of the two populations using standard Fourier Transform methods. Specifically, for each population we calculate δφa(x, t) = φa(x, t) − ⟨φa⟩, where the average is taken over space
+
+
+S2
+and time. We then calculate the spatial Fourier transform, Fq δφa(x, t) = δφa(q, t), and calculate the autocorrelation function as
+Caa(x) = F −1
+q
+h
+⟨|δφ(q, t)|2⟩t
+i
+. (1)
+Across the regions shown in Fig. 1, we measure a mean correlation length for White and Black populations to be ⟨ξw⟩ = 11.7 ± 4.2 km and ⟨ξb⟩ = 7.9 ± 3.9 km. The typical census tract size, l, for the different areas studied are found using the areas of all census tracts, {Ai},
+and defining l = median {√Ai} (Table I).
+Region l (km)
+Cook County, IL 1.37 Fulton County, GA 2.78 Harris County, TX 2.58 Los Angeles County, CA 2.31 New York City, NY 0.60 Wayne County, MI 1.60
+TABLE I. Median census tract size for regions studied. Median is taken over all census tracts from 1980-2020.
+II. SEGREGATION INDICES
+In order to quantify both the measured distribution of human populations as well as our simulations, we utilize segregation indices. Mathematically, a segregation index is measured by a functional S that takes the distribution of ≥ 2 populations to generate a scalar measure of how spatially separated the populations [68]. We will normalize our indices such that 0 means the system is perfectly integrated, and 1 means the system is completely segregated. We stress that “integration” does not means that a location has 50 − 50 representation of each group, but rather that proportion of each group present locally is equal to the proportion of each group present globally. For example, if a region comprises 70% White residents and 30% Black residents, the region is integrated if each location within the region also comprises 70% White residents and 30% Black residents. Our notation is defined in Table II and largely follows [68]. We call a “region” the full geographic area we consider (e.g. Cook County, New York City), and a neighborhood a small area within the region (e.g. an individual census tract). The entropy index used in the main text, which we will denote here as SH, is a weighted mean of an entropy index field hi, defined as
+hi =
+P
+m pm
+i ln pm
+i pm
+−
+P
+m pm ln pm
+(2a)
+SH[pm
+i ]= 1
+T
+X
+i
+tihi. (2b)
+The spatial maps of segregation in Figs. 1&3 show hi, which measures the Kullback-Leibler divergence between the local composition distribution pm
+i to the region’s composition distribution pm, normalized by the Shannon entropy of the region’s composition. The entropy index is the population-weighted mean of hi. This choice of index is not unique. Another common index used in the sociology literature is the so-called “dissimilarity index”, which we will denote as SD. Like SH, it measures how different local compositions are compared to the global composition. Again, it is given by a weighted mean of a field, di, defined for binary populations as
+di = 1
+2
+|pm
+i − pm|
+pm(1 − pm) (3a)
+SD = 1
+T
+X
+i
+tidi. (3b)
+We note that the binary population assumption ensures di is the same regardless of which subgroup m is chosen. In Fig. ??, we reproduce the results from the annealing simulations shown in Fig. 6C along-side measurements using the dissimilarity index, illustrating that the two measurements give the same qualitative results.
+
+
+S3
+Variable Definition
+m index of subgroup i index of neighborhood tm
+i total number of group m in neighborhood i
+tm = P
+i tm
+i total number of m in region ti = P
+m tm
+i total number of people in neighborhood T =P
+m,i tm
+i total number of people in region pm
+i = tm
+i /ti proportion of residents in neighborhood i of type m
+pm = tm/T proportion of residents in region of type m
+TABLE II. Notation used for defining and calculating segregation indices.
+III. ASSESSING LOCALITY VIA NEURAL NETWORKS
+FIG. 2. Detailed maps of various population predictions. Here, we show explicit spatial comparisons between various models to predict demographic distributions for four counties – Los Angeles, CA (top left), Harris, TX (top right), Cook, IL (bottom left), and Fulton, GA (bottom right). Each county has the same layout. The first column shows the distribution from the 1980 census, which serves as our initial condition. The second column shows the distribution from the 2020 census, which serves as our target. The following columns show predictions from the neural network, sociohydrodynamic simulations, linear extrapolation/growth, and exponential growth, respectively. The first and third rows show the distributions for the White and Black populations, respectively. The second and fourth rows show the difference of the map above it with the 1980 census data, illustrating population changes rather than absolute magnitudes.
+We trained and evaluated neural networks using decennial Census Data (1980-2020) from 34 counties with total populations greater than 1 million. For each county, we first downsampled the population data to a scale of 1 pixel = 1 km and performed Gaussian smoothing (σ = 3 km) to soften sharp gradients in the sampled areas. Next, we converted the raw populations into an occupation fraction φ by dividing the population at each pixel by the maximum total occupancy within the region over the entire time range. Each training example contained an input-output pair: the
+
+
+S4
+FIG. 3. Mean-square error for all counties. Dots denote the normalized mean-square error for all 35 counties with populations > 106 for White (blue) and Black (red) populations. The curves show the density of points for each population. The black circles and error bars show the mean ± standard deviation within each category.
+Module Size in Size out Details
+Read-in 2 × H × W C × H × W 1×ConvNext CNN1 C × H × W C × H × W 8×ConvNext Downsample C × H × W C × H/4 × W/4 Strided Conv2d CNN2 C × H/4 × W/4 C × H/4 × W/4 8×ConvNext Upsample C × H/4 × W/4 C × H × W Interpolate Skip 2C × H × W Concat CNN1, CNN 2 outputs Read-out 2C × H × W 2 × H × W Conv2d
+TABLE III. Neural network architecture. ConvNext layers are summarized in Table IV. We use a hidden size C = 64. The spatial dimensions H, W are determined by the input data.
+input was an image of occupation fractions for the county interpolated to a random time point t0 ∈ [1980, 2020], while the output was a second image of occupation fractions at some future time t0 + ∆t where ∆t ∈ [0, 1]. The machine learning model was tasked with predicting this future state ⃗φ(t0 + ∆t) from the initial condition ⃗φ(t0).
+A. Neural network architecture and training
+We used a convolutional neural network to predict dynamics from the input data. The full architecture is outlined in Table III and implemented using the Pytorch library [129]. Briefly, it contains two sequential modules of 8 convolutional blocks. The first computes latent features at the scale of the input data, while the second computes additional information using a downsampled representation of these latent features. As this second layer operates at a coarse-grained level, it can aggregate spatial information over a longer range. Throughout the network, we use ConvNext-style blocks shown in Table IV [130]. This neural network processes a 3-channel image (φW , φB, h) and outputs another 2-channel image representing the predicted time derivative of the input (∂tφW , ∂tφB). Here h was a fixed local capacity defined as the maximum occupancy at each pixel over the 40-year Census period. We evaluated the quality of these predictions by integrating them using a finite-difference discretization over 40 years starting from an initial condition at 1980. The network learns
+Layer Details Channels Kernel Groups
+Conv2d Mix space N → N 7x7 N Conv2d Mix channels N → 4N 1x1 1 Sin Activation Conv2d Inverse bottleneck 4N → N 1x1 1 Dropout p = 0.1
+TABLE IV. ConvNext-style block architecture
+
+
+S5
+County MSE Rel. MSE zero linear growth NN zero linear growth NN Fulton, GA 0.00114 0.00181 0.000768 1.0 1.583 0.674 Cook, IL 0.0103 0.0202 0.0045 1.0 1.966 0.437 Harris, TX 0.00119 0.00429 0.00119 1.0 2.202 0.613 Los Angeles, CA 0.00371 0.013 0.00186 1.0 3.495 0.500
+to minimize the loss
+L= 1
+N
+N
+X
+i=1
+φW
+i (t0 + ∆t) − φˆW
+i (t0 + ∆t) + φB
+i (t0 + ∆t) − φˆB
+i (t0 + ∆t) (4)
+Here φˆa
+i is the predicted occupation fraction within the boundary of the county for sample index i. We train the model for 100 epochs with batch size 8. We use the Adam optimizer with learning rate λ = 0.0003 and exponential learning rate decay with γ = 0.98. The network was trained using all available Census data from 30 of the collected counties and was tested on four counties: Cook IL, Harris TX, Fulton GA, and Los Angeles CA. During training, the network saw samples from the first decade of Census data (1980-1990) for each of these four counties. The results presented in Figure 3 are extrapolations beyond the training regime for the remaining 30 years (1990-2020) in each test county.
+B. Post-processing and saliency analysis
+After training, we use the network to predict population dynamics over the 40-year window spanned by the decennial Census data. Specifically, we solve the following initial value problem
+∂t ⃗φ(t, r) = f
+h⃗φ(t, r); h
+i
+(5)
+⃗φ(1980, r) = US Census data from 1980 (6)
+To do this, we discretize the time derivative using finite differences as ∂t ⃗φ ≈ (⃗φt+∆t − ⃗φt)/∆t and iteratively compute ⃗φt+∆t using a finite element approach. We used a time step ∆t = 1 year and integrated the above equations as a closed loop for 40 years. Beyond the initial condition, the neural network used no Census data to generate these predictions. To assess locality in the predictions of the machine learning model, we computed output saliencies for the trained neural networks. Saliency is a measure of how much a model’s predictions depend on its inputs and is here defined as [70]
+Kab(ri, rj ) =
+∂f a (ri)
+∂φb(rj) (7)
+Here a, b are population indices while i, j refer to spatial coordinates within each county. We compute Kab(ri, rj) from each input-output pair in each county dataset, for 100 randomly sampled output points ri and all input points rj. By azimuthally averaging, we aggregate this into a set of curves Kab(|ra − rb|) which are plotted in Figure 3 of the main text.
+C. Benchmarking saliency analysis with Monte Carlo simulations
+To benchmark the behavior of the neural network models and saliency analysis pipeline, we applied it to agent-based simulations of a 1D Schelling model using a range of utility functions. We divided teh phase space into 4 quadrants based on the phenotype of each region – segregation, integration, migration 1, and migration 2. We trained unique neural networks (architecture equivalent to Table III with Conv2d → Conv1d) on sampled trajectories from each phenotype. Once trained, we extracted saliencies Kab from each neural network and plotted them in Fig. 4. Across each phase, we found that KXX and KY Y were unchanged as we did not change κXX and κY Y in the phase diagram. Looking at the cross-saliencies, we found KXY (x = 0) ad KY X (x = 0) to have signs that matched our expectations given their phase. Namely, they were both negative (positive) in the segregated (integrated) phase, stemming from the sign of κ+. In the two migration phases, they had opposite sign. In particular, KXY > 0(< 0) and KY X < 0(> 0) when κ− = κY X − κXY < 0(> 0).
+
+
+S6
+FIG. 4. Saliency for agent-based simulations. (A) Result of Monte Carlo simulations of 1D Schelling model using linear utility functions, πa = κabφb, with κXX = κY Y = 1 and κ+ ∈ [−1.2, 2.0], κ− ∈ [−1.6, 1.6], giving a phase space diagram over D± ∈ [−0.1, 0.1], with temperature T = 0.1 and Γ = 1. Each plot inside the phase space is a kymograph showing the dynamics of φX − φY over time. The phase space is divided into 4 quadrants based on the phenotype of each region – segregation, integration, migration 1, and migration 2 (blue, orange, green red, respectively). (B) Exemplary trajectories in each phase. Light colored lines indicate the fill fractions at an earlier time, and the dark colored lines indicate the fill fractions at later times. (C) Saliencies measured in each phase. Solid lines show the saliencies extracted from neural networks trained on trajectories in each phase. Solid lines show the saliencies measured from the Monte Carlo simulations. The semi-transparent lines show the value of Kab(x = 0). The black horizontal line indicates Kab = 0. Saliencies for each phase are arranged as they would be in a matrix, with KXX , KXY , KY X , KY Y in the top left, top right, bottom left, and bottom right, respectively.
+
+
+S7
+FIG. 5. Coarse-graining non-local motion leads to local dynamics. We implement a 2D Ising model whose dynamics are given by exchanging spins. Any two spins in the lattice can be exchanged, but the energy is computed locally. The resulting dynamics are then smoothied, and used inputs into a convolutional neural network to predict the dynamics and compute a saliency. The result of the saliency is shown on the right side of the text, and shows that the NN function is highly localized around r = 0.
+D. Saliency of a non-local Ising model
+What would the saliency give if the underlying dynamics exhibit non-local displacements? A simple model for this is a 2D Ising model whose dynamics involve swapping any two arbitrarily chosen spins, i.e. Kawasaki dynamics with infinite range exchanges [71]. More precisely, consider a set of spins s on a 2D square lattice. The Hamiltonian of the system is given by
+H(s) = −
+X
+⟨i,j⟩
+J sisj ,
+where the coupling strength J > 0 and P
+⟨i,j⟩ indicates a sum over nearest neighbor pairs of spins. The dynamics are generated by swapping any two spins i and j. If s = (s1, s2, . . . , si, . . . , sj, . . .), we define the swapped state s′ = (s1, s2, . . . , sj, . . . , si, . . .). The system is evolved using Glauber dynamics, where the probability of accepting a proposed spin swap is given by
+w(s′|s) = 1
+1 + exp[β(H(s′) − H(s))] ,
+where β is an inverse temperature. Thus, this system has local interactions, and long-range displacements (Fig. 5) Simulating this system gives us a trajectory s(t). We smooth the spin field with a Gaussian kernel and use the smoothed fields as an input into the same neural network architecture used to predict the dynamics of the Census data. We then measure the saliency of the trained system, which is shown on the right-hand side of Fig. 5. We see that the neural network learns a highly localized dynamical rule, despite the infinite-range motility of the underlying spins. These results show that a coarse-grained field, even with long-range mobility, can evolve according to a local set of dynamics. This analysis further supports our use of a local PDE when simulations residential dynamics whose microscopic origins are surely non-local.
+IV. THE SOCIOHYDRODYNAMIC EQUATION
+Our sociohydrodynamic equation is
+∂tφa = ∇ · Dab(⃗φ)∇φb − φaφ0∇πa − Γab(⃗φ)∇3φb + Sa(⃗φ) (8)
+This is an equation for advection-diffusion plus growth, where the advection velocity is given by va = φ0∇πa and we require Γab > 0 for stability. In the sections below, we discuss the phenomenological origins of this model, in particular for the forms of the growth Sa and utility functions πa considered in the main text. We also discuss the origin of the ∇3 term as a necessary, stabilizing term. Finally, we describe a microscopic, agent-based model that we explicitly coarse-grain to obtain (8), including all prefactors of the vacancy φ0.
+
+
+S8
+A. Growth laws for US populations
+FIG. 6. Total population numbers in six areas around the US. Population numbers are measured from decennial US Census data from 1980-2020, shown on a semi-log axis. Total, White, Black, and White + Black populations in black, blue, red, and purple, respectively. The growing gap between the total and White + Black population numbers indicate an increasing proportion of other races in those areas, predominantly Hispanic populations. The populations change roughly linearly on the semi-log axis, reflecting a roughly exponential increase in population.
+As discussed in the main text, we do not build a model for the growth of populations in the US counties we consider (for the interested reader, we refer to Refs. [131, 132]). Instead, we fit the observed growth across counties. Figure 6 shows that population growth in various US counties is roughly exponential, Sa(⃗φ) = raφa with distinct coefficients ra for each county. In the inference and simulations performed throughout the text, we fit the coefficient ra for each county and model growth as this simple exponential law.
+B. Utility functions from survey questions
+The form of the utility functions is, as of yet, arbitrary. In order to gain an understanding of their possible form, we turn to sociological survey data that assesses the stated preferences of US citizens for the demographic make-up of their local neighborhood. In Fig. 3 of the main text, we show the results of surveys taken in Farley, 1993 [86] and Clark, 2002 [87]. Here, we report the precise questions asked in each survey. In addition, we show in Fig. 7 that qualitatively similar results are found in two additional surveys.
+1. Farley, 1993 [86]
+Surveyed Black respondents were given the following prompt (from Section “Residential Preferences of Blacks”, bottom of page 20 in [86]):
+We showed blacks five diagrams of neighborhoods (see figure 7). Each card pictured 15 homes with varying racial compositions ranging from all black to all white. Respondents were asked to imagine that they were searching for a home and found one they could afford. This home was shown as the center of each neighborhood. They were then asked to rank the neighborhoods from most to least attractive. The percent who said a specific neighborhood was their first or second choice is shown in figure 8.
+The resulting data are reproduced by the red markers in Fig. 3 (top).
+
+
+S9
+AB
+FIG. 7. Survey results for neighborhood preferences. (A) Reproduction of Fig.4 of Ref. [89]. Residents across all cities were asked to “Now suppose you have been looking for a house or apartment and have found a nice place you can afford. It could be located in neighborhoods with different racial groups. What mixture of people would you prefer? Would you prefer a neighborhood that is... (combinations of 100% white, 90% white and 10% black, and so on through 100% black were read to respondents)”. (B) Reproduces portions of Figs 4 & 6 from Ref. [133], with the corresponding questions written on top of each bar plot. Both cases show the generic features found in Fig. 1C, which itself reproduced data from Ref. [86] – neighborhood preferences of White respondents is monotonically decreasing with the proportion of Black residents, while Black respondents indicate a preference for mixed neighborhoods.
+Surveyed White respondents were given the following prompt (from Section “Residential Preferences of Whites”, bottom of page 23 in [86])
+The residential preferences of whites were studied in a manner similar but not exactly identical to that used with blacks. Every white was presented with a series of diagrams showing neighborhoods with 15 homes (see figure 9). We asked them to imagine that they lived in an all-white neighborhood, a realistic assumption for most, and that the center home was theirs. They were then shown the second card, which indicated 1 home occupied by a black family and 14 by whites. Whites were asked how comfortable they would feel in that minimally integrated neighborhood. If they said ”comfortable,” they were shown cards with higher representations of blacks until they either said “uncomfortable” or came to the final card, which portrayed a majority-black neighborhood.
+The resulting proportion of respondents indicating they were comfortable with each neighborhood are reproduced by the blue markers in Fig. 3 (top).
+2. Clark, 2002 [87]
+Surveyed Black respondents were asked (from page 243 of [87])
+Now I would like you to imagine that you have been looking for a house and have found a nice house you can afford. This house could be located in several different types of neighborhoods as shown on these cards. (The cards show combinations of 15 own- and other-race houses indicated by stylized drawings.) Would you look through the cards and rearrange them so that the neighborhood that is most attractive to you is on top, the next most attractive second, and so on down the line with the least attractive neighborhood on the bottom.
+The results for the proportion of respondents ranking a specific neighborhood as their first choice is reproduced by the red symbols in Fig. 3 (bottom). Surveyed White respondents were asked (from page 243 of [87])
+Now, I’d like you to imagine yourself in a different situation. Suppose you have been looking for a house and have found a nice one you can afford. This house could be located in several different types of neighborhoods, as shown on these cards (similar to those described above). Would you consider moving into any of these neighborhoods?
+The results for the proportion of respondents indicating that they would move into a particular neighborhood is reproduced by the blue symbols in Fig. 3 (bottom).
+
+
+S10
+C. Origin of ∇3 term
+FIG. 8. Exact and expanded non-local interactions. Three examples of the eigenfrequency s(q), depending on the choice of kernel, Kσ(x), shown at the top of each column in black. Left column is a Gaussian, Kσ(x) = Z−1e−x2/(2σ2), middle column is a decaying exponential, Kσ(x) = Z−1e−|x|/σ, and right column is a top-hat function, Kσ(x) = Z−1H(σ − |x|), where H(x) is the Heaviside Function and Z is a normalization constant. The green line plots s(q) using the full spectrum Kσ(q), Eq.(12), while the purple line plots s(q) where Kσ(q) has been expanded around q = 0 up to q2, Eq. (15). In all cases, we take D = 1, φ0φ0
+0π′
+0 = 4, and σ = 1.
+Our census data, once smoothed, does not exhibit fast variations at small length-scales. Thus, (8) should be linearly stable at small wavelengths (high wavenumber, q). Diffusion and (local) advection alone are insufficient to ensure this. A natural way to regain stability at high-q is to consider a non-local fitness function, such as those considered in Ref. [55]. Below, we will show that this comes at the expense of a more complicated theory. The ∇3 term qualitatively mimics the effect of non-local fitness functions while maintaining analytical simplicity, and is therefore added to the model as a phenomenological term. To illustrate, we work with a simplified version of our theory in the case of only one group, denoted by the fill fraction φ(x, t) ∈ [0, 1]. We introduce the spatially smoothed fill fraction
+φ(x, t) = (Kσ ∗ φ)(x, t) =
+Z
+dyKσ(x − y)φ(y, t) (9)
+where Kσ(x) is a normalized convolution kernel in L2 that is non-increasing in |x| with a characteristic width σ. We will consider Kσ(x) to be an even function, Kσ(−x) = Kσ(x). Examples are Gaussian, decaying exponentials, or top hat functions (see Fig. 8). The model presented in the main text and SM considered the special case Kσ(x) = δ(x). The non-local interactions manifest by the utility functions becoming functions of φ (equivalently, functionals of φ), π = π(φ(x, t)). In this case, we can write the sociohydrodynamic equations as
+∂tφ(x, t) = −∇ · j (10a)
+j(x, t) = −D∇φ + φφ0∇π(φ) (10b)
+where the diffusion constant D > 0 and vacancy fraction φ0 = 1 − φ. Linearizing around a uniform solution, φ(x) = φ0 + δφ(x),
+∂tδφ = −∇ · −D∇δφ + φ0φ0
+0π′
+0∇δφ F ⇒ ∂tδφ = s(q)δφ, (11)
+where δφ = Kσ ∗ δφ, π′0 = (∂π/∂φ)|φ=φ0 is the derivative of the utility function with respect to smoothed field φ
+evaluated at φ = φ0, and the symbol F ⇒ indicates moving to Fourier space. The stability of the homogeneous solution
+
+
+S11
+is given by the eigenfrequency s(q),
+s(q) = −q2 D − φ0φ0
+0π′
+0Kσ(q) . (12)
+An instability arises if D − φ0φ00π′0Kσ(q) < 0, or more simply if
+D − φ0φ0
+0π′
+0 < 0. (13)
+This simplification arises due to the fact that we considered Kσ(x) to be normalized and monotonically decreasing and therefore its Fourier transform has a maximum Kσ(q = 0) = 1. Given Kσ(x) ∈ L2, we also have Kσ(q) ∈ L2, meaning |Kσ(q)| decays to zero as q → ∞. This means that, even if Eq. (13) is satisfied at low q, above some qc it will no longer be satisfied and the system is stable at short wavelengths (Fig. 8). If we Taylor expand Kσ(q) around q = 0, we have
+s(q) = −q2
+
+D − φ0φ0
+0π′
+0
+∞
+X
+n=0
+c2nq2n
+
+ , (14)
+where cn = K(n)(0)/n!, and we only have even powers of q due to Kσ(x) being an even function in x. If we truncate the Taylor series at q2, we have
+s(q) = −q2 D − φ0φ0
+0π′
+0 + q4 φ0φ0
+0π′
+0c2 (15)
+The resulting q4 term can be seen as the result of a ∇3 term in a flux j. This truncation will always stabilize an unstable system at large q, as we will now explain. If Eq. (13) holds, we must have π′0 > D
+φ0 φ0
+0
+> 0, and the q2 term in Eq. (15) becomes unstable (i.e. it has a positive
+coefficient). At large q, the q4 term dominates and always has a negative coefficient. As φ0φ00 > 0 and we are working
+in a regime where π′0 > 0 to satisfy Eq. (13), we are saved by the fact that c2 = K′σ′(0)/2 < 0, because Kσ(0) is a local maximum. There remains one subtlety. Suppose our linearization is stable because π′0 < 0, thus violating Eq. (13). In this
+case, our truncation at O(q2) actually introduces an instability at large q, as π′0c2 > 0. In this case, we would need to
+truncate at a higher order of q, such as O(q4). We therefore conclude that there is no consistent way to truncate the non-local interaction model to ensure stability for all kernels and fitness functions. One must keep the fully non-local interactions, making the theory more complicated to study analytically. In light of this, we can achieve the same stabilizing effect of non-local interactions by introducing a ∇3 term in our flux with a fixed sign to ensure stability, in the spirit of Ginzburg-Landau theory. While quantitatively different from the non-local interactions (see Fig. 8), the effect is qualitatively similar and does not require the specification of the kernel Kσ(x) when attempting to fit to data.
+D. The Schelling model
+Here we describe a set of microscopic dynamics that we will find coarse-grains to our conjectured sociohydrodynamic equations. We note that the ability to write the form of (8). However, having the microscopic model gives more insight into the origin of otherwise phenomenological coefficients, especially the diffusion matrix Dab and surface tension Γab. The set up amounts to a bounded-neighborhood variant of the Schelling model [47, 50, 51, 55, 62, 134]. We consider a system composed of two types of particles (agents), labeled by (X, Y ), distributed over a periodic lattice with M sites and lattice spacing l. Each lattice site can contain at most N total particles. At a time t, lattice site i’s composition is given by the vectorn⃗ i(t) = (nX
+i (t), nY
+i (t)) giving the number of particles of both types at site i. The
+capacity constraint is nX
+i (t) + nY
+i (t) ≤ N for all i and all t. We use n(t) ≡ n⃗ 1(t),n⃗ 2(t), . . . ,n⃗ M (t) to indicate the full configuration of the system. Dividing the components of n(t) by N , we further define the (discrete for now) density
+field configuration φ(t) ≡ ⃗φ1(t), ⃗φ2(t), . . . , ⃗φM (t) where ⃗φi(t) = (φX
+i (t), φY
+i (t)) with φm
+i (t) = nm
+i (t)/N .
+1. The utility function
+An agent of type a at lattice site i has a measure of the utility of the configuration in which it finds itself, πa
+i (φ(t)).
+The utility πa
+i generically depends on the configuration and on the lattice site i. While we do not consider utility
+
+
+S12
+functions that explicitly depend on the latter in this work, we note that adding this feature may be necessary for a more realistic description of human residential dynamics. As noted by Schelling himself [47], any model for residential dynamics that is built only on neighborhood composition preferences ignores at least 2 other factors largely responsible for observed residential patterns – discrimination (e.g. redlining) and socioeconomic inequality (e.g. income inequality). In either case, the end result is that certain areas in space are more or less accessible to certain groups as imposed by factors other than their own personal preference. These effects can be at least partially captured by adding an explicit, spatially dependent term to the utility functions which acts like an externally imposed potential function restricting movement. For example, one could consider πa
+i (φ) = αi + f (φ), where α is a constant that determines the utility of a location i, in addition to a term f (φ) that captures the individuals preferences. For the rest of this work, however, we only consider utilities that are functions of the system configuration, πa(⃗φi) = πa(φX
+i , φY
+i ). Finally, we note that each individual does not count itself as a neighbor
+in the evaluation of its utility, e.g. an individual of type X calculates its utility as πX (⃗φi) = πX (φX
+i − N −1, φY
+i ).
+2. The transition rates
+An individual of type b moves by jumping from site j to site k. This changes the configuration as
+φ → φ′ = Db
+k|jφ such that (Db
+k|j φ)a
+i = φa
+i + δab δik − δij δφ, (16)
+where δφ = N −1. We have defined the diffusion operator Db
+k|j that acts on the configuration φ by removing an individual of type b from site j and adding it to site k. An individual makes this jump with a probability depending on a gain function, ga(k|j), which measures the variation of its utility after moving from site j to site k. The rate we consider is similar to those used in Glauber dynamics of spin lattices [135], as well as in other quantitative socioeconomic models where it is known as a logit function [50, 136],
+wa(k|j) = wa(ga(k|j)) = τ −1
+1 + exp(−ga(k|j)/T ) , (17)
+where τ gives a time scale for the jumps and T is akin to a temperature that quantifies the uncertainty of a move decreasing the gain function. We note that Eq. 17 is not the only choice possible. Generically, the transition rate should satisfy certain properties, namely wa(g → ∞) → 1 and wa(g → −∞) = 0. The logit transition rate, in addition of satisfying these properties, also obeys detailed balance when ga(k|j) = G(k) − G(j), i.e. when the gain can be written as the difference of some function G that only depends on the system configuration. If the latter is verified, detailed balance holds and the system will settle into a steady state given by the Boltzmann Distribution of statistical physics, p(φ) ∝ eG/T . This was pointed out for socioeconomic agents in [50]. In this work, we take the gain to be given by
+ga(k|j) = ga(⃗φk, ⃗φj) = (1 − α) πa ⃗φ′
+k − πa(⃗φj) + α
+h
+U [φ′] − U [φ]
+i
++Γ
+h
+Σ[φ′] − Σ[φ]
+i
+. (18)
+The first term in Eq. (18) denotes the change in the moving particle’s own utility before and after the move. The second term denotes the change in the global utility given by the functional U [φ],
+U [φ] = N
+X
+b=X,Y
+M
+X
+j=1
+φb
+jπb(⃗φj). (19)
+From here, we see that the parameter α ∈ [0, 1] denotes the relative weight that a particle gives to its own utility with respect to the utility of the entire system. For this reason, we follow [50] and call α an altruism parameter. Completely selfish particles (α = 0) only consider their own utility, while completely altruistic particles (α = 1) only consider the utility of the global configuration. We note that the main text only considered α = 0. The functional Σ[φ] denotes a contribution to the gain that comes from spatial gradients of the density field,
+Σ[φ] = N
+X
+b=X,Y
+M
+X
+j=1
+φb
+j ∂2
+xφ
+b
+j
+. (20)
+
+
+S13
+Here, ∂x2φ is a discrete Laplacian operator defined as
+(∂2
+xφ)b
+j = φb
+j+1 − 2φb
+j + φb
+j−1
+l2 . (21)
+This function indicates that particles like being at a minimum of the density field, where ∂x2φ > 0. We will see that this term gives the system a surface tension that promotes spatial uniformity in the density field. Intuitively, this comes from the fact that particles are more likely to move into local minima of the density field (∂x2φ > 0) and away from local maxima of the density field (∂x2φ < 0), thereby reducing local gradients in the density field. This will prove crucial to obtain a well-behaved hydrodynamic theory.
+E. Coarse-graining the Schelling model
+Here we coarse-grain our agent-based model and show that it leads to the sociohydrodynamic equations in the main text. The stochastic evolution of the system is described by the probability distribution P (n, t), which is assumed to obey the master equation
+∂tP (n, t) =
+X
+n′
+W (n|n′)P (n′, t) − W (n′|n)P (n, t), (22)
+where W (n′|n) is the transition rate from state n to state n′ and P
+n′ is a sum over all system configurations. The allowed transitions are given by Eq. (16), which reduce the sum over configurations to sums over particle types and pairs of sites jk
+∂tP (n, t) =
+X
+b=X,Y
+X
+jk
+W (n|Db
+k|j n)P (Db
+k|j n, t) − W (Db
+k|jn|n)P (n, t). (23)
+We can now find the dynamics for the average number of particles of type a at lattice site i,
+∂t⟨na
+i ⟩(t) =
+X
+n
+na
+i ∂tP (n, t) (24a)
+=
+X
+n
+na
+i
+
+
+X
+b
+X
+jk
+W (n|Db
+k|j n)P (Db
+k|j n, t) − W (Db
+k|jn|n)P (n, t)
+
+ (24b)
+=
+X
+n
+X
+b
+X
+jk
+na
+i W (n|Db
+k|j n)P (Db
+k|j n, t) − na
+i W (Db
+k|jn|n)P (n, t). (24c)
+We wish to make the right hand side the average over some function of na
+i , i.e. ∂t⟨na
+i ⟩ = ⟨f (na
+i )⟩ = P
+n P (n, t)f (na
+i ) in order to apply the mean-field approximation, i.e. ∂t⟨ni⟩ = f (⟨ni⟩). To this end, we perform a change of variables in the first term of Eq. (24c), taking
+n → Db
+j|kn = Db
+k|j
+−1
+n
+This change of variables leaves the sum over configurations unchanged as both Db
+k|j and Db
+j|k preserve particle number. This gives
+∂t⟨ni⟩(t) =
+X
+n
+X
+b
+X
+jk
+(Db
+j |k n)a
+i W (Db
+j|kn|n)P (n, t) − na
+i W (Db
+k|jn|n)P (n, t) (25a)
+=
+X
+n
+P (n, t)
+X
+b
+X
+jk
+(Db
+j |k n)a
+i W (Db
+j|kn|n) − na
+i W (Db
+k|jn|n) (25b)
+=
+* X
+b
+X
+jk
+(Db
+j |k n)a
+i W (Db
+j|kn|n) − na
+i W (Db
+k|j n|n)
++
+. (25c)
+In the following, we take the mean-field approximation and drop the angle brackets.
+
+
+S14
+As written, W (Db
+k|jn|n) gives the rate for some particle of type b to move from site j to site k in the configuration
+n. This is not the single particle jump rate given by Eq. 17, wb(k|j). Rather, the two are related by
+W (Db
+k|j n|n) = nb
+j 1−
+X
+c
+φc
+k
+!
+wb(k|j)(δk,j+1 + δk,j−1). (26)
+Intuitively, the above formula states that the rate at which a b particle moves from site j to site k is given by the rate at which a single b particle makes that transition (wb(k|j)) scaled by the number of b particles at j (nb
+j) and the
+fraction of vacant sites at k (1 − P
+c φc
+k). This prevents particles from entering full sites. In the following, we denote the total vacancy fraction by
+φ0
+k =1−
+X
+c
+φc
+k.
+Finally, we have also restricted motion to neighboring lattice sites, specifying that k = j ± 1 with the Kronecker deltas. Plugging this decomposition of W (Db
+k|jn|n) into the mean-field equation (25c) and writing (Db
+j |k n)a
+i explicitly, we obtain
+∂tna
+i=
+X
+b
+X
+jk
+na
+i + δab(δij − δik) nb
+k φ0
+j wb(j|k) δj,k+1 + δj,k−1
+− na
+i nb
+j φ0
+kwb(k|j) δk,j+1 + δk,j−1 .
+(27)
+The first and last terms cancel as they are identical up to a relabeling of j ↔ k and are summed over all j, k. After summing over b in the middle term, we have
+∂tna
+i=
+X
+jk
+na
+k φ0
+j wa(j|k) δij − δik δj,k+1 + δj,k−1 . (28)
+The sum over jk is significantly simplified due to the two sets of δ-functions and gives
+∂tna
+i = na
+i−1φ0
+i wa(i|i − 1) + na
+i+1φ0
+i wa(i|i + 1) − na
+i
+h
+φ0
+i−1wa(i − 1|i) + φ0
+i+1wa(i + 1|i)
+i
+. (29)
+This has the form of a conservation law,
+∂tna
+i = Ja
+i−1 − J a
+i Ja
+i = na
+i φ0
+i+1wa(i + 1|i) − na
+i+1φ0
+i wa(i + 1|i) (30)
+Moving to continuous space, the lattice site i is at position x = il, where l is the lattice spacing. Upon taking l → 0 and dividing by N , we can approximate the above as
+∂tφa(x, t) = ja(x − l) − ja(x) ≈ −l∂xja(x) (31)
+Now we are left to specify the particle current,
+ja(x) = φa(x)φ0(x + l)wa(x + l|x) − φa(x + l)φ0(x)wa(x|x + l) (32)
+Performing a Taylor expansion for l → 0 up to O(l2) gives
+ja(x) =φa φ0 + l∂xφ0 wa(x|x) + l∂x ⃗φ · ∇(1|0)
+⃗φ wa(x|x) − (φa + l∂xφa)φ0 wa(x|x) + l∂x ⃗φ · ∇(0|1)
+⃗φ wa(x|x) + O(l2)
+=l φa∂xφ0 − φ0∂xφa wa(x|x) + φaφ0∂x ⃗φ · ∇(1|0)
+⃗φ wa(x|x) − ∇(0|1)
+⃗φ wa(x|x) + O(l2),
+(33) where we have canceled all terms that do not depend on l. Furthermore, we have used the notation ∂x ⃗φ = ∂xφX , ∂xφY ,
+∇(μ|ν)
+⃗φ wa(y|x) =
+
+
+∂ (μ|ν )
+φX wa(y|x)
+∂ (μ|ν )
+φY wa(y|x)
+
+ (34)
+
+
+S15
+and
+∂ (μ|ν )
+φb wa(y|x) = ∂(μ+ν)wa(y|x)
+∂φb(y)μ∂φb(x)ν . (35)
+Finally, we take f (x|x) = limy,z→x f (y|z) for any function f (y|z). We are left to evaluate wa(x|x) and its derivatives. We begin with the former, which amounts to calculating ga(x|x). Recalling Eq. 18, we rewrite it in continuous space variables as
+ga(y|x) = (1 − α) πa(⃗φ(y) + δφeˆa) − πa(⃗φ(x))
++α U [Da(y|x)⃗φ(x′)] − U [⃗φ(x′)]
++Γ Σ[Da(y|x)⃗φ(x′)] − Σ[⃗φ(x′)] ,
+(36)
+where we have introduced the notation eˆa which is a vector with one in the a component, and zero otherwise. This is simply a convenient way to specify that the fraction only changes in the a species when considering ga. Furthermore, there is a dummy index x′ in the arguments of U and Σ, reflecting the fact that these functionals will be integrated over x′. The continuous version of the diffusion operator takes the form
+Da(y|x)⃗φ(x′) = φb(x′) + δφδab δ(x′ − y) − δ(x′ − x)
+The second term of the gain is given by
+U [Da(y|x)⃗φ(x′)] − U [⃗φ(x′)] =N
+X
+b=X,Y
+Z
+dx′ Da(y|x)⃗φ(x′) πb Da(y|x)⃗φ(x′) − φb(x′)πb(⃗φ(x′))
+=N
+X
+b
+φb(y) + δφδab πb ⃗φ(y) + δφeˆa − φb(y)πb(⃗φ(y))
++ φb(x) − δφδab πb ⃗φ(x) − δφeˆa − φb(x)πb(⃗φ(x)). (37)
+A similar calculation can be done for the third term proportional to Γ. With great care taken to keep track of all the correct indices, we only report the result,
+Σ[Da(y|x)⃗φ(x′)] − Σ[⃗φ(x)] = ∂2
+xφa(y) − ∂2
+xφa(x) − 3δφ. (38)
+Combining the above equations, we arrive at
+ga(x|x) ≈ δφ
+"
+(1 − α) ∂πa
+∂φa + α ∂2u
+(∂φa)2 − 3
+#
+(39)
+where the Laplacian terms in Σ cancelled when y = x. In the limit where δφ → 0, this term goes to zero, making
+δlφi→ m0 wa(x|x) = wa(ga = 0) = τ −1
+2 . (40)
+We now turn to computing the derivatives of the rate functions,
+∂ (1|0)
+φb wa(y|x) = ∂wa(y|x)
+∂φb(y) = dwa(ga)
+dga
+∂ga(⃗φ(y), ⃗φ(x))
+∂φb(y) . (41)
+The first factor in the above equation is given by
+dwa
+dga = τ −1
+(1 + e−ga/T )2
+e−ga/T
+T , (42)
+and in the limit of vanishing δφ it reduces to
+dwa
+dga δφ→→0
+τ −1
+4T . (43)
+
+
+S16
+To close (41), we need to compute the derivatives of the gain ga with respect to the fields using expression (36). Substiting the final form of (41) into (33) will then give the expression of the hydrodynamic current. We first consider the case Γ = 0 and will discuss how to include the Γ-dependent contributions to the current later. Retaining only the terms proportional to α and (1 − α) in Eq. 36, we derive them with respect to φb(y) before taking the limit δφ → 0 to obtain
+∂ga(y|x) ∂φb(y) y=x
+δφ→→0 (1 − α) ∂πa
+∂φb + α ∂2u
+∂φa∂φb , (44)
+where u(x, t) = φX πX (⃗φ(x)) + φY πY (⃗φ(x)). Performing a similar computation, we also obtain
+δlφi→ m0
+∂ga(y|x) ∂φb(x) y=x
+= − δlφi→ m0
+∂ga(y|x) ∂φb(y) y=x
+. (45)
+Inserting (44) into (41), we obtain the derivative of the jump rate as
+−∂ (0|1)
+φb wa(x|x) = ∂(1|0)
+φb wa(x|x) = τ −1
+4T (1 − α) ∂πa
+∂φb + α ∂2u
+∂φa∂φb
+!
+. (46)
+We can now inject (46) and (40) in expression (33) to obtain the particle current j0a in the Γ = 0 case as
+ja
+0 (x) = lτ −1
+2
+"
+(φa∂xφ0 − φ0∂xφa) + T −1φaφ0 (1 − α)∂xπa + α∂x
+∂u ∂φa
+#
+. (47)
+When Γ ̸= 0, additional contributions have to be taken into account in (47). Instead of deriving them by using expression (41) together with (36), which is not a straightforward derivation due to the presence of both functional and spatial gradients, we will use arguments drawn from equilibrium physics. First, we note that the term proportional to Γ in (36) is a purely relaxational, equilibrium contribution to the gain. Indeed, it is written as a difference of a single function evaluated before and after the microscopic jump. Having a gain function with this property necessarily gives rise to a Boltzmann-like steady-state distribution with a well-defined potential function F [⃗φ(x)]. In the case
+of the Σ functional, which penalizes gradients, this potential function is given by F [⃗φ(x)] = R dx Γa |∂xφa|2
+2 . Taking
+into account volume exclusions, the contribution ja
+Γ to the current due to the gradient-penalizing terms is given by the equilibrium formula ja
+Γ = M ab(⃗φ)∂xδF/δφb, with a fraction-dependent mobility M ab(⃗φ) = δabφbφ0. Inserting the
+expression of F [⃗φ(x)] in the latter formula for ja
+Γ gives
+ja
+Γ = Γaφaφ0∂3
+xφa. (48)
+Adding the above contribution to (47) gives us the final form of the current as
+ja(x) = ja
+0 (x) + ja
+Γ(x) = lτ −1
+2
+"
+(φa∂xφ0 − φ0∂xφa) + T −1φaφ0 (1 − α)∂xπa + α∂x
+∂u
+∂φa + Γa∂3
+xφa
+#
+. (49)
+We now make an assumption about the rate of jumping τ : we assume that it follows an Eyring equation [137] with τ −1 ∝ T . The latter indicates that reactions happen faster as the temperature increases. In particular, we assume τ −1 = 2T τ −1
+0 , where τ0 is a time-scale. In this case, the current becomes
+ja(x) = lτ −1
+0
+"
+T φa∂xφ0 − φ0∂xφa + φaφ0 (1 − α)∂xπa + α ∂u
+∂φa + Γa∂3
+xφa
+#
+. (50)
+Putting (50) into (31) and setting l = 1, and τ −1
+0 = 1, we arrive at our (non-dimensionalized) sociohydrodynamics equation
+∂tφa(x, t) = T φ0∂2
+xφa − φa∂2
+xφ0 − ∂x φaφ0 (1 − α)∂xπa + α∂x
+∂u
+∂φa + Γa∂3
+xφa
+!
+= −∂x
+
+
+X
+b
+Dab(⃗φ)∂xφb + Γab(⃗φ)∂3
+xφa
+
+
+(51)
+
+
+S17
+where Dab(⃗φ) are the elements of the density dependent diffusion matrix, written for 2 groups explicitly as
+D(⃗φ) = −T 1 − φY φX
+φY 1 − φX + φ0
+
+     
+φX (1 − α) ∂πX
+∂φX + α ∂2u
+(∂φX )2
+!
+φX (1 − α) ∂πX
+∂φY + α ∂2u
+∂φX ∂φY
+!
+φY (1 − α) ∂πY
+∂φX + α ∂2u
+∂φX ∂φY
+!
+φY (1 − α) ∂πY
+∂φY + α ∂2u
+(∂φY )2
+!
+
+     
+. (52)
+The fourth-order derivative has coefficients Γab = P
+b δabΓbφbφ0, which are components of a diagonal matrix given our assumptions on the underlying dynamics. Generically, the diffusion matrix can be written as
+D(⃗φ) = DXX DXY
+DY X DY Y = DXX D+ − D−
+D+ + D− DY Y (53)
+In terms of D±, the off-diagonal terms are given by
+D± = DY X ± DXY
+2 = −T φY ± φX
+2 + φ0
+2
+
+(1 − α) φY ∂πY
+∂φX ± φX ∂πX
+∂φY
+!
++ α(φY ± φX ) ∂2u
+∂φX ∂φY
+
+ (54)
+From (54), we see that D− measures the breaking of the compatibility condition. This becomes especially clear when and α = 0, giving
+D− = φ0
+2
+∂(φY πY )
+∂φX − ∂(φX πX )
+∂φY
+!
+V. NUMERICAL METHODS
+A. Linear regression
+Here, we give details on the regression used to infer the parameters of our equation of motion. For convenience, we reproduce our equation of motion here with a generic, quadratic utility function.
+∂tφa = −∇ · −T a(φ0∇φa − φa∇φ0) + φaφ0 ∇πa + Γa∇3φa + Sa(⃗φ)
+πa(⃗φ) =
+X
+j,k={W,B}
+κabφb + νabcφbφk.
+(55)
+We choose the quadratic utility to reflect the non-linearities found in reported preferences from social surveys. With this, we have 7 parameters to fit for the flux of each field φa – (T a, Γa, κaa, κab, νaaa, νaab, νabb). Here, νaab is a stand-in for (νaab + νaba) as they both multiply the same factor of φaφb with a ̸= b. To accomplish our inference task, we first subtract Sa from both sides of Eq. (55) and then use ordinary least squares regression on ∂tφa − Sa to estimate the remaining coefficients in the flux of Eq. (55), see Fig. 9. In order to ensure stability of the solutions, we restrict the terms T a and Γa to be positive. After inferring the coefficients, we then solve our PDE on the county geometries starting from the population distributions in 1980.
+B. Solving PDEs on counties
+Here, we give further details about the methods used to solve our equations over individual counties. We create our mesh and solve our equations of motion in Python using FiPy, which implements a finite-volume method [127]. In order to minimize the effects of boundary conditions, we simulate dynamics over a region 1.5× the size of each individual county. We simplify the external boundaries by buffering by 1 km and simplifying the boundary to have line segments of a minimum of 1 km using the geopandas functions buffer and simplify, respectively. This process is especially helpful to eliminate small-scale details along coasts. We only simulate the largest contiguous geographic
+
+
+S18
+FIG. 9. Inference pipeline. (A) Starting from census data interpolated onto a square mesh, we first fit the total population over time to an exponential function, giving our growth term Sa for each population a. We then estimate time-derivatives and spatial gradients using a Savitzky-Golay filter. We group each of the spatial derivative terms into terms that are multiplied by individual coefficients in the flux of Eq. (8), and equate them to ∂tφa − Sa. (B) Each such term is one feature of our linear regression task, i.e. it forms one column of a matrix A that when multiplied by a vector x of coefficients, should give the time derivatives, collected in the vector b. (C) After linear regression, we interpolate our system onto a triangular mesh and numerically solve Eq. (8) using a finite-volume method [127].
+area left after this process, mostly to avoid needing to consider the dynamics between islands and the mainland (for example, Catalina Island off the coast of Los Angeles). We note that this process will often merge areas separated by rivers (e.g. the island of Manhattan with the boroughs of Queens and Brooklyn in New York). This allows us to approximate dynamics between areas that are physically separated but connected by bridges and tunnels.
+We use FiPy’s interface with gmsh to create a triangular mesh within this simplified boundary, with a mean mesh area of 3 km2. We then interpolate the population densities over time to the generated mesh using areal-weighted interpolation (see Fig. 1) and convert the densities to fill fractions as discussed above. Finally, we smooth fill fractions using a Gaussian filter with standard deviation of 3 km. We then solve the sociohydrodynamic equations over the mesh while enforcing no-flux boundary conditions.
+While we simulate areas larger than our counties of interest, we evaluate errors only within each county. Our errors are measured using the population densities, as
+mse =
+* X
+a={W,B}
+X
+r
+ρa
+sociohydro(r, 2020) − ρa
+census(r, 2020)
+2
++
+
+
+S19
+VI. LINEAR STABILITY ANALYSIS
+We now make predictions about the onset of patterns and their subsequent dynamics using linear stability analysis. We consider perturbing around a spatially uniform state densities, ⃗φ(x, t) = ⃗φ0 + δ⃗φ(x, t), where the components φ0a satisfy φ0a > 0 and P
+c φc0 ≤ 1. Writing the perturbation as a plane wave, δ⃗φ(x, t) = est−iqxδ⃗φ0, where s = σ + iω is a complex number describing the growth rate σ and oscillation frequency ω of the perturbation with wavenumber q, our equations of motion reduce to the eigenvalue problem
+s δφa
+0 = J ab(⃗φ0)δφb
+0 (56)
+with the Jacobian matrix with elements
+J ab(⃗φ0) = q2Dab(⃗φ0) − q4Γab(⃗φ0), (57)
+Given Γab is a diagonal matrix with positive elements (which we will always assume to be true), the q4 term acts to stabilize patterns at large wavenumber q, or short wavelengths. The system’s stability is entirely determined by the eigenvalues s of the Jacobian matrix J. In the case with two groups X and Y ,
+J = JXX JXY
+J Y X J Y Y = J XX (J+ − J−)/2
+(J+ + J−)/2 J Y Y . (58)
+The eigenvalues take the usual form for 2 × 2 matrices,
+s± = Tr J
+2±
+s
+Tr J 2
+2
+− det J = 1
+2 JXX + JY Y ±
+q
+(J XX − J Y Y )2 + J 2+ − J 2− . (59)
+From here, we see that ω = Im(s) ̸= 0 only when J2− > J2+ + (JXX − JY Y )2. As the q4 term in (57) is diagonal, this condition is controlled entirely by D.
+VII. LINEAR UTILITIES
+Here, we will specialize to the particularly simple class of utilities that are linear in the densities. Specifically, we will consider
+πa(⃗φ) =
+X
+b=X,Y
+κabφb (60)
+where κab are constants. In all of the following, we set κXX = κY Y = 1, thus measuring the utilities in units of the self-utilities. As described in the methods, we also define κ± = κY X ± κXY . With this choice of utilities, the equations of motion then become
+∂tφX = − ∂x −T (1 − φY )∂xφX + φX ∂xφY + φX φ0∂x (1 + α)φX + γ−φY + ΓX ∂2
+xφX
+∂tφY = − ∂x −T (1 − φX )∂xφY + φY ∂xφX + φY φ0∂x γ+φX + (1 + α)φY + ΓY ∂2
+xφY ,
+(61)
+where we have defined
+γ± = κ+(1 + α) ± κ−(1 − α)
+2 . (62)
+Considering the case ΓX = ΓY , then stability From (61), we extract the diffusion matrix as
+D(⃗φ) = −T 1 − φY φX
+φY 1 − φX + φ0 φX (1 + α) φX γ−
+φY γ+ φY (1 + α) . (63)
+Considering the case of equal densities, φX = φY = φ where 0 ≤ φ ≤ 0.5, the diffusion matrix becomes
+D(⃗φ) = D0 D+ − D−
+D+ + D− D0
+, (64)
+
+
+S20
+FIG. 10. Amplitude, segregation, and velocity. (A) Amplitude of patterns measured using Eq. 70 in the (D+, D0) plane for D− = 0.01. (B) Shows the quantification of the segregation using Eq. 2. (C) migration speed of the pattern as defined in (71). All these cases begin with uniform initial conditions. (D-F) Segregation index for forward pass (D), backward pass (E), and their difference (F) using annealing protocol described in Sec. VII, starting from a maximum κ+ = 1.52 and a minimum κ+ = −0.88, with a step of ∆κ+ = 0.16. (G-I) Wave velocity for forward pass (G), backward pass (H), and their difference (I) using annealing protocol described in Sec. VII, starting from a maximum κ+ = 1.52 and a minimum κ+ = −0.88, with a step of ∆κ+ = 0.16.
+where D0, D+ and D− are given by
+D0 = −T (1 − φ) + φ(1 − 2φ)(1 + α) D+ = − φ 2T − κ+(1 + α)(1 − 2φ)
+2 D− = φ(1 − 2φ)(1 − α)
+2 κ− . (65)
+
+
+S21
+We readily compute the eigenvalues of D as
+λ±
+D = D0 ±
+q
+D2+ − D2−, (66)
+as well as its eigenvectors, which are given by
+v⃗ ±
+D=
+
+  
+±
+q
+D2+ − D2−
+D+ + D− 1
+
+  
+. (67)
+λ±
+D become imaginary when
+|D−| > |D+| ⇒ |κ−| > ± 2T − κ+(1 + α)(1 − 2φ)
+(1 − 2φ)(1 − α) . (68)
+Furthermore, we expect to find pattern formation when Re(λ±
+D) > 0. This occurs when
+D0 ≥ ±Re
+h
+D2
++ − D2
+−
+i
+. (69)
+Fig. 10A shows the amplitude of patterns found, measured using
+A[φ(x)] = 1
+L
+ZL
+0
+dx
+q
+φ(x) − ⟨φ⟩ 2. (70)
+We see that the onset of patterns, given by A > 0, agrees well with the linear stability prediction shown with the white dashed line. We measure the velocity of the resulting patterns using [138? ]
+v=−
+RL
+0 dx ∂tφ∂xφ
+RL
+0 dx (∂xφ)2 (71)
+A. Phase space criteria.
+We define the different phases using the following criteria:
+• Segregation: SH > 0.7
+• Migration: va ≥ 10−9
+• Integration: SH < 0.14
+In order to find regions of coexistence, we perform an annealing procedure, where we change the values of parameters cyclically (Fig. 10D-I). We run simulations for a fixed value of κ− and a maximal value of κ+. After the system has reaches a steady state, we decrease κ+ by a small amount until we reach a minimum κ+. This constitutes a “backward” sweep. We then reverse this process, increasing κ+ until we reach its initial value. This constitutes a “forward” sweep. The coexistence region was found by Sforward
+H − Sbackward
+H ≥ 0.07
+VIII. THE POTENTIAL FUNCTION
+In this section, we make connections with the potential function for the Schelling model discovered in Ref. [50, 51]. In particular, we rederive the “link function”, the non-trivial addition to a potential function that shows that the equilibrium state of bounded-neighborhood Schelling models need not coincide with the state that maximizes the utility function of all agents. The advantage of using Eq. (17) as the transition rate is its connection to detailed balance. Namely, if one can show that
+ga(k|j) = F [φ′] − F [φ],
+
+
+S22
+FIG. 11. Migration speed depends on overlap between populations. (A) Result of simulation using linear utilities, κ+ = 0.5, κ− = 0.2. The wave velocity after t = tf = 5 × 105 is zero. (B) Illustration of “shifting” the final distribution, φY (tf ) (red). Shifts are done in units of the lattice spacing, ∆x = 0.625, with a maximum shift of 10∆x. (C) Results of restarting simulations after shifting φY by different amounts. (D) Measurement of wave velocity after t = 105 of restarted dynamics as a function of the shift, showing that the distributions find a unique velocity once they overlap enough.
+then the system obeys detailed balance and will settle into a steady state given by the Boltzmann distribution, P (φ) ∝ eF [φ]/T [139]. To find this potential function, F [φ], we will proceed term by term in Eq. (18) and show that they can each be written as the difference of some function depending on φ. The full potential function will then be a sum of these individual contributions. This condition is manifestly satisfied by the second and third terms in Eq. (18), which are already written in the requisited form of a difference of a function of φ. However, it is not immediately obvious that the first term can be written as a function of the full configuration, as it explicitly depends on the type of particle moving (i.e. has a dependence on the index a) and on the specific lattice sites in consideration (i.e. has dependence on the indices j, k). Luckily, [50] showed that it is indeed possible if the utilities obey a specific restriction. Specifically, the function is given by
+Λ(φ) = 1
+2
+X
+i
+
+ 
+nX
+i −1
+X
+n=0
+
+πX n
+N , nY
+i −1 N
+!
++ πX n
+N ,0
+
++
+nY
+i −1
+X
+m=0
+
+πY nX
+i
+N ,m
+N
+!
++ πY 0, m
+N
+
+
+
+
+ , (72)
+and the restriction on the utilities is
+πX nX
+N , nY + 1
+N
+!
+− πX nX
+N , nY
+N
+!
+= πY nX + 1
+N , nY
+N
+!
+− πY nX
+N , nY
+N
+!
+. (73)
+This is the discrete version of the compatibility condition introduced in the main text. In the next section, we explicitly show that Λ(φ), which we call a “link” function, is indeed a potential function for the first term of Eq. (18).
+
+
+S23
+FIG. 12. Phase space of with non-linear utility function. (A) Results of 1D simulations for the quadratic utility functions πX = φX + κXY φY , πY = κY X φX + φY (1 − νφY ). Defining κ± = κY X ± κXY , parameters are κ− = 0.3, T = 0.1, Γ = 1, simulated on a domain of size L = 20. A 1D simulation is initialized at κ+ = 2.0, and κ+ is slowly decreased to a minimal value (blue curve) before its trajectory is reversed (orange curve). The hysteresis is seen to disappear as the non-linear parameter, ν, is increased. (B) Segregation index, SH, in a phase space spanned by κ± with utilities given by Eq. (??) with ν = 1. Other parameters are the same as A. (C) Similar to (B), but measuring the velocity of traveling waves. (D) Kymographs showing the dynamics of select values of (κ+, κ−). In particular, we show (κ+, κ−)□ = (0.88, −0.48), (κ+, κ−)△ = (0.88, −1.28),
+(κ+, κ−)♢ = (1.52, 0.48), and (κ+, κ−)◦ = (−0.56, 1.28)
+
+
+S24
+We are now in a position to give the form of our potential function, F [φ], where we follow § 4.1.1 in [134]. As stated above, given the satisfaction of Eq. (73), our system will reach a steady state given by
+P [φ] = 1
+Z exp N
+T
+F ̃[φ]
+where Z is a normalization factor. The potential function can be written as a sum over lattice sites,
+F ̃[φ] =
+X
+i
+f ̃(⃗φi),
+with the density
+f ̃(⃗φi) = T S ̃(⃗φi) + (1 − α)λ ̃(⃗φi) + αu ̃(⃗φi) + Γσ ̃(⃗φi) (74a)
+S ̃(⃗φi) = 1
+N ln N !
+nX
+i !nY
+i ! N − nX
+i − nY
+i!
+!
+(74b)
+λ ̃(⃗φi) = 1
+2N
+
+ 
+nX
+i −1
+X
+n=0
+πX n
+N , nY
+i −1 N
+!
++ πX n
+N ,0 +
+nY
+i −1
+X
+m=0
+πY nX
+i
+N ,m
+N
+!
++ πY 0, m
+N
+
+
+ (74c)
+u ̃(⃗φi) =
+X
+b=X,Y
+φbπb(⃗φi) (74d)
+σ ̃(⃗φi) =
+X
+b=X,Y
+φb
+i (∂x2φ)b
+i
+2 . (74e)
+The term S(⃗φi) comes from counting the number of ways of arranging nX and nY particles in a lattice site with N total sites. Taking the limit {N , na
+i } → ∞ while keeping φa
+i = na
+i /N constant, we can expand the factorials in S ̃ using Stirling’s approximation, ln n! ≈ n ln n − n, to get
+S ̃(⃗φi) → S(⃗φi) = −φX
+i ln φX
+i − φY
+i ln φY
+i − φ0
+i ln φ0
+i , (75)
+where φ0
+i = 1 − φX
+i − φY
+i is the number of vacancies at site i. This is the entropy of mixing.
+Furthermore, we can convert the sums in λ(⃗φi) to integrals, giving
+λ ̃(⃗φi) → λ(⃗φi) = 1
+2
+
+
+Z φX
+i
+0
+dψ πX ψ, φY
+i + πX (ψ, 0) +
+Z φY
+i
+0
+dψ′ πY φX
+i , ψ′ + πY 0, ψ′
+
+ . (76)
+Finally, we also take the continuum limit, l → 0, while keeping the total density, P
+i φa
+i → l−1 R φa(x)dx constant. For all the local terms, this amounts to converting discrete i indices to a continuous x coordinate. In addition, the discrete Laplacian operator in σ(⃗φi) becomes the usual differential Laplacian operator. We now finally arrive at our potential function,
+F [⃗φ(x)] =
+Z
+f (⃗φ(x))dx
+with the potential density
+f (⃗φ, ∂x ⃗φ) =T S(⃗φ) + (1 − α)λ(⃗φ) + αu(⃗φ) − Γσ(⃗φ) (77a)
+S(⃗φ) = − φX ln(φX ) − φY ln(φY ) − φ0 ln φ0 (77b)
+λ(⃗φ) = 1
+2
+"
+Z φX
+0
+dφ′ πX (φ′, φY ) + πX (φ′, 0) +
+Z φY
+0
+dφ′′ πY (φX , φ′′) + πY (0, φ′′)
+#
+(77c)
+u(⃗φ) =
+X
+a=X,Y
+φaπa(⃗φ) (77d)
+σ(⃗φ) =
+X
+a=X,Y
+|∂xφa(x)|2
+2 (77e)
+
+
+S25
+Note that we have used integration by parts on R σ(⃗φ(x))dx to obtain the minus sign in front of Γ. In the large N limit, the compatibility condition Eq. 73 is now given by
+∂πX (φX , φY )
+∂φY = ∂πY (φX , φY )
+∂φX (78)
+A. Demonstration of Λ(φ) as a potential function
+Here, we will explicitly show that the difference of the utility function of an individual agent is given by the difference of the link function defined over the entire population, i.e.
+Λ(φ′) − Λ(φ) = πa(⃗φ′
+k) − πa(⃗φj) = πa(⃗φk) − πa(⃗φj − δφeˆa),
+where φ′ = Da
+k|jφ. For concreteness, let us set a = X. The calculation for a = Y proceeds identically. In this case,
+Λ(DX
+k|j φ) = 1
+2
+X
+i
+
+ 
+nX
+i −1+δik+δij
+X
+n′ =0
+πX n′
+N , nY
+i
+N
+!
++ πX n′
+N ,0 +
+nY
+i −1
+X
+m′ =0
+πY nX
+i − 1 + δik − δij
+N , m′
+N
+!
++ πY 0, m′
+N
+
+
+.
+(79) Each term in the sum over i in Λ(φ′) − Λ(φ) is zero unless i = {j, k}. We are left with
+2(Λ(DX
+k|jφ) − Λ(φ)) =
+nX
+k X
+n′
+k =0
+πX n′
+k
+N , nY
+k
+N
+!
++ πX n′
+k
+N ,0 +
+nY
+k −1
+X
+m′
+k =0
+πY nX
+k +1
+N , m′
+k
+N
+!
++ πY 0, m′
+k
+N
+−
+nX
+k −1
+X
+nk =0
+πX nk
+N , nY
+k
+N
+!
++ πX nk
+N ,0 −
+nY
+k −1
+X
+mk =0
+πY nX
+k
+N , mk
+N
+!
++ πY 0, mk
+N
++
+nX
+j −2
+X
+n′
+j =0
+πX n′
+j
+N , nY
+j
+N
+!
++ πX n′
+j
+N ,0
+!
++
+nY
+j −1
+X
+m′
+j =0
+πY nX
+j −1
+N , m′
+j
+N
+!
++ πY 0, m′
+j
+N
+!
+−
+nX
+j −1
+X
+nj =0
+πX n′
+j
+N , nY
+j
+N
+!
++ πX n′
+j
+N ,0
+!
+−
+nY
+j −1
+X
+mj =0
+πY nX
+j
+N , mj
+N
+!
++ πY 0, mj
+N.
+(80)
+The first two lines come from the i = k term of Λ(φ′) − Λ(φ), while the final two lines from the i = j term of Λ(φ′) − Λ(φ), respectively. We have color-coded the different terms for clarity in what follows. To proceed, we notice that the very last terms in the first two lines cancel, as do the very last terms in the final two lines. Combining the remaining terms with the same colors, we have
+2(Λ(DX
+k|jφ) − Λ(φ)) =πX nX
+k
+N , nY
+k
+N
+!
++ πX nX
+k
+N ,0
+!
+− πX nX
+j −1
+N , nY
+j
+N
+!
+− πX nX
+j −1
+N ,0
+!
++
+nY
+k −1
+X
+mk =0
+πY nX
+k +1
+N , mk
+N
+!
+− πY nX
+k
+N , mk
+N
+!
++
+nY
+j −1
+X
+mj =0
+πY nX
+j −1
+N , mj
+N
+!
+− πY nX
+j
+N , mj
+N
+!
+.
+(81)
+Here, we are forced to use Eq. (73) to change the last two summands as
+πY nX
+k +1
+N , mk
+N
+!
+− πY nX
+k
+N , mk
+N
+!
+= πX nX
+k
+N , mk + 1
+N
+!
+− πX nX
+k
+N , mk
+N
+!
+πY nX
+j −1
+N , mj
+N
+!
+− πY nX
+j
+N , mj
+N
+!
+= πX nX
+j −1
+N , mj
+N
+!
+− πX nX
+j −1
+N , mj + 1
+N
+!
+.
+
+
+S26
+Evaluating the sums, we find
+2(Λ(DX
+k|jφ) − Λ(φ)) =πX nX
+k
+N , nY
+k
+N
+!
++ πX nX
+k
+N ,0
+!
+− πX nX
+j −1
+N , nY
+j
+N
+!
+− πX nX
+j −1
+N ,0
+!
++πX nX
+k
+N , nY
+k
+N
+!
+− πX nX
+k
+N ,0
+!
++ πX nX
+j −1
+N ,0
+!
+− πX nX
+j −1
+N , nY
+j
+N
+!
+.
+(82)
+Finally, combining terms and canceling others, we arrive at our desired result
+Λ(DX
+k|jφ) − Λ(φ) = πX (⃗φk) − πX (⃗φj − δφeˆX ). (83)
+B. Relaxational dynamics
+Given the existence of the utility potential function F [⃗φ(x)], one can define a dynamics for φa(x, t) such that F [⃗φ(x)] plays the role of a Lyapunov function ensuring the relaxation of the system toward a stationary state, as done for physical systems [81]. One important difference is that the utility potential function will be maximized, as contrasted with a physical free energy which is minimized. We note that this is not the general case for sociohydrodyanmics. It is a special case where the incompatibility condition is satisfied. As the microscopic dynamics consist solely of particles moving, the macroscopic dynamics must conserve the total particle number,
+∂tφa(x, t) = −∂xJ a(x, t). (84)
+where ∂x = ∂/∂x. Analogously to physical system, we take the particle current Ja(x, t) to obey the constitutive relation
+J a(x, t) = +M ab(⃗φ)∂x
+δF
+δφb . (85)
+M ab(⃗φ) is a density dependent mobility matrix, which we take to be given by
+M ab(⃗φ) = δabφbφ0. (86)
+Recalling φ0 = 1 − P
+c φc, this form enforces that both empty (φb = 0) and full (φ0 = 0) locations give zero-flux.
+δF/δφb is the functional derivative of the potential F [⃗φ(x)] that plays the role of a chemical potential [94]. Eq. (85) says that the particle current flows up spatial gradients of the chemical potential. We now evaluate the chemical potential as
+δF
+δφb = −T ln φb − ln φ0 + (1 − α) ∂λ
+∂φb + α ∂u
+∂φb + Γ∂2
+xφb. (87)
+Taking the gradient, we obtain
+∂x
+δF
+δφb = −T φ0∂xφb + φb∂xφ0
+φbφ0 + (1 − α)∂x
+∂λ
+∂φb + α∂x
+∂u
+∂φb + Γ∂x∂2
+xφb. (88)
+Finally multiplying by the mobility matrix M ab = δabφbφ0, we get our general form for relaxational sociohydrodynamics
+∂tφa(x, t) = T (1 − φb)∂2
+xφa + φa∂2
+xφb − ∂x φaφ0 ∂x (1 − α) ∂λ
+∂φa + α ∂u
+∂φa + Γa∂2
+xφa
+!
+. (89)
+In the special case where the compatibility condition Eq. 78 holds, the derivative of the link function λ(⃗φ(x)) is
+
+
+S27
+given by (here, we take b = X. The calculation for b = Y proceeds analogously)
+∂λ
+∂φX = 1
+2
+
+πX (φX , φY ) + πX (φX , 0) +
+Z φY
+0
+dφ′ ∂πY (φX , φ′)
+∂φX
+
+
+=1
+2
+
+πX (φX , φY ) + πX (φX , 0) +
+Z φY
+0
+dφ′ ∂πX (φX , φ′)
+∂φ′
+
+
+=1
+2 πX (φX , φY ) + πX (φX , 0) + πX (φX , φY ) − πX (φX , 0)
+∂λ
+∂φX = πX (φX , φY ). (90)
+where we used the compatibility condition Eq. (78) to go from the first to the second line. In this case, Eq. (89) becomes
+∂tφa(x, t) = T (1 − φb)∂2
+xφa + φa∂2
+xφb − ∂x φaφ0 (1 − α)∂xπa + ∂x
+∂u
+∂φa + Γa∂3
+xφa
+!
+. (91)
+where b ̸= a. This is the same equation as Eq. 51, showing that our coarse-grained equations are equivalent to the relaxational dynamics when the compatibility condition holds. We now consider a microscopic model for growth that is built in the same spirit as agent-based model above. This would lead to a form for Sa which we set to zero in the main text. We consider individuals within a lattice site can spontaneously die, or reproduce if there is space available in the lattice site, with a rate k dependent on the fitness f a, k = k(f a). We denote these processes by the chemical reactions
+a k(−f a)
+→ ∅ (92a)
+a + ∅ k(fa)
+→ a + a. (92b)
+The reaction rates are given by
+k(f a) = 2r
+1 + e−γfa , (93)
+where r is a rate, γ measures the effects of stochasticity in the death/reproduction processes, and the factor of 2 is included for simplicity. Here, we have assumed that both processes have the same r and γ. The form of k(f a) assures that reproduction (death) occurs more (less) rapidly with increasing fitness. Assuming mass action kinetics, the density of population a will obey
+∂tφa = φa φ∅k(f a) − k(−f a) , (94)
+where φ∅ = 1 − P
+b φb measures the density of empty sites available to be occupied by reproduction. In the limit of
+weak selection, γ → 0, we can expand k(f a) to find
+∂tφa = rφa
+
+
+γf a −
+
+
+X
+b
+φb
+
+ 1 + γfa
+2
+
+
+ = Sa. (95)

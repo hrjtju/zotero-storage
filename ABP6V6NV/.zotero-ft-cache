@@ -1,0 +1,1255 @@
+Artificial Intelligence Review (2023) 56:S959–S981 https://doi.org/10.1007/s10462-023-10547-8
+Manifold transfer subspace learning based on double relaxed discriminative regression
+Zhonghua Liu1 · Fa Zhu3 · Kaibing Zhang4 · Zhihui Lai5 · Hua Huo2
+Accepted: 1 July 2023 / Published online: 12 July 2023 © The Author(s), under exclusive licence to Springer Nature B.V. 2023
+Abstract By leveraging the labeled data samples of the source domain to learn the unlabeled data samples of the target domain, unsupervised domain adaptation (DA) has achieved promising performance. However, it is still a vital problem for unsupervised domain adaptation to deal with cross-domain distribution mismatch. Therefore, we present a new model framework for cross-domain image classification in the paper, which is termed manifold transfer subspace learning based on double relaxed discriminative regression (MTSL-DRDR). First, the global geometry information of the samples from the source and target domain can be preserved by utilizing the low-rank constraint. Second, the two transformation projections are employed to project both domains to a unified subspace, in which each data sample of the target domain can be represented by some samples from the source domain with the sparse and low-rank coefficient matrix. Third, the local structure information of the data points with the same semantics from the different domains is preserved by means of the adaptive weight graph based on the low-rank coefficient matrix. Last, for fully use the discriminative information of data from the source domain, the discriminant information of the source domain based on intra-class and inter-class graphs is encoded to the target domain. Our MTSL-DRDR algorithm is evaluated on challenging benchmark datasets, and a large number of experiment results show the superiority of the proposed method.
+Keywords  Transfer subspace learning · Low-rank · Local manifold · Domain adaptation
+* Zhonghua Liu lzhua_217@163.com
+1 School of Information Engineering, Zhejiang Ocean University, Zhoushan, China 2 Information Engineering College, Henan University of Science and Technology, Luoyang, China 3 College of Information Science and Technology, Nanjing Forestry University, Nanjing, China 4 College of Electronics and Information, Xi’an Polytechnic University, Xi’an, China 5 College of Computer Science and Software Engineering, Shenzhen University, Shenzhen, China
+1 3 Vol.:(0123456789)
+
+S960
+
+Z. Liu et al.
+
+1 Introduction
+
+In statistical learning theory, there is generally a fundamental assumption that the training samples and test samples should be located in the same distribution, i.e. independent identical distribution (IID) (Liu et al. 2023; Xiong et al. 2022; Zhu et al. 2022). In this way, the learned classification model from the training samples can be utilized to well classify the test samples (Zhang et al. 2021). However, it is usually impossible to guarantee that the feature distribution of the training and test samples is always the same in many applications due to the illumination, pose, environment, resolution, background, which can make the above assumption untenable. That is to say, if the distributions of both the training samples and test samples are not identical, the model obtained by the training samples usually fails. Figure 1 gives several sample images with same semantics information but different feature distribution, in which there are four data sets (each column is correspond to a data set), and they have the different distribution, but each dataset includes the same objects. It is easy to understand that if any one dataset is utilized to train a classification model, the obtained classifier will not work well when it is used to classify other data sets.
+For overcoming the problem mentioned above, a simple and effective method is to collect a great many of data samples for training set, which includes as many diverse distribution as possible and can well characterize the feature distribution of the test sample set. However, it spends a lot of time and labor to collect the sufficient labeling sample data. Consequently, how to reduce domain mismatch by means of another semantic related but different distribution domain is becoming an interesting issue. Recently, because of no limitation of IID assumption, transfer learning is an effective and feasible tool to address the problem by making the learned knowledge or information from the training samples (source domain) apply to the test samples (target domain), and it is paid close attention increasingly. Many works for transfer learning have been presented in different fields, such as object classification and recognition (Lu et al. 2023; Zhang et al. 2016, 2022), image retrieval (Xu et al. 2022; Kan et al. 2021) and motion segmentation (Wang et al. 2019; Zhao et al. 2022), which have achieved good performance.
+Domain adaptation is a widely studied technology of transfer learning, in which the problem of distribution disparity can be solved, and the classification discriminative
+
+Chair
+Motorcycle Horse
+Fig. 1  Some images of three objects from different domains
+1 3
+
+Manifold transfer subspace learning based on double relaxed…
+
+S961
+
+ability is transferred to the unlabeled target domain samples by means of using the samples of the labeled source domain at the same time. Therefore, it attracts wide attention in recent years. A generalized transfer subspace learning (GTSL) method (Shao et al. 2014) is proposed by utilizing the low-rank constraint. In GTSL, both the samples from the source and target domain samples are respectively projected into a generalized lowdimensional feature space, where any sample from target domain is linearly represented by the samples from the source domain. In order to reduce the domain distribution shift, Jhuo et al. (2012) present a low-rank reconstruction based robust domain adaptation algorithm. It is well known that the local geometry structure of the samples usually plays a significant part in reducing the local domain mismatch. By utilizing the domain locality, Zhang et al. (2019) present a transfer learning algorithm based on manifold criterion. In order to learn the useful representation, a stacked adaptive regularization based auto-regressions method (Jiang et al. 2019) is proposed for domain adaptation problems. Liu et al. (2021) present a unified cross-domain recognition algorithm based on statistical and geometric adaptations, in which the classifier construction and the divergence minimization are modeled in a unified way. Liu et al. (2020) present a geodesic flow kernel model based on Grassmann-linear monotonic maps for heterogeneous unsupervised domain adaptation (UDA). However, the label information is not fully exploited in the above methods, which helps to improve the recognition performance. Based on this, some methods are presented. A discriminative transfer subspace learning algorithm (Xu et al. 2016) is presented, in which a nonnegative label relaxation matrix is obtained to reduce the domain discrepancy. Chang et al. (2020) propose a unified domain adaptation framework, in which the statistical and geometric characteristics are incorporated. In order to find the invariant features, an explicit feature based domain adaptation algorithm (Deng et al. 2019) is presented for feature selection. For migrating the local geometry structure, Lu et al. (2021) present a manifold learning based transfer method via discriminative regression analysis, in which the discriminative information from the source domain is encoded to the target domain by means of between-class graph and within-class graph. There exists another problem for these methods as follows. A same projected matrix is shared to respectively migrate the source samples and target samples to the common low-dimensional space, where the difference of samples from the source and target domain may not be effectively measured.
+Based on the above observations, we present a double projection and relaxed label based domain adaptation method termed manifold transfer subspace learning based on double relaxed discriminative regression (MTSL-DRDR). Firstly, both the between-class graph and within-class graph are introduced, and the discriminative information from the source domain is encoded to the target domain. Secondly, the local neighborhood relation of the samples with the similar semantics from the two domains is preserved by means of the adaptive weight graph. Thirdly, instead of utilizing a single projection matrix, two transformation matrices are introduced to alleviate the over-fitting problem. The main idea of our method is shown in Fig. 2. The key work and innovations of the paper are given as follows.
+(1) The discriminative projection, manifold learning, low-rank representation, and relaxed regression are integrated into a united framework for unsupervised domain adaptation, and a discriminant and common subspace is obtained, where the distribution difference of the two domains can be effectively alleviated.
+(2) In the common projection subspace, the samples with the same semantics from the source domain and target domain are interlaced.
+
+1 3
+
+S962
+
+Source Domain X s
+
+
+
+m
+
+
+
+Z. Liu et al.
+Target Domain X t
+ 
+m
+
+Pt
+d
+
+ns tXs P
+
+Common Subspace
+Z
+
+ h
+
+
+nt ≈
+
+ns
+
+ns
+
+nt
+
+tXt A
+
+At
+
+
+d
+
+
+nt
+
+Fig. 2  The framework of the proposed MTSL-DRDR
+(3) For obtaining better margins and relieve the problem of over-fitting, two projected matrices are introduced to the objective function.
+(4) The optimal solution scheme is presented and the convergence conditions are provided.
+The rest of the paper is arranged as follows. The related work is briefly illustrated in Sect. 2. Section 3 gives the proposed MTSL-DRDR method. The experimental results for cross-domain classification and recognition tasks are provided in Sect. 4. Final Section gives the conclusion of the paper.
+2 Related work
+In the representation based DA methods, discriminative transfer subspace learning (DTSL) method (Xu et al. 2016) is most relevant with the proposed method. Thus, we firstly give the brief overview for DTSL.
+Supposed that the samples of the source domain and the target domain are respectively represented as Xs = [x1s , x2s , ⋯ , xnss ] ∈ Rm×ns and Xt = [x1t , x2t , ⋯ , xnt t ] ∈ Rm×nt , where m is the data dimension, the sample number from the source domain and target domain are respectively denoted by ns and nt , xis(i = 1, 2, ⋯ , ns) and xit(i = 1, 2, ⋯ , nt) are respectively vector forms corresponding to the sample data from the source and target domains. The label information of the samples from the source domain is denoted as Y = [Y1, Y2, ⋯ , Yns ] ∈ Rc×ns , where c denotes the number of classes, and the definition of Yi is given as follows: If the i-th data point from the source domain belongs to the k-th class ( k = 1, 2, ⋯ , c ), only the k-th entry of the label vector Yi corresponding to the i-th sample is one, and all other entries of Yi
+1 3
+
+Manifold transfer subspace learning based on double relaxed…
+
+S963
+
+are set to zeros. It is supposed that the data points of the source domain can well reconstruct each data of the target domain in the projected subspace, which can be described as:
+
+PT Xt = PT XsZ
+
+(1)
+
+where P ∈ Rc×m denotes the projected matrix, Z ∈ Rns×nt is the reconstruction matrix. The low-rank constraint is imposed on the coefficient matrix Z , which can make Z have a blockwise diagonal structure, and we can reformulate the problem (1) as follows.
+
+min rank(Z),
+P,Z
+
+s.t. PT Xt = PT XsZ
+
+(2)
+
+Since the above optimization problem of rank minimization is NP-hard, it is hard to be solved effectively. The optimization problem (2) can be relaxed as follows by replacing the rank function.
+
+min
+P,Z
+
+‖Z‖∗,
+
+s.t. PT Xt = PT XsZ
+
+(3)
+
+where ‖⋅‖∗ is the nuclear norm of a matrix. In order to capture the local geometry of the observed samples, the sparse constraint on Z is introduced to the problem (3).
+
+min
+P,Z
+
+‖Z‖∗
+
++
+
+‖Z‖1,
+
+s.t. PT Xt = PT XsZ
+
+(4)
+
+where represents a regularization parameter, and ‖⋅‖1 represents L1 norm of matrix. In order to remove or alleviate the noise disturbance of the observed data samples, a noise matrix E is introduced to the optimal problem (4).
+
+min
+P,Z,E
+
+‖Z‖∗
+
++
+
+‖Z‖1 +
+
+‖E‖1,
+
+s.t. PT Xt = PT XsZ + E
+
+(5)
+
+where E ∈ Rc×nt is the noise matrix, and is a balance parameter. By introducing the discriminative regression function to the above optimal problem (5), the objective function of DTSL is given as Eq. (6).
+
+min
+P,Z,E,M
+
+1 2
+
+���PT Xs
+
+−
+
+(Y
+
++
+
+B
+
+⊙
+
+M)���2F
+
++
+
+‖Z‖∗
+
++
+
+𝛽 ‖Z ‖1
+
++
+
+𝛼‖E‖1
+
+(6)
+
+s.t. PT Xt = PT XsZ + E, M ≥ 0
+
+where M ∈ Rc×ns denotes the label relaxation matrix, by which the distance of the samples among the different objects can be enlarged. Based on M , the more freedom for projected matrix P can be provided. ⊙ denotes the Hadamad product operator, and B ∈ Rc×ns is an auxiliary matrix, whose the i-th row and j-th column element Bij is given as follows.
+
+Bij =
+
++1, if Yij = j −1, otherwise
+
+(7)
+
+where Yij is the j-th entity of the label vector Yi.
+
+1 3
+
+S964
+
+Z. Liu et al.
+
+3 Manifold transfer subspace learning via double relaxed discriminative regression (MTSL‑DRDR)
+
+3.1 Problem formulation
+
+The goal of MTSL-DRDR is to obtain a common projected subspace by means of the learned transformed matrix P, in which the divergence between the distributions from the two domains is as small as possible. However, in the optimal problem (6), only a single projected matrix P is available, which results in less freedom for obtaining better margins. In addition, the projected matrix P faces a dilemma. On the one hand, it needs to convert the samples of two domains to the label space, and enlarge the margin distances between different classes. On the other hand, it also needs to minimize distribution difference between the source and target domains as far as possible in the common subspace. In order to solve this problem, the two transformation matrices are introduced to the optimal problem (6), and we rewrite it as.
+
+min
+Ps ,Pt ,Z ,E,M
+
+1 2
+
+���PTs
+
+Xs
+
+−
+
+(Y
+
++
+
+B
+
+⊙
+
+M)���2F
+
++
+
+‖Z‖∗
+
++
+
+𝛽 ‖Z ‖1
+
++
+
+𝛼‖E‖1
+
+(8)
+
+s.t. PTt Xt = PTs XsZ + E, M ≥ 0
+
+where both Ps ∈ Rc×m and Pt ∈ Rc×m are respectively projected matrices corresponding to the source domain and the target domain. For learning better margins, Pt is utilized to share part responsibility of Ps . It is expected that the projection matrix Ps corresponding to the source domain can guide the learning of the projection matrix Pt of the target domain in an interactive manner, and the domain disparity of both domains can be reduced, which can lead to effective alignment of the subspace of two domains. It is not difficult to find that the two projected matrices have similar structure. Therefore, some correspondence between Ps and Pt should be available, some correspondence between them should be available, which is defined as follows.
+
+Ps = PtA
+
+(9)
+
+where A ∈ Rc×c is an auxiliary matrix. By adding Eq. (9) to the optimal problem (8), the following problem can be reached.
+
+min
+Ps ,Pt ,Z ,E,M
+
+1 2
+
+���PTs
+
+Xs
+
+−
+
+(Y
+
++
+
+B
+
+⊙
+
+M)���2F
+
++
+
+‖Z‖∗
+
++
+
+𝛽 ‖Z ‖1
+
++
+
+𝛼‖E‖1
+
++
+
+𝜆��Ps
+
+−
+
+Pt A��2F
+
+(10)
+
+s.t. PTt Xt = PTs XsZ + E, M ≥ 0
+
+where denotes a regularization parameter. For capturing the local discriminative information of the sample data from the source
+domain, both intrinsic graph Gw and penalty graph Gb (Yan et al. 2007) are introduced, whose definitions are given as follows.
+
+Lw = Dw − Ww
+
+Lb = Db − Wb
+
+(11)
+
+where Lw ∈ Rns×ns and Lb ∈ Rns×ns respectively denote the Laplacian matrix of Gw and
+
+GdDibbiai ,g=Won∑walaj Wnmdiabj .WtrIibcnerseo,srdpweehrcotitsvoeelmydiaarkegeporntehaselenedtnatttrhaieefsrwoaemrieghsroteusmprceaectrtiidcvoeemslyoaifdneGfwiwnietahdnidna-sGclDba ,swiisD=wco∑amnjpdWaDciwjtb
+
+are and and
+
+1 3
+
+Manifold transfer subspace learning based on double relaxed…
+
+S965
+
+between-class separate as far as possible, the optimization function based on the above graphs are defined as follows.
+
+min
+Ps
+
+Tr(PTs
+
+Xs(Lw
+
+−
+
+Lb)XsT
+
+Ps)
+
+(12)
+
+where Tr(⋅) is the matrix trace. By combining the optimization problems (12) and (10), we can obtain
+
+min
+Ps ,Pt ,A,Z ,E,M
+
+1 2
+
+���PTs
+
+Xs
+
+−
+
+(Y
+
++
+
+B
+
+⊙
+
+M)���2F
+
++
+
+‖Z‖∗
+
++
+
+𝛽 ‖Z ‖1
+
++
+
+𝛼‖E‖1
+
++𝜆��Ps − PtA��2F + 𝛾Tr(PTs Xs(Lw − Lb)XsT Ps)
+
+(13)
+
+s.t. PTt Xt = PTs XsZ + E, M ≥ 0
+
+where denotes a parameter. In order to make the samples with the same semantics from the source domain and the target domain interlace well, a manifold regularization term is introduced to the optimal problem (13), and the final objective function of our MTSLRRDR method is given as follows.
+
+min
+Ps ,Pt ,A,Z ,E,M
+
+1 2
+
+���PTs
+
+Xs
+
+−
+
+(Y
+
++
+
+B
+
+⊙
+
+M)���2F
+
++
+
+‖Z‖∗
+
++
+
+𝛽 ‖Z ‖1
+
++
+
+𝛼‖E‖1
+
++𝜆��Ps − PtA��2F + 𝛾Tr(PTs Xs(Lw − Lb)XsT Ps) + 𝜂 �ns �nt ���PTs xis − PTt xjt���2FZij
+
+(14)
+
+i=1 j=1
+
+s.t. PTt Xt = PTs XsZ + E, M ≥ 0
+
+where represents a regularization parameter. In the objective function (14), the first term learns a discriminative subspace based regres-
+sion learning. The global structure and the sparsity are respectively preserved by the second and third term. By means of the fifth term, the resemblance among the two projected matrices is effectively captured. For the sixth term, the local geometrical structure of the samples from the same object is preserved, and simultaneously the local neighbor relation of the samples from different objects is suppressed. The last term captures the local geometry information of the samples with the same semantics from the different domains. By learning the two different transformation matrices, MTSL-RRDR can transfer the global structure, sparsity, and local discriminative structure to the target learning task, and reduce the discrepancies of two domains.
+
+3.2 Optimization
+
+Since it is difficult to be solved for the optimization problem (14), three auxiliary variables Z1 , Z2 , and W are introduced to separate matrix Z . The problem (14) is rewritten as follows.
+
+min
+Ps ,Pt ,A,Z ,E,M
+
+1 2
+
+���PTs
+
+Xs
+
+−
+
+(Y
+
++
+
+B
+
+⊙
+
+M)���2F
+
++
+
+��Z1��∗
+
++
+
+𝛽 ��Z2 ��1
+
++
+
+𝛼‖E‖1
+
++𝜆��Ps − PtA��2F + 𝛾Tr(PTs Xs(Lw − Lb)XsT Ps) + 𝜂 �ns �nt ���PTs xis − PTt xjt���2FWij
+
+(15)
+
+i=1 j=1
+
+s.t. PTt Xt = PTs XsZ + E, Z = Z1, Z = Z2, Z = W, M ≥ 0
+
+1 3
+
+S966
+
+Z. Liu et al.
+
+We use the augmented Lagrangian multiplier (ALM) (Lin et al. 2010; Liu et al. 2013) method to solve the problem (15), which corresponds to the following augmented Lagrangian function L.
+
+L
+
+=
+
+1 2
+
+���PTs
+
+Xs
+
+− (Y
+
++ B ⊙ M)���2F
+
++ ��Z1��∗
+
++
+
+𝛽 ��Z2 ��1
+
++
+
+𝛼‖E‖1
+
++
+
+𝜆��Ps
+
+− PtA��2F
+
++𝛾Tr(PTs Xs(Lw − Lb)XsT Ps) + 𝜂 �ns �nt ���PTs xis − PTt xjt���2FWij
+i=1 j=1
+
++ < Y1, PTt Xt − PTs XsZ − E > + < Y2, Z − Z1 > + < Y3, Z − Z2 >
+
+(16)
+
++ < Y4, Z − W > +𝜇∕2���PTt Xt − PTs XsZ − E���2F
+
++𝜇∕2(��Z
+
+−
+
+Z1��2F
+
++
+
+��Z
+
+−
+
+Z2��2F
+
++
+
+‖Z
+
+−
+
+W
+
+‖2
+F
+
+)
+
+s.t. M ≥ 0
+
+where is a penalty parameter, Y1,Y2 and Y3 denote Lagrange multipliers. By utilizing the inexact augmented Lagrange multiplier method (IALM) (Liu et al. 2013), the optimal problem (16) can be solved. A detail solution scheme is described as follows.
+
+• Update Ps
+
+By removing the irrelevant terms of Ps in (16), it can be summarized as:
+
+min
+Ps
+
+1 2
+
+‖‖‖PTs Xs
+
+−
+
+(Y
+
++
+
+B
+
+⊙
+
+M)‖‖‖2F
+
++
+
+𝜆‖‖Ps
+
+−
+
+Pt A‖‖2F
+
++𝛾Tr(PTs Xs(Lw − Lb)XsT Ps) + 𝜂 ∑ns ∑nt ‖‖‖PTs xis − PTt xjt‖‖‖2FWij
+
+(17)
+
+i=1 j=1
+
++
+
+𝜇 2
+
+‖‖‖‖PTt
+
+Xt
+
+−
+
+PTs XsZ
+
+−
+
+E
+
++
+
+Y1 𝜇
+
+‖‖‖‖2F
+
+Let G1 = Y + K ⊙ M,G2 = PTt Xt − E + Y1∕  . The partial derivative of Eq. (17) about Ps is set to zero, and the optimization solution of Ps is expressed as
+
+Ps = (XsXsT + 2 I + 2 Xs(Lw − Lb)XsT + XsDsXsT + XsZZT XsT )−1 (XsGT1 + 2 PtA + XsZGT2 + XsZXtT Pt)
+
+(18)
+
+where the entries of the diagonal matrices Ds and Dt respectively represent row or column sums of Z , and I ∈ Rm×m is an identity matrix.
+
+• Update Pt
+
+When other variables are fixed, the optimal problem in (16) w.r.t. Pt can be converted to
+
+min
+Pt
+
+‖‖Ps − PtA‖‖2F +
+
+∑ns ∑nt ‖‖‖PTs xis − PTt xjt‖‖‖2FWij
+i=1 j=1
+
++ 2 ‖‖‖‖PTt Xt − PTs XsZ − E + Y1 ‖‖‖‖2F
+
+(19)
+
+1 3
+
+Manifold transfer subspace learning based on double relaxed…
+
+S967
+
+The derivation of the problem (19) w.r.t. Pt is set to zero, and the following Equation can be obtained as follows.
+2 PtAAT + ( XtXtT + 2 XtDtXtT )Pt − 2 PsAT − XtGT3 − 2 XtZT XsT Ps = 0 (20)
+where G3 = PTs XsZ + E − Y1 . The Eq. (20) is the Sylvester equation. By solving the Sylvester Equation, its solution can be computed.
+
+• Update M
+
+Fixing other variables, the optimal problem w.r.t. M in (16) is rewritten as Eq. (21).
+
+min
+M
+
+1 2
+
+‖‖‖PTs
+
+Xs
+
+−
+
+(Y
+
++
+
+B
+
+⊙
+
+M)‖‖‖2F
+
+(21)
+
+s.t. M ≥ 0
+
+According to Xiang et al. (2012), the optimization solution of M in (21) is calculated by Eq. (22).
+
+M = max((PTs Xs − Y) ⊙ B, 0)
+
+(22)
+
+• Update W
+
+We fix other variables, and the optimal problem w.r.t. W in (16) is written as follows.
+
+min
+W
+
+∑ns ∑nt ‖‖‖PTs xis
+i=1 j=1
+
+− PTt xjt‖‖‖2FWij
+
++
+
+2 ‖‖‖‖Z
+
+−W
+
++
+
+Y4 ‖‖‖‖2F
+
+(23)
+
+Let Kij = ‖‖‖PTs xis − PTt xjt‖‖‖2F and Q = Z + Y4 , the optimal problem (23) can be rewritten as
+
+�ns �nt
+
+min
+W
+
+KijWij
+
++
+
+‖Q 2
+
+−
+
+W
+
+‖2
+F
+
+(24)
+
+i=1 j=1
+
+Let = ∕  , the optimal problem (24) can be equivalent to
+
+�ns �nt
+
+min
+W
+
+KijWij
+
++
+
+𝜉 ‖Q 2
+
+−
+
+W ‖2F
+
+i=1 j=1
+
+=
+
+Tr(S(K
+
+⊙
+
+W)
+
++
+
+𝜉 ‖Q 2
+
+−
+
+W
+
+‖2
+F
+
+=
+
+Tr(S(K
+
+⊙
+
+W)
+
++
+
+𝜉 Tr(‖Q 2
+
+−
+
+W
+
+‖2
+F
+
+)
+
+(25)
+
+=
+
+Tr(S(K
+
+⊙
+
+W)
+
++
+
+𝜉 Tr(‖Q 2
+
+−
+
+W
+
+‖2
+F
+
+)
+
+=
+
+�ns Ki,∶W∶,i
+
++
+
+𝜉 2
+
+�ns ��Q∶,i
+
+−
+
+W∶,i��22
+
+i=1
+
+i=1
+
+where Ki,∶ denotes the i-th row of the matrix K,Q∶,i and W∶,i are respectively the i-th column of the matrices Q and W , and each element of matrix S ∈ Rns×nt is set to 1.
+
+1 3
+
+S968
+
+Z. Liu et al.
+
+For the sake of simplicity, we respectively use Ki , Wi and Qi to represent Ki,∶,W∶,i and Q∶,i . The optimal problem (25) can be reformulated as follows.
+
+∑ns min(KiWi + 2 ‖‖Qi − Wi‖‖22)
+
+(26)
+
+i=1
+
+The problem (26) is the optimization problem with respect to Wi . By making the derivative of (26) w.r.t. Wi be zero, the analytic solution of Wi can be obtained, and then the optimal solution of W can be gotten.
+
+• Update Z
+
+The optimal problem with respect to Z in (16) can be rewritten as Eq. (27) by fixing other variables.
+
+min
+Z
+
+‖‖‖‖PTt
+
+Xt
+
+−
+
+PTs XsZ
+
+−
+
+E
+
++
+
+Y1
+
+‖‖‖‖2F
+
++
+
+‖‖‖‖Z
+
+−
+
+Z1
+
++
+
+Y2
+
+‖‖‖‖2F
+
++
+
+‖‖‖‖Z
+
+−
+
+Z2
+
++
+
+Y3
+
+‖‖‖‖2F
+
++
+
+‖‖‖‖Z
+
+−
+
+W
+
++
+
+Y4
+
+‖‖‖‖2F
+
+(27)
+
+Let G4 = PTt Xt − E + Y1 , G5 = Z1 − Y2 , G6 = Z2 − Y3 , and G7 = W − Y4 . By setting the
+
+derivation w.r.t. variable Z equal to zero, the optimal solution in (27) can be gotten by
+
+Eq. (28).
+
+Z = (XsT PsPTs Xs + 3I)−1(XsT PsG4 + G5 + G6 + G7)
+
+(28)
+
+• Update Z1
+
+By fixing other variables, we rewrite the optimal problem w.r.t. Z1 in (16) as
+
+min
+Z1
+
+‖‖Z1
+
+‖‖∗
+
++
+
+2 ‖‖‖‖Z
+
+−
+
+Z1
+
++
+
+Y2 ‖‖‖‖2F
+
+(29)
+
+The optimal solution w.r.t. Z1 in (29) can be obtained based on the thresholding operator (Cai et al. 2010).
+
+Z1 = 1∕ (Z1 + Y2 )
+
+(30)
+
+By computing∑the singular valu∑e decomposi∑tion of matr∑ix Z1 + Y2 , we can have 1∕ (N) = UP1∕ ( )VT , where P1∕ ( i,j) = sign( i,j) max(0, ( i,j −1∕ )).
+
+• Update Z2
+
+By fixing other variables, the optimal problem w.r.t. Z2 in (16) is rewritten as follows.
+
+min
+Z2
+
+‖‖Z2‖‖1 + 2 ‖‖‖‖Z − Z2 + Y2 ‖‖‖‖2F
+
+(31)
+
+Supposed that f [x] = signmax(|x| − f , 0) denotes the soft thresholding (shrinkage) operator, and the solution of Z2 in (31) can be solved as follows.
+
+1 3
+
+Manifold transfer subspace learning based on double relaxed…
+Z2 = ∕ [Z + Y2 ]
+
+S969
+(32)
+
+• Update E
+
+The optimal problem with respect to E in (16) can be written as Eq. (33) by fixing other variables.
+
+min
+E
+
+‖E‖1 + 2 ����PTt Xt − PTs XsZ − E + Y1 ����2F
+
+(33)
+
+The problem (33) is changed as Eq. (34) by setting G8 = PTt Xt − PTs XsZ + Y1.
+
+min
+E
+
+‖E‖1 + 2 ��E − G8��2F
+
+(34)
+
+The solution of E in (34) can be computed as
+
+E = ∕ [G8]
+
+(35)
+
+• Update A
+
+By fixing other variables, the optimal problem w.r.t. A in (16) is rewritten as Eq. (36).
+
+min
+A
+
+‖‖Ps
+
+−
+
+Pt A‖‖2F
+
+(36)
+
+The analytical solution of A is computed by making the derivation of the problem (36) w.r.t. A equal to zero.
+
+A = inv(PTt Pt) ∗ (PTt Ps)
+
+(37)
+
+• Update Y1,Y2,Y3,Y4,
+
+The multipliers Y1,Y2,Y3,Y4 and step size are updated by Eq. (38).
+
+⎧ ⎪
+
+Y1
+
+=
+
+Y1
+
++
+
+(APT X − APT XZ − E)
+
+⎪ ⎪
+
+Y2
+
+=
+
+Y1
+
++
+
+(Z − Z1)
+
+⎨ ⎪ ⎪
+
+Y3 Y4
+
+= =
+
+Y3 Y4
+
++ +
+
+(Z − Z2) (Z − W)
+
+(38)
+
+⎪⎩ = min( , max)
+
+The solving process of the optimization (16) by utilizing IALM algorithm is detailedly summarized in Algorithm 1. A transformation projection Ps is obtained by Algorithm 1. The recognition process of the target domain data is given as follows. Firstly, by utilizing the obtained Ps , all data points of the source and target domains are respectively transformed into a feature subspace. Secondly, the nearest neighbor (NN) classifier is utilized to complete the recognition task of the projected data from the target domain.
+
+1 3
+
+S970
+
+Z. Liu et al.
+
+Algorithm 1: MTSL-DRDR
+Input: Source domain samples Xs and its corresponding label Y , target domain data Xt , constant matrix B , the parameters , , , and
+Initialization: we use principle component analysis (PCA) projected matrix to initialize Ps and Pt , M = I , Z = Z1 = Z2 = W = 0,E = 0 , Y1 = Y2 = Y3 = Y4 = 0, = 0.1, max = 107 , = 1.01 , = 10−7
+While not converged do 1. Ps is updated by Eq. (18) 2. Pt is updated by solving Sylvester Eq. (20) with other variables fixed 3. M is updated by Eq. (22) 4. W is updated by solving Eq. (26) 5. Z is updated by Eq. (28) 6. Z1 is updated by Eq. (30) 7. Z2 is updated by Eq. (32) 8. E is updated by Eq. (35) 9. A is updated by Eq. (36) 10. Update Y1, Y2, Y3, Y4, by Eq. (38) End while
+Output: The transformation matrix Ps
+
+3.3 Complexity and convergence analysis of the proposed method
+(1) Computation complexity: In Algorithm 1, the time-consuming steps mainly include steps 1, 2, 5 and 6, in which the multiplication operations, matrix inversion and the singular value decomposition operation are contained. Specifically, the computational complexities for Steps 1 and 2 are r e s p e c t i v e l y O(d2(ns + nt) + d2c + dns(ns + nt) + d3 + d(ns + nt)c) a n d O(d2(ns + nt) + d2c + dnt(ns + nt) + d3 + d(ns + nt)c) . In Step 5, the main time complexity is about O(d(ns + nt)c + nsc(ns + nt) + n3s + n2s nt) . The computing complexity in Step 6 is O((ns + nt)3) . In a word, the total time complexity for Algorithm 1 is approximate O( (d3 + d2(ns + nt) + dns(ns + nt) + (ns + nt)3) , where denotes the iterative number.
+(2) Convergence Analysis: Though the convergence of the exact ALM method is proved in Bertsekas (1982), the convergence of IALM is difficult to be proved when it includes three or more variables (our method includes seven variables) in theory. Fortunately, if three sufficient conditions are satisfied, the convergence can be achieved (Eckstein and Bertsekas 1992).
+A. The full column rank should be satisfied for the dictionary matrix (in Algorithm 1, Xs itself is used to be dictionary matrix);
+B. The obtained value in the optimal problem (16) should be monotonically decreasing each iteration.
+C. The parameter in Algorithm 1 exists upper bounded.
+The above three conditions are usually satisfied. Therefore, the proposed algorithm is convergent. Meanwhile, In Sect. 4, the convergence of our algorithm is experimentally validated, and the convergence curve of the algorithm also proves it.
+
+1 3
+
+Manifold transfer subspace learning based on double relaxed…
+
+S971
+
+4 Experiments
+
+In this subsection, some experiments are performed to validate the superiority and effectiveness of MTSL-RRDR algorithm on several challenging benchmark datasets. Specifically, these databases mainly include three categories: (1) cross-domain object recognition, such as MSRC + VOC (Long et al. 2014), COIL-100 databases (Long et al. 2014) and Office + Caltech-256 (Long et al. 2013); (2) cross-pose face classification: CMU PIE (Long et al. 2014); (3) cross-illumination face recognition: the extended Yale B (Shao et al. 2014). A group of popular methods are utilized for comparison, such as, transfer subspace learning (TSL) (Si et al. 2010), low-rank TSL (LTSL) (Shao et al. 2014), joint distribution adaptation (JDA) (Long et al. 2013), transfer component analysis (TCA) (Pan et al. 2011), latent domain adaptation depression recognition based on low rank (LDADR) (Tao et al. 2019), stacked robust adaptively regularized auto-regression (SRARAs) (Jiang et al. 2019), DTS (Xu et al. 2016), MTL-DRA (Lu et al. 2021), and the classical PCA method (Belhumeur et al. 1997). In addition, the parameter values in the compared methods are referenced the original papers.
+
+4.1 Experiments on the Office and Caltech‑256 image datasets
+The Office and Caltech-256 data sets are widely used cross-domain image databases. The Office image database contains three sub datasets with a total of 4652 images, and three image subsets are respectively Amazon (A), DSLR (D), and Webcam (W), which respectively includes 31 different objects, such as, laptop, keyboard, bike, and so on. There are totally 30,607 images from 256 classes in Caltech-256 (C). There are ten same classes in the four datasets. Several example images from the ten objects are illustrated in Fig. 3. In the experiment, any two data subsets are randomly chosen to respectively act as the source domain and target domain, and the total of 12 pairs of image sets, such as, W→D, W→A, W→C, …, C→A, are available for experiments. The experiment results of all methods are illustrated in Fig. 4. It can be seen from Fig. 4 that the proposed method can obtain the best classification performance on the 12 crossdomain data sets.
+
+4.2 Experiments on MSRC and VOC 2007 data sets
+There are 4323 sample images from 18 different objects in the MSRC database, and VOC 2007 image database has 5011 sample images from 20 objects. There are six same semantic classes in two datasets including car, sheep, cow, bird, airplane and bicycle, which are shown in Fig. 5. According to the reference (Long et al. 2014), two crossdomain data sets are constructed. One is MSRC vs VOC 2007 (M→V) dataset, in which the 1269 samples of MSRC database are utilized to be the source domain, and the 1530 data samples of VOC 2007 are utilized for the target domain. The other is VOC 2007 vs MSRC (V→M) datase, in which the above two databases are switched. The sample images are resized to 256 pixels, and the 128-dimensional dense SIFT features are extracted by VLFeat open source package. Finally, the 240-dimensional codebook corresponding to each image is obtained by utilizing K-means clustering method.
+1 3
+
+S972
+
+Z. Liu et al.
+
+(a) Amazon
+
+(b) DSLR
+
+(c) Webcam
+
+Fig. 3  Some image examples from the Office and Caltech-256 databases
+
+(d) Caltech-256
+
+Fig. 4  The classification results of several algorithms on the Office and Caltech-256 database
+Figure 6 illustrates the recognition accuracy of various methods. From Fig. 6, it is easy to observe that the classification accuracies of the MTSL-RRDR are higher than other comparison algorithms.
+4.3 Experiments on COIL100 dataset
+The COIL100 database includes 7200 Gy images from 100 objects, in which each object contains 72 images with multi-pose. Each image is rescaled to 32 × 32 pixels. According to the experimental set in Xu et al. (2016), the database is divided into two data different databases termed COIL1 and COIL2 in the experiment. Under the directions of [0°, 85°]
+1 3
+
+Manifold transfer subspace learning based on double relaxed…
+
+S973
+
+(a) MSRC Fig. 5  Some image samples from MSRC and VOC 2007 databases
+
+(b) VOC 2007
+
+∪ [180°, 265°], all images are captured for COIL1. In COIL2, the images are obtained in the directions of [90°, 175°] ∪ [270°, 355°]. Some images are illustrated in Fig. 7. Figure 8
+reports the experimental results. From Fig. 8, it can be known that our method shows a
+somewhat better result.
+
+4.4 Experiments on CMU PIE dataset
+There exist 41,368 face sample images from 68 different people in CMU PIE dataset, which are obtained under different expressions, illumination and poses. In the experiment, five subsets from PIE database are selected as follows: PIE1 (left pose), PIE2 (upward pose), PIE3 (downwar pose), PIE4 (front pose), PIE5 (right pose). Some sample images from five subsets are shown in Fig. 9. From Fig. 9, it can be easy to find that the images from five subsets still have the different expressions and illumination except pose. In the experiment, any one subset is randomly chosen to act as the source domain, and excluding the selected subset, we randomly choose another one from the remaining four subsets as the target domain. So there are totally 20 data image sets, which are respectively denoted by P1→P2, P1→P3, P1→P4, P1→P5, …, P5→P4. The experiment results are given in Fig. 10. It is easy known that our algorithm outperforms other comparison algorithms.
+Fig. 6  The classification results of the compared algorithms on the MSRC and VOC 2007 database
+
+1 3
+
+S974 Fig. 7  Some image examples from COIL100 database
+Fig. 8  The classification accuracies of the all algorithms on the COIL 100 database
+
+Z. Liu et al.
+
+(a) PIE1
+
+(b) PIE2
+
+(c) PIE3
+
+Fig. 9  Some image examples from CMU PIE database
+
+(d) PIE4
+
+(e) PIE5
+
+4.5 Experiments on the extended Yale B database
+There are 2414 frontal face sample images from 38 different persons in the extended Yale B, which are taken under the variant light conditions with the image size of 32 × 32. According to Xu et al. (2016), the dataset is separated into five subsets, which are shown in Fig. 11. In subset 1, each person includes seven images under normal illumination conditions. In subsets 2 and 3, each subject has 12 images under slight-tomoderate lighting variations. The images in subsets 4 and 5 are captured under severe
+1 3
+
+Manifold transfer subspace learning based on double relaxed…
+
+S975
+
+illumination variations. The five subsets are respectively denoted by Y1 to Y5. Any two different subsets from five databases are randomly chosen to be the source and target domain, and there are 20 data sets, such as, Y1→Y2, Y1→Y3, Y1→Y4, Y1→Y5, …, Y5→Y4. Figure 12 reports the experimental results. It can be known from Fig. 12 that our MTSL-DRDR usually performs better than other comparative algorithms.
+
+Fig. 10  The classification results of the compared methods on the CMU PIE database
+
+1 3
+
+S976
+
+Z. Liu et al.
+
+4.6 Classification result discussion
+
+Through the observation of the above experiment results, we draw the following conclusions.
+(1) Since there are no limits of IID, most methods based on transfer learning have better performance than the non transfer learning methods.
+(2) Our MTSL-DRDR performs better than the discriminative regression based algorithms, such as, DTSL and MTL-DRA. The proposed method indeed provides more freedom by utilizing double transformation matrices, in which the problem of over-fitting can be solved and better margins is achieved. In another way, it is very important to relieve the over-fitting problem for improving the recognition accuracies.
+(3) The proposed MTSL-DRDR achieves the best performance among all comparison algorithms in most case. That is because the local discriminative information from the source domain can be transferred into the target domain by MTSL-DRDR, and it effectively solves the over-fitting problem.
+(4) Though some low-rank representation based transfer learning algorithms obtain good classification precision, our method is still superior to the comparison algorithms. The reason is that comparison algorithms only find the low-rank or sparse representation for data reconstruction. For obvious reasons, the good data reconstruction does not mean the good discriminative power.
+
+4.7 Analysis of the parameter sensitivity and the convergence
+
+In the subsection, the parameter sensitivity and convergence of MTSL-DRDR are respectively analyzed on two image databases including Caltech 256 → Amazon and PIE1 → PIE3.
+(1) Parameter sensitivity: There are five parameters in Algorithm 1: α, λ, β, γ and η, in which the parameters β and α control the L1-norm regularization of the representation coefficient matrix and noise matrix, the parameter λ, is used to adjust the fitting degree of double projection matrix the parameters γ and η are utilized to balance the graph regularization. According to experimental results, we roughly determine the
+
+Fig. 11  Some image examples from YaleB database
+
+1 3
+
+Manifold transfer subspace learning based on double relaxed…
+
+S977
+
+Fig. 12  The classification results of several algorithms on the extended Yale B dataset
+value range of each parameter. The results with different parameters on cross-domain datasets are illustrated in Fig. 13. It is easy to see from Fig. 13 that the recognition rates are roughly consistent when the values of the parameters α and β changes, and the recognition rates change greatly when the values of the parameters λ, γ and η changes. In other words, our MTSL-DRDR is robust to the values of the parameters α and β, and it is sensitive to the other three parameters. (2) Convergence property: Fig. 14 illustrates the convergence curves of MTSL-DRDR method. It is shown that the objective function values in (14) decrease and tend to be
+1 3
+
+S978
+
+Z. Liu et al.
+
+stable with the increase of iterative times, which can show that our algorithm converges after a finite iterative number.
+
+5 Conclusions
+In the paper, we propose a novel cross-domain recognition algorithm termed manifold transfer subspace learning based on double relaxed discriminative regression (MTSLDRDR) for unsupervised domain adaptation. Specifically, both the low-rank and sparsity constraints are firstly utilized to bridge the source and target domain in a projected subspace. Secondly, the two transformation matrices are introduced to better characterize the global structure information of two domains, which can effectively improve the robustness to outliers. Meanwhile, the structure consistency term is introduced for reducing the domain discrepancy of the obtained couple subspaces, which can make two projected matrices capture the resemblance among the samples with the same semantics from different domains. Thirdly, the between-graph and within-graph based
+
+(a) Caltech 256→Amazon
+(b) P1→P3 Fig. 13  The classification results of the proposed methods v.s. the parameters α, λ, β, γ and η on two databases
+1 3
+
+Manifold transfer subspace learning based on double relaxed…
+
+S979
+
+(a) Caltech 256→Amazon
+(b) P1→P3 Fig. 14  The convergence curves on two cross domains databases discriminant information of the data from the source domain are encoded to preserve the local discriminative information. Fourthly, the optimal solution scheme of the proposed algorithm is presented. A series of experiments are performed on some crossdomain benchmark databases, and the experimental results indicate that our algorithm has high classification accuracy. Author contributions  ZL wrote the main manuscript text, FZ, KZ, ZL and HH reviewed the manuscript. Funding  This work was supported in part by NSFC of China (U1504610, 61971339).
+1 3
+
+S980
+Declarations 
+Competing interest  The authors declare no competing interests.
+
+Z. Liu et al.
+
+References
+Belhumeur PN, Hepanha JP, Kriegman D (1997) Eigenfaces vs Fisherfaces: recognition using class specific linear projection. IEEE Trans Pattern Anal Mach Intell 19(7):711–720
+Bertsekas DP (1982) Constrained optimization and Lagrange multiplier methods. Academic Press Cai J-F, Candès E, Shen Z (2010) A singular value thresholding algorithm for matrix completion. SIAM J
+Optim 20(4):1956–1982 Chang HY, Zhang FL, Gao GW et al (2020) Graph-structure constraint and schatten p-norm based unsuper-
+vised domain adaptation for image classification. J Ambient Intell Human Comput. https://​doi.​org/​10.​ 1007/​s12652-​020-​02350-y Deng WY, Lendasse A, Ong Y et al (2019) Domain adaption via feature selection on explicit feature map. IEEE Trans Neural Netw Learn Syst 30(4):1180–1190 Eckstein J, Bertsekas DP (1992) On the Douglas-Rachford splitting method and the proximal point algorithm for maximal monotone operators. Springer-Verlag, New York Jhuo IH, Liu D, Lee DT et al. (2012) Robust visual domain adaptation with low-rank reconstruction. In CVPR, pp. 2168–2175. Jiang WH, Gao HC, Lu W et al (2019) Stacked robust adaptively regularized auto-regressions for domain adaptation. IEEE Trans Knowl Data Eng 31(3):561–574 Kan SC, Cen Y, Cen YG et al (2021) Zero-shot learning to index on semantic trees for scalable image retrieval. IEEE Trans Image Process 30:501–516 Lin Z, Chen M, Ma Y (2010) The augmented lagrange multiplier method for exact recovery of corrupted low-rank matrices. arXiv preprint arXiv:​1009.​5055 Liu G, Lin Z, Yan S et al (2013) Robust recovery of subspace structures by low-rank representation. IEEE Trans Pattern Anal Mach Intell 35(1):171–184 Liu F, Zhang GQ, Lu J (2020) Heterogeneous domain adaptation: an unsupervised approach. IEEE Trans Neural Netw Learn Syst 31(12):5588–5602 Liu WF, Li JF, Liu BD et al (2021) Unified cross-domain classification via geometric and statistical adaptations. Pattern Recogn 110:107658 Liu ZH, Shi KM, Niu DM et al (2023) Dynamic classifier approximation for unsupervised domain adaptation. Signal Process 206:108915 Long M, Wang J, Ding G, et al. (2013) Transfer feature learning with joint distribution adaptation. ICCV, pp. 2200–2207 Long M, Wang J, Ding G, et al. (2014) Transfer joint matching for unsupervised domain adaptation. Proc. IEEE CVPR, Jun, pp. 1410–1417 Lu YW, Wang WJ, Yuan C et al (2021) Manifold transfer learning via discriminant regression analysis. IEEE Trans Multimedia 23:2056–2070 Lu YW, Wong WK, Zeng BQ et al (2023) Guided discrimination and correlation subspace learning for domain adaptation. IEEE Trans Image Process 32:2017–2032 Pan SJ, Tsang IW, Kwok JT et al (2011) Domain adaptation via transfer component analysis. IEEE Trans Neural Netw Learn Syst 22(2):199–210 Shao M, Kit D, Fu Y (2014) Generalized transfer subspace learning through low-rank constraint. Int J Comput Vision 109(1–2):74–93 Si S, Tao D, Geng B (2010) Bregman divergence-based regularization for transfer subspace learning. IEEE Trans Knowl Data Eng 22(7):929–942 Tao J, Xu H, Fu J (2019) Low-rank constrained latent domain adaptation co-regression for robust depression recognition. IEEE Access 7:145406–145425 Wang LC, Ding ZM, Fu Y (2019) Low-rank transfer human motion segmentation. IEEE Trans Image Process 28(2):1023–1034 Xiang SM, Nie FP, Meng GF et al (2012) Discriminative least squares regression for multiclass classification and feature selection. IEEE Trans Neural Netw Learn Syst 23(11):1738–1754 Xiong H, Wan R, Zhao J, Chen Z, Li X, Zhu Z, Huan J (2022) Grod: deep learning with gradients orthogonal decomposition for knowledge transfer, distillation, and adversarial training. ACM Trans Knowl Discov Data 16(6):117
+1 3
+
+Manifold transfer subspace learning based on double relaxed…
+
+S981
+
+Xu Y, Fang XZ, Wu J et al (2016) Discriminative transfer subspace learning via low-rank and sparse representation. IEEE Trans Image Process 25(2):850–863
+Xu X, Lin KY, Yang Y et al (2022) Joint feature synthesis and embedding: adversarial cross-modal retrieval revisited. IEEE Trans Pattern Anal Mach Intell 44(6):3030–3047
+Yan S, Xu D, Zhang B et al (2007) Graph embedding and extensions: a general framework for dimensionality reduction. IEEE Trans Pattern Anal Mach Intell 29(1):40–51
+Zhang L, Zuo WM, Zhang D (2016) LSDT: Latent sparse domain transfer learning for visual adaptation. IEEE Trans Image Process 25(3):1177–1191
+Zhang L, Wang S, Huang G et al (2019) Manifold criterion guided transfer learning via intermediate domain generation. IEEE Trans. Neural Netw Learn Syst 30(12):3759–3773
+Zhang C, Li HX, Qian YH et al (2021) Pairwise relations oriented discriminative regression. IEEE Trans Circ Syst Video Technol 31(7):2646–2660
+Zhang C, Li HX, Qian YH et al (2022) Locality-constrained discriminative matrix regression for robust face identification. IEEE Trans Neural Netw Learn Syst 33(3):1254–1268
+Zhao C, Li HX, Chen CL et al (2022) Enhanced group sparse regularized nonconvex regression for face recognition. IEEE Trans Pattern Anal Mach Intell 44(5):2438–2452
+Zhu F, Gao J, Yang J et al (2022) Neighborhood linear discriminant analysis. Pattern Recogn 123:108422
+Publisher’s Note  Springer Nature remains neutral with regard to jurisdictional claims in published maps and institutional affiliations.
+Springer Nature or its licensor (e.g. a society or other partner) holds exclusive rights to this article under a publishing agreement with the author(s) or other rightsholder(s); author self-archiving of the accepted manuscript version of this article is solely governed by the terms of such publishing agreement and applicable law.
+
+1 3
+

@@ -1,0 +1,1071 @@
+Learning Neural Network Subspaces
+
+Mitchell Wortsman 1 Maxwell Horton 2 Carlos Guestrin 2 Ali Farhadi 2 Mohammad Rastegari 2
+
+Abstract
+Recent observations have advanced our understanding of the neural network optimization landscape, revealing the existence of (1) paths of high accuracy containing diverse solutions and (2) wider minima offering improved performance. Previous methods observing diverse paths require multiple training runs. In contrast we aim to leverage both property (1) and (2) with a single method and in a single training run. With a similar computational cost as training one model, we learn lines, curves, and simplexes of high-accuracy neural networks. These neural network subspaces contain diverse solutions that can be ensembled, approaching the ensemble performance of independently trained networks without the training cost. Moreover, using the subspace midpoint boosts accuracy, calibration, and robustness to label noise, outperforming Stochastic Weight Averaging.
+1. Introduction
+Optimizing a neural network is often conceptualized as ﬁnding a minimum in an objective landscape. Therefore, understanding the geometric properties of this landscape has emerged as an important goal. Recent work has illuminated many intriguing phenomena. Garipov et al. (2018); Draxler et al. (2018) determine that independently trained models are connected by a curve in weight space along which loss remains low. Additionally, Frankle et al. (2020) demonstrate that networks which share only a few epochs of their optimization trajectory are connected by a linear path of high accuracy. However, the connected regions in weight space found by Garipov et al. (2018); Draxler et al. (2018); Frankle et al. (2020) require approximately twice the training time compared with standard training, as two separate minima are ﬁrst identiﬁed then connected.
+This work is motivated by the existence of connected, func-
+1University of Washington (work completed during internship at Apple). 2Apple. Correspondence to: Mitchell Wortsman <mitchnw@cs.washington.edu>.
+Proceedings of the 38 th International Conference on Machine Learning, PMLR 139, 2021. Copyright 2021 by the author(s).
+
+Figure 1. Schematic for learning a line of neural networks compared with standard training. The midpoint outperforms standard training in terms of accuracy, calibration, and robustness. Models near the endpoints enable high-accuracy ensembles in a single training run.
+tionally diverse regions in solution space. In contrast to prior work, our aim is to directly parameterize and learn these neural network subspaces from scratch in a single training run. For instance, when training a line (Figure 1) we begin with two randomly initialized endpoints and consider the neural networks on the linear path which connects them. At each iteration we use a randomly sampled network from the line, backpropagating the training loss to update the endpoints. Central to our method is a regularization term which encourages orthogonality between the endpoints, just as two independently trained networks are orthogonal (Fort et al., 2019). When the line settles into a low loss region we ﬁnd that models from opposing ends are functionally diverse.
+In addition to lines, we learn curves and simplexes of highaccuracy neural networks (Figure 2). We also uncover beneﬁts beyond functional diversity. Lines and simplexes identify and traverse large ﬂat minima, with endpoints near the periphery. The midpoint corresponds to a less sharp solution, which is associated with better generalization (Dziugaite & Roy, 2018). Using this midpoint corresponds to ensembling in weight space, producing a single model which requires no additional compute during inference. We ﬁnd that taking the midpoint of a simplex can boost accuracy, calibration, and robustness to label noise.
+The rest of the paper is organized via the following contributions:
+
+Learning Neural Network Subspaces
+
+Figure 2. Test error on a two dimensional plane for three learned subspaces for cResNet20 (CIFAR10)—a quadratic Bezier curve (left), a
+
+simplex with three endpoints (middle), and a line (right). The subspace parameters ω1, ω2 and ω3 are plotted and used to construct the
+
+plane, except for the line for which ω3 was taken to be a solution obtained via standard training. Note that although ω3 is used to deﬁne
+
+the Bezier curve (left), it never passes through it. Visualization as in Garipov et al. (2018) with ω1 at the origin.
+
+1. We contextualize our work via 5 observations regarding the objective landscape (section 2).
+
+with
+
+the
+
+network
+
+� f x,
+
+1 2
+
+� θT1
+
++
+
+   θT2 —fails,
+
+achieving
+
+no
+
+better accuracy than an untrained network.
+
+2. We introduce a method for learning diverse and highaccuracy lines, curves, and simplexes of neural networks (section 3).
+3. We show that lines and curves found in a single training run contain models that approach or match the ensemble accuracy of independently trained networks (subsection 4.2).
+4. We ﬁnd that taking the midpoint of a simplex provides a boost in accuracy, calibration, and robustness (subsection 4.3; subsection 4.4).
+
+2. Preliminaries and Related Methods
+
+We highlight a few recent observations which have advanced understanding of the neural network optimization landscape (Dauphin et al., 2014; Li et al., 2018a;b; Fort & Jastrzebski, 2019; Evci et al., 2019; Frankle, 2020; Oswald et al., 2021). We remain in the setting of image classiﬁcation with setup and notation drawn from Frankle et al. (2020).
+
+Consider a neural network f (x, θ) with input x and parameters θ ∈ Rn. For initial random weights θ0 and SGD randomness ξ, the weights at epoch t are given by θt = Train0→t(θ0, ξ). Additionally let Acc(θ) denote the test accuracy of network f with parameters θ. The
+ﬁrst three observations pertain to the setting where two
+networks are trained with different SGD noise—consider θT1 = Train0→T (θ0, ξ1) and θT2 = Train0→T (θ0, ξ2). The observations are unchanged when θT1 and θT2 have differing initializations.
+
+Observation 1. (Lakshminarayanan et al., 2017) Ens-
+
+myˆ e=mb12li�nfg�θxT1,
+
+an d θT1
+
+θT2 i�n outp u t space—making predictions + f x, θT2 —boosts accuracy, calibra-
+
+tion, and ro�bustne ss. Thi�s is att ributed to functional diversity meaning f ·, θT1 and f ·, θT2 make different errors.
+
+Observation 2. (Frankle et al., 2020; Fort et al., 2020) Ensmembling θT1 and θT2 in weight space—making predictions
+
+Deﬁnition 1. A connector between neural network weights
+
+ψ1, ψ2 ∈ Rn is a continuous function P : [0, 1] → Rn
+
+such that P(0) = ψ1, P(1) = ψ2, and the average accuracy
+
+along the connector is at least the average accuracy given by
+
+the weights at the endpoints. Equivalently, if U denotes
+
+the uniform distribution then Eα∼U([0,1])[Acc(P(α))] '
+
+1 2
+
+(Acc(ψ1)
+
++
+
+Acc(ψ2)).
+
+In
+
+the
+
+language
+
+of
+
+connectors,
+
+Ob-
+
+servation 2 states that there does not exist a linear connector
+
+between θT1 and θT2 .
+
+Observation 3. (Garipov et al., 2018; Draxler et al., 2018) There exists a nonlinear connector P between θ1T and θ2T , for instance a quadratic Bezier curve.
+
+Observation 4. (Frankle et al., 2020) There exists a linear
+connector when part of the optimization trajectory is shared. Instead of branching off at θ0, let θk = Train0→k(θ0, ξ) and consider θki →T = Traink→T (θk, ξi) for i ∈ {1, 2}. For k   T , P(α) = (1 − α)θk1→T + αθk2→T is a linear connector.
+
+Observation 4 generalizes to the higher dimensional case
+
+(Appendix H) for which a convex hull of neural net-
+
+works attains high accuracy. To consider higher dimen-
+
+sio�nal con nectors we discuss one additional deﬁnition. Let
+
+U Δm−1 {α ∈ Rm
+
+:
+
+rPefer to the i αi = 1,
+
+uniform αi ≥ 0}
+
+distribution on Δm−1 = and let ei refer to the stan-
+
+dard basis vector (all zeros except for position i which is 1).
+
+Note that Δm−1 is often referred to as the m−1 dimensional
+
+probability simplex.
+
+Deﬁnition 2. An m-connector on ψ1, ..., ψm ∈ Rn is a
+
+continuous function P : Δm−1 and Eα∼U(Δm−1)[Acc(P(α))]
+
+→ '
+
+Rn
+1 m
+
+Psucm i=h1thAactcP(ψ(eii)).
+
+= ψi This
+
+deﬁnition formalizes that in Fort & Jastrzebski (2019). In
+
+this work we will primarily foPcus on linear m-connectors which have the form P(α) = i αiψi.
+
+Linear m-connectors are implicitly used by Izmailov et al. (2018) in Stochastic Weight Averaging (SWA). SWA uses a high constant (or cyclic) learning rate towards the end of
+
+Learning Neural Network Subspaces
+
+training to bounce around a minimum while occasionally saving checkpoints. SWA returns the weight space ensemble (average) of these models, motivated by the observation that SGD solutions often lie at the edge of a minimum and averaging moves towards the center. The averaged solution is less sharp, which may lead to better generalization (Chaudhari et al., 2019; Dziugaite & Roy, 2018; Foret et al., 2020).
+
+Observation 5. (Izmailov et al., 2018) If weights ψ1,...ψm
+
+lie a�t Acc
+
+m1thP e pime=r1ipψhie ry>omf1 wPidime=1anAdccﬂ(aψt il)o.w
+
+loss
+
+region,
+
+then
+
+SWA is extended by SWA-Gaussian (Maddox et al., 2019) (which ﬁts a Gaussian to the saved checkpoints) and Izmailov et al. (2020) (who considers the subspace which they span). These techniques advance Bayesian deep learning— methods which aim to learn a distribution over the parameters. Other Bayesian apporaches include variational methods (Blundell et al., 2015), MC-dropout (Gal & Ghahramani, 2016), and MCMC methods (Welling & Teh, 2011; Zhang et al., 2020). However, variational methods tend not to scale to larger networks such as residual networks (Maddox et al., 2019). Moreover, a detailed empirical study by Fort et al. (2019) recently observed that many Bayesian models tend to capture the local uncertainty of a single mode but are much less functionally diverse than independently trained networks which identify multiple modes. Ensembling models sampled from the learned distribution is therefore inferior in terms of accuracy and robustness.
+
+Other related techniques include Snapshot Ensembles (SSE) (Huang et al., 2017) which use a cyclical learning rate with multiple restarts, saving checkpoints prior to each restart. Fast Geometric Ensembles (Garipov et al., 2018) employs a similar strategy but does not begin saving checkpoints until later in training. Other methods to efﬁciently train and evaluate ensembles include BatchE (Wen et al., 2020). Although their method is compelling, BatchE requires longer training for ensemble members to match standard training accuracy.
+
+To summarize, connectors—high-accuracy subspaces of neural networks—have two useful properties:
+
+• Property 1: They contain models which are functionally diverse and may be ensembled in output space (Observations 1 & 3).
+• Property 2: Taking the midpoint of the subspace (ensembling in weight space) can improve accuracy and generalization (Observation 5).
+
+Prior work satisfying Property 1 requires multiple training runs. Subspaces satisfying Property 2 yield solutions that are less functionally diverse (Fort et al., 2019). Our aim is to leverage both Property 1 and 2 in a single training run.
+
+Algorithm 1 TrainSubspace
+
+Input: P with domain Λ and parameters {ωi}m i=1, network f , train set S, loss `, and scalar β (e.g. a line has
+
+Λ = [0, 1] and P(α; ω1, ω2) = (1 − α)ω1 + αω2).
+
+Initialize each ωi independently.
+
+for batch (x, y) ⊆ S do
+
+Sample α uniformly from Λ. θ ← P(α; {ωi}m i=1) yˆ ← f (x, θ)
+
+Sample j, k from {1, ..., m} without replacement.
+
+L ← `(yˆ, y) + β cos2(ωj, ωk)
+
+Backprop L to each ωi and update with SGD & mo-
+
+mentum using estimate
+
+∂L ∂ωi
+
+=
+
+∂` ∂P ∂θ ∂ωi
+
++
+
+β
+
+∂
+
+cos2 (ωj ∂ωi
+
+,ωk
+
+)
+
+.
+
+end for
+
+3. Method
+In a single training run, we ﬁnd a connected region in solution space comprised of high-accuracy and diverse neural networks. To do so we directly parameterize and learn the parameters of a subspace.
+First consider learning a line. Recall that the line between ω1 ∈ Rn and ω2 ∈ Rn in weight space is P(α; ω1, ω2) = (1 − α)ω1 + αω2 for α in the domain Λ = [0, 1]. Our goal is to learn parameters ω1, ω2 such that Acc(P(α; ω1, ω2)) is high for all values of α ∈ Λ (Acc(θ) denotes the test accuracy of the neural network f with weights θ). Equivalently, our aim is to learn a high-accuracy connector between ω1 and ω2 (Deﬁnition 1).
+More generally we consider subspaces deﬁned by P(·, {ωi}m i=1) : Λ → Rn. We experiment with two shapes in addition to lines:
+
+1. One-dimensional Bezier curves with a single bend P(α; ω1, ω2, ω3) = (1−α)2ω1 +2α(1−α)ω3 +α2ω2 for α ∈ Λ = [0, 1].
+
+2.
+
+Scoimnvpelexxheus lwl ditehﬁmneednbdpyoPin(tαs ;{{ωωi}i}m i=m i=11. )A=simPpm il=ex1
+
+is the αiωi.
+
+T{αhe∈dRomma:inPiΛαifo=r
+
+α is 1, αi
+
+the probability ≥ 0}.
+
+simplex
+
+Our training objective is to minimize the loss ` for all network weights θ such that θ = P(α, {ωi}m i=1) for some α ∈ Λ. Recall that for input x and weights θ a neural
+network produces output yˆ = f (x, θ). Given the predicted
+label yˆ and true label y the training loss is a scalar `(yˆ, y).
+
+If we let D denote the data distribution and U(Λ) denote the
+
+uniform distribution over Λ, our training objective without
+
+regularization is to minimize
+
+E(x,y)∼D
+
+  Eα∼U
+
+(Λ)[`(f
+
+(x,
+
+P(α,
+
+{ωi
+
+}m i=1
+
+)),
+
+  y)] .
+
+(1)
+
+Learning Neural Network Subspaces
+
+In practice we ﬁnd that achieving signiﬁcant functional diversity along the subspace requires adding a regularization term with strength β which we describe shortly. For now we proceed in the scenario where β = 0. Algorithm 1 is a stochastic approximation for the objective in Equation 1— we approximate the outer expectation with a batch of data and the inner expectation with a single sample from U(Λ).
+Speciﬁcally, for each batch (x, y) we randomly sample α ∼ U(Λ) and consider the loss
+
+`(f (x, P(α, {ωi}m i=1)), y).
+
+(2)
+
+If we let θ = P(α, {ωi}m i=1) denote the single set of weights sampled from the subspace, we can calculate the gradient of each parameter ωi as
+
+∂` ∂ωi
+
+=
+
+∂` ∂θ
+
+∂P(α, {ωi ∂ωi
+
+}m i=1)
+
+.
+
+(3)
+
+The right hand side consists of two terms, the ﬁrst of which appears in standard neural network training. The second term is computed using P. For instance, in the case of a line, the gradient for an endpoint ω1 is
+
+∂` ∂ω1
+
+=
+
+(1
+
+−
+
+α)
+
+∂` ∂θ
+
+.
+
+(4)
+
+Note that the gradient estimate for each ωi is aligned but scaled differently. As is standard for training neural networks we use SGD with momentum. In Appendix A we examine Equation 1 in the simpliﬁed setting where the landscape is convex. In Appendix B we approximate the inner expectation of Equation 1 with multiple samples.
+
+The method as described so far resembles Garipov et al. (2018), though we highlight some important differences. Garipov et al. (2018) begin by independently training two neural networks and subsequently learning a connector between them, considering curves and piecewise linear functions with ﬁxed endpoints. Our method begins by initializing the subspace parameters randomly, using the same initialization as standard training (Kaiming normal (He et al., 2015)). The subspace is then ﬁt in a single training run.
+
+This contrasts signiﬁcantly with standard training. For instance, when learning a simplex with m endpoints we begin with m random weight initializations and consider the subspace which they span. During training we move this entire subspace through the objective landscape.
+
+Regularization. We have outlined a method to train highaccuracy subspaces of neural networks. However, as illustrated in subsection 4.2 (Figure 6), subspaces found without regularization do not contain models which achieve high accuracy when ensembled, suggesting limited functional diversity. To promote functional diversity, we want to encourage distance between the parameters {ωi}m i=1.
+
+Fort et al. (2019) show that independently trained models
+
+have weight vectors with a cosine similarity of approxi-
+
+mately 0, unlike models with a shared trajectory. Therefore,
+
+we encourage all pairs ωj, ωk to have a cosine similarity
+
+of 0 by adding the following regularization term to the the
+
+training objective (Equation 1):
+
+"
+
+#
+
+β
+
+·
+
+Ej=6 k cos2(ωj
+
+,
+
+  ωk )
+
+=
+
+β
+
+·
+
+Ej6=k
+
+hωj , ωki2 kωj k22kωkk22
+
+.
+
+(5)
+
+In Algorithm 1 we approximate this expectation by sampling a random pair ωj , ωk for each training batch. Unless otherwise mentioned, β is set to a default value of 1. We do not consider L2 distance since networks with batch normalization can often have weights arbitrarily scaled without
+changing their outputs.
+
+Layerwise. Until now our investigation has been layer agnostic—we have treated neural networks as weight vectors in Rn. However, networks have structure and connectivity which are integral to their success. Accordingly, we experiment with an additional stochastic approximation to Equation 1. Instead of approximating the inner expectation with a single sample α ∼ U(Λ) we independently sample different values of α for weights corresponding to different layers. In Appendix H we extend the analysis of Frankle et al. (2020) to this layerwise setting.
+
+4. Results
+In this section we present experimental results across benchmark datasets for image classiﬁcation (CIFAR-10 (Krizhevsky et al., 2009), Tiny-ImageNet (Le & Yang, 2015), and ImageNet (Deng et al., 2009)) for various residual networks (He et al., 2016; Zagoruyko & Komodakis, 2016). Unless otherwise mentioned, β (Equation 5) is set to a default value of 1. The CIFAR-10 (Krizhevsky et al., 2009) and Tiny-ImageNet (Le & Yang, 2015) experiments follow Frankle et al. (2020) in training for 160 epochs using SGD with learning rate 0.1, momentum 0.9, weight decay 1e-4, and batch size 128. For ImageNet we follow Xie et al. (2019) in changing batch size to 256 and weight decay to 5e-5. All experiments are conducted with a cosine annealing learning rate scheduler (Loshchilov & Hutter, 2016) with 5 epochs of warmup and without further regularization (unless explicitly mentioned). When error bars are present the experiment is run with 3 random seeds and mean±std is shown. Additional details found in Appendix D, including SWA hyperparameters and the treatment of batch norm layers (which mirror SWA (Izmailov et al., 2018)). As discussed in subsection D.2, memory/FLOPs overhead is not signiﬁcant as feature maps (inputs/outputs) are much larger than the number of parameters for convolutional networks. Code available at https: //github.com/apple/learning-subspaces.
+
+Learning Neural Network Subspaces
+
+cos2 (ω1, ω2)
+
+cos2 (ω1, ω2) ω1 − ω2 2
+
+ω1 − ω2 2
+
+cResNet20 (CIFAR10)
+
+ResNet50 (ImageNet)
+
+1
+
+1
+
+50
+
+200
+
+Line (β = 1) Line (β = 0)
+
+0
+
+0
+
+100
+
+Epoch
+
+0
+
+0
+
+100
+
+Epoch
+
+0
+
+0
+
+200
+
+Epoch
+
+0
+
+0
+
+200
+
+Epoch
+
+Figure 3. L2 distance and squared cosine similarity between endpoints ω1, ω2 when training a line. β denotes the strength (scale factor) of the regularization term β cos2(ωj, ωk) = βhω1, ω2i2/wkωjk22kωkk22  which is added to the loss to encourage large, diverse subspaces.
+
+0.925
+
+cResNet20 (CIFAR10)
+
+ResNet18 (TinyImageNet) 0.65
+
+0.695 0.690
+
+ResNet50 (TinyImageNet)
+
+Accuracy
+
+0.920
+
+0.64
+
+0.685
+
+0.680
+
+0.915
+
+0.63 0.675
+
+0.0 0.2 0.4 0.6 0.8 1.0 0.0 0.2 0.4 0.6 0.8 1.0 0.0 0.2 0.4 0.6 0.8 1.0
+
+α
+
+α
+
+α
+
+Standard Training
+
+Line (Layerwise)
+
+Curve
+
+Line
+
+Figure 4. Visualizing model accuracy along one-dimensional subspaces. The accuracy of the model at point α ∈ [0, 1] along the subspace matches or exceeds standard training for a large section of the subspace (especially towards the subspace center).
+
+Accuracy
+
+0.935 0.930 0.925 0.920 0.915
+0.0
+
+cResNet20 (CIFAR10)
+
+ResNet18 (TinyImageNet)
+
+ResNet50 (TinyImageNet)
+
+0.70 0.66
+0.69
+0.64 0.68
+
+0.2 0.4 0.6
+α
+Standard Training
+
+0.8 1.0 0.0 0.2 Standard Ensemble of Two
+
+0.4 0.6 0.8 1.0
+α
+Line (Layerwise, Ensemble)
+
+0.0 0.2 0.4 0.6 0.8 1.0
+α
+
+Curve (Ensemble)
+
+Line (Ensemble)
+
+Figure 5. Accuracy when two models from the subspace are ensembled—at point α we plot the accuracy when models P(α) and P(1 − α) are ensembled. Performance approaches the ensemble of two independently trained networks, denoted “Standard Ensemble of Two”.
+
+ResNet18 (TinyImageNet β = 0)
+
+ResNet18 (TinyImageNet β = 1)
+
+ResNet18 (TinyImageNet β = 2)
+
+0.66
+
+0.66
+
+0.66
+
+Accuracy
+
+0.64
+
+0.64
+
+0.64
+
+0.0 0.2 0.4 0.6 0.8 1.0 0.0 0.2 0.4 0.6 0.8 1.0 0.0 0.2 0.4 0.6 0.8 1.0
+
+α
+
+α
+
+α
+
+Standard Training
+
+Line (Layerwise, Ensemble)
+
+Curve (Ensemble)
+
+Line (Ensemble)
+
+Line
+
+Standard Ensemble of Two
+
+Line (Layerwise)
+
+Curve
+
+Figure 6. Visualizing both model and ensemble accuracy along one-dimensional subspaces for different regularization strengths β. Regularization (Equation 5) tends to produce a subspace with more accurate and diverse models. Note that the visualization format of Figure 4 and Figure 5 are combined, a technique we will use throughout the remainder of this work. For each subspace type, (1) accuracy of a model with weights P(α) is shown with a dashed line and (2) accuracy when the output of models P(α) and P(1 − α) are ensembled is shown with a solid line and denoted (Ensemble).
+
+Learning Neural Network Subspaces
+
+4.1. Subspace Dynamics
+We begin with the following question: when training a line, how does the shape vary throughout training and how is this affected by β, the regularization coefﬁcient? Figure 3 illustrates L2 distance kω1 − ω2k2 and cosine similarity squared cos2(ω1, ω2) throughout training. Recall that ω1 and ω2 denote the endpoints of the line which are initialized independently. Since a line is constructed using only two endpoints, the regularization term (Equation 5) simpliﬁes to β cos2(ω1, ω2).
+When β = 1 the endpoints of a line become nearly orthogonal towards the end of training (in CIFAR10 they remain orthogonal throughout). Although L2 distance isn’t explicitly encouraged, it remains signiﬁcant. Notably, for CIFAR10 the endpoints remain approximately as far apart throughout training as randomly initialized weights. For ResNet50 on ImageNet the L2 distance between endpoints remains substantial (≈ 127), compared to ≈ 173 for independently trained solutions. Note that in both cases weight decay pushes trained weights towards the origin. When β = 0 there is no term encouraging separation between ω1 and ω2. However, they still remain a distance apart (13 for CIFAR10 and 40 for ImageNet). Further analysis is conducted in Appendix E, revealing that initializing ω1 and ω2 with the same shared weights has surprisingly little effect on the ﬁnal cosine and L2 distance.
+4.2. Accuracy Along Lines and Curves
+Next we investigate how accuracy varies along a onedimensional subspace. For brevity let P(α) denote the weights at position α along the subspace, for α ∈ [0, 1]. We are interested in two quantities: (1) the accuracy of the neural network f (·, P(α)) and (2) the accuracy when the outputs f (·, P(α)) and f (·, P(1 − α)) are ensembled. Quantity (1) will determine if the subspace contains accurate solutions. Quantity (2) will demonstrate if the subspace contains diverse solutions which produce high-accuracy ensembles.
+Quantities (1) and (2) are illustrated respectively by Figure 4 and Figure 5 In both Figure 4 and Figure 5 the regularization strength β remains at the default value of 1, while Figure 6 provides analogous results for β ∈ {0, 1, 2}. Note that Layerwise indicates that the layerwise training variant is employed (as described in section 3).
+The baselines included are standard training and a standard ensemble of two independently trained networks (requiring twice as many training iterations). In Appendix F we experiment with additional baselines. There are many interesting takeaways from Figure 4, Figure 5, and Figure 6:
+1. Not only does our method ﬁnd a subspace of accu-
+
+rate solutions, but for β > 0 accuracy can improve over standard training. We believe this is because standard training solutions lie towards the periphery of a minimum (Izmailov et al., 2018) whereas our method traverses the the minimum. Solutions at the center tend to be less sharp than at the periphery, which is associated with better generalization (Dziugaite & Roy, 2018). These effects may be compounded by the regularization term, which leads the subspaces towards wider minima.
+2. The ensemble of two models towards the endpoints of the subspace approaches, matches, or exceeds the ensemble accuracy of two independently trained models. This is notable as the subspaces are found in only one training run.
+3. Subspaces found through the layerwise training variant have more accurate midpoints (α = 0.5) but less accurate ensembles.
+4.3. Performance of a Simplex Midpoint
+The previous section provided empirical evidence that the midpoint of a line (simplex with two endpoints) can outperform standard training in the same number of epochs, and hypothesized two explanations for this observation. In this section we demonstrate that this trend is ampliﬁed when considering a simplex with m endpoints for m > 2.
+Accuracy. The accuracy of a single model at center of a simplex is presented by Figure 7. The boost over standard training is signiﬁcant, especially for TinyImageNet and higher dimensional simplexes. Recall that when training a simplex with m endpoints we initialize m separate networks and, for each batch, randomly sample a network in their convex hull. We then use the gradient to move this m − 1 dimensional subspace through the objective landscape. It is not obvious that this method should converge to a high-accuracy subspace or contain high-accuracy solutions.
+We compare a simplex with m endpoints with SWA (Izmailov et al., 2018) when m checkpoints are saved and averaged, to maintain parity in the number of stored model parameters. For layerwise training our method outperforms or matches SWA in every case. We speculate that this may be true either because our midpoint lies closer to the minimum center than the stochastic average, or because our method ﬁnds a wider minimum then SWA. We are training a whole subspace, whereas SWA constructs a subspace after training. SWA can only travel to the widest point of the current minimum, while our method searches for a large ﬂat minimum.
+Robustness to Label Noise; Calibration. Figure 8 demonstrates that taking the midpoint of a simplex boosts robustness to label noise and improves expected calibration error
+
+Learning Neural Network Subspaces
+
+Accuracy
+
+0.925
+
+cResNet20 (CIFAR10)
+
+ResNet18 (TinyImageNet) 0.66
+
+0.920
+
+0.64
+
+0.915
+
+0.62
+
+2
+
+3
+
+4
+
+5
+
+6
+
+Number of Endpoints / Models
+
+2
+
+4
+
+6
+
+8
+
+Number of Endpoints / Models
+
+Standard Training
+
+Simplex (Layerwise, Midpoint)
+
+Simplex (Midpoint)
+
+ResNet50 (TinyImageNet)
+
+0.69
+
+0.68
+
+0.67
+
+0.66
+
+2
+
+3
+
+4
+
+5
+
+6
+
+Number of Endpoints / Models
+
+SWA (High Const. LR)
+
+SWA (Cyclic LR)
+
+Figure 7. The model at the center of a learned simplex with m endpoints improves accuracy over standard training and SWA (Izmailov et al., 2018). A solution towards the center of a minimum tends to be less sharp than at the periphery, which is associated with better generalization (Dziugaite & Roy, 2018).
+
+Expected Callibration Error (ECE)
+
+Accuracy
+
+cResNet20 (CIFAR10, Label Noise 0.2) 0.90
+
+0.88
+
+0.86
+
+0.84
+
+0.82
+
+2
+
+3
+
+4
+
+5
+
+6
+
+Number of Endpoints / Models
+
+cResNet20 (CIFAR10) 0.05
+
+0.04
+
+0.03
+
+0.02
+
+2
+
+3
+
+4
+
+5
+
+6
+
+Number of Endpoints / Models
+
+Standard Training Standard Training (Opt. Early Stop) Dropout (best) Label Smoothing (best) Simplex (Layerwise, Midpoint) Simplex (Midpoint) SWA (High Const. LR) Simplex + LS (Layerwise, Midpoint)
+
+Figure 8. Using the model at the simplex center provides robustness to label noise and improved calibration. For Dropout and Label Smoothing we run hyperparameters {0.05, 0.1, 0.2, 0.4, 0.8} and report the best. For Simplex + LS we add label smoothing.
+
+(ECE) for cResNet20 on CIFAR10. Note that CIFAR10 with label noise c indicates that before training, a fraction c of training data are assigned random labels (which are ﬁxed for all methods). In addition to a SWA baseline we include optimal early stopping (the best training accuracy for standard training, before over-ﬁtting), label smoothing (Mu¨ller et al., 2019), and dropout (Srivastava et al., 2014). Label smoothing and dropout have a hyperparameter for which we try values {0.05, 0.1, 0.2, 0.4, 0.8} and report the best result for each plot. Expected calibration error (ECE) (Guo et al., 2017) measures if prediction conﬁdence and accuracy are aligned. A low ECE is preferred, since models with a high ECE are overconﬁdent when incorrect or underconﬁdent when correct.
+4.4. ImageNet Experiments
+In this section we experiment with a larger dataset— ImageNet (Deng et al., 2009)—for which networks are less overparameterized. In Figure 9 we visualize accuracy over a line, showing both (1) the accuracy of the neural network f (·, P(α)) and (2) the accuracy when the outputs of the networks f (·, P(α)) and f (·, P(1 − α)) are ensembled. In addition to testing the network on the clean dataset (left column), we show accuracy under the snow and contrast dataset corruptions found in ImageNet-C (Hendrycks & Dietterich, 2019). Finally, in the right column we show the
+
+relative difference in accuracy between two models on the line. There are two interesting ﬁndings from this experiment: (1) it is possible to ﬁnd a subspace of models, even on ImageNet, that matches or exceeds the accuracy of standard training. (2) Models along the line can exhibit varied robustness when faced with corrupted data.
+Finding (2) can be examined through the lens of underspeciﬁcation in deep learning. D’Amour et al. (2020) observe that independently trained models which perform identically on the clean test set behave very differently on downstream tasks. Here we observe this behavior for models in the same linearly connected region found in a single training run. This is a promising observation in the case that a validation set exists for downstream domains. In Appendix G we experiment with all corruptions types in ImageNet-C and demonstrate that the models we ﬁnd tend to exhibit more robustness than standard training.
+The WideResNet50 and ResNet50 in Figure 9 are respectively trained for 100 and 200 epochs (for both our method and the baseline). The smaller ResNet50 is trained for longer as, when trained for 100 epochs, the accuracy of the ResNet50 subspace falls slightly below that of standard training. However, when trained for even longer, the accuracy exceeds that of standard training. This trend is illustrated by Figure 10 which shows how accuracy and
+
+Learning Neural Network Subspaces
+
+Accuracy
+
+WideResNet50 (ImageNet) 0.575
+
+0.79 0.550
+0.78
+0.525 0.77
+
+0.500
+
+0.76
+
+0.0
+
+0.5
+
+1.0
+
+0.0
+
+ResNet50 (ImageNet)
+
+0.79
+
+0.66
+
+0.78
+
+0.64
+
+(snow, 1) 0.5
+(contrast, 1)
+
+0.375
+
+0.350
+
+0.325
+
+0.300
+
+1.0
+
+0.0
+
+0.45
+
+(snow, 3) 0.5
+(contrast, 3)
+
+0.77 0.76
+0.0
+
+0.62
+
+0.40
+
+0.60
+
+0.5
+
+1.0
+
+0.0
+
+0.5
+
+1.0
+
+0.0
+
+0.5
+
+α
+
+α
+
+α
+
+Standard Training
+
+Line (Layerwise, Ensemble)
+
+Standard Ensemble of Two
+
+Line (Layerwise)
+
+Relative Diﬀerence
+
+(snow, 5)
+
+0.200
+
+0.00
+
+0.175 0.150
+
+1.0
+
+0.0
+
+0.05
+
+0.5 (contrast, 5)
+
+−0.02
+
+−0.04
+
+1.0
+
+0
+
+0.10
+
+0.04
+
+0.05
+
+(snow)
+
+2
+
+4
+
+(contrast)
+
+Relative Diﬀerence
+
+0.03
+
+1.0
+
+0.0
+
+0.5
+
+α
+
+Line (Ensemble)
+
+Line
+
+0.00
+
+1.0
+
+0
+
+2
+
+4
+
+Corruption Severity
+
+Line (α = 0.8 → α = 0.2)
+
+Line (α = 0.7 → α = 0.3)
+
+Accuracy
+
+Figure 9. Accuracy along one-dimensional subspaces (with the same visualization format as Figure 6) tested on (left column) ImageNet (Deng et al., 2009) and (middle columns) ImageNet-C (Hendrycks & Dietterich, 2019) for corruption types snow and contrast with severity levels 1, 3, and 5. Relative difference in accuracy for two models on a line is shown in the rightmost column—models on the line with the similar performance on the clean test set exhibit varied performance on corrupted images (D’Amour et al., 2020).
+
+Accuracy
+
+WideResNet50 (ImageNet) 0.80 0.79
+
+WideResNet50 (ImageNet) 0.08 0.06
+
+ECE
+
+0.78 100
+
+0.04
+
+200
+
+300
+
+100
+
+Train Epochs
+
+Line (Ensemble α = 0.2, 0.8)
+
+200
+
+300
+
+Train Epochs
+
+Line (Midpoint)
+
+Accuracy
+
+ResNet50 (ImageNet)
+
+0.78 0.77
+
+100
+
+200
+
+300
+
+Train Epochs
+
+Standard Training
+
+ECE
+
+ResNet50 (ImageNet)
+
+0.06
+
+0.04
+
+0.02
+
+100
+
+200
+
+300
+
+Train Epochs
+
+Standard Ensemble of Two
+
+Figure 10. Accuracy and Expected Calibration Error (ECE) for the midpoint of a line trained for {100, 200, 300} epochs on ImageNet. The models at the midpoint of a line are more callibrated and, when all models are trained for longer, more accurate.
+
+Accuracy
+
+cResNet20 (CIFAR10) 0.93
+
+ResNet18 (TinyImageNet)
+
+ResNet50 (TinyImageNet)
+
+0.70
+
+0.650
+
+0.92
+
+0.68
+
+0.625
+
+Standard Training SWA-Gaussian Snapshot Ensemble SWA (Cyclic LR, Ensemble) Simplex (Random Ensemble) Line (Ensemble, α = 0.2, 0.8)
+
+Figure 11. Ensembling 6 models drawn randomly from a 6 endpoint simplex compared with a 6 model Snapshot Ensemble (Huang et al., 2017), an ensemble of 6 SWA checkpoints (Izmailov et al., 2018), and 6 samples from a gaussian ﬁt to the SWA checkpoints.
+
+expected calibration error (ECE) (Guo et al., 2017) change as a function of training epochs. The subspace midpoint is consistently more calibrated than models found through standard training.
+Finally, Figure 12 (left) demonstrates that the midpoint of a line outperforms standard training and optimal early stopping for various levels of label noise.
+4.5. Randomly Ensembling from the Subspace
+In Figure 11 we experiment with drawing multiple models from the simplex and ensembling their predictions. We consider a simplex with 6 endpoints and draw 6 models
+
+randomly (with the same sampling strategy employed during training) and refer to the resulting ensemble as Simplex (Random Ensemble). We also experiment with a 6 model Snapshot Ensemble (Huang et al., 2017), ensembling 6 SWA checkpoints using a cyclic learning rate (this differs slightly, but resembles FGE (Garipov et al., 2018)), and SWA-Gaussian (Maddox et al., 2019). Additional details for the baselines are provided in subsection D.4. Surprisingly, ensembling 2 models from opposing ends of a linear subspace is still more accurate. Finally, in Appendix C we investigate the possibility of efﬁciently ensembling from a subspace without the cost.
+
+Learning Neural Network Subspaces
+
+Accuracy Accuracy
+
+WideResNet50 (ImageNet)
+0.7 0.6 0.5
+0.0 0.2 0.4 0.6 0.8
+Label Noise Line (Midpoint) Standard Training (Opt. Stop) Standard Training
+
+0.80 WideResNet50 (ImageNet)
+
+0.79
+
+0.78
+
+0.0
+
+0.5
+
+1.0
+
+α
+
+Standard Training (100 Epochs)
+
+Standard Ens. of Two (100 Epochs)
+
+Line (Ensemble, 300 Epochs)
+
+Line (300 Epochs)
+
+Figure 12. (left) Taking the midpoint of a line provides robustness to label noise on ImageNet compared with standard training and optimal early stopping. (right) It is possible for linearly connected models to individually attain an accuracy that is at or below standard training, while their ensemble performance is above that of standard ensembles.
+
+4.6. Is Nonlinearity Required?
+Garipov et al. (2018); Draxler et al. (2018) demonstrate that there exists a nonlinear path of high accuracy between two independently trained models. Independently trained models are functionally diverse, resulting in high-performing ensembles. However, the linear path between independently trained models encounters a high loss barrier (Frankle et al., 2020; Fort et al., 2020). In this section we aim to provide empirical evidence which answers the following question: is this energy barrier inevitable? Is it possible for linearly connected models to individually attain an accuracy that is at or below that of standard training, while their ensemble performance is at or above that of standard ensembles? In Figure 12 (right) we demonstrate that, for WideResNet50 on ImageNet trained for 100 epochs, this high loss barrier is not necessary. In this one case we are concerned with existence and not training efﬁciency, so we ﬁnd the requisite linearly connected models by training a line for 300 epochs and interpolating slightly off the line (considering α = −0.05, 1.05).
+
+5. Conclusion
+We have identiﬁed and traversed large, diverse regions of the objective landscape. Instead of constructing a subspace post training, we have trained lines, curves, and simplexes of high-accuracy neural networks from scratch. However, our understanding of neural network optimization has evolved signiﬁcantly in recent years and we expect this trend to continue. We anticipate that future work will continue to leverage the geometry of the objective landscape for more accurate and reliable neural networks.
+
+Acknowledgements
+For insightful discussions, helpful suggestions, and support we thank Rosanne Liu, Jonathan Frankle, Joshua Susskind,
+
+Gabriel Ilharco Magalha˜es, Sarah Pratt, Ludwig Schmidt, ML Collective, Vivek Ramanujan, Jason Yosinski, Russ Webb, Ivan Evtimov, and Hessam Bagherinezhad. MW acknowledges Apple for providing internship support.
+References
+Ba, J. L., Kiros, J. R., and Hinton, G. E. Layer normalization. arXiv preprint arXiv:1607.06450, 2016.
+Blundell, C., Cornebise, J., Kavukcuoglu, K., and Wierstra, D. Weight uncertainty in neural networks. arXiv preprint arXiv:1505.05424, 2015.
+Chaudhari, P., Choromanska, A., Soatto, S., LeCun, Y., Baldassi, C., Borgs, C., Chayes, J., Sagun, L., and Zecchina, R. Entropy-sgd: Biasing gradient descent into wide valleys. Journal of Statistical Mechanics: Theory and Experiment, 2019(12):124018, 2019.
+Chen, T., Li, M., Li, Y., Lin, M., Wang, N., Wang, M., Xiao, T., Xu, B., Zhang, C., and Zhang, Z. Mxnet: A ﬂexible and efﬁcient machine learning library for heterogeneous distributed systems. CoRR, abs/1512.01274, 2015. URL http://arxiv.org/abs/1512.01274.
+D’Amour, A., Heller, K., Moldovan, D., Adlam, B., Alipanahi, B., Beutel, A., Chen, C., Deaton, J., Eisenstein, J., Hoffman, M. D., et al. Underspeciﬁcation presents challenges for credibility in modern machine learning. arXiv preprint arXiv:2011.03395, 2020.
+Dauphin, Y. N., Pascanu, R., Gulcehre, C., Cho, K., Ganguli, S., and Bengio, Y. Identifying and attacking the saddle point problem in high-dimensional nonconvex optimization. In Ghahramani, Z., Welling, M., Cortes, C., Lawrence, N., and Weinberger, K. Q. (eds.), Advances in Neural Information Processing Systems, volume 27, pp. 2933–2941. Curran Associates, Inc., 2014. URL https://proceedings. neurips.cc/paper/2014/file/ 17e23e50bedc63b4095e3d8204ce063b-Paper. pdf.
+Deng, J., Dong, W., Socher, R., Li, L.-J., Li, K., and Fei-Fei, L. Imagenet: A large-scale hierarchical image database. In 2009 IEEE conference on computer vision and pattern recognition, pp. 248–255. Ieee, 2009.
+Draxler, F., Veschgini, K., Salmhofer, M., and Hamprecht, F. A. Essentially no barriers in neural network energy landscape. arXiv preprint arXiv:1803.00885, 2018.
+Dziugaite, G. K. and Roy, D. Entropy-SGD optimizes the prior of a PAC-Bayes bound: Generalization properties of entropy-SGD and data-dependent priors. In Dy, J.
+
+Learning Neural Network Subspaces
+
+and Krause, A. (eds.), Proceedings of the 35th International Conference on Machine Learning, volume 80 of Proceedings of Machine Learning Research, pp. 1377– 1386, Stockholmsma¨ssan, Stockholm Sweden, 10–15 Jul 2018. PMLR. URL http://proceedings.mlr. press/v80/dziugaite18a.html.
+Evci, U., Pedregosa, F., Gomez, A., and Elsen, E. The difﬁculty of training sparse neural networks. arXiv preprint arXiv:1906.10732, 2019.
+Foret, P., Kleiner, A., Mobahi, H., and Neyshabur, B. Sharpness-aware minimization for efﬁciently improving generalization. arXiv preprint arXiv:2010.01412, 2020.
+Fort, S. and Jastrzebski, S. Large scale structure of neural network loss landscapes. In Advances in Neural Information Processing Systems, pp. 6709–6717, 2019.
+Fort, S., Hu, H., and Lakshminarayanan, B. Deep ensembles: A loss landscape perspective. arXiv preprint arXiv:1912.02757, 2019.
+Fort, S., Dziugaite, G. K., Paul, M., Kharaghani, S., Roy, D. M., and Ganguli, S. Deep learning versus kernel learning: an empirical study of loss landscape geometry and the time evolution of the neural tangent kernel. arXiv preprint arXiv:2010.15110, 2020.
+Frankle, J. Revisiting” qualitatively characterizing neural network optimization problems”. arXiv preprint arXiv:2012.06898, 2020.
+Frankle, J., Dziugaite, G. K., Roy, D., and Carbin, M. Linear mode connectivity and the lottery ticket hypothesis. In International Conference on Machine Learning, pp. 3259– 3269. PMLR, 2020.
+Gal, Y. and Ghahramani, Z. Dropout as a bayesian approximation: Representing model uncertainty in deep learning. In international conference on machine learning, pp. 1050–1059, 2016.
+Garipov, T., Izmailov, P., Podoprikhin, D., Vetrov, D. P., and Wilson, A. G. Loss surfaces, mode connectivity, and fast ensembling of dnns. In Advances in Neural Information Processing Systems, pp. 8789–8798, 2018.
+Guo, C., Pleiss, G., Sun, Y., and Weinberger, K. Q. On calibration of modern neural networks. arXiv preprint arXiv:1706.04599, 2017.
+He, K., Zhang, X., Ren, S., and Sun, J. Delving deep into rectiﬁers: Surpassing human-level performance on imagenet classiﬁcation. In Proceedings of the IEEE international conference on computer vision, pp. 1026–1034, 2015.
+
+He, K., Zhang, X., Ren, S., and Sun, J. Deep residual learning for image recognition. In Proceedings of the IEEE conference on computer vision and pattern recognition, pp. 770–778, 2016.
+Hendrycks, D. and Dietterich, T. Benchmarking neural network robustness to common corruptions and perturbations. arXiv preprint arXiv:1903.12261, 2019.
+Huang, G., Li, Y., Pleiss, G., Liu, Z., Hopcroft, J. E., and Weinberger, K. Q. Snapshot ensembles: Train 1, get m for free. arXiv preprint arXiv:1704.00109, 2017.
+Ioffe, S. and Szegedy, C. Batch normalization: Accelerating deep network training by reducing internal covariate shift. In International conference on machine learning, pp. 448– 456. PMLR, 2015.
+Izmailov, P., Podoprikhin, D., Garipov, T., Vetrov, D., and Wilson, A. G. Averaging weights leads to wider optima and better generalization. arXiv preprint arXiv:1803.05407, 2018.
+Izmailov, P., Maddox, W. J., Kirichenko, P., Garipov, T., Vetrov, D., and Wilson, A. G. Subspace inference for bayesian deep learning. In Uncertainty in Artiﬁcial Intelligence, pp. 1169–1179. PMLR, 2020.
+Krizhevsky, A., Hinton, G., et al. Learning multiple layers of features from tiny images. 2009.
+Lakshminarayanan, B., Pritzel, A., and Blundell, C. Simple and scalable predictive uncertainty estimation using deep ensembles. In Advances in neural information processing systems, pp. 6402–6413, 2017.
+Le, Y. and Yang, X. Tiny imagenet visual recognition challenge. CS 231N, 7:7, 2015.
+LeCun, Y. The mnist database of handwritten digits. http://yann. lecun. com/exdb/mnist/, 1998.
+Li, C., Farkhoor, H., Liu, R., and Yosinski, J. Measuring the intrinsic dimension of objective landscapes. arXiv preprint arXiv:1804.08838, 2018a.
+Li, H., Xu, Z., Taylor, G., Studer, C., and Goldstein, T. Visualizing the loss landscape of neural nets. In Advances in neural information processing systems, pp. 6389–6399, 2018b.
+Loshchilov, I. and Hutter, F. Sgdr: Stochastic gradient descent with warm restarts. arXiv preprint arXiv:1608.03983, 2016.
+Maddox, W. J., Izmailov, P., Garipov, T., Vetrov, D. P., and Wilson, A. G. A simple baseline for bayesian uncertainty in deep learning. Advances in Neural Information Processing Systems, 32:13153–13164, 2019.
+
+Learning Neural Network Subspaces
+
+Mu¨ller, R., Kornblith, S., and Hinton, G. When does label smoothing help? arXiv preprint arXiv:1906.02629, 2019.
+Oswald, J. V., Kobayashi, S., Sacramento, J., Meulemans, A., Henning, C., and Grewe, B. F. Neural networks with late-phase weights. In International Conference on Learning Representations, 2021. URL https:// openreview.net/forum?id=C0qJUx5dxFb.
+Paszke, A., Gross, S., Massa, F., Lerer, A., Bradbury, J., Chanan, G., Killeen, T., Lin, Z., Gimelshein, N., Antiga, L., Desmaison, A., Kopf, A., Yang, E., DeVito, Z., Raison, M., Tejani, A., Chilamkurthy, S., Steiner, B., Fang, L., Bai, J., and Chintala, S. Pytorch: An imperative style, high-performance deep learning library. In Wallach, H., Larochelle, H., Beygelzimer, A., d'Alche´-Buc, F., Fox, E., and Garnett, R. (eds.), Advances in Neural Information Processing Systems 32, pp. 8024–8035. Curran Associates, Inc., 2019.
+Srivastava, N., Hinton, G., Krizhevsky, A., Sutskever, I., and Salakhutdinov, R. Dropout: a simple way to prevent neural networks from overﬁtting. The journal of machine learning research, 15(1):1929–1958, 2014.
+Tanaka, H., Kunin, D., Yamins, D. L., and Ganguli, S. Pruning neural networks without any data by iteratively conserving synaptic ﬂow. arXiv preprint arXiv:2006.05467, 2020.
+Taori, R., Dave, A., Shankar, V., Carlini, N., Recht, B., and Schmidt, L. Measuring robustness to natural distribution shifts in image classiﬁcation. Advances in Neural Information Processing Systems, 33, 2020.
+Welling, M. and Teh, Y. W. Bayesian learning via stochastic gradient langevin dynamics. In Proceedings of the 28th international conference on machine learning (ICML-11), pp. 681–688, 2011.
+Wen, Y., Tran, D., and Ba, J. Batchensemble: an alternative approach to efﬁcient ensemble and lifelong learning. arXiv preprint arXiv:2002.06715, 2020.
+Wu, Y. and He, K. Group normalization. In Proceedings of the European conference on computer vision (ECCV), pp. 3–19, 2018.
+Xie, S., Kirillov, A., Girshick, R., and He, K. Exploring randomly wired neural networks for image recognition. In Proceedings of the IEEE/CVF International Conference on Computer Vision, pp. 1284–1293, 2019.
+Zagoruyko, S. and Komodakis, N. Wide residual networks. arXiv preprint arXiv:1605.07146, 2016.
+Zhang, R., Li, C., Zhang, J., Chen, C., and Wilson, A. G. Cyclical stochastic gradient mcmc for bayesian deep
+
+learning. In International Conference on Learning Representations, 2020. URL https://openreview. net/forum?id=rkeS1RVtPS.
+

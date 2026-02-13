@@ -1,0 +1,789 @@
+arXiv:2505.23014v1 [cs.LG] 29 May 2025
+Hyperbolic-PDE GNN: Spectral Graph Neural Networks in the Perspective of
+A System of Hyperbolic Partial Differential Equations
+Juwei Yue 1 2 Haikuo Li 1 2 Jiawei Sheng 1 2 Xiaodong Li 1 2 Taoyu Su 1 2 Tingwen Liu 1 2 Li Guo 1 2
+Abstract
+Graph neural networks (GNNs) leverage message passing mechanisms to learn the topological features of graph data. Traditional GNNs learns node features in a spatial domain unrelated to the topology, which can hardly ensure topological features. In this paper, we formulates message passing as a system of hyperbolic partial differential equations (hyperbolic PDEs), constituting a dynamical system that explicitly maps node representations into a particular solution space. This solution space is spanned by a set of eigenvectors describing the topological structure of graphs. Within this system, for any moment in time, a node features can be decomposed into a superposition of the basis of eigenvectors. This not only enhances the interpretability of message passing but also enables the explicit extraction of fundamental characteristics about the topological structure. Furthermore, by solving this system of hyperbolic partial differential equations, we establish a connection with spectral graph neural networks (spectral GNNs), serving as a message passing enhancement paradigm for spectral GNNs. We further introduce polynomials to approximate arbitrary filter functions. Extensive experiments demonstrate that the paradigm of hyperbolic PDEs not only exhibits strong flexibility but also significantly enhances the performance of various spectral GNNs across diverse graph tasks. Our code is released at https://github.com/YueAWu/ Hyperbolic-GNN.
+1Institute of Information Engineering, Chinese Academy of Sciences, Beijing, China 2School of Cyber Security, University of Chinese Academy of Sciences, Beijing, China. Correspondence to: Jiawei Sheng <shengjiawei@iie.ac.cn>.
+Proceedings of the 42 nd International Conference on Machine Learning, Vancouver, Canada. PMLR 267, 2025. Copyright 2025 by the author(s).
+Table 1. Comparison between traditional MP-based (Line 1) and hyperbolic PDE-based (Line 2) paradigm, where e is the unit vector, λ and u are the eigenvalue and eigenvector of Laplacian.
+Paradigm Bases of Solution Space
+(1) h(l+1)
+i = Ui h(l)
+i , Aj Mij h(l)
+i , h(l)
+j , eij e1, e2, . . . , ed
+(2) ∂2X
+∂t2 = a2LbX → dwl
+dt = In 0
+0 a2Lb wl eλ′
+1 t u′
+1, eλ′
+2 t u′
+2, . . . , eλ′
+2n t u′
+2n
+1. Introduction
+Currently, graph neural networks (GNNs) (Wu et al., 2021) have experienced rapid development due to the widespread usage of graph data. They have not only achieved significant advancements in artificial intelligence fields such as recommendation systems (Wu et al., 2023; Liao et al., 2025), social networks (Lin et al., 2021; Zhu et al., 2023), and anomaly detection (Ma et al., 2023; Gao et al., 2023), but have also promoted progress in various other domains such as particle physics (Shlomi et al., 2021) and drug discovery (Gaudelet et al., 2021).
+Mainstream methods are spectral GNNs represented by GCN (Kipf & Welling, 2017). The key idea of these methods is to utilize message passing (MP) (Gilmer et al., 2017) to explore the topological features of the graphs. Specifically, MP aggregates information from neighbors based on the topology of graphs. The essence of MP involves mapping node features into the spatial domain to the spectral domain through Fourier transformation, performing graph convolutions in the spectral domain, and then inversely transforming them back into the spatial domain. However, the issue lies in the fact that, even if node features learn the topology of the graph, they are still mapped back to a spatial domain unrelated to the topology. As shown in Table 1, traditional MP-based GNNs obtain node feature vectors that are actually situated in the Euclidean space with unit vector bases, which can hardly ensure topological feature therein, potentially learning redundant information. (In contrast, our hyperbolic PDE-based model derives node feature vectors with bases stemmed from Laplacian, incorporating the underlying topological information. Detailed later.)
+Current researches (Rusch et al., 2022; Chamberlain et al., 2021; Li et al., 2024) model MP using differential equa
+1
+
+
+Hyperbolic-PDE GNN
+tions (DEs), formulating MP as a dynamical system that captures the evolution of messages over time. It provides an interpretable way to embed node feature vectors into spaces with particular properties. We utilize the solution of DEs as the node embedding space, and propose a graph neural network named Hyperbolic-PDE GNN based on a system of hyperbolic partial differential equations (PDEs). We theoretically demonstrate that by modeling MP as the paradigm of the system of hyperbolic PDEs, the solution space (i.e., the space where node features reside) is spanned by a set of orthogonal bases describing topological features, with these bases fundamentally stemming from the eigenvectors of the Laplacian matrix. This proof of the solution space is derived by converting the system of hyperbolic PDEs into a system of first-order constant-coefficient homogeneous linear differential equations. Therefore, the node features obtained from this paradigm can be expanded into a linear combination of these eigenvector basis, where node features inherently contain the fundamental characteristics describing the topological structure, and messages are propagated along the directions of the eigenvectors. Benefiting from the property, our Hyperbolic-PDE GNN enjoys an advantage in generating better node features with topology of graphs.
+Lastly, we discover that solving this system of equations requires eigen decomposition, which incurs significant computational costs in practice. Besides, the original system of equations with vanilla Laplacian struggles to model complex nonlinear relationships, resulting in unsatisfactory model flexibility and robustness. Therefore, we further introduce polynomials to approximate the solution space. Some GNNs based on polynomial spectral filters (He et al., 2021; Wang & Zhang, 2022; He et al., 2022) have demonstrated the advantage of polynomials in approximating arbitrary filter functions. Leveraging this excellent property, we can ensure that the approximate solution space does not deviate too far from the original solution space and can describe more complex nonlinear relationships, greatly enhancing the flexibility of model. Furthermore, owing to the utilization of polynomials, we establish a connection between Hyperbolic-PDE GNNs and traditional spectral GNNs, which can further enhance the performance of these methods. In summary, the contributions can be summarized as follows:
+• We propose a novel Hyperbolic-PDE GNN based on a system of hyperbolic PDEs, and theoretically demonstrate that node features encapsulate fundamental characteristics of the topological structure.
+• By utilizing polynomials to the solution space, we establish connections between Hyperbolic-PDE GNNs and traditional GNNs to further improve performance.
+• Extensive experiments indicate that Hyperbolic-PDE GNN is effective and the paradigm of the system of
+hyperbolic partial differential equations can enhance the performance of traditional GNNs.
+2. Preliminaries
+2.1. Notations of Graph
+A simple undirected graph G = (V, E) consists of a set of nodes V and a set of edges E. A feature matrix X ∈ Rn×d and a adjacency matrix A represent respectively the features and structure of the graph, where n = |V| is the number of nodes and d is the dimension of features. In the graph signal processing (GSP) (Shuman et al., 2013), the symmetric normalized Laplacian is L = I − D−1/2AD−1/2, where D denotes the diagonal degree matrix of A. The Laplacian can be decomposed into L = UΛU⊤, where Λ = diag{λ1, λ2, . . . , λn} is a diagonal matrix of eigenvalues and U = [u1, u2, . . . , un] ∈ Rn×n is the matrix of corresponding eigenvectors.
+2.2. Spectral Graph Neural Networks
+Spectral Graph Neural Networks achieve Spectral Graph Convolution
+Z = Ug(Λ)U⊤X (1)
+by designing Graph Spectral Filter g(Λ), where g(Λ) = diag{g(λ1), . . . , g(λn)}. To fit an ideal filter, g(λ) is often approximated using a K-th order polynomial:
+g(λ) :=
+K
+X
+k=0
+θkλk, (2)
+where θk is the filter coefficient. Then, the Spectral Graph Convolution is given by:
+Z=
+K
+X
+k=0
+θkUΛkU⊤X =
+K
+X
+k=0
+θkLkX. (3)
+Table 2 presents some classic examples of spectral GNNs.
+2.3. Hyperbolic Partial Differential Equation
+A hyperbolic partial differential equation is often used in the real world to describe phenomena involving vibrations: if a point in space is disturbed by an initial value, this disturbance will propagate through space at a finite speed, affecting certain points in space. The propagation pattern of the disturbance is wave-like and propagates along the characteristic directions of the equation. The most common form of hyperbolic partial differential equations is given by:
+∂2u
+∂t2 = a2
+d
+X
+l=1
+∂2u ∂ω2
+l
+, (4)
+2
+
+
+Hyperbolic-PDE GNN
+Table 2. Spectral Graph Neural Networks.
+Methods (Polynomial Basis) Graph Spectral Filter Spectral Graph Convolution
+GCN (Monomial) g(λe) = (1 − λe), λe ∈ [0, 2) Z = (I − Le)XW SGC (Monomial) g(λe) = (1 − λe)K , λe ∈ [0, 2) Z = (I − Le)K XW APPNP (Monomial) g(λe) = PK
+k=0
+αk
+1−α (1 − λe)k, λe ∈ [0, 2) Z = α(I − (1 − α)(I − Le))−1φ(X)
+GPR-GNN (Monomial) g(λe) = PK
+k=0 θk(1 − λe)k, λe ∈ [0, 2) Z = PK
+k=0 θk(I − Le)kφ(X)
+ChebNet (Chebyshev Polynomial) g(λ) = PK−1
+k=0 θkTk(λ − 1), λ ∈ [0, 2] Z = PK−1
+k=0 Tk(L − I)XWk
+BernNet (Bernstein Polynomial) g(λ) = PK
+k=0 θkbk,K (λ/2), λ ∈ [0, 2] Z = PK
+k=0
+θk 2K
+K
+k (2I − L)K−kLkφ(X)
+JacobiNet (Jacobi Polynomial) g(λ) = PK
+k=0 θkP a,b
+k (1 − λ), λ ∈ [0, 2] Z:j = PK
+i=0 θkj P a,b
+k (I − L)φ(X:j)
+ChebNetII (Chebyshev Polynomial) g(λ) = PK
+k=0 ck(θ)Tk(λ − 1), λ ∈ [0, 2] Z = 2
+K +1
+PK k=0
+PK
+j=0 θj Tk(xj )Tk(L − I)φ(X)
+where u(ω1, ω2, . . . , ωd, t) represents the amplitude, t ∈ [0, ∞) denotes time, (ω1, ω2, . . . , ωd) stands for the coordinates in a d-dimensional space Ωd, and a signifies the propagation velocity.
+3. Methodology
+3.1. A System of Hyperbolic PDEs on Graph
+Considering the right-hand side of Equation (4), it is essentially expressed by a Laplacian operator ∆ = ∇ · ∇, which can then be written in the form of the divergence of the gradient of u:
+∂2u
+∂t2 = a2∇ · ∇u, (5)
+where ∇ and ∇· denote the operator of gradient and divergence, respectively. Here, the gradient and divergence are defined on a manifold. In graphs, nodes are a set of discrete points, thus we first discretize the amplitude u on the manifold into features X(t) in the spatial domain, where each element xil = xil(t) denotes the feature of each node vi on each dimensions l = 1, 2, . . . , d at time t. Next, we express the gradient on the graph as the feature difference on any dimension l between a node vi and its neighbors vj ∈ N (vi):
+∇xil := xil − xjl, (6)
+with the direction pointing from the neighbor towards the node, indicating the direction of information flow. Finally, we define the divergence on the graph as the total feature difference on any dimension between a node and all its neighbors:
+∇ · ∇xil =
+X
+vj ∈N (vi)
+(xil − xjl), (7)
+since divergence essentially involves a summation operation. Therefore, for a node vi on any dimension l, its hyperbolic partial differential equation is:
+∂2xil
+∂t2 = a2 X
+vj ∈N (vi)
+(xil − xjl). (8)
+When we combine the hyperbolic partial differential equations of all nodes on all dimensions, we obtain a system of hyperbolic partial differential equations. For simplicity, we can rewrite it in matrix form:
+∂2X
+∂t2 = a2LbX. (9)
+To distinguish from matrix L, hereafter we will denote the eigenvalues and eigenvectors of matrix Lb as λb and ub. Detailed derivation of the system of partial differential equations can be found in Appendix A.1.
+3.2. Derivation of Solution Space
+For the system of partial differential equations (9), we require the existence of solutions for this system to ensure the meaningful extraction of node features. Next, we will introduce the theorem regarding the existence of solutions for this system of partial differential equations.
+Theorem 3.1. For given system of differential equations (9) and a graph signal on any dimension l, there exists a solution space determined by a fundamental matrix of solution:
+Φ(t) = exp It 0
+0 a2 exp Lbt . (10)
+Therefore, a graph signal on any dimension l can be expressed as a linear combination of 2n linearly independent column vectors φ1(t), φ2(t), . . . , φ2n(t) from the fundamental matrix of solution Φ(t).
+By performing a variable substitution on Equation (9), we transform it into a system of first-order constant-coefficient homogeneous linear differential equations, and successfully complete the proof using relevant theory. See Appendix A.2 for proof.
+Remark 3.2. Theorem 3.1 ensures the existence of a solution when modeling message passing as a system of hyperbolic partial differential equation. Here, the solution corresponds to the node features. In other words, we can definitely obtain precise node representation through Equation (9).
+3
+
+
+Hyperbolic-PDE GNN
+Although we obtain a fundamental matrix of solution of Equation (9), in order to determine it, we need to calculate exp Lbt. However, exp Lbt is defined by a matrix series, it is generally difficult to obtain directly. Therefore, we introduce the following theorem to indirectly find the fundamental matrix of solution.
+Theorem 3.3. For given system of differential equations (9) and a graph signal on any dimension l, matrix
+C= I 0
+0 a2Lb (11)
+has eigenvalues λ′1 = λ′2 = · · · = λ′n = 1, λ′n+1 =
+a2λb1, λ′n+2 = a2λb2, . . . , λ′2n = a2λbn and corresponding 2n linearly independent eigenvectors
+u′
+1 = v1
+0 , u′
+2 = v2
+0 , . . . , u′
+n = vn
+0,
+u′
+n+1 = 0
+ub1
+, u′
+n+2 = 0
+ub2
+, . . . , u′
+2n = 0
+ubn
+,
+(12)
+where v1 = [1, 0, . . . , 0]⊤, v2 = [0, 1, . . . , 0]⊤, . . . , vn = [0, 0, . . . , 1]⊤ ∈ Rn are corresponding eigenvectors of I, then matrix
+Φ(t) = [eλ′
+1tu′
+1, eλ′
+2tu′
+2, . . . , eλ′
+2n t u′
+2n] (13)
+is a fundamental matrix of solution of Equation (9). Particularly, exp Ct = Φ(t)Φ−1(0).
+See Appendix A.3 for proof.
+Remark 3.4. Theorem 3.3 reveals that the solutions of Equation (9) lie within a particular space, which is spanned by a basis of eigenvectors describing the topological structure of the graph. In other words, in the modeling of a system of hyperbolic partial differential equations, the node features propagate messages along specific directions of eigenvectors. The theorem not only enhances the interpretability of the paradigm of a system of hyperbolic partial differential equation but also ensures that the node features imply the fundamental characteristics of the topological structure of the graph.
+3.3. Polynomial Approximation of Solution
+Note that Theorem 3.1 and Theorem 3.3 explicitly expound that for any graph signal in Equation (9), there exists a solution space determined by the topological structure of the graph and the propagation coefficient a. Among these, L is a constant matrix, thus the only parameter that can be uniquely determined by the model is the propagation coefficient a. If we solely rely on a to regulate message passing, it is not only hard to depict intricate nonlinear relationships but also inevitably leads to models with significantly reduced flexibility and robustness. Moreover, the fundamental
+matrix of solution of Equation (13) still requires the computation of the eigenvalues and eigenvectors of the Laplacian matrix. Its computational complexity is O(n3), which can significantly impact the efficiency of the model when dealing with large-scale graphs. Therefore, in this section, we introduce polynomial approximation theory (Stone, 1937) to address the aforementioned issue.
+Theorem 3.5. For a function f (x) that is continuous on [a, b], for any ε > 0, there always exists an algebraic polynomial P (x) such that
+∥f (x) − P (x)∥∞ < ε (14)
+holds uniformly on [a, b].
+The Bernstein polynomials have been demonstrated to hold uniformly on [0, 1] and have been practically applied in He et al. (2021). Orthogonal polynomials are crucial tools for function approximation, where any polynomial can be expressed as a linear combination of orthogonal polynomials. Therefore, we approximate the right-hand side of Equation (9) using a polynomial with respect to Laplacian:
+∂2X
+∂t2 = a2LbX ≈ P (L, t)X =
+K
+X
+k=0
+θtkpk(L)X, (15)
+where pk(·) is the k-th order orthogonal polynomial. Here, we replace the basic Laplacian matrix Lb with the more commonly used symmetric normalized Laplacian matrix L, which differs only in the nonzero elements.
+As introduced in Section Preliminaries, it is due to the achievements of pioneers in the field of graphs who introduced Laplacian polynomials into graph data that we have laid the foundation for establishing the connection between the system of hyperbolic partial differential equations and spectral GNNs. As shown in Table 2, Chebyshev polynomials serve as an example of utilizing orthogonal polynomials to approximate graph spectral filter. The distinction lies in the fact that in this paper, we employ polynomial to approximate the solution space of the system of hyperbolic partial differential equations. Then, based on Chebyshev polynomials, Equation (15) can be rewritten as:
+∂2X
+∂t2 =
+K −1
+X
+k=0
+Tk(L − I)XWk. (16)
+3.4. Hyperbolic-PDE GNNs
+For a given PDE, solving an analytical solution is often challenging, numerical methods are commonly employed to approximate its solution in mathematics. This technique is currently extensively utilized within the realm of graph studies, with the forward Euler method standing out as the predominant choice (Eliasof et al., 2021; Chamberlain
+4
+
+
+Hyperbolic-PDE GNN
+Table 3. Dataset statistics.
+Datesets #Nodes #Edges #Features #Classes
+Cora 2708 5278 1433 7 CiteSeer 3327 4552 3703 6 PubMed 19717 44324 500 3 Computers 13752 245861 767 10 Photo 7650 119081 745 8 CS 18333 81894 6805 15
+Actor 7600 30019 932 5 Texas 183 325 1703 5 Cornell 183 298 1703 5 DeezerEurope 28281 92752 128 2
+et al., 2021; Thorpe et al., 2022; Li et al., 2024; Yue et al., 2025). Specifically, the forward Euler method discretizes continuous time, dividing time into m equidistant segments with a time step τ : t = tm = mτ, m = 0, 1, . . .. The initial and terminal time are denoted as t0 and T = tT , and tm represents the m-th time moment in time.
+After discretizing time, Equation (15) can be reformulated into the following difference scheme:
+X ̇ (tm) − X ̇ (tm−1)
+τ = P (L, tm)X(tm), (17)
+where X ̇ (tm) and X ̇ (tm−1) are the first derivative w.r.t time:
+X ̇ (tm) = X(tm+1)−X(tm)
+τ , X ̇ (tm−1) = X(tm)−X(tm−1)
+τ. Furthermore, to solve Equation (17), we initialize the initial values of node features and its first derivatives as:
+X(t0) = φ0(X), X ̇ (t0) = X(t1)−X(t−1)
+2τ = φ1(X), (18)
+where φ0(·) and φ1(·) can be obtained from nonlinear layers. Substituting Equation (18) into Equation (17), we obtain the initial value at 1st time step as:
+X(t1) = τ X ̇ (t0) + I + τ 2
+2 P (L, t0) X(t0). (19)
+Given X(t0) and X(t1), we can derive the updating iterative formula for the node features at m-th time step:
+X(tm+1) = 2I + τ 2P (L, tm) X(tm)−X(tm−1). (20)
+4. Experiments
+4.1. Node Classification on Graphs
+We evaluate the performance of Hyperbolic-PDE GNN on the classic node classification task (Shchur et al., 2018). Following the practice of Wang & Zhang (2022), we conduct experiments on following real-world datasets: a) homophilic datasets include three citation networks, Cora, CiteSeer, and PubMed (Shchur et al., 2018), two Amazon co-purchase
+Table 4. The results of spectral GNNs: mean accuracy (%)± standard deviation on 60%/20%/20% data splits on 10 runs. Bold and underline indicate optimal and suboptimal results.
+Methods Cora CiteSeer PubMed Actor
+GCN 87.14±1.01 79.86±0.67 86.74±0.27 33.23±1.16 APPNP 88.14±0.73 80.47±0.74 88.12±0.31 39.66±0.55 ARMA 87.13±0.80 80.04±0.55 86.93±0.24 37.67±0.54 GPR-GNN 88.57±0.69 80.12±0.83 88.46±0.33 39.92±0.67 ChebNet 86.67±0.82 79.11±0.75 87.95±0.28 37.61±0.85 BernNet 88.95±0.95 80.09±0.97 88.48±0.41 41.79±1.01 JacobiConv 88.98±0.46 80.78±0.79 89.62±0.41 41.17±0.64 ChebNetII 88.71±0.93 80.53±0.79 88.93±0.29 41.75±1.07 EvenNet 87.77±0.67 78.51±0.63 90.87±0.34 40.36±0.65 OptBasisGNN 87.00±1.55 80.58±0.82 90.30±0.19 42.39±0.52 PyGNN 88.34±0.31 79.49±0.45 89.52±0.24 − SpecFormer 88.57±1.01 81.49±1.32 87.73±0.58 41.93±1.04 NFGNN 89.82±0.43 80.56±0.55 89.89±0.68 40.62±0.38 UniFilter 89.49±1.35 81.39±1.32 91.44±0.50 40.84±1.21
+Our methods 90.82±0.95 81.88±1.33 91.36±0.59 42.03±1.59
+network, Computers and Photo (Yang et al., 2016), and coauthor network CS (Shchur et al., 2018); b) heterophilic datasets include co-occurrence graph Actor, two WebKB datasets, Texas and Cornell (Pei et al., 2020), and social network DeezerEurope (Rozemberczki & Sarkar, 2020). Note that we do not utilize the Chameleon and Squirrel datasets (Rozemberczki et al., 2019) because they have serious issues of node duplication (Platonov et al., 2023). Table 3 shows the dataset statistics in our paper.
+We choose classical spectral GNNs as baselines: GCN (Kipf & Welling, 2017), SGC (Wu et al., 2019), APPNP (Klicpera et al., 2019a), ARMA (Bianchi et al., 2021), GPRGNN (Chien et al., 2021), ChebNet (Defferrard et al., 2016), BernNet (He et al., 2021), EvenNet (Lei et al., 2022), JacobiConv (Wang & Zhang, 2022), ChebNetII (He et al., 2022), OptBasisGNN (Guo & Wei, 2023), PyGNN (Geng et al., 2023), SpecFormer (Bo et al., 2023), NFGNN (Zheng et al., 2024), and UniFilter (Huang et al., 2024b).
+We split the datasets into training/validation/test sets in 60%/20%/20% and report the mean accuracy and standard deviation of the models over 10 random splits. For our method, we utilize cross-entropy as the loss function and optimize parameters using the Adam optimizer (Kingma & Ba, 2015). We conduct experiments on a NVIDIA Tesla V100 GPU with 16GB memory and Intel Xeon E5-2660 v4 CPUs. The experimental code is implemented based on PyTorch and PyTorch Geometric (Fey & Lenssen, 2019), and we employ wandb 1 for parameter search. See Appendix C for specific experimental settings.
+Table 4 illustrates the performance of Hyperbolic-PDE GNN on four prominent benchmarks. It can be observed that Hyperbolic-PDE GNN achieves optimal performance on Cora and CiteSeer, with a 1% improvement on Cora. Ad
+1https://github.com/wandb/wandb
+5
+
+
+Hyperbolic-PDE GNN
+Table 5. The results of base models and Hyperbolic-PDE GNN: mean accuracy (%)±standard deviation on 60%/20%/20% data splits on 10 runs. Bold indicates optimal results for all methods, and Bold indicates optimal results between Hyperbolic-PDE GNN and base model. ∗ indicates reproduced results.
+Methods Cora CiteSeer PubMed Computers Photo CS∗ Actor Texas Cornell DeezerEurope∗
+SGC 85.48±1.48 80.75±1.15 85.36±0.52 88.19±0.45∗ 93.60±0.90∗ 95.13±0.25 28.81±1.11 81.31±3.30 72.62±9.92 63.15±0.90 Hyperbolic-SGC 86.22±1.24 78.73±1.18 88.25±0.83 87.96±1.12 94.09±0.58 96.46±0.24 41.49±1.37 93.61±2.61 91.28±2.55 69.02±0.72 Improv.(∆) ↑ 0.74 ↓ 2.02 ↑ 2.89 ↓ 0.23 ↑ 0.49 ↑ 1.33 ↑ 13.68 ↑ 12.30 ↑ 18.66 ↑ 5.87
+APPNP 88.14±0.73 80.47±0.74 88.12±0.31 85.32±0.37 88.51±0.31 95.83±0.32 39.66±0.55 90.98±1.64 91.81±1.96 68.53±0.36 Hyperbolic-APPNP 90.07±1.11 81.69±1.12 90.79±0.57 89.88±1.09 94.72±0.75 96.58±0.16 40.19±1.09 91.31±3.46 87.45±3.81 68.78±0.39 Improv.(∆) ↑ 1.93 ↑ 1.22 ↑ 2.67 ↑ 4.56 ↑ 6.21 ↑ 0.75 ↑ 0.53 ↑ 0.33 ↓ 4.36 ↑ 0.25
+GPR-GNN 88.57±0.69 80.12±0.83 88.46±0.33 86.85±0.25 93.85±0.28 96.47±0.19 39.92±0.67 92.95±1.31 91.37±1.81 69.39±0.87 Hyperbolic-GPR 90.82±0.95 81.88±1.33 91.36±0.59 88.21±0.50 94.49±0.63 96.58±0.19 40.68±0.85 93.28±3.58 92.77±3.36 68.62±0.62 Improv.(∆) ↑ 2.25 ↑ 1.76 ↑ 2.90 ↑ 1.36 ↑ 0.64 ↑ 0.11 ↑ 0.76 ↑ 0.33 ↑ 1.40 ↓ 0.77
+ChebNet 86.67±0.82 79.11±0.75 87.95±0.28 87.54±0.43 93.77±0.32 95.66±0.28 37.61±0.89 86.22±2.45 83.93±2.13 68.88±0.81 Hyperbolic-Cheb 89.38±1.00 81.28±1.69 90.50±0.61 89.16±0.78 94.83±0.44 96.50±0.28 40.63±1.38 93.93±2.05 91.06±4.46 68.75±0.63 Improv.(∆) ↑ 2.71 ↑ 2.17 ↑ 2.65 ↑ 1.62 ↑ 1.06 ↑ 0.84 ↑ 3.02 ↑ 7.71 ↑ 7.13 ↓ 0.13
+BernNet 88.52±0.95 80.09±0.79 88.48±0.41 87.64±0.44 93.63±0.35 96.54±0.23 41.79±1.01 93.12±0.65 92.13±1.64 68.67±0.55 Hyperbolic-Bern 88.34±0.92 80.27±0.76 89.52±0.80 88.61±0.93 94.24±0.87 96.64±0.28 39.96±0.98 93.11±1.29 89.79±3.45 68.74±0.75 Improv.(∆) ↓ 0.18 ↑ 0.18 ↑ 1.04 ↑ 0.97 ↑ 0.61 ↑ 0.10 ↓ 1.83 ↓ 0.01 ↓ 2.34 ↑ 0.07
+JacobiConv 88.98±0.46 80.78±0.79 89.62±0.41 90.39±0.29 95.43±0.23 96.54±0.26 41.17±0.64 93.44±2.13 92.95±2.46 68.66±0.92 Hyperbolic-Jacobi 89.69±1.83 81.17±1.63 90.17±0.66 88.69±0.79 94.53±0.75 96.58±0.25 39.73±0.84 91.97±4.19 90.64±5.13 68.76±0.96 Improv.(∆) ↑ 0.71 ↑ 0.39 ↑ 0.55 ↓ 1.70 ↓ 0.90 ↑ 0.04 ↓ 1.44 ↓ 1.47 ↓ 2.31 ↑ 0.10
+ChebNetII 88.71±0.93 80.53±0.79 88.93±0.29 91.06±0.64∗ 95.88±0.58∗ 96.49±0.25 41.75±1.07 93.28±1.47 92.30±1.48 68.95±0.58 Hyperbolic-ChebII 90.39±0.95 81.60±1.38 90.34±0.77 89.82±0.68 94.53±0.46 96.67±0.23 40.58±1.16 93.30±3.32 91.06±3.86 68.68±0.48 Improv.(∆) ↑ 1.67 ↑ 1.07 ↑ 1.41 ↓ 1.24 ↓ 1.35 ↑ 0.18 ↓ 1.17 ↑ 0.02 ↓ 1.24 ↓ 0.27
+012
+0
+1
+2
+3
+4
+5
+g( )
+CiteSeer
+GPR-GNN BernNet JacobiConv ChebNetII Hyperbolic-GPR
+012
+1.0
+0.5
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+g( )
+Computers
+GPR-GNN BernNet JacobiConv ChebNetII Hyperbolic-GPR
+012
+2
+1
+0
+1
+2
+g( )
+Actor
+GPR-GNN BernNet JacobiConv ChebNetII Hyperbolic-GPR 012
+1.0
+0.5
+0.0
+0.5
+1.0
+g( )
+Wisconsin
+GPR-GNN BernNet JacobiConv ChebNetII Hyperbolic-GPR
+Figure 1. The graph spectral filter learned by the methods on graph datasets.
+ditionally, our method also demonstrates competitive performance on PubMed and Actor. These results attest to the effectiveness of Hyperbolic-PDE GNN.
+To further validate the performance improvement of modeling message passing as a system of hyperbolic partial differential equations, we choose several base models and modify them accordingly. Specifically, we let the polynomial P (x) in Equation (15) to be the spectral graph convolution of the base model. Initially, we choose base models such as SGC, APPNP, and GPR-GNN based on monomials. Subsequently, we choose ChebNet, BernNet, JacobiConv, and ChebNetII as convolution forms, which are based on polynomials as basis. Table 5 indicate that methods based on monomials underperformed due to the insufficient ability of monomials to approximate filtering functions. In contrast, methods based on polynomials exhibit lower errors in function approximation, thus demonstrating superior performance. Upon enhancing all these methods to the system of hyperbolic PDEs, they all show varying degrees of performance improvement. Particularly for methods based on monomials, the introduction of the mechanism help to mitigate their
+high error (further experiment can be found in Section 4.2. Our approach explicitly constrains the solution space of all aforementioned base models, ensuring that they are solely expressed by eigenvectors representing the topological structure and do not introduce additional features.
+Filter analysis. Figure 1 visualizes the filters learned by some methods. We can observe that all methods exhibit powerful low-pass characteristics on CiteSeer and Computers. Particularly, due to the adoption of a Laplacian with selfloop in GPR-GNN, the absence of scaling coefficients in the higher frequency range results in a certain degree of weight explosion in the lower frequency range. Hyperbolic-GPR effectively mitigates this issue. On Actor and Wisconsin, the methods show weaker high-pass characteristics. Only the curve of Hyperbolic-GPR displays a trend of being high on the left and low on the right, indicating its amplification of high-frequency signals and suppression of low-frequency signals. Furthermore, due to the issues in GPR-GNN, when dealing with heterophilic graphs, it can only suppress lowfrequency signals by assigning negative scaling coefficients
+6
+
+
+Hyperbolic-PDE GNN
+Table 6. Average of squared error (R2 score) of methods over 50 images.
+Low-pass High-pass Band-pass Band-rejection Comb Low-band-pass Runge
+e−10λ2 1 − e−10λ2 e−10(λ−1)2 1 − e−10(λ−1)2 | sin(πλ)|
+
+  
+  
+1, λ < 0.5
+e−100(λ−0.5)2 , 0.5 ≤ λ < 1
+e−50(λ−1.5)2 , λ ≥ 1
+1/(1 + 25λ2)
+012
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+012
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+012
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+012
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+012
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+012
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+012
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+1.0
+GCN 3.5364(.9871) 67.1895(.2449) 25.9193(.1061) 20.9094(.9440) 51.0312(.2933) 15.5343(.9586) 3.7937(.9860) Hyperbolic-GCN 1.3562(.9956) 1.7571(.9789) 4.4976(.7913) 3.0469(.9925) 8.8112(.8657) 4.6308(.9869) 0.6583(.9979) Improv.(%) ↓ 61.65% ↓ 97.38% ↓ 82.65% ↓ 85.43% ↓ 82.73% ↓ 70.19% ↓ 83.43%
+GAT 2.6614(.9899) 22.1274(.7457) 13.7478(.4942) 12.8713(.9650) 22.1316(.6985) 13.2587(.9634) 2.8153(.9890) Hyperbolic-GAT 1.2671(.9963) 1.3592(.9822) 2.1492(.9152) 2.5862(.9933) 6.0365(.9055) 4.7609(.9866) 0.6192(.9979) Improv.(%) ↓ 52.39% ↓ 93.86% ↓ 84.37% ↓ 79.71% ↓ 72.72% ↓ 64.09% ↓ 78.01%
+ARMA 1.8344(.9931) 1.8304(.9793) 7.6932(.7099) 8.1734(.9785) 15.2385(.7952) 11.5748(.9677) 2.1851(.9913) Hyperbolic-ARMA 0.9699(.9964) 1.0263(.9854) 1.7474(.9212) 1.6034(.9956) 5.9381(.9104) 4.9021(.9858) 0.4637(.9982) Improv.(%) ↓ 47.13% ↓ 43.93% ↓ 77.29% ↓ 80.38% ↓ 61.03% ↓ 57.65% ↓ 78.78% ChebNet 0.8024(.9973) 0.7877(.9903) 2.3232(.9090) 2.5446(.9934) 4.0797(.9443) 4.4431(.9878) 0.4048(.9988) Hyperbolic-Cheb 0.0077(1.000) 0.0088(.9999) 0.0567(.9978) 0.1077(.9997) 0.2019(.9969) 0.2276(.9994) 0.0169(.9999) Improv.(%) ↓ 99.04% ↓ 98.88% ↓ 97.56% ↓ 95.77% ↓ 97.50% ↓ 94.88% ↓ 95.83% BernNet 0.0309(.9999) 0.0103(.9998) 0.0477(.9982) 0.9434(.9973) 1.1073(.9854) 2.9633(.9917) 0.0346(.9999) Hyperbolic-Bern 0.0045(1.000) 0.0138(.9998) 0.0154(.9992) 0.1532(.9996) 0.1921(.9973) 0.6738(.9982) 0.0256(.9999) Improv.(%) ↓ 85.44% ↑ 33.98% ↓ 67.71% ↓ 83.76% ↓ 82.65% ↓ 77.26% ↓ 26.01% ChebNetII 0.0068(1.000) 0.0028(1.000) 0.0980(.9760) 0.0162(1.000) 0.2832(.9964) 1.3945(.9964) 0.0089(.9999) Hyperbolic-ChebII 0.0039(1.000) 0.0017(.9999) 0.0099(.9991) 0.0125(1.000) 0.2918(.9962) 1.3800(.9962) 0.0059(1.000) Improv.(%) ↓ 42.65% ↓ 39.29% ↓ 89.90% ↓ 22.22% ↑ 3.04% ↓ 1.04% ↓ 33.71%
+a) Low-pass b) High-pass c) Band-pass d) Band-rejection e) Comb f) Low-band-pass g) Runge
+Figure 2. The image signals processed by the real filter (first row), Hyperbolic-GCN (second row), and GCN (third row).
+to them. Hyperbolic-GPR also circumvents this problem.
+4.2. Signal Filtering on Images
+In this section, we investigate the fitting capability of polynomial spectral filters under the influence of Hyperbolic-PDE GNN. We conduct experiment on 50 real images with a resolution of 100 × 100 from the Image Processing Toolbox in Matlab. Here, we transform the images into a 2D regular 4-neighborhood grid graph following the experimental setup
+in (Balcilar et al., 2021; He et al., 2021), where each pixel denotes a node. Each image is associated with a 100 × 100 adjacency matrix and a 10000-dimensional signal vector x that records pixel intensity.
+For each image, we filter its original signals using 7 following spectral filters: low-pass filter, high-pass filter, bandpass filter, band-rejection filter, comb filter, low-band-pass filter, and runge filter. The formula and its curve of each filter can be found in Table 6. For example, applying low
+7
+
+
+Hyperbolic-PDE GNN
+pass filter to an image is equivalent to performing operation y = Udiag{e−10λ2
+1 , . . . , e−10λ2
+N }U⊤x on graph signal, where the filtered graph signal y is used as the ground truth.
+The objective of this experiment is to minimize the average of of squared error between the model output and ground truth across 50 images. Therefore, this experiment is considered as a regression task. We utilize the coefficient of determination (i.e., R2 score, closer to 1 is better) to reflect the degree of fit in regression. We select GCN (Kipf & Welling, 2017), GAT (Velickovic et al., 2018), ARMA (Bianchi et al., 2021), GPR-GNN (Chien et al., 2021), ChebNet (Defferrard et al., 2016), BernNet (He et al., 2021), JacobiConv (Wang & Zhang, 2022), and ChebNetII (He et al., 2022) as baselines and evaluate their fitting capabilities under the enhancement of Hyperbolic-PDE GNN. To ensure fairness, we follow the setup of He et al. (2021) to reproduce the results of each baseline. For our method, we conduct parameter search using wandb. See appendix C for specific experimental configurations.
+As shown in Table 6, GCN and GAT exhibit good properties as low-pass filters, but struggle to fit more complex filters. On the other hand, polynomial spectral filters have the ability to fit complex filters. All the aforementioned base models demonstrate enhanced fitting capabilities under the augmentation of Hyperbolic-PDE GNN. Particularly notable is the significant improvement observed in GCN and GAT, indicating that Hyperbolic-PDE GNN not only enhances the expressive power of spectral filters but also endows them with the ability to fit complex filters.
+Filter analysis. Figure 2 illustrates graph signals obtained through real filters, Hyperbolic-GCN, and GCN. We can observe that the graph signals filtered by Hyperbolic-GCN closely resemble the original graph signals, while GCN struggles to extract useful features when fitting complex filters. Moreover, the most notable improvement is seen in ChebNet, whose inferior performance is attributed to learning illegal filter coefficients (He et al., 2022). HyperbolicCheb can limit the solution space by defining initial values, thereby reducing the risk of learning illegal coefficients.
+5. Related Works
+Spectral Graph Neural Networks. Spectral CNN (Bruna et al., 2014), as a pioneering work in spectral graph neural networks, first apply spectral graph theory to the field of graphs. GCN (Kipf & Welling, 2017), as the most classic subsequent work, behaves like a low-pass filter. SGC (Wu et al., 2019) builds upon GCN by removing non-linear activation functions and simplifying the parameter matrices in each layer, demonstrating that linear GNNs also exhibit strong performance. APPNP (Klicpera et al., 2019a) proposes an improved propagation scheme based on Person
+alized PageRank. These early works focus on exploring features of homophilic graphs but show poor performance on heterophilic graphs. GPR-GNN (Chien et al., 2021) designs filter parameters based on PageRank to adaptively learn low-pass or high-pass filters. GNN-LF/HF (Zhu et al., 2021) uses adjustable graph kernels to design low-pass and high-pass filters. ARMA (Bianchi et al., 2021) employs auto-regressive moving average filters to design graph convolutions, which can better capture global graph features. While these methods can adapt to different types of graphs, their performance suffers when fitting complex filters due to their design of graph filters based on monomials. ChebNet (Defferrard et al., 2016), as an early attempt of polynomial filters, first approximates graph filters using Chebyshev polynomials as a basis. BernNet (He et al., 2021) utilizes Bernstein polynomials as a basis to simulate complex filters such as band-pass and comb filters. JacobiConv (Wang & Zhang, 2022) unifies some methods based on orthogonal polynomials, like ChebNet, by employing more general Jacobi polynomials. ChebNetII (He et al., 2022) addresses the issue of learning Illegal filter parameters in ChebNet by introducing Chebyshev interpolation to reduce approximation errors in Chebyshev polynomials. Most of these methods construct graph filters based on mature polynomial basis in mathematics, theoretically capable of approximating any filter function. Another class of methods designs more targeted filters to address various graph problems. G2CN (Li et al., 2022) introduces Gaussian graph filters to enable models to flexibly adapt to different types of graphs. EvenNet (Lei et al., 2022) proposes even-polynomial graph filters to enhance the model’s robustness on heterophilic graphs. OptBasisGNN (Guo & Wei, 2023) learn the optimal basis in the orthogonal polynomial space. UniFilter (Huang et al., 2024b) specifically designs adaptive heterophily basis for heterophilic graphs. NFGNN (Zheng et al., 2024) addresses the challenge of local patterns in graphs by proposing local spectral filters. AdaptKry (Huang et al., 2024a) optimizes graph filters using basis from adaptively Krylov subspaces. All these methods are defined in the original spatial domain, meaning the node features they obtain lack an interpretable solution space to explain their relationship with topological features, thus lacking necessary interpretability.
+Differential Equation on Graph. In recent years, research has gradually delved into the dynamical systems of graph neural networks. Neural ODE (Chen et al., 2018) initially models embeddings as a continuous dynamic model based on ordinary differential equations (ODE). GDE (Poli et al., 2019) employs forward Euler method to solve ODE on graphs. CGNN (Xhonneux et al., 2020) directly computes the analytical solution of ODE. GraphCON (Rusch et al., 2022) establishes a connection with conventional graph convolutions based on second-order ODE. KuramotoGNN (Nguyen et al., 2024) specifically utilizes the Ku
+8
+
+
+Hyperbolic-PDE GNN
+ramoto model to address over-smoothing issues. MGKN (Li et al., 2020) introduces partial differential equations (PDE) into graph problems. PDE-GCN (Eliasof et al., 2021) constructs graph convolutions using diffusion and hyperbolic equations, respectively. DGC (Wang et al., 2021) decouples terminal time from propagation steps. GDC (Klicpera et al., 2019b) proposes graph diffusion convolution to extract information from indirectly connected neighbors. ADC (Zhao et al., 2021) further introduces adaptively diffusion convolution to aggregate neighbors within the optimal neighborhood. Subsequent models like GRAND (Chamberlain et al., 2021), GRAND++ (Thorpe et al., 2022), and HiD-Net (Li et al., 2024) treat message passing as a heat diffusion process and model it based on the heat diffusion equation. Most of the aforementioned methods heuristically integrate differential equations into graph neural networks and demonstrate empirically their effectiveness. However, these methods do not systematically explore why models based on differential equations perform well, and do not delve into the intrinsic properties of node features obtained these methods.
+Discussion with Hyperbolic Geometry GNNs The hyperbolic PDEs and hyperbolic geometry (Liu et al., 2019; Chami et al., 2019) exhibit fundamentally distinct characteristics. Specifically, hyperbolic geometry focuses on the hierarchical structure of graphs, which typically involves mapping nodes to hyperbolic space using models such as Poincar ́e Ball models or Lorentz models to extract hierarchical relationships between nodes. On the other hand, our focus of hyperbolic PDEs lies in constructing the message passing mechanism of GNNs based on the theory of PDE. This design naturally maps nodes into a solution space spanned by a set of eigenvectors of the graph, which can improve the ability to learn complex graph filters.
+6. Conclusion
+To resolve limitation of the spatial space of MP in representing node semantic features, this paper introduces a Hyperbolic-PDE GNN based on a system of hyperbolic PDEs. We theoretically demonstrate that the solution space is spanned by orthogonal bases that describe the topological structure of graphs, enabling to represent the topological features, thereby significantly increasing the interpretability of the model. Moreover, we enhance the flexibility and robustness of the model using polynomial spectral filters and establish a connection between hyperbolic PDEs and spectral GNNs. Extensive experiments show that our approach exhibits effective and robust results with traditional GNNs.
+Acknowledgments
+This work is supported by the National Natural Science Foundation of China (No.62406319), the Youth
+Innovation Promotion Association of CAS (Grant No. 2021153), and the Postdoctoral Fellowship Program of CPSF (No.GZC20232968).
+Impact Statement
+The work presented in this paper aims to advance the field of graph deep learning. We do not expect any immediate, negative societal impact of the present work. It delves into the theory of graph neural networks, and thus may benefit the applications that involve graphs by making them more effective and reliable.
+References
+Balcilar, M., Renton, G., H ́eroux, P., Ga ̈uz`ere, B., Adam, S., and Honeine, P. Analyzing the expressive power of graph neural networks in a spectral perspective. In 9th International Conference on Learning Representations, ICLR 2021, Virtual Event, Austria, May 3-7, 2021. OpenReview.net, 2021.
+Bianchi, F. M., Grattarola, D., Livi, L., and Alippi, C. Graph neural networks with convolutional ARMA filters. IEEE Trans. Pattern Anal. Mach. Intell., 2021. doi: 10.1109/ TPAMI.2021.3054830.
+Bo, D., Shi, C., Wang, L., and Liao, R. Specformer: Spectral graph neural networks meet transformers. In The Eleventh International Conference on Learning Representations, ICLR 2023, Kigali, Rwanda, May 1-5, 2023. OpenReview.net, 2023.
+Bruna, J., Zaremba, W., Szlam, A., and LeCun, Y. Spectral networks and locally connected networks on graphs. In Bengio, Y. and LeCun, Y. (eds.), 2nd International Conference on Learning Representations, ICLR 2014, Banff, AB, Canada, April 14-16, 2014, Conference Track Proceedings, 2014.
+Chamberlain, B., Rowbottom, J., Gorinova, M. I., Bronstein, M. M., Webb, S., and Rossi, E. GRAND: graph neural diffusion. In Meila, M. and Zhang, T. (eds.), Proceedings of the 38th International Conference on Machine Learning, ICML 2021, 18-24 July 2021, Virtual Event, volume 139 of Proceedings of Machine Learning Research, pp. 1407–1418. PMLR, 2021.
+Chami, I., Ying, Z., R ́e, C., and Leskovec, J. Hyperbolic graph convolutional neural networks. In Wallach, H. M., Larochelle, H., Beygelzimer, A., d’Alch ́e-Buc, F., Fox, E. B., and Garnett, R. (eds.), Advances in Neural Information Processing Systems 32: Annual Conference on Neural Information Processing Systems 2019, NeurIPS 2019, December 8-14, 2019, Vancouver, BC, Canada, pp. 4869–4880, 2019. URL https://proceedings.
+9
+
+
+Hyperbolic-PDE GNN
+neurips.cc/paper/2019/hash/ 0415740eaa4d9decbc8da001d3fd805f-Abstract. html.
+Chen, T. Q., Rubanova, Y., Bettencourt, J., and Duvenaud, D. Neural ordinary differential equations. In Bengio, S., Wallach, H. M., Larochelle, H., Grauman, K., CesaBianchi, N., and Garnett, R. (eds.), Advances in Neural Information Processing Systems 31: Annual Conference on Neural Information Processing Systems 2018, NeurIPS 2018, December 3-8, 2018, Montre ́al, Canada, pp. 65726583, 2018.
+Chien, E., Peng, J., Li, P., and Milenkovic, O. Adaptive universal generalized pagerank graph neural network. In 9th International Conference on Learning Representations, ICLR 2021, Virtual Event, Austria, May 3-7, 2021. OpenReview.net, 2021.
+Defferrard, M., Bresson, X., and Vandergheynst, P. Convolutional neural networks on graphs with fast localized spectral filtering. In Lee, D. D., Sugiyama, M., von Luxburg, U., Guyon, I., and Garnett, R. (eds.), Advances in Neural Information Processing Systems 29: Annual Conference on Neural Information Processing Systems 2016, December 5-10, 2016, Barcelona, Spain, pp. 38373845, 2016.
+Eliasof, M., Haber, E., and Treister, E. PDE-GCN: novel architectures for graph neural networks motivated by partial differential equations. In Ranzato, M., Beygelzimer, A., Dauphin, Y. N., Liang, P., and Vaughan, J. W. (eds.), Advances in Neural Information Processing Systems 34: Annual Conference on Neural Information Processing Systems 2021, NeurIPS 2021, December 6-14, 2021, virtual, pp. 3836–3849, 2021.
+Fey, M. and Lenssen, J. E. Fast graph representation learning with PyTorch Geometric. In ICLR Workshop on Representation Learning on Graphs and Manifolds, 2019.
+Gao, Y., Wang, X., He, X., Liu, Z., Feng, H., and Zhang, Y. Addressing heterophily in graph anomaly detection: A perspective of graph spectrum. In Ding, Y., Tang, J., Sequeda, J. F., Aroyo, L., Castillo, C., and Houben, G. (eds.), Proceedings of the ACM Web Conference 2023, WWW 2023, Austin, TX, USA, 30 April 2023 - 4 May 2023, pp. 1528–1538. ACM, 2023. doi: 10.1145/3543507. 3583268.
+Gaudelet, T., Day, B., Jamasb, A. R., Soman, J., Regep, C., Liu, G., Hayter, J. B. R., Vickers, R., Roberts, C., Tang, J., Roblin, D., Blundell, T. L., Bronstein, M. M., and TaylorKing, J. P. Utilizing graph machine learning within drug discovery and development. Briefings Bioinform., 22(6), 2021. doi: 10.1093/BIB/BBAB159.
+Geng, H., Chen, C., He, Y., Zeng, G., Han, Z., Chai, H., and Yan, J. Pyramid graph neural network: A graph sampling and filtering approach for multi-scale disentangled representations. In Singh, A. K., Sun, Y., Akoglu, L., Gunopulos, D., Yan, X., Kumar, R., Ozcan, F., and Ye, J. (eds.), Proceedings of the 29th ACM SIGKDD Conference on Knowledge Discovery and Data Mining, KDD 2023, Long Beach, CA, USA, August 6-10, 2023, pp. 518–530. ACM, 2023. doi: 10.1145/3580305.3599478.
+Gilmer, J., Schoenholz, S. S., Riley, P. F., Vinyals, O., and Dahl, G. E. Neural message passing for quantum chemistry. In Precup, D. and Teh, Y. W. (eds.), Proceedings of the 34th International Conference on Machine Learning, ICML 2017, Sydney, NSW, Australia, 6-11 August 2017, volume 70 of Proceedings of Machine Learning Research, pp. 1263–1272. PMLR, 2017.
+Guo, Y. and Wei, Z. Graph neural networks with learnable and optimal polynomial bases. In Krause, A., Brunskill, E., Cho, K., Engelhardt, B., Sabato, S., and Scarlett, J. (eds.), International Conference on Machine Learning, ICML 2023, 23-29 July 2023, Honolulu, Hawaii, USA, volume 202 of Proceedings of Machine Learning Research, pp. 12077–12097. PMLR, 2023.
+He, M., Wei, Z., Huang, Z., and Xu, H. Bernnet: Learning arbitrary graph spectral filters via bernstein approximation. In Ranzato, M., Beygelzimer, A., Dauphin, Y. N., Liang, P., and Vaughan, J. W. (eds.), Advances in Neural Information Processing Systems 34: Annual Conference on Neural Information Processing Systems 2021, NeurIPS 2021, December 6-14, 2021, virtual, pp. 1423914251, 2021.
+He, M., Wei, Z., and Wen, J. Convolutional neural networks on graphs with chebyshev approximation, revisited. In Koyejo, S., Mohamed, S., Agarwal, A., Belgrave, D., Cho, K., and Oh, A. (eds.), Advances in Neural Information Processing Systems 35: Annual Conference on Neural Information Processing Systems 2022, NeurIPS 2022, New Orleans, LA, USA, November 28 - December 9, 2022, 2022.
+Huang, K., Cao, W., Ta, H., Xiao, X., and Li`o, P. Optimizing polynomial graph filters: A novel adaptive krylov subspace approach. In Chua, T., Ngo, C., Kumar, R., Lauw, H. W., and Lee, R. K. (eds.), Proceedings of the ACM on Web Conference 2024, WWW 2024, Singapore, May 13-17, 2024, pp. 1057–1068. ACM, 2024a. doi: 10.1145/3589334.3645705.
+Huang, K., Wang, Y. G., Li, M., and Lio, P. How universal polynomial bases enhance spectral graph neural networks: Heterophily, over-smoothing, and over-squashing. In
+10
+
+
+Hyperbolic-PDE GNN
+Forty-first International Conference on Machine Learning, ICML 2024, Vienna, Austria, July 21-27, 2024. OpenReview.net, 2024b.
+Kingma, D. P. and Ba, J. Adam: A method for stochastic optimization. In 3rd International Conference on Learning Representations, ICLR 2015, San Diego, CA, USA, May 7-9, 2015, Conference Track Proceedings, 2015.
+Kipf, T. N. and Welling, M. Semi-supervised classification with graph convolutional networks. In 5th International Conference on Learning Representations, ICLR 2017, Toulon, France, April 24-26, 2017, Conference Track Proceedings. OpenReview.net, 2017.
+Klicpera, J., Bojchevski, A., and G ̈unnemann, S. Predict then propagate: Graph neural networks meet personalized pagerank. In 7th International Conference on Learning Representations, ICLR 2019, New Orleans, LA, USA, May 6-9, 2019. OpenReview.net, 2019a.
+Klicpera, J., Weißenberger, S., and G ̈unnemann, S. Diffusion improves graph learning. In Wallach, H. M., Larochelle, H., Beygelzimer, A., d’Alch ́e-Buc, F., Fox, E. B., and Garnett, R. (eds.), Advances in Neural Information Processing Systems 32: Annual Conference on Neural Information Processing Systems 2019, NeurIPS 2019, December 8-14, 2019, Vancouver, BC, Canada, pp. 13333–13345, 2019b.
+Lei, R., Wang, Z., Li, Y., Ding, B., and Wei, Z. Evennet: Ignoring odd-hop neighbors improves robustness of graph neural networks. In Koyejo, S., Mohamed, S., Agarwal, A., Belgrave, D., Cho, K., and Oh, A. (eds.), Advances in Neural Information Processing Systems 35: Annual Conference on Neural Information Processing Systems 2022, NeurIPS 2022, New Orleans, LA, USA, November 28 - December 9, 2022, 2022.
+Li, M., Guo, X., Wang, Y., Wang, Y., and Lin, Z. G2cn: Graph gaussian convolution networks with concentrated graph filters. In Chaudhuri, K., Jegelka, S., Song, L., Szepesv ́ari, C., Niu, G., and Sabato, S. (eds.), International Conference on Machine Learning, ICML 2022, 17-23 July 2022, Baltimore, Maryland, USA, volume 162 of Proceedings of Machine Learning Research, pp. 12782–12796. PMLR, 2022.
+Li, Y., Wang, X., Liu, H., and Shi, C. A generalized neural diffusion framework on graphs. In Wooldridge, M. J., Dy, J. G., and Natarajan, S. (eds.), Thirty-Eighth AAAI Conference on Artificial Intelligence, AAAI 2024, Thirty-Sixth Conference on Innovative Applications of Artificial Intelligence, IAAI 2024, Fourteenth Symposium on Educational Advances in Artificial Intelligence, EAAI 2014, February 20-27, 2024, Vancouver, Canada, pp. 8707–8715. AAAI Press, 2024. doi: 10.1609/AAAI.V38I8.28716.
+Li, Z., Kovachki, N. B., Azizzadenesheli, K., Liu, B., Stuart, A. M., Bhattacharya, K., and Anandkumar, A. Multipole graph neural operator for parametric partial differential equations. In Larochelle, H., Ranzato, M., Hadsell, R., Balcan, M., and Lin, H. (eds.), Advances in Neural Information Processing Systems 33: Annual Conference on Neural Information Processing Systems 2020, NeurIPS 2020, December 6-12, 2020, virtual, 2020.
+Liao, W., Zhu, Y., Li, Y., Zhang, Q., Ou, Z., and Li, X. Revgnn: Negative sampling enhanced contrastive graph learning for academic reviewer recommendation. ACM Trans. Inf. Syst., 43(1):1:1–1:26, 2025. doi: 10.1145/3679200. URL https://doi.org/10. 1145/3679200.
+Lin, J., Liu, W., Dai, X., Zhang, W., Li, S., Tang, R., He, X., Hao, J., and Yu, Y. A graph-enhanced click model for web search. In Diaz, F., Shah, C., Suel, T., Castells, P., Jones, R., and Sakai, T. (eds.), SIGIR ’21: The 44th International ACM SIGIR Conference on Research and Development in Information Retrieval, Virtual Event, Canada, July 11-15, 2021, pp. 1259–1268. ACM, 2021. doi: 10.1145/3404835.3462895. URL https: //doi.org/10.1145/3404835.3462895.
+Liu, Q., Nickel, M., and Kiela, D. Hyperbolic graph neural networks. In Wallach, H. M., Larochelle, H., Beygelzimer, A., d’Alch ́e-Buc, F., Fox, E. B., and Garnett, R. (eds.), Advances in Neural Information Processing Systems 32: Annual Conference on Neural Information Processing Systems 2019, NeurIPS 2019, December 8-14, 2019, Vancouver, BC, Canada, pp. 82288239, 2019. URL https://proceedings. neurips.cc/paper/2019/hash/ 103303dd56a731e377d01f6a37badae3-Abstract. html.
+Ma, X., Wu, J., Xue, S., Yang, J., Zhou, C., Sheng, Q. Z., Xiong, H., and Akoglu, L. A comprehensive survey on graph anomaly detection with deep learning. IEEE Trans. Knowl. Data Eng., 35(12):12012–12038, 2023. doi: 10.1109/TKDE.2021.3118815. URL https:// doi.org/10.1109/TKDE.2021.3118815.
+Nguyen, T., Honda, H., Sano, T., Nguyen, V., Nakamura, S., and Nguyen, T. M. From coupled oscillators to graph neural networks: Reducing over-smoothing via a kuramoto model-based approach. In Dasgupta, S., Mandt, S., and Li, Y. (eds.), International Conference on Artificial Intelligence and Statistics, 2-4 May 2024, Palau de Congressos, Valencia, Spain, volume 238 of Proceedings of Machine Learning Research, pp. 2710–2718. PMLR, 2024.
+Page, L., Brin, S., Motwani, R., and Winograd, T. The pagerank citation ranking: Bringing order to the web. Technical report, Stanford infolab, 1999.
+11
+
+
+Hyperbolic-PDE GNN
+Pei, H., Wei, B., Chang, K. C., Lei, Y., and Yang, B. Geomgcn: Geometric graph convolutional networks. In 8th International Conference on Learning Representations, ICLR 2020, Addis Ababa, Ethiopia, April 26-30, 2020. OpenReview.net, 2020.
+Platonov, O., Kuznedelev, D., Diskin, M., Babenko, A., and Prokhorenkova, L. A critical look at the evaluation of gnns under heterophily: Are we really making progress? In The Eleventh International Conference on Learning Representations, ICLR 2023, Kigali, Rwanda, May 1-5, 2023. OpenReview.net, 2023.
+Poli, M., Massaroli, S., Park, J., Yamashita, A., Asama, H., and Park, J. Graph neural ordinary differential equations. CoRR, abs/1911.07532, 2019.
+Rozemberczki, B. and Sarkar, R. Characteristic functions on graphs: Birds of a feather, from statistical descriptors to parametric models. In CIKM ’20: The 29th ACM International Conference on Information and Knowledge Management, Virtual Event, Ireland, October 19-23, 2020. ACM, 2020. doi: 10.1145/3340531.3411866.
+Rozemberczki, B., Allen, C., and Sarkar, R. Multi-scale attributed node embedding. CoRR, abs/1909.13021, 2019.
+Rusch, T. K., Chamberlain, B., Rowbottom, J., Mishra, S., and Bronstein, M. M. Graph-coupled oscillator networks. In Chaudhuri, K., Jegelka, S., Song, L., Szepesv ́ari, C., Niu, G., and Sabato, S. (eds.), International Conference on Machine Learning, ICML 2022, 17-23 July 2022, Baltimore, Maryland, USA, volume 162 of Proceedings of Machine Learning Research, pp. 18888–18909. PMLR, 2022.
+Shchur, O., Mumme, M., Bojchevski, A., and G ̈unnemann, S. Pitfalls of graph neural network evaluation. CoRR, abs/1811.05868, 2018.
+Shlomi, J., Battaglia, P. W., and Vlimant, J. Graph neural networks in particle physics. Mach. Learn. Sci. Technol., 2(2):21001, 2021. doi: 10.1088/2632-2153/ABBF9A.
+Shuman, D. I., Narang, S. K., Frossard, P., Ortega, A., and Vandergheynst, P. The emerging field of signal processing on graphs: Extending high-dimensional data analysis to networks and other irregular domains. IEEE Signal Process. Mag., 30(3):83–98, 2013. doi: 10.1109/MSP. 2012.2235192.
+Stone, M. H. Applications of the theory of boolean rings to general topology. Transactions of the American Mathematical Society, 41(3):375–481, 1937.
+Thorpe, M., Nguyen, T. M., Xia, H., Strohmer, T., Bertozzi, A. L., Osher, S. J., and Wang, B. GRAND++: graph
+neural diffusion with A source term. In The Tenth International Conference on Learning Representations, ICLR 2022, Virtual Event, April 25-29, 2022. OpenReview.net, 2022.
+Velickovic, P., Cucurull, G., Casanova, A., Romero, A., Lio`, P., and Bengio, Y. Graph attention networks. In 6th International Conference on Learning Representations, ICLR 2018, Vancouver, BC, Canada, April 30 - May 3, 2018, Conference Track Proceedings. OpenReview.net, 2018.
+Wang, X. and Zhang, M. How powerful are spectral graph neural networks. In Chaudhuri, K., Jegelka, S., Song, L., Szepesv ́ari, C., Niu, G., and Sabato, S. (eds.), International Conference on Machine Learning, ICML 2022, 17-23 July 2022, Baltimore, Maryland, USA, volume 162 of Proceedings of Machine Learning Research, pp. 23341–23362. PMLR, 2022.
+Wang, Y., Wang, Y., Yang, J., and Lin, Z. Dissecting the diffusion process in linear graph convolutional networks. In Ranzato, M., Beygelzimer, A., Dauphin, Y. N., Liang, P., and Vaughan, J. W. (eds.), Advances in Neural Information Processing Systems 34: Annual Conference on Neural Information Processing Systems 2021, NeurIPS 2021, December 6-14, 2021, virtual, pp. 5758–5769, 2021.
+Wu, F., Jr., A. H. S., Zhang, T., Fifty, C., Yu, T., and Weinberger, K. Q. Simplifying graph convolutional networks. In Proceedings of the 36th International Conference on Machine Learning, ICML 2019, 9-15 June 2019, Long Beach, California, USA. PMLR, 2019.
+Wu, S., Sun, F., Zhang, W., Xie, X., and Cui, B. Graph neural networks in recommender systems: A survey. ACM Comput. Surv., 55(5):97:1–97:37, 2023. doi: 10.1145/3535101.
+Wu, Z., Pan, S., Chen, F., Long, G., Zhang, C., and Yu, P. S. A comprehensive survey on graph neural networks. IEEE Trans. Neural Networks Learn. Syst., 32(1):4–24, 2021. doi: 10.1109/TNNLS.2020.2978386.
+Xhonneux, L. A. C., Qu, M., and Tang, J. Continuous graph neural networks. In Proceedings of the 37th International Conference on Machine Learning, ICML 2020, 13-18 July 2020, Virtual Event, volume 119 of Proceedings of Machine Learning Research, pp. 10432–10441. PMLR, 2020.
+Yang, Z., Cohen, W. W., and Salakhutdinov, R. Revisiting semi-supervised learning with graph embeddings. In Proceedings of the 33nd International Conference on Machine Learning, ICML 2016, New York City, NY, USA, June 19-24, 2016. JMLR.org, 2016.
+12
+
+
+Hyperbolic-PDE GNN
+Yue, J., Li, H., Sheng, J., Guo, Y., Zhang, X., Zhou, C., Liu, T., and Guo, L. Graph wave networks. In Long, G., Blumestein, M., Chang, Y., Lewin-Eytan, L., Huang, Z. H., and Yom-Tov, E. (eds.), Proceedings of the ACM on Web Conference 2025, WWW 2025, Sydney, NSW, Australia, 28 April 2025- 2 May 2025, pp. 1365–1379. ACM, 2025. doi: 10.1145/3696410.3714673. URL https: //doi.org/10.1145/3696410.3714673.
+Zhao, J., Dong, Y., Ding, M., Kharlamov, E., and Tang, J. Adaptive diffusion in graph neural networks. In Ranzato, M., Beygelzimer, A., Dauphin, Y. N., Liang, P., and Vaughan, J. W. (eds.), Advances in Neural Information Processing Systems 34: Annual Conference on Neural Information Processing Systems 2021, NeurIPS 2021, December 6-14, 2021, virtual, pp. 23321–23333, 2021.
+Zheng, S., Zhu, Z., Liu, Z., Li, Y., and Zhao, Y. Nodeoriented spectral filtering for graph neural networks. IEEE Trans. Pattern Anal. Mach. Intell., 46(1):388–402, 2024. doi: 10.1109/TPAMI.2023.3324937.
+Zhu, M., Wang, X., Shi, C., Ji, H., and Cui, P. Interpreting and unifying graph neural networks with an optimization framework. In Leskovec, J., Grobelnik, M., Najork, M., Tang, J., and Zia, L. (eds.), WWW ’21: The Web Conference 2021, Virtual Event / Ljubljana, Slovenia, April 19-23, 2021, pp. 1215–1226. ACM / IW3C2, 2021. doi: 10.1145/3442381.3449953.
+Zhu, Y., Cong, F., Zhang, D., Gong, W., Lin, Q., Feng, W., Dong, Y., and Tang, J. Wingnn: Dynamic graph neural networks with random gradient aggregation window. In Singh, A. K., Sun, Y., Akoglu, L., Gunopulos, D., Yan, X., Kumar, R., Ozcan, F., and Ye, J. (eds.), Proceedings of the 29th ACM SIGKDD Conference on Knowledge Discovery and Data Mining, KDD 2023, Long Beach, CA, USA, August 6-10, 2023, pp. 3650–3662. ACM, 2023. doi: 10.1145/3580305.3599551. URL https://doi. org/10.1145/3580305.3599551.
+13
+
+
+Hyperbolic-PDE GNN
+A. Theoretical Analysis
+A.1. Detailed Derivation of the System of Partial Differential Equations
+Given Equation (8), we combine the equations of all nodes on any dimension l to obtain a system of second-order linear
+partial differential equations:
+
+             
+             
+∂2x1l
+∂t2 = a2 X
+vj ∈N (v1)
+(x1l − xjl),
+∂2x2l
+∂t2 = a2 X
+vj ∈N (v2)
+(x2l − xjl),
+...
+∂2xnl
+∂t2 = a2 X
+vj ∈N (vn)
+(xnl − xjl).
+(21)
+This system of equations represents the evolution pattern of a graph signal on any dimension l over time. Next, we extend the dimension to d dimensions: 
+         
+         
+∂2x1
+∂t2 = [ ∂2x11
+∂t2 , ∂2x12
+∂t2 , . . . , ∂2x1d
+∂t2 ],
+∂2x2
+∂t2 = [ ∂2x21
+∂t2 , ∂2x22
+∂t2 , . . . , ∂2x2d
+∂t2 ],
+...
+∂2xn
+∂t2 = [ ∂2xn1
+∂t2 , ∂2xn2
+∂t2 , . . . , ∂2xnd
+∂t2 ].
+(22)
+Then, the right-hand side of Equation (21) can be extended as
+a2
+
+   
+P
+vj ∈N (v1)(x11 − xj1) P
+vj∈N (v1)(x12 − xj2) · · · P
+vj ∈N (v1)(x1d − xjd)
+P
+vj ∈N (v2)(x21 − xj1) P
+vj∈N (v2)(x22 − xj2) · · · P
+vj ∈N (v2)(x2d − xjd)
+... ... . . . ...
+P
+vj ∈N (vn)(xn1 − xj1) P
+vj∈N (vn)(xn2 − xj2) · · · P
+vj ∈N (vn)(xnd − xjd)
+
+   
+. (23)
+By combining Equation (22) and Equation (23), we obtain:
+∂2X
+∂t2 = a2[
+X
+vj ∈N (v1)
+(x1 − xj),
+X
+vj ∈N (v2)
+(x2 − xj), . . . ,
+X
+vj ∈N (vn)
+(xn − xj)] = a2LbX, (24)
+where xi = [xi1, xi2, . . . , xil]⊤.
+A.2. Proof of Theorem 3.1
+Given Equation (9), we consider a graph signal on any dimension l (i.e., Equation (21)).
+Let ∂x1l
+∂t = y1l, ∂x2l
+∂t = y2l, . . . , ∂xnl
+∂t = ynl, then ∂y1l
+∂t = a2 P
+vj ∈N (v1)(x1l − xjl), ∂y2l
+∂t = a2 P
+vj ∈N (v2)(x2l −
+xjl), . . . , ∂ynl
+∂t = a2 P
+vj ∈N (vn)(xnl − xjl).
+Subsequently, let wl = [y:l, x:l] ∈ R2n, Equation (21) can be rewritten in the following form:
+dwl
+dt = Cwl = In 0
+0 a2Lb wl, (25)
+where Lb = D − A ∈ Rn×n is a the Laplacian matrix.
+Note that since spatial derivatives w.r.t space have been transformed into gradients and divergences of graph, wl is now only differentiated w.r.t time. Therefore, Equation (25) essentially is a system of first-order constant-coefficient homogeneous linear differential equations.
+14
+
+
+Hyperbolic-PDE GNN
+To obtain the fundamental matrix of solution of Equation (25), it is necessary to introduce the following definition and theorem from the mathematical domain.
+Given a system of first-order homogeneous linear differential equations
+dx
+dt = C(t)x, (26)
+we have:
+Definition A.1. If each column of a matrix Φ(t) ∈ Rn×n is a solution to Equation (26), then the matrix Φ(t) is referred to as the solution matrix of Equation (26). If the columns of the solution matrix are linearly independent over the interval a ≤ t ≤ b, it is referred to as the fundamental matrix of solution of Equation (26) on the interval a ≤ t ≤ b.
+Here, we represent n linearly independent column vectors from the matrix Φ(t) as φ1(t), φ2(t), . . . , φn(t). According to Definition A.1, we can deduce the following theorems:
+Theorem A.2. The fundamental matrix of solution defines the solution space of Equation (26), enabling us to express any solution of Equation (26) as a linear combination of n linearly independent column vectors φ1(t), φ2(t), . . . , φn(t) from the fundamental matrix of solution Φ(t).
+Now consider a system of first-order constant-coefficient homogeneous linear differential equations
+dx
+dt = Cx, (27)
+where C ∈ Rn×n is a constant matrix.
+Theorem A.3. The matrix
+Φ(t) = exp Ct (28)
+is a fundamental matrix of solution of Equation (27), and Φ(0) = I.
+Proof. It is easily inferred from the definition that Φ(0) = I. Taking the derivative of Equation (28) w.r.t t, we obtain:
+dΦ(t)
+dt = d
+dt exp Ct
+= C + C2t
+1! + C3t2
+2! + · · · + Aktk−1
+(k − 1)! + · · ·
+= C exp Ct
+= CΦ(t)
+(29)
+This indicates that Φ(t) is the solution matrix of Equation (27). Furthermore, because det Φ(0) = det I = 1, Φ(t) is the fundamental matrix of solution of Equation (27).
+Therefore, for Equation (25), its fundamental matrix of solution is
+Φ(t) = exp Ct
+=I+ I 0
+0 a2Lb
+t
+1! + I 0
+0 a2Lb2
+t2
+2! + · · · + I 0
+0 a2Lbk
+tk
+k! + · · ·
+= exp It 0
+0 a2 exp Lbt .
+(30)
+where φ1(t), φ2(t), . . . , φ2n(t) are the column vectors from Φ(t).
+Ultimately, the solution space of all dimension can be represented as the Cartesian product of the solution spaces of each
+dimension:
+Ψ = Φ × Φ × · · · × ΦΦ
+| {z }
+d
+, (31)
+where × is the operator of Cartesian product.
+15
+
+
+Hyperbolic-PDE GNN
+A.3. Proof of Theorem 3.3
+Proof. Let φ(t) = eλtu, u ̸= 0, and substituting it into Equation (25), we obtain:
+λeλtu = Ceλtu. (32)
+Because eλt ̸= 0, Equation (32) becomes:
+(λI − C)u = 0. (33)
+We can observe that Equation (33) is the characteristic equation of matrix C. Therefore, eλtu constitutes a solution to Equation (25) if and only if λ is the eigenvalue of C and u is the corresponding eigenvector.
+For the matrix C in Equation (25), its characteristic equation is
+det(λI − C) = |λI − C| = λI − I 0
+0 λI − a2Lb = |λI − I||λI − a2Lb| = 0. (34)
+Therefore, the eigenvalues of I and a2Lb are both eigenvalues of C, that is λ′1 = λ′2 = · · · = λ′n = 1, λ′n+1 = a2λb1, λ′n+2 =
+a2λb2, . . . , λ′2n = a2λbn.
+The corresponding eigenvectors of I are v1 = [1, 0, . . . , 0]⊤, v2 = [0, 1, . . . , 0]⊤, . . . , vn = [0, 0, . . . , 1]⊤, and the corresponding eigenvectors of Lb are ub1, ub2, . . . , ubn, thus the eigenvectors of C are
+u′
+1 = v1
+0 , u′
+2 = v2
+0 , . . . , u′
+n = vn
+0 , u′
+n+1 = 0
+ub1
+, u′
+n+2 = 0
+ub2
+, . . . , u′
+2n = 0
+ubn
+. (35)
+Because u′1, u′2, . . . , u′2n are linearly independently, matrix
+Φ(t) = [eλ1tu′
+1, eλ2tu′
+2, . . . , eλ2ntu′
+2n], (36)
+is a fundamental matrix of solution of Equation (25).
+Because both exp Ct and Φ(t) are solutions of Equation (25), there exists a non-singular constant matrix B such that
+exp Ct = Φ(t)B. (37)
+Let t = 0, we have B = Φ−1(0). Therefore,
+exp Ct = Φ(t)Φ−1(0). (38)
+B. Details of Polynomial-based Spectral Graph Neural Networks
+SGC. Wu et al. (2019) directly utilizes monomials as filter
+g(λe) = (1 − λe)K , λe ∈ [0, 2) (39)
+to obtain the spectral graph convolution
+Z = (I − Le)K XW. (40)
+APPNP. Klicpera et al. (2019a) leverage the concept of personalized PageRank (Page et al., 1999) to design graph convolutions, where its filter is equivalent to a polynomial
+g(λe) =
+K
+X
+k=0
+αk
+1 − α (1 − λe)k, λe ∈ [0, 2) (41)
+with monomial basis (1 − λe)k. Then the spectral graph convolution of APPNP is given by:
+Z = α(I − (1 − α)(I − Le))−1φ(X), (42)
+where α is a hyperparameter, so the filter cannot be learned during the training process.
+16
+
+
+Hyperbolic-PDE GNN
+GPR-GNN. Chien et al. (2021) employ learnable parameters αk as coefficients to learn a polynomial filter
+g(λe) =
+K
+X
+k=0
+θk(1 − λe)k, λe ∈ [0, 2) (43)
+with monomial basis like APPNP, can be viewed as a Generalized PageRank. Then the spectral graph convolution of GPR-GNN is given by:
+Z=
+K
+X
+k=0
+θk(I − Le)kφ(X) (44)
+ChebNet. Defferrard et al. (2016) approximate graph spectral filter using Chebyshev polynomial approximation
+g(λ) =
+K −1
+X
+k=0
+θkTk(λ − 1), λ ∈ [0, 2]. (45)
+Here, for k = 0, . . . , K, T0(λ) = 1, T1(λ) = λ, Tk(λ) = 2λTk−1(λ) − Tk−2(λ) are the Chebyshev base. Then the spectral graph convolution of ChebNet is given by:
+Z=
+K −1
+X
+k=0
+Tk(L − I)XWk. (46)
+BernNet. He et al. (2021) utilize Bernstein polynomial approximation to approximate graph spectral filters:
+g(λ) =
+K
+X
+k=0
+θkbk,K (λ/2), λ ∈ [0, 2]. (47)
+Here, for k = 0, . . . , K, bk,K (λ) = K
+k (1 − λ)(K−k)λk, λ ∈ [0, 1] are the Bernstein base. The Bernstein polynomial approximation can learn arbitrary spectral filters. Then the spectral graph convolution of BernNet is given by:
+Z=
+K
+X
+k=0
+θk 2K
+K
+k (2I − L)K−kLkφ(X). (48)
+JacobiConv. Wang & Zhang (2022) approximate spectral graph convolutions using Jacobi polynomial approximation:
+g(λ) =
+K
+X
+k=0
+θkP a,b
+k (1 − λ), λ ∈ [0, 2]. (49)
+Here, for k = 0, . . . , K, P (a,b)
+0 (λ) = 1, P (a,b)
+1 (λ) = a−b
+2 + a+b+2
+2 λ, P (a,b)
+k (λ) = (αkλ + α′
+k)P (a,b)
+k−1 (λ) − α′′
+k P (a,b)
+k−2 (λ)
+are the Jacobi base, where a, b are hyperparameters and βk = (2k+a+b)(2k+a+b−1)
+2k(k+a+b) , α′
+k = (2k+a+b−1)(a2−b2)
+2k(k+a+b)(2k+a+b−2) , α′′
+k= (k+a−1)(k+b−1)(2k+a+b)
+k(k+a+b)(2k+a+b−2) . The Jacobi polynomial is a general form of Chebyshev polynomials (i.e. a = b = 0.5). Then the spectral graph convolution of JaocibConv is given by:
+Z:j =
+K
+X
+i=0
+θkj P a,b
+k (I − L)φ(X:j). (50)
+ChebNetII. He et al. (2022) discover that the poor performance of Chebyshev polynomials is due to the learned illegal parameters triggering the Runge phenomenon (where the fitted function deviates from the original function as the order increases). Subsequently, they introduce Chebyshev interpolation into Chebyshev polynomials to enhance graph spectral filters:
+g(λ) =
+K
+X
+k=0
+ck(θ)Tk(λ − 1), λ ∈ [0, 2]. (51)
+17
+
+
+Hyperbolic-PDE GNN
+Here, the coefficients c0(θ) = 1
+K +1
+PK
+j=0 αj , ck(θ) = 2
+K +1
+PK
+j=0 θjTk(xj) are obtained from Chebyshev nodes xj = cos((j + 1/2)π/(K + 1)). Then the spectral graph convolution of ChebNetII is given by:
+Z= 2
+K +1
+K
+X
+k=0
+K
+X
+j=0
+θjTk(xj)Tk(L − I)φ(X). (52)
+C. Detailed Experimental Setup
+Parameter search. We utilize wandb library for parameter search in node classification task. The search strategy adopt the Bayes strategy, with parameter ranges as shown in Table 7.
+Table 7. The range of hyperparameters in node classification task.
+Hyperparameters Range Distribution
+Hidden-dimension d {32, 64, 128} values Polynomial order K {1, 2, 3, 4, 5, 6, 7, 8, 9, 10} values Time size τ {0.2, 0.5, 1.0, 2.0, 5.0} values Terminal time T [1, 20] uniform Dropout [0, 0.8] uniform Learning rate [0.001, 0.25] log uniform values Weight decay [0, 0.1] uniform
+Furthermore, we conduct parameter search in signal filtering task according to the schemes outlined in Table 8. For Hyperbolic-GCN, Hyperbolic-GAT, and Hyperbolic-ARMA, we only utilize scheme 1. For Hyperbolic-Cheb, HyperbolicBern, and Hyperbolic-ChebII, to minimize the number of parameter combinations, we respectively employ scheme 1 and scheme 2 for search and select the optimal parameter combination from them.
+Table 8. The range of hyperparameters in signal filtering task.
+Hyperparameters Scheme 1 Scheme 2
+Range Distribution Range Distribution
+Polynomial order K {1, 2, . . . , 10} values 10 value Time size τ {0.5, 0.75, . . . , 5} values {0.5, 1} values Terminal time T [1, 10] uniform {0.5, 1, 2} values Learning rate [0.001, 0.25] log uniform values [0.001, 0.25] log uniform values
+Training process. In the node classification task, we employ cross-entropy as the loss function and utilize the Adam optimizer (Kingma & Ba, 2015) for optimization. The models are trained for 200 epochs with early stopping set to 10. In the signal filtering task, we optimize the squared error between the model output and ground truth using the Adam optimizer. The models are trained for 2000 epochs with early stopping set to 100.
+18

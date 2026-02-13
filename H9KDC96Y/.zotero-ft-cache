@@ -1,0 +1,3340 @@
+Efficient and Accurate Gradients for Neural SDEs
+Patrick Kidger 1 James Foster 1 Xuechen Li 2 Terry Lyons 1
+1 University of Oxford; The Alan Turing Insitute 2 Stanford {kidger, foster, tlyons}@maths.ox.ac.uk lxuechen@ cs.toronto.edu
+Abstract
+Neural SDEs combine many of the best qualities of both RNNs and SDEs: memory efficient training, high-capacity function approximation, and strong priors on model space. This makes them a natural choice for modelling many types of temporal dynamics. Training a Neural SDE (either as a VAE or as a GAN) requires backpropagating through an SDE solve. This may be done by solving a backwards-in-time SDE whose solution is the desired parameter gradients. However, this has previously suffered from severe speed and accuracy issues, due to high computational cost and numerical truncation errors. Here, we overcome these issues through several technical innovations. First, we introduce the reversible Heun method. This is a new SDE solver that is algebraically reversible: eliminating numerical gradient errors, and the first such solver of which we are aware. Moreover it requires half as many function evaluations as comparable solvers, giving up to a 1.98× speedup. Second, we introduce the Brownian Interval: a new, fast, memory efficient, and exact way of sampling and reconstructing Brownian motion. With this we obtain up to a 10.6× speed improvement over previous techniques, which in contrast are both approximate and relatively slow. Third, when specifically training Neural SDEs as GANs (Kidger et al. 2021), we demonstrate how SDE-GANs may be trained through careful weight clipping and choice of activation function. This reduces computational cost (giving up to a 1.87× speedup) and removes the numerical truncation errors associated with gradient penalty. Altogether, we outperform the state-of-the-art by substantial margins, with respect to training speed, and with respect to classification, prediction, and MMD test metrics. We have contributed implementations of all of our techniques to the torchsde library to help facilitate their adoption.
+1 Introduction
+Stochastic differential equations Stochastic differential equations have seen widespread use in the mathematical modelling of random phenomena, such as particle systems [1], financial markets [2], population dynamics [3], and genetics [4]. Featuring inherent randomness, then in modern machine learning parlance SDEs are generative models.
+Such models have typically been constructed theoretically, and are usually relatively simple. For example the Black–Scholes equation, widely used to model asset prices in financial markets, has only two scalar parameters: a fixed drift and a fixed diffusion [5].
+Neural stochastic differential equations Neural stochastic differential equations offer a shift in this paradigm. By parameterising the drift and diffusion of an SDE as neural networks, then modelling capacity is greatly increased, and theoretically arbitrary SDEs may be approximated. (By the universal approximation theorem for neural networks [6, 7].) Several authors have now studied or introduced Neural SDEs; [8, 9, 10, 11, 12, 13, 14, 15, 16] amongst others.
+35th Conference on Neural Information Processing Systems (NeurIPS 2021).
+arXiv:2105.13493v3 [cs.LG] 19 Oct 2021
+
+
+Connections to recurrent neural networks A numerically discretised (Neural) SDE may be interpreted as an RNN (featuring a residual connection), whose input is random noise – Brownian motion – and whose output is a generated sample. Subject to a suitable loss function between distributions, such as the KL divergence [15] or Wasserstein distance [16], this may then simply be backpropagated through in the usual way.
+Generative time series models SDEs are naturally random. In modern machine learning parlance they are thus generative models. As such we treat Neural SDEs as generative time series models.
+The (recurrent) neural network-like structure offers high-capacity function approximation, whilst the SDE-like structure offers strong priors on model space, memory efficiency, and deep theoretical connections to a well-understood literature. Relative to the classical SDE literature, Neural SDEs have essentially unprecedented modelling capacity.
+(Generative) time series models are of classical interest, with forecasting models such as Holt–Winters [17, 18], ARMA [19] and so on. It has also attracted much recent interest with (besides Neural SDEs) the development of models such as Time Series GAN [20], Latent ODEs [21], GRU-ODE-Bayes [22], ODE2VAE [23], CTFPs [24], Neural ODE Processes [25] and Neural Jump ODEs [26].
+1.1 Contributions
+We study backpropagation through SDE solvers, in particular to train Neural SDEs, via continuous adjoint methods. We introduce several technical innovations to improve both model performance and the speed of training: in particular to reduce numerical gradient errors to almost zero.
+First, we introduce the reversible Heun method: a new SDE solver, constructed to be algebraically reversible. By matching the truncation errors of the forward and backward passes, the gradients computed via continuous adjoint method are precisely those of the numerical discretisation of the forward pass. This overcomes the typical greatest limitation of continuous adjoint methods – and to the best of our knowledge, is the first algebraically reversible SDE solver to have been developed.
+After that, we introduce the Brownian Interval as a new way of sampling and reconstructing Brownian motion. It is fast, memory efficient and exact. It has an average (modal) time complexity of O (1), and consumes only O (1) GPU memory. This is contrast to previous techniques requiring either O (T ) memory, or a choice of approximation error ε 1 and then a time complexity of O (log(1/ε)).
+Finally, we demonstrate how the Lipschitz condition for the discriminator of an SDE-GAN may be imposed without gradient penalties – instead using careful clipping and the LipSwish activation function – so as to overcome their previous incompatibility with continuous adjoint methods.
+Overall, multiple technical innovations provide substantial improvements over the state-of-the-art with respect to training speed, and with respect to classification, prediction, and MMD test metrics.
+2 Background
+2.1 Neural SDE construction
+Certain minimal amount of structure Following Kidger et al. [16], we construct Neural SDEs with a certain minimal amount of structure. Let T > 0 be fixed and suppose we wish to model a path-valued random variable Ytrue : [0, T ] → Ry. The size of y is the dimensionality of the data.1
+Let W : [0, T ] → Rw be a w-dimensional Brownian motion, and let V ∼ N (0, Iv,) be drawn from a v-dimensional standard multivariate normal. The values w, v are hyperparameters describing the size of the noise. Let
+ζθ : Rv → Rx, μθ : [0, T ] × Rx → Rx, σθ : [0, T ] × Rx → Rx×w, `θ : Rx → Ry,
+where ζθ, μθ and σθ are neural networks and `θ is affine. Collectively these are parameterised by θ. The dimension x is a hyperparameter describing the size of the hidden state.
+1In practice we will typically observe some discretised time series sampled from Ytrue. For ease of presentation we will neglect this detail for now and will return to it in Section 2.3.
+2
+
+
+We consider Neural SDEs as models of the form
+X0 = ζθ(V ), dXt = μθ(t, Xt) dt + σθ(t, Xt) ◦ dWt, Yt = `θ(Xt), (1)
+for t ∈ [0, T ], with X : [0, T ] → Rx the (strong) solution to the SDE.2 The solution X is guaranteed to exist given mild conditions: that μθ, σθ are Lipschitz, and that EV
+[ζθ(V )2] < ∞.
+We seek to train this model such that Y ≈d Ytrue. That is to say, the model Y should have approximately the same distribution as the target Ytrue, for some notion of approximate. (For example, to be similar with respect to the Wasserstein distance).
+RNNs as discretised SDEs The minimal amount of structure is chosen to parallel RNNs. The solution X may be interpreted as hidden state, and the `θ maps the hidden state to the output of the model. In Appendix A we provide sample PyTorch [27] code computing a discretised SDE according to the Euler–Maruyama method. The result is an RNN consuming random noise as input.
+2.2 Training criteria for Neural SDEs
+Equation (1) produces a random variable Y : [0, T ] → Ry implicitly depending on parameters θ. This model must still be fit to data. This may be done by optimising a distance between the probability distributions (laws) for Y and Ytrue.
+SDE-GANs The Wasserstein distance may be used by constructing a discriminator and training adversarially, as in Kidger et al. [16]. Let Fφ(Y ) = mφ · HT , where
+H0 = ξφ(Y0), dHt = fφ(t, Ht) dt + gφ(t, Ht) ◦ dYt, (2)
+for suitable neural networks ξφ, fφ, gφ and vector mφ. This is a deterministic function of the generated sample Y . Here · denotes a dot product. They then train with respect to
+mθin mφax
+(EY [Fφ(Y )] − EYtrue [Fφ(Ytrue)] ). (3)
+See Appendix B for additional details on this approach, and in particular how it generalises the classical approach to fitting (calibrating) SDEs.
+Latent SDEs Li et al. [15] instead optimise a KL divergence. This consists of constructing an auxiliary process ̂X with drift νφ parameterised by φ, and optimising an expression of the form
+mθ,iφn EW,Ytrue
+[
+∫T
+0
+(Ytrue,t − `θ( ̂Xt))2 + 1
+2
+∥ ∥
+∥(σθ(t, ̂Xt))−1(μθ(t, ̂Xt) − νφ(t, ̂Xt, Ytrue))
+∥ ∥ ∥
+2
+2
+dt
+]
+. (4)
+The full construction is moderately technical; see Appendix B for further details.
+2.3 Discretised observations
+Observations of Ytrue are typically a discrete time series, rather than a true continuous-time path. This is not a serious hurdle. If training an SDE-GAN, then equation (2) may be evaluated on an interpolation Ytrue of the observed data. If training a Latent SDE, then νφ in equation (4) may depend explicitly on the discretised Ytrue.
+2.4 Backpropagation through SDE solves
+Whether the loss for our generated sample Y is produced via a Latent SDE or via the discriminator of an SDE-GAN, it is still required to backpropagate from the loss to the parameters θ, φ.
+Here we use the continuous adjoint method. Also known as simply ‘the adjoint method’, or ‘optimisethen-discretise’, this has recently attracted much attention in the modern literature on neural differential equations. This exploits the reversibility of a differential equation: as with invertible neural
+2The notation ‘ ◦ dWt’ denotes Stratonovich integration. Itô is less efficient; see Appendix C.
+3
+
+
+networks [28], intermediate computations such as Xt for t < T are reconstructed from output computations, so that they do not need to be held in memory.
+Given some Stratonovich SDE
+dZt = μ(t, Zt) dt + σ(t, Zt) ◦ dWt for t ∈ [0, T ], (5)
+and a loss L : Rz → R on its terminal value ZT , then the adjoint process At = dL(ZT )/dZt ∈ Rz is a (strong) solution to
+dAi
+t = −Aj
+t
+∂μj
+∂Zi (t, Zt) dt − Aj
+t
+∂σj,k
+∂Zi (t, Zt) ◦ dW k
+t , (6)
+which in particular uses the same Brownian motion W as on the forward pass. Equations (5) and (6) may be combined into a single SDE and solved backwards-in-time3 from t = T to t = 0, starting from ZT = ZT (computed on the forward pass of equation (5)) and AT = L(ZT )/dZT . Then A0 = dL(ZT )/Z0 is the desired backpropagated gradient.
+Note that we assumed here that the loss L acts only on ZT , not all of Z. This is not an issue in practice. In both equations (3) and (4), the loss is an integral. As such it may be computed as part of Z in a single SDE solve. This outputs a value at time T , the operation L may simply extract this value from ZT , and then backpropagation may proceeed as described here.
+The main issue is that the two numerical approximations to Zt, computed in the forward and backward passes of equation (5), are different. This means that the Zt used as an input in equation (6) has some discrepancy from the forward calculation, and the gradients A0 suffer some error as a result. (Often exacerbating an already tricky training procedure, such as the adversarial training of SDE-GANs.)
+See Appendix C for further discussion on how an SDE solve may be backpropagated through.
+2.5 Alternate constructions
+There are other uses for Neural SDEs, beyond our scope here. For example Song et al. [30] combine SDEs with score-matching, and Xu et al. [31] use SDEs to represent Bayesian uncertainty over parameters. The techniques introduced in this paper will apply to any backpropagation through an SDE solve.
+3 Reversible Heun method
+Algorithm 1: Forward pass
+Input: tn, zn, ̂zn, μn, σn, ∆t, W
+tn+1 = tn + ∆t
+∆Wn = Wtn+1 − Wtn
+̂zn+1 = 2zn − ̂zn + μn∆t + σn∆Wn
+μn+1 = μ(tn+1, ̂zn+1)
+σn+1 = σ(tn+1, ̂zn+1)
+zn+1 = zn + 1
+2 (μn + μn+1)∆t
++1
+2 (σn + σn+1)∆Wn
+Output: tn+1, zn+1, ̂zn+1, μn+1, σn+1
+We introduce a new SDE solver, which we refer to as the reversible Heun method. Its key property is algebraic reversibility; moreover to the best of our knowledge it is the first SDE solver to exhibit this property.
+To fix notation, we consider solving the Stratonovich SDE
+dZt = μ(t, Zt) dt + σ(t, Zt) ◦ dWt, (7) with known initial condition Z0.
+Solver We begin by selecting a step size ∆t, and initialising t0 = 0, z0 = ̂z0 = Z0, μ0 = μ(0, Z0) and σ0 = σ(0, Z0). Let W denote a single sample path of Brownian motion. It is important that the same sample be used for both the forward and backward passes of the algorithm; computationally this may be accomplished by taking W to be a Brownian Interval, which we will introduce in Section 4.
+We then iterate Algorithm 1. Suppose T = N ∆t so that zN , ̂zN , μN , σN are the final output. Then zN ≈ ZT is returned, whilst zN , ̂zN , μN , σN are all retained for the backward pass.
+Nothing else need be saved in memory for the backward pass: in particular no intermediate computations, as would otherwise be typical.
+3Li et al. [15] give rigorous meaning to this via two-sided filtrations; for the reader familiar with rough path theory then Kidger et al. [29, Appendix A] also give a pathwise interpretation. The reader familiar with neither of these should feel free to intuitively treat Stratonovich (but not Itô) SDEs like ODEs.
+4
+
+
+Algorithm 2: Backward pass
+Input: tn+1, zn+1, ̂zn+1, μn+1, σn+1, ∆t, W,
+∂L(ZT )
+∂zn+1 , ∂L(ZT )
+∂
+̂zn+1 , ∂L(ZT )
+∂μn+1 , ∂L(ZT )
+∂ σn+1
+# Reverse step
+tn = tn+1 − ∆t
+∆Wn = Wtn+1 − Wtn
+̂zn = 2zn+1 − ̂zn+1 − μn+1∆t − σn+1∆Wn
+μn = μ(tn, ̂zn)
+σn = σ(tn, ̂zn)
+zn = zn+1 − 1
+2 (μn + μn+1)∆t
+−1
+2 (σn + σn+1)∆Wn
+# Local forward
+zn+1, ̂zn+1, μn+1, σn+1 = Forward(tn, zn, ̂zn, μn,
+σn, ∆t, W )
+# Local backward ∂L(ZT )
+∂(zn, ̂zn, μn, σn) = ∂L(ZT )
+∂(zn+1, ̂zn+1, μn+1, σn+1)
+· ∂(zn+1, ̂zn+1, μn+1, σn+1)
+∂(zn, ̂zn, μn, σn)
+Output: tn, zn, ̂zn, μn, σn,
+∂L(ZT )
+∂zn , ∂L(ZT )
+∂
+̂zn , ∂L(ZT )
+∂μn , ∂L(ZT )
+∂σn
+Algebraic reversibility The key advantage of the reversible Heun method, and the motivating reason for its use alongside continuous-time adjoint methods, is that it is algebraically reversible. That is, it is possible to reconstruct (zn, ̂zn, μn, σn) from (zn+1, ̂zn+1, μn+1, σn+1) in closed form. (And without a fixed-point iteration.)
+This crucial property will mean that it is possible to backpropagate through the SDE solve, such that the gradients obtained via the continuous adjoint method (equation (6)) exactly match the (discretise-then-optimise) gradients obtained by autodifferentiating the numerically discretised forward pass.
+In doing so, one of the greatest limitations of continuous adjoint methods is overcome.
+To the best of our knowledge, the reversible Heun method is the first algebraically reversible SDE solver.
+Computational efficiency A further advantage of the reversible Heun method is computational efficiency. The method requires only a single function evaluation (of both the drift and diffusion) per step. This is in contrast to other Stratonovich solvers (such as the midpoint method or regular Heun’s method), which require two function evaluations per step.
+Convergence of the solver When applied to the Stratonovich SDE (7), the reversible Heun method exhibits strong convergence of order 0.5; the same as the usual Heun’s method.
+Theorem. Let {zn} denote the numerical solution of (7) obtained by Algorithm 1 with a constant step size ∆t and assume sufficient regularity of μ and σ. Then there exists a constant C > 0 so that
+E
+[∥
+∥zN − ZT
+∥ ∥2
+]
+≤C
+√
+∆t ,
+for small ∆t. That is, strong convergence of order 0.5. If σ is constant, then this improves to order 1.
+The key idea in the proof is to consider two adjacent steps of the SDE solver. Then the update ̂zn 7→ ̂zn+2 becomes a step of a midpoint method, whilst zn 7→ zn+1 is similar to Heun’s method.
+This makes it possible to show that {̂zn} and {zn} stay close together: E[‖zn − ̂zn‖42
+] ∼ O(∆t2). With this L4 bound on z − ̂z, we can then apply standard lines of argument from the numerical SDE
+literature. Chaining together local mean squared error estimates, we obtain E[‖zN −ZT ‖22
+] ∼ O(∆t).
+See Appendix D for the full proof. We additionally consider stability in the ODE setting. Whilst the method is not A-stable, we do show it has the same absolute stability region for a linear test equation as the (reversible) asynchronous leapfrog integrator proposed for Neural ODEs in Zhuang et al. [32].
+Precise gradients The backward pass is shown in Algorithm 2. As the same numerical solution {zn} is recovered on both the forward and backward passes – exhibiting the same truncation errors then the computed gradients are precisely the (discretise-then-optimise) gradients of the numerical discretisation of the forward pass.
+Each ∂L(ZT )/∂zn ≈ An∆t, where A is the adjoint variable of equation (6).
+This is unlike the case of solving equation (6) via standard numerical techniques, for which small or adaptive step sizes are necessary to obtain useful gradients [15].
+5
+
+
+Table 1: SDE-GAN on weights dataset; Latent SDE on air quality dataset. Mean ± standard deviation averaged over three runs.
+Dataset, Solver Label classification
+accuracy (%) MMD (×10−2) Training time
+Weights, Midpoint — 4.38 ± 0.67 5.12 ± 0.01 days Weights, Reversible Heun — 1.75 ± 0.3 2.59 ± 0.05 days
+Air quality, Midpoint 46.3 ± 5.1 0.591 ± 0.206 5.58 ± 0.54 hours Air quality, Reversible Heun 49.2 ± 0.02 0.472 ± 0.290 4.47 ± 0.31 hours
+3.1 Experiments
+Figure 1: Samples (red) from Latent SDE on O3 ozone channel of air quality dataset (blue).
+Figure 2: Relative error in gradient calculation.
+We validate the empirical performance of the reversible Heun method. For space, we present abbreviated details and results here. See Appendix F for details of the hyperparameter optimisation procedure, test metric definitions, and so on, and for further results on additional datasets and additional metrics.
+Versus midpoint We begin by comparing the reversible Heun method with the midpoint method, which also converges to the Stratonovich solution. We train an SDE-GAN on a dataset of weight trajectories evolving under stochastic gradient descent, and train a Latent SDE on a dataset of air quality over Beijing.
+See Table 1. Due to the reduced number of vector field evaluations, we find that training speed roughly doubles (1.98×) on the weights dataset, whilst its numerically precise gradients substantially improve the test metrics (comparing generated samples to a held-out test set). Similar behaviour is observed on the air quality dataset, with substantial test metric improvements and a training speed improvement of 1.25×.
+Samples We verify that samples from a model using reversible Heun resemble that of the original dataset: in Figure 1 we show the Latent SDE on the ozone concentration over Beijing.
+Gradient error We investigate the numerical error made in solving (6), compared to the (discretisethen-optimise) gradients of the numerically discretised forward pass. We fix a test problem (differentiating a small Neural SDE) and vary the step size and solver; see Figure 2. The error made in standard solvers is very large (but does at least decrease with step size). The reversible Heun method produces results accurate to floating point error, unattainable by any standard solver.
+4 Brownian Interval
+Numerically solving an SDE, via the reversible Heun method or via any other numerical solver, requires sampling Brownian motion: this is the input W in Algorithms 1 and 2.
+Brownian bridges Mathematically, sampling Brownian motion is straightforward. A fixed-step numerical solver may simply sample independent increments during its time stepping. An adaptive solver (which may reject steps) may use Lévy’s Brownian bridge [33] formula to generate increments with the appropriate correlations: letting Wa,b = Wb − Wa ∈ Rw, then for u < s < t,
+Wu,s|Wu,t = N
+(s−u
+t − u Wu,t , (t − s)(s − u)
+t − u Iw
+)
+. (8)
+Brownian reconstruction However, there are computational difficulties. On the backward pass, the same Brownian sample as the forward pass must be used, and potentially at locations other than were measured on the forward pass [15].
+6
+
+
+Algorithm 3: Sampling the Brownian Interval
+Type: Let Node denote a 5-tuple consisting of an interval, a seed, and three optional Nodes, corresponding to the parent node, and two child nodes, respectively. (Optional as the root has no parent and leaves have no children.) State: Binary tree with elements of type Node,
+with root ̂I = ([0, T ], ̂s, ∗, ̂Ileft, ̂Iright). A
+Node ̂J.
+Input: Interval [s, t] ⊆ [0, T ]
+# The returned ‘nodes’ is a list of Nodes whose # intervals partition [s, t]. Practically speaking # this will usually have only one or two elements. #
+̂J is a hint for where in the tree we are. nodes = traverse( ̂J, [s, t] )
+def sample(I : Node): if I is ̂I then
+return N (0, T ) sampled with seed ̂s. Let I = ([a, b], s, Iparent, Ileft, Iright) Let Iparent = ([ap, bp], sp, Ipp, Ilp, Irp)
+Wparent = sample(Iparent)
+if Ii is Irp then
+Wleft = bridge(ap, bp, a, Wparent, s)
+return Wparent − Wleft
+else
+return bridge(ap, bp, b, Wparent, s)
+sample = LRUCache(sample)
+̂J ← nodes[−1] Ws,t = ∑
+I∈nodes sample(I)
+Output: Ws,t
+[0, T ]
+[0, s] [s, T ]
+[s, t] [t, T ]
+(a)
+[0, T ]
+[0, s] [s, T ]
+[0, u] [u, s][s, t] [t, T ]
+[s, v] [v, t]
+(b)
+Figure 3: Binary tree of intervals.
+Time and memory efficiency The simple but memory intensive approach would be to store every sample made on the forward pass, and then on the backward pass reuse these samples, or sample Brownian noise according to equation (8), as appropriate.
+Li et al. [15] instead offer a memory-efficient but time-intensive approach, by introducing the ‘Virtual Brownian Tree’. This approximates the real line by a tree of dyadic points. Samples are approximate, and demand deep (slow) traversals of the tree.
+Binary tree of (interval, seed) pairs In response to this, we introduce the ‘Brownian Interval’, which offers memory efficiency, exact samples, and fast query times, all at once. The Brownian Interval is built around a binary tree, each node of which is an interval and a random seed.
+The tree starts as a stump consisting of the global interval [0, T ] and a randomly generated random seed. New leaf nodes are created as observations of the sample are made. For example, making a first query at [s, t] ⊆ [0, T ] (an operation that returns Ws,t) produces the binary tree shown in Figure 3a. Algorithm 4 in Appendix E gives the formal definition of this procedure. Making a subsequent query at [u, v] with u < s < v < t produces Figure 3b. Using a splittable PRNG [34, 35], each child node has a random seed deterministically produced from the seed of its parent.
+The tree is thus designed to completely encode the conditional statistics of a sample of Brownian motion: Ws,t, Wt,u are completely specified by t, [s, u], Ws,u, equation (8), and the random seed for [s, u].
+In principle this now gives a way to compute Ws,t; calculating Ws,u recursively. Naïvely this would be very slow – recursing to the root on every query – which we cover by augmenting the binary tree structure with a fixed-size Least Recently Used (LRU) cache on the computed increments Ws,t.
+See Algorithm 3, where bridge denotes equation (8). The operation traverse traverses the binary tree to find or create the list of nodes whose disjoint union is the interval of interest, and is defined explicitly as Algorithm 4 in Appendix E.
+Additionally see Appendix E for various technical considerations and extensions to this algorithm.
+Advantages of the Brownian Interval The LRU cache ensures that queries have an average-case (modal) time complexity of only O (1): in SDE solvers, subsequent queries are typically close to (and thus conditional on) previous queries. Even given cache misses all the way up the tree, the worst-case time complexity will only be O (log(1/s)) in the average step size s of the SDE solver. This is in contrast to the Virtual Brownian Tree, which has an (average or worst-case) time complexity of O (log(1/ε)) in the approximation error ε s.
+7
+
+
+Table 2: V. Brownian Tree against Brownian Interval on speed benchmarks, over 100 subintervals.
+SDE solve, speed (seconds) Doubly sequential access, speed (seconds)
+Size=1 Size=2560 Size=32768 Size=1 Size=2560 Size=32768
+V. B. Tree 1.6×100 2.0×100 5.00×102 2.4×10−1 3.9×10−1 2.9×100 B. Interval 8.2×10−1 1.3×100 4.7×101 5.0×10−2 8.0×10−2 3.5×10−1
+Meanwhile the (GPU) memory cost is only O (1), corresponding to the fixed and constant size of the LRU cache. There is the small additional cost of storing the tree structure itself, but this is held in CPU memory, which for practical purposes is essentially infinite. This is in contrast to simply holding all the Brownian samples in memory, which has a memory cost of O (T ).
+Finally, queries are exact because the tree aligns with the query points. This is contrast to the Virtual Brownian Tree, which only produces samples up to some discretisation of the real line at resolution ε.
+4.1 Experiments
+We benchmark the performance of the Brownian Interval against the Virtual Brownian Tree considered in Li et al. [15]. We include benchmarks corresponding to varying batch sizes, number of sample intervals, and access patterns. For space, just a subset of results are shown. Precise experimental details and further results are available in Appendix F.
+See Table 2. We see that the Brownian Interval is uniformly faster than the Virtual Brownian Tree, ranging from 1.5× faster on smaller problems to 10.6× faster on larger problems. Moreover these speed gains are despite the Brownian Interval being written in Python, whilst the Virtual Brownian Tree is carefully optimised and written in C++.
+5 Training SDE-GANs without gradient penalty
+Kidger et al. [16] train SDEs as GANs, as discussed in Section 2.2, using a neural CDE as a discriminator as in equation (2). They found that only gradient penalty [36] was suitable to enforce the Lipschitz condition, given the recurrent structure of the discriminator.
+However gradient penalty requires calculating second derivatives (a ‘double-backward’). This complicates the use of continuous adjoint methods: the double-continuous-adjoint introduces substantial truncation error; sufficient to obstruct training and requiring small step sizes to resolve.
+Here we overcome this limitation, and moreover do so independently of the possibility of obtaining exact double-gradients via the reversible Heun method. For simplicity we now assume throughout that our discriminator vector fields fφ, gφ are MLPs, which is also the choice we make in practice.
+Lipschitz constant one The key point is that the vector fields fφ, gφ of the discriminator must not only be Lipschitz, but must have Lipschitz constant at most one.
+Given vector fields with Lipschitz constant λ, then the recurrent structure of the discriminator means that the Lipschitz constant of the overall discriminator will be O (λT ). Ensuring λ ≈ 1 with λ ≤ 1 thus enforces that the overall discriminator is Lipschitz with a reasonable Lipschitz constant.
+Hard constraint The exponential size of O (λT ) means that λ only slightly greater than one is still insufficient for stable training. We found that this ruled out enforcing λ ≤ 1 via soft constraints, via either spectral normalisation [37] or gradient penalty across just vector field evaluations.
+Clipping The first part of enforcing this Lipschitz constraint is careful clipping. Considering each linear operation from Ra → Rb as a matrix in A ∈ Ra×b, then after each gradient update we clip its entries to the region [−1/b, 1/b]. Given x ∈ Ra, then this enforces ‖Ax‖∞ ≤ ‖x‖∞.
+LipSwish activation functions Next we must pick an activation function with Lipschitz constant at most one. It should additionally be at least twice continuously differentiable to ensure convergence of the numerical SDE solver (Appendix D). In particular this rules out the ReLU.
+8
+
+
+Table 3: SDE-GAN on OU dataset. Mean ± standard deviation averaged over three runs.
+Test Metrics
+Solver Real/fake classification
+accuracy (%)
+Prediction loss
+MMD
+(×10−1)
+Training time (hours)
+Midpoint w/ gradient penalty 98.2 ± 2.4 2.71 ± 1.03 2.58 ± 1.81 55.0 ± 27.7 Midpoint w/ clipping 93.9 ± 6.9 1.65 ± 0.17 1.03 ± 0.10 32.5 ± 12.1 Reversible Heun w/ clipping 67.7 ± 1.1 1.38 ± 0.06 0.45 ± 0.22 29.4 ± 8.9
+There remain several admissible choices; we use the LipSwish activation function introduced by Chen et al. [38], defined as ρ(x) = 0.909 x sigmoid(x). This was carefully constructed to have Lipschitz constant one, and to be smooth. Moreover the SiLU activation function [39, 40, 41] from which it is derived has been reported as an empirically strong choice.
+The overall vector fields fφ, gφ of the discriminator consist of linear operations (which are constrained by clipping), adding biases (an operation with Lipschitz constant one), and activation functions (taken to be LipSwish). Thus the Lipschitz constant of the overall vector field is at most one, as desired.
+5.1 Experiments
+We test the SDE-GAN on a dataset of time-varying Ornstein–Uhlenbeck samples. For space only a subset of results are shown; see Appendix F for further details of the dataset, optimiser, and so on.
+See Table 3 for the results. We see that the test metrics substantially improve with clipping, over gradient penalty (which struggles due to numerical errors in the double adjoint). The lack of double backward additionally implies a computational speed-up. This reduced training time from 55 hours to just 33 hours. Switching to reversible Heun additionally and substantially improves the test metrics, and further reduced training time to 29 hours; a speed improvement of 1.87×.
+6 Discussion
+6.1 Available implementation in torchsde
+To facilitate the use of the techniques introduced here – in particular without requiring a technical background in numerical SDEs – we have contributed implementations of both the reversible Heun method and the Brownian Interval to the open-source torchsde [42] package. (In which the Brownian Interval has already become the default choice, due to its speed.)
+6.2 Limitations
+The reversible Heun method, Brownian Interval, and training of SDE-GANs via clipping, all appear to be strict improvements over previous techniques. Across our experiments we have observed no limitations relative to previous techniques.
+6.3 Ethical statement
+No significant negative societal impacts are anticipated as a result of this work. A positive environmental impact is anticipated, due to the reduction in compute costs implied by the techniques introduced. See Appendix G for a more in-depth discussion.
+7 Conclusion
+We have introduced several improvements over the previous state-of-the-art for Neural SDEs, with respect to both training speed and test metrics. This has been accomplished through several novel technical innovations, including a first-of-its-kind algebraically reversible SDE solver; a fast, exact, and memory efficient way of sampling and reconstructing Brownian motion; and the development of SDE-GANs via careful clipping and choice of activation function.
+9
+
+
+Acknowledgments and Disclosure of Funding
+PK was supported by the EPSRC grant EP/L015811/1. PK, JF, TL were supported by the Alan Turing Institute under the EPSRC grant EP/N510129/1. PK thanks Chris Rackauckas for discussions related to the reversible Heun method.
+References
+[1] W. T. Coffey, Y. P. Kalmykov, and J. T. Waldron. The Langevin Equation: With Applications to Stochastic Problems in Physics, Chemistry and Electrical Engineering. World Scientifc, 2012.
+[2] S. E. Shreve. Stochastic Calculus for Finance II: Continuous-Time Models. Springer Science & Business Media, 2004.
+[3] M. Arató. A famous nonlinear stochastic equation (Lotka–Volterra model with diffusion). Mathematical and Computer Modelling, 38(7–9):709–726, 2003.
+[4] K.-C. Chen, T.-Y. Wang, H.-H. Tseng, C.-Y. F. Huang, and C.-Y. Kao. A stochastic differential equation model for quantifying transcriptional regulatory network in saccharomyces cerevisiae. Bioinformatics, 21(12):2883–2890, 2005.
+[5] F. Black and M. Scholes. The Pricing of Options and Corporate Liabilities. Journal of Political Economy, 81(3):637–654, 1973.
+[6] A. Pinkus. Approximation theory of the MLP model in neural networks. Acta Numerica, 8: 143–195, 1999.
+[7] P. Kidger and T. Lyons. Universal Approximation with Deep Narrow Networks. In Proceedings of the 33rd Conference on Learning Theory, pages 2306–2327, 2020.
+[8] B. Tzen and M. Raginsky. Neural Stochastic Differential Equations: Deep Latent Gaussian Models in the Diffusion Limit. arXiv:1905.09883, 2019.
+[9] B. Tzen and M. Raginsky. Theoretical guarantees for sampling and inference in generative models with latent diffusions. In Proceedings of the 32rd Conference on Learning Theory, pages 3084–3114, 2019.
+[10] J. Jia and A. Benson. Neural Jump Stochastic Differential Equations. In Advances in Neural Information Processing Systems 32, pages 9847–9858, 2019.
+[11] X. Liu, T. Xiao, S. Si, Q. Cao, S. Kumar, and C.-J. Hsieh. Neural SDE: Stabilizing Neural ODE Networks with Stochastic Noise. arXiv:1906.02355, 2019.
+[12] L. Kong, J. Sun, and C. Zhang. SDE-Net: Equipping Deep Neural Networks with Uncertainty Estimates. In Proceedings of the 37th International Conference on Machine Learning, pages 5405–5415, 2020.
+[13] L. Hodgkinson, C. van der Heide, F. Roosta, and M. Mahoney. Stochastic Normalizing Flows. arXiv:2002.09547, 2020.
+[14] P. Gierjatowicz, M. Sabate-Vidales, D. Šiška, L. Szpruch, and Ž. Žuriˇc. Robust Pricing and Hedging via Neural SDEs. arXiv:2007.04154, 2020.
+[15] X. Li, T.-K. L. Wong, R. T. Q. Chen, and D. Duvenaud. Scalable Gradients and Variational Inference for Stochastic Differential Equations. AISTATS, 2020.
+[16] P. Kidger, J. Foster, X. Li, H. Oberhauser, and T. Lyons. Neural SDEs as Infinite-Dimensional GANs. In Proceedings of the 38th International Conference on Machine Learning, 2021.
+[17] C. Holt. Forecasting seasonals and trends by exponentially weighted moving averages. ONR Research Memorandum, Carnegie Institute of Technology, 52, 1957.
+[18] P. Winters. Forecasting sales by exponentially weighted moving averages. Management Science, 6:324–342, 1960.
+[19] E. J. Hannan and J. Rissanen. Recursive Estimation of Mixed Autoregressive-Moving Average Order. Biometrika, 69:81–94, 1982.
+[20] J. Yoon, D. Jarrett, and M. van der Schaar. Time-series Generative Adversarial Networks. In Advances in Neural Information Processing Systems 32, 2019.
+10
+
+
+[21] Y. Rubanova, R. T. Q. Chen, and D. Duvenaud. Latent Ordinary Differential Equations for Irregularly-Sampled Time Series. In Advances in Neural Information Processing Systems 32, pages 5320–5330, 2019.
+[22] E. De Brouwer, J. Simm, A. Arany, and Y. Moreau. GRU-ODE-Bayes: Continuous Modeling of Sporadically-Observed Time Series. In Advances in Neural Information Processing Systems 32, pages 7379–7390, 2019.
+[23] C. Yildiz, M. Heinonen, and H. Lahdesmaki. ODE2VAE: Deep generative second order ODEs with Bayesian neural networks. In Advances in Neural Information Processing Systems 32, 2019.
+[24] R. Deng, B. Chang, M. Brubaker, G. Mori, and A. Lehrmann. Modeling Continuous Stochastic Processes with Dynamic Normalizing Flows. In Advances in Neural Information Processing Systems 33, pages 7805–7815, 2020.
+[25] A. Norcliffe, C. Bodnar, B. Day, J. Moss, and P. Liò. Neural ODE Processes. In International Conference on Learning Representations, 2021.
+[26] C. Herrera, F. Krach, and J. Teichmann. Neural Jump Ordinary Differential Equations: Consistent Continuous-Time Prediction and Filtering. In International Conference on Learning Representations, 2021.
+[27] A. Paszke, S. Gross, F. Massa, A. Lerer, J. Bradbury, G. Chanan, T. Killeen, Z. Lin, N. Gimelshein, L. Antiga, A. Desmaison, A. Kopf, E. Yang, Z. DeVito, M. Raison, A. Tejani, S. Chilamkurthy, B. Steiner, L. Fang, J. Bai, and S. Chintala. PyTorch: An Imperative Style, High-Performance Deep Learning Library. In Advances in Neural Information Processing Systems 32, pages 8024–8035, 2019.
+[28] J. Behrmann, W. Grathwohl, R. T. Q. Chen, D. Duvenaud, and J.-H. Jacobsen. Invertible Residual Networks. In Proceedings of the 36th International Conference on Machine Learning, pages 573–582, 2019.
+[29] P. Kidger, J. Foster, X. Li, H. Oberhauser, and T. Lyons. Neural SDEs Made Easy: SDEs are Infinite-Dimensional GANs. OpenReview, 2020.
+[30] Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon, and B. Poole. Score-Based Generative Modeling through Stochastic Differential Equations. In International Conference on Learning Representations, 2021.
+[31] W. Xu, R. T. Q. Chen, X. Li, and D. Duvenaud. Infinitely Deep Bayesian Neural Networks with Stochastic Differential Equations. arXiv:2102.06559, 2021.
+[32] J. Zhuang, N. C. Dvornek, S. Tatikonda, and J. S. Duncan. MALI: A memory efficient and reverse accurate integrator for Neural ODEs. In International Conference on Learning Representations, 2021.
+[33] D. Revuz and M. Yor. Continuous martingales and Brownian motion, volume 293. Springer Science & Business Media, 2013.
+[34] J. K. Salmon, M. A. Moraes, R. O. Dror, and D. E. Shaw. Parallel random numbers: as easy as 1, 2, 3. Proc. High Performance Computing, Networking, Storage and Analysis, pages 1–12, 2011.
+[35] K. Claessen and M. Pałka. Splittable pseudorandom number generators using cryptographic hashing. ACM SIGPLAN Notices, 48:47–58, 2013.
+[36] I. Gulrajani, F. Ahmed, M. Arjovsky, V. Dumoulin, and A. Courville. Improved Training of Wasserstein GANs. In Advances in Neural Information Processing Systems 30, pages 5767–5777, 2017.
+[37] T. Miyato, T. Kataoka, M. Koyama, and Y. Yoshida. Spectral Normalization for Generative Adversarial Networks. In International Conference on Learning Representations, 2018.
+[38] R. T. Q. Chen, J. Behrmann, D. Duvenaud, and J.-H. Jacobsen. Residual Flows for Invertible Generative Modeling. In Advances in Neural Information Processing Systems 32, 2019.
+[39] D. Hendrycks and K. Gimpel. Gaussian Error Linear Units (GELUs). arXiv:1606.08415, 2016.
+[40] S. Elfwing, E. Uchibe, and K. Doya. Sigmoid-Weighted Linear Units for Neural Network Function Approximation in Reinforcement Learning. arXiv:1702.03118, 2017.
+11
+
+
+[41] P. Ramachandran, B. Zoph, and Q. Le. Swish: a Self-Gated Activation Function. arXiv:1710.05941, 2017.
+[42] X. Li. torchsde, 2019. https://github.com/google-research/torchsde.
+[43] R. T. Q. Chen, Y. Rubanova, J. Bettencourt, and D. Duvenaud. Neural Ordinary Differential Equations. In Advances in Neural Information Processing Systems 31, 2018.
+[44] M. E. Sander, P. Ablin, M. Blondel, and G. Peyré. Momentum Residual Neural Networks. arXiv:2102.07870, 2021.
+[45] P. Kidger, J. Morrill, J. Foster, and T. Lyons. Neural Controlled Differential Equations for Irregular Time Series. In Advances in Neural Information Processing Systems 33, pages 6696–6707, 2020.
+[46] J. Morrill, C. Salvi, P. Kidger, J. Foster, and T. Lyons. Neural Rough Differential Equations for Long Time Series. In Proceedings of the 38th International Conference on Machine Learning, 2021.
+[47] B. Chang, M. Chen, E. Haber, and E. H. Chi. AntisymmetricRNN: A dynamical system view on recurrent neural networks. International Conference on Learning Representations, 2019.
+[48] T. Karras, S. Laine, M. Aittala, J. Hellsten, J. Lehtinen, and T. Aila. Analyzing and Improving the Image Quality of StyleGAN. In Proc. CVPR, 2020.
+[49] P. Kidger. torchtyping, 2021. https://github.com/patrick-kidger/torchtyping.
+[50] M. Arjovsky, S. Chintala, and L. Bottou. Wasserstein Generative Adversarial Networks. In Proceedings of the 34th International Conference on Machine Learning, pages 214–223, 2017.
+[51] M. Giles and P. Glasserman. Smoking adjoints: Fast Monte Carlo greeks. Risk, 19:88–92, 2006.
+[52] R. S. Hamilton. The inverse function theorem of Nash and Moser. Bulletin of the American Mathematical Society, 7(1):65–222, 1982.
+[53] P. E. Kloeden and E. Platen. Numerical Solution of Stochastic Differential Equations. Springer, 1992.
+[54] J. Foster, H. Oberhauser, and T. Lyons. An optimal polynomial approximation of Brownian motion. SIAM Journal on Numerical Analysis, 58(3):1393–1421, 2020.
+[55] B. Leimkuhler, C. Matthews, and M. V. Tretyakov. On the long-time integration of stochastic gradient systems. Proceedings of the Royal Society A, 470(2170), 2014.
+[56] L. F. Shampine. Stability of the leapfrog/midpoint method. Applied Mathematics and Computation, 208(1):293–298, 2009.
+[57] A. Griewank. Achieving logarithmic growth of temporal and spatial complexity in reverse automatic differentiation. Optimization Methods and Software, 1(1):35–54, 1992.
+[58] J. Gaines and T. Lyons. Variable step size control in the numerical solution of stochastic differential equations. SIAM Journal on Applied Mathematics, 57(5):1455–1484, 1997.
+[59] A. Rößler. Runge-Kutta Methods for the Strong Approximation of Solutions of Stochastic Differential Equations. SIAM Journal on Numerical Analysis, 48(3):922–952, 2010.
+[60] A. Dickinson. Optimal Approximation of the Second Iterated Integral of Brownian Motion. Stochastic Analysis and Applications, 25(5):1109–1128, 2007.
+[61] J. Gaines and T. Lyons. Random Generation of Stochastic Area Integrals. SIAM Journal on Applied Mathematics, 54(4):1132–1146, 1994.
+[62] A. Davie. KMT theory applied to approximations of SDE. In Stochastic Analysis and Applications 2014, pages 185–201. Springer, 2014.
+[63] G. Flint and T. Lyons. Pathwise approximation of SDEs by coupling piecewise abelian rough paths. arXiv:1505.01298, 2015.
+[64] J. Foster. Numerical approximations for stochastic differential equations. PhD thesis, University of Oxford, 2020.
+[65] M. Wiktorsson. Joint characteristic function and simultaneous simulation of iterated Itô integrals for multiple independent Brownian motions. Annals of Applied Probability, 11(2):470–487, 2001.
+12
+
+
+[66] J. Mrongowius and A. Rößler. On the Approximation and Simulation of Iterated Stochastic Integrals and the Corresponding Lévy Areas in Terms of a Multidimensional Brownian Motion. arXiv:2101.09542, 2021.
+[67] J. Foster and K. Habermann. Brownian bridge expansions for Lévy area approximations and particular values of the Riemann zeta function. arXiv:2102.10095, 2021.
+[68] A. Gretton, K. M. Borgwardt, M. J. Rasch, B. Schölkopf, and A. Smola. A Kernel Two-Sample Test. Journal of Machine Learning Research, 13(1):723–773, 2013.
+[69] F. Király and H. Oberhauser. Kernels for sequentially ordered data. Journal of Machine Learning Research, 20(31):1–45, 2019.
+[70] C. Toth and H. Oberhauser. Bayesian Learning from Sequential Data using Gaussian Processes with Signature Covariances. In Proceedings of the 37th International Conference on Machine Learning, pages 9548–9560, 2020.
+[71] P. Bonnier, P. Kidger, I. Perez-Arribas, C. Salvi, and T. Lyons. Deep Signature Transforms. In Advances in Neural Information Processing Systems 32, 2019.
+[72] C. Salvi, T. Cass, J. Foster, T. Lyons, and W. Yang. The Signature Kernel is the solution of a Goursat PDE. arXiv:2006.14794, 2021.
+[73] M. Lemercier, C. Salvi, T. Cass, E. V. Bonilla, T. Damoulas, and T. Lyons. SigGPDE: Scaling Sparse Gaussian Processes on Sequential Data. In Proceedings of the 38th International Conference on Machine Learning, 2021.
+[74] P. Kidger and T. Lyons. Signatory: differentiable computations of the signature and logsignature transforms, on both CPU and GPU. In International Conference on Learning Representations, 2021. https://github.com/patrick-kidger/signatory.
+[75] J. Morrill, A. Fermanian, P. Kidger, and T. Lyons. A generalised signature method for multivariate time series feature extraction. arXiv:2006.00873, 2020.
+[76] Y. Li, K. Swersky, and R. Zemel. Generative Moment Matching Networks. In Proceedings of the 32nd International Conference on Machine Learning, pages 1718–1727, 2015.
+[77] C.-L. Li, W.-C. Chang, Y. Cheng, Y. Yang, and B. Poczos. MMD GAN: Towards Deeper Understanding of Moment Matching Network. In Advances in Neural Information Processing Systems 30, pages 2203–2213, 2017.
+[78] P. Kidger. torchcde, 2020. https://github.com/patrick-kidger/torchcde.
+[79] R. T. Q. Chen. torchdiffeq, 2018. https://github.com/rtqichen/torchdiffeq.
+[80] Ax. https://ax.dev.
+[81] D. Kingma and J. Ba. Adam: A method for stochastic optimization. In International Conference on Learning Representations, 2015.
+[82] M. D. Zeiler. ADADELTA: An Adaptive Learning Rate Method. arXiv:1212.5701, 2012.
+[83] Y. Yazıcı, C.-S. Foo, S. Winkler, K.-H. Yap, G. Piliouras, and V. Chandrasekhar. The Unusual Effectiveness of Averaging in GAN training. In International Conference on Learning Representations, 2019.
+[84] P. Izmailov, D. Podoprikhin, T. Garipov, D. Vetrov, and A. G. Wilson. Averaging Weights Leads to Wider Optima and Better Generalization. Conference on Uncertainty in Artificial Intelligence, 2018.
+[85] D. Dua and C. Graff. UCI Machine Learning Repository, 2017. URL http://archive.ics. uci.edu/ml.
+[86] S. Zhang, B. Guo, A. Dong, J. He, Z. Xu, and S. X. Chen. Cautionary tales on air-quality improvement in Beijing. Proceedings of the Royal Society A, 473(2205), 2017.
+13
+
+
+1 from t or ch import randn_like 2 from t or ch . nn import Module 3 from t o r c h t y p i n g import TensorType 4
+5 def euler_maruyama_solve ( y0 : TensorType [" batch " , 1] , 6 dt : TensorType [()] , # scalar 7 num_steps : int , 8 d r i f t : Module , 9 d i f f u s i o n : Module 10 ) −> l i s t [ T e n s o r T y p e [ " b a t c h " , 1 ] ] : 11 y s = [ y0 ] 12 f o r _ i n r a n g e ( n u m _ s t e p s ) : 13 y s . a p p e n d ( y s [ − 1 ] + d r i f t ( y s [ − 1 ] ) * d t 14 + d i f f u s i o n ( y s [ − 1 ] ) * r a n d n _ l i k e ( y s [ − 1 ] ) * d t . s q r t ( ) )
+15 r e t u r n y s
+Figure 4: Euler–Maruyama method in PyTorch. Type annotations (Python 3.9+) are included and torchtyping [49] used to indicate shapes of tensors.
+A RNNs as discretised SDEs
+Consider the autonomous one-dimensional Itô SDE
+dYt = μ(Yt) dt + σ(Yt) dWt,
+with Yt, μ(Yt), σ(Yt), Wt ∈ R. Then its numerical Euler–Maruyama discretisation is
+Yn+1 = Yn + μ(Yn)∆t + σ(Yn)∆Wn,
+where ∆t is some fixed time step and Wn ∼ N (0, ∆t). This may be implemented in very few lines of PyTorch code – see Figure 4 – and subject to a suitable loss function between distributions, such as the KL divergence [15] or Wasserstein distance [16], simply backpropagated through in the usual way.
+In this way we see that a discretised SDE is simply an RNN consuming random noise.
+Neural networks as discretised Neural Differential Equations In passing we note that this is a common occurrence: many popular neural network architectures may be interpreted as discretised differential equations.
+Residual networks are discretisations of ODEs [43, 44]. RNNs are discretised controlled differential equations [45, 46, 47].
+StyleGAN2 and denoising diffusion probabilistic models are both essentially discretised SDEs [30, 48].
+Many invertible neural networks resemble discretised differential equations; for example using an explicit Euler method on the forward pass, and recovering the intermediate computations via the implicit Euler method on the backward pass [28, 38].
+B Training criteria for Neural SDEs
+SDEs as GANs One classical way of fitting (non-neural) SDEs is to pick some prespecified functions of interest F1, . . . , FN , and then ask that EY [Fi(Y )] ≈ EYtrue [Fi(Ytrue)] for all i. For example this may be done by optimising
+mθin
+N
+∑
+i=1
+(EY [Fi(Y )] − EYtrue [Fi(Ytrue)] )2.
+This ensures that the model and the data behave the same with respect to the functions Fi. (Known as either ‘witness functions’ or ‘payoff functions’ depending on the field.)
+14
+
+
+Kidger et al. [16] generalise this by replacing F1, . . . FN with a parameterised function Fφ – a neural network with parameters φ – and training adversarially:
+mθin mφax
+(EY [Fφ(Y )] − EYtrue [Fφ(Ytrue)] ). (9)
+Thus making a connection to the GAN literature.
+In principle Fφ could be parameterised as any neural network capable of operating on the path-valued Y . There is a natural choice: use a Neural CDE [45]. This is a differential equation capable of acting on path-valued inputs. This means letting the discriminator be Fφ(Y ) = mφ · HT , where
+H0 = ξφ(Y0), dHt = fφ(t, Ht) dt + gφ(t, Ht) ◦ dYt,
+for suitable neural networks ξφ, fφ, gφ and vector mφ. This is a deterministic function of the generated sample Y . Here · denotes a dot product.
+Adding regularisation to control the derivative of Fφ ensures that equation (3) corresponds to the dual formulation of the Wasserstein distance, so that Y is capable of perfectly matching Ytrue given enough data, training time, and model capacity [50].
+In our experience, this approach produces models with a very high modelling capacity, but which are somewhat involved to train – GANs being notoriously hard to train stably.
+Latent SDEs Li et al. [15] have an alternate approach. Let
+ξφ : Ry → Rx × Rx, νφ : [0, T ] × Rx × {[0, T ] → Ry} → Rx, (10)
+be (Lipschitz) neural networks4 parameterised by φ. Let (m, s) = ξφ(Ytrue,0), let ̂V ∼ N (m, sIv,), and let
+̂X0 = ζθ( ̂V ), d ̂Xt = νφ(t, ̂Xt, Ytrue) dt + σθ(t, ̂Xt) ◦ dWt, ̂Yt = `θ( ̂Xt).
+Note that ̂X is a random variable over SDEs, as Ytrue is still a random variable.5
+They show that the KL divergence
+KL
+(
+̂X
+∥
+∥
+∥X
+)
+= EW
+∫T
+0
+1 2
+∥ ∥
+∥(σθ(t, ̂Xt))−1(μθ(t, ̂Xt) − νφ(t, ̂Xt, Ytrue))
+∥ ∥ ∥
+2
+2
+dt,
+and optimise
+mθ,iφn EYtrue
+[
+(
+̂Y0 − Ytrue,0)2 + KL
+(
+̂V
+∥
+∥
+∥V
+)
++ EW
+∫T
+0
+(
+̂Yt − Ytrue,t)2 dt + KL
+(
+̂X
+∥
+∥
+∥X
+)
+]
+.
+This may be derived as an evidence lower-bound (ELBO). The first two terms are simply a VAE for generating Y0, with latent V . The third term and fourth term are a VAE for generating Y , by autoencoding Ytrue to ̂Y , and then fitting X to ̂X.
+In our experience, this produces less expressive models than the SDE-GAN approach; however the model is easier to train, due to the lack of adversarial training.6
+C Adjoints for SDEs
+Recall that we wish to backpropagate from our generated sample Y to the parameters θ, φ. Here we provide a more complete overview of the options for how this may be done.
+4We do not discuss the regularity of elements of {[0, T ] → Ry} as in practice we will have discrete observations; νφ is thus commonly parameterised as νφ(t, ̂Xt, Ytrue) = ν1
+φ(t, ̂Xt, ν2
+φ(Ytrue|[t,T ])), where ν1
+φ is
+for example an MLP, and ν2
+φ is an RNN. 5So that ̂V , ̂X, ̂Y might be better denoted ̂V |Ytrue,0, ̂X|Ytrue, ̂Y |Ytrue to reflect their dependence on Ytrue; we elide this for simplicity of notation. 6For ease of presentation this section features a slight abuse of notation: writing the KL divergence between random variables rather than probability distributions. It is also a slight specialisation of Li et al. [15], who allow losses other than the L2 loss between data and sample.
+15
+
+
+Discretise-then-optimise One way is to simply backpropagate through the internals of every numerical solver. (Also known as ‘discretise-then-optimise’.) However this requires O (HT ) memory, where H denotes the amount of memory used to evaluate and backpropagate through each neural network once.
+Optimise-then-discretise The continuous adjoint method,7 also known as “optimise-thendiscretise”, instead exploits the reversibility of a differential equation. This means that intermediate computations such as Xt for t < T are reconstructed from output computations, and do not need to be held in memory.
+Recall equations (5) and (6): given some Stratonovich SDE
+dZt = μ(t, Zt) dt + σ(t, Zt) ◦ dWt for t ∈ [0, T ],
+and a loss L : Rz → R on its terminal value ZT , then the adjoint process At = dL(ZT )/dZt ∈ Rz is a (strong) solution to
+dAi
+t = −Aj
+t
+∂μj
+∂Zi (t, Zt) dt − Aj
+t
+∂σj,k
+∂Zi (t, Zt) ◦ dW k
+t,
+which in particular uses the same Brownian motion W as on the forward pass. These may be solved backwards-in-time from t = T to t = 0, starting from ZT = ZT (computed on the forward pass) and AT = L(ZT )/dZT . Then A0 = dL(ZT )/Z0 is the desired backpropagated gradient.
+The main advantage of the continuous adjoint method is that it reduces the memory footprint to only O (H + T ). O (H) to compute each vector-Jacobian product (Aj∂μi/∂Zj and Aj∂σi,k/∂Zj), and O (T ) to hold the batch of training data.
+The main disadvantage (unless using the reversible Heun method) is that the two numerical approximations to Zt, computed in the forward and backward passes of equation (5), are different. This means that the Zt used as an input in equation (6) does not perfectly match what is used in the forward calculation, and the gradients A0 suffer some error as a result. This slows and worsens training. (Often exacerbating an already tricky training procedure, such as the adversarial training of SDE-GANs.)
+Itô versus Stratonovich Note that backpropagation through an Itô SDE may be performed by first adding a −(σj,k∂σi,k/∂Zj)(t, Zt)/2 correction term to μ in equation (5), which converts it to a Stratonovich SDE, and then applying equation (6).
+This additional computational cost – including double autodifferentiation to compute derivatives of the correction term – means that we prefer to use Stratonovich SDEs throughout.
+D Error analysis of the reversible Heun method
+D.1 Notation and definitions
+In this section, we present some of the notation, definitions and assumptions used in our error analysis.
+Throughout, we use ‖ · ‖2 to denote the standard Euclidean norm on Rn and 〈 ·, · 〉 will be the
+associated inner product with 〈x, x〉 = ‖x‖22. We use the same notation to denote norms for tensors.
+For k ≥ 1, a k-tensor on Rn is simply an element of the nk-dimensional space Rn×···×n and can be interpreted as a multilinear map into R with k arguments from Rn. Hence for a k-tensor T on Rn (with k ≥ 2) and a vector v ∈ Rn, we shall define T v := T (v, · · · ) as a (k − 1)-tensor on Rn.
+Therefore, we can define the operator norm of T recursively as
+‖T ‖op :=
+
+ 
+ 
+‖T ‖2, if T ∈ Rn,
+sup
+v ∈Rn , ‖v ‖2 ≤1
+‖T v‖op, if T is a k-tensor on Rn with k ≥ 2. (11)
+7Frequently abbreviated to simply ‘adjoint method’ in the modern literature, although this term is ambiguous as it is also used to refer to backpropagation-through-the-solver in other literature [51].
+16
+
+
+With a slight abuse of notation, we shall write ‖ · ‖2 instead of ‖ · ‖op for all k-tensors.
+In addition, we denote the standard tensor product by ⊗. So for a k1-tensor x and k2-tensor y on Rn,
+x ⊗ y is a (k1 + k2)-tensor on Rn. Moreover, it is straightforward to show that ‖x ⊗ y‖2 ≤ ‖x‖2‖y‖2 and for a k-tensor T on Rn, we have that T v := T (v1, · · · , vk) for all v = v1 ⊗ · · · ⊗ vk ∈ (Rn)⊗k.
+We suppose that (Ω, F , P ; {Ft}t≥0
+) is a filtered probability space carrying a standard d-dimensional Brownian motion. We consider the following Stratonovich SDE over the finite time horizon [0, T ],
+dyt = f (t, yt) dt + g(t, yt) ◦ dWt , (12)
+where y = {yt}t∈[0,T ] is a continuous Re-valued stochastic process and f : [0, T ] × Re → Re,
+g : [0, T ] × Re → Re×d are functions. Without loss of generality, we rewrite (12) as an autonomous SDE by letting t 7→ t be a coordinate of y . This simplifies notation and results in the following SDE:
+dyt = f (yt) dt + g(yt) ◦ dWt , (13)
+We shall assume that f, g are bounded and twice continuously differentiable with bounded derivatives,
+‖Dkf ‖∞ := sup
+x∈Re
+∥
+∥Dkf (x)∥
+∥2 < ∞, ‖Dkg‖∞ := sup
+x∈Re
+∥
+∥Dkg(x)∥
+∥2 < ∞, (14)
+for k = 0, 1, 2, where ‖ · ‖2 denotes the Euclidean operator norm on k-tensors given by (11).
+For N ≥ 1, we will compute numerical SDE solutions on [0, T ] using a constant step size h = T
+N.
+That is, numerical solutions are obtained at times {tn}0≤n≤N with tn := nh for n ∈ {0, 1, · · · , N }.
+For 0 ≤ n ≤ N , we denote increments of Brownian motion by Wn := Wtn+1 − Wtn ∼ N (0, Idh) , where Id is the d × d identity matrix. We use hmax > 0 to denote an upper bound for the step size h.
+Given a random vector X, taking its values in Rn, we define the Lp norm of X for p ≥ 1 as
+‖X‖Lp := E[‖X‖p
+2
+]1
+p , (15)
+Similarly, for a stochastic process {Xt}, the Ftn -conditional Lp norm of Xt is
+‖Xt‖Lpn := En
+[‖Xt‖p
+2
+]1
+p = E[‖Xt‖p
+2
+∣
+∣ Ftn
+]1
+p , (16)
+for t ≥ tn.
+We say that x(h) = O(hγ) if there exists a constant C > 0, depending on hmax but not h, such that
+|x(h)| ≤ Chγ for h ∈ (0, hmax]. We also use big-O notation for estimating quantities in Lp and Lpn.
+We use ‖N (0, Id)‖Lp to denote the Lp norm of a standard d-dimensional normal random vector.
+Thus we have ‖N (0, Id)‖L2 = √d , ‖N (0, Id)‖L4 = (d2 + 2d) 1
+4 and ‖Wn‖Lp = ‖N (0, Id)‖Lp h 1
+2.
+We recall the reversible Heun method given by Algorithm 1.
+Definition D.1 (Reversible Heun method). For N ≥ 1, we construct a numerical solution {Yn, Zn}0≤n≤N for the SDE (13) by setting Y0 = Z0 = y0 and, for each n ∈ {0, 1, · · · , N − 1}, defining (Yn+1, Zn+1) from (Yn, Zn) as
+Zn+1 := 2Yn − Zn + f (Zn
+)h + g(Zn
+)Wn , (17)
+Yn+1 := Yn + 1
+2
+(f (Zn
+) + f (Zn+1
+))h + 1
+2
+(g(Zn
+) + g(Zn+1
+))Wn , (18)
+where Wn := Wtn+1 − Wtn ∼ N (0, Idh) is an increment of a d-dimensional Brownian motion W . The collection {Yn}0≤n≤N is the numerical approximation to the true solution.
+Remark D.2. Whilst it is not used in our analysis, the above numerical method is time-reversible as
+Zn = 2Yn+1 − Zn+1 − f (Zn+1
+)h − g(Zn+1
+)Wn ,
+Yn = Yn+1 − 1
+2
+(f (Zn+1
+) + f (Zn
+))h − 1
+2
+(g(Zn+1
+) + g(Zn
+))Wn .
+To simplify notation, we shall define another numerical solution {Z ̃n}0≤n≤N with Z ̃n := 2Yn − Zn.
+17
+
+
+Our analysis is outlined as follows. In Section D.2, we show that when h is sufficiently small,
+‖Yn − Zn‖L4 = O(√h ) . The choice of L4 instead of L2 is important in subsequent error estimates. In Section D.3, we show that the reversible Heun method converges to the Stratonovich solution of
+SDE (13) in the L2-norm at a rate of O(√h ). This matches the convergence rate of standard SDE solvers such as the Heun and midpoint methods. In Section D.4, we consider the case where g is constant (i.e. additive noise) and show that the L2 convergence rate of our method becomes O(h). We also give numerical evidence that the the reversible Heun method can achieve second order weak convergence for SDEs with additive noise. In Section D.5, we consider the stability of the reversible Heun method in the ODE setting. We show that it has the same absolute stability region for a linear test equation as the (reversible) asynchronous leapfrog integrator proposed for Neural ODEs in [32].
+D.2 Approximation error between components of the reversible Heun method
+The key idea underlying our analysis is to consider two steps of the numerical method, which gives,
+Zn+2 := Zn + 2f (Zn+1
+)h + g(Zn+1
+)(Wn + Wn+1
+), (19)
+Yn+2 := Yn + 1
+2
+(f (Zn
+) + 2f (Zn+1
+) + f (Zn+2
+))h (20)
++1
+2
+(g(Zn
+) + g(Zn+1
+))Wn + 1
+2
+(g(Zn+1
+) + g(Zn+2
+))Wn+1 .
+Thus Z is propagated by a midpoint method and Y is propagated by a trapezoidal rule / Heun method. To prove that {Zn} and {Yn} are close together when h is small, we shall use the Taylor expansions:
+Theorem D.3 (Taylor expansions of vector fields). Let F be a bounded and twice continuously differentiable function on Re with bounded derivatives (i.e. we can set F = f or g). Then for n ≥ 0,
+F
+(Zn+1
+) = F(
+Z ̃n
+) + F′(
+Z ̃n
+)(Zn+1 − Z ̃n
+) + RF,1
+n,
+F
+(Zn+2
+) = F (Zn
+) + F ′(Zn
+)(Zn+2 − Zn
+) + RF,2
+n,
+where the remainder terms RnF,1 and RnF,2 satisfy the following estimates for any fixed p ≥ 1,
+∥
+∥RF,1
+n
+∥
+∥Lpn
+= O(h),
+∥
+∥RF,2
+n
+∥
+∥Lpn
+= O(h).
+Proof. By Taylor’s theorem with integral remainder [52, Theorem 3.5.6], the RnF,i terms are given by
+RF,1
+n=
+∫1
+0
+(1 − t)F ′′(
+Z ̃n + t(Zn+1 − Z ̃n
+)) dt (Zn+1 − Z ̃n
+)⊗2,
+RF,2
+n=
+∫1
+0
+(1 − t)F ′′(Zn + t(Zn+2 − Zn
+)) dt (Zn+2 − Zn
+)⊗2.
+We first note that for Re-valued random vectors X1 and X2, we have
+∥ ∥ ∥ ∥
+∫1
+0
+(1 − t)F ′′(X1 + tX2
+) dt X⊗2
+2
+∥ ∥ ∥
+∥Lpn
+= En
+[∥ ∥ ∥ ∥
+∫1
+0
+(1 − t)F ′′(X1 + tX2
+) dt X⊗2
+2
+∥ ∥ ∥ ∥
+p
+2
+]1
+p
+≤ En
+[∥ ∥ ∥ ∥
+∫1
+0
+(1 − t)k−1F ′′(X1 + tX2
+) dt
+∥ ∥ ∥ ∥
+p
+2
+∥
+∥X ⊗2
+2
+∥ ∥
+p 2
+]1
+p
+≤ En
+[∫ 1
+0
+∥ ∥
+∥(1 − t)F ′′(X1 + tX2
+)
+∥ ∥ ∥
+p
+2
+dt ∥
+∥X2
+∥ ∥
+2p 2
+]1
+p
+≤
+(p + 1)− 1
+p ‖F ′′‖∞
+∥
+∥X2
+∥ ∥
+2
+Ln
+2p
+,
+18
+
+
+where the inequality ∥
+∥
+∫1
+0 · dt ∥
+∥
+p
+2 ≤∫1
+0 ‖ · ‖p
+2 dt follows by Jensen’s inequality and the convexity of
+x 7→ xp. Thus, it is enough to estimate Zn+1 − Z ̃n and Zn+2 − Zn using Minkowski’s inequality.
+∥
+∥Zn+1 − Z ̃n
+∥ ∥
+2
+Ln
+2p
+=
+∥
+∥f (Zn
+)h + g(Zn
+)Wn
+∥ ∥
+2
+Ln
+2p
+≤ 2∥
+∥f (Zn
+)h∥
+∥
+2
+Ln
+2p
++ 2∥
+∥g(Zn
+)Wn
+∥ ∥
+2
+Ln
+2p
+≤ 2‖f ‖2
+∞h2 + 2‖g‖2
+∞‖N (0, Id)‖2
+L2p h ,
+∥
+∥Zn+2 − Zn
+∥ ∥
+2
+Ln
+2p
+=
+∥
+∥2f (Zn+1
+)h + g(Zn+1
+)(Wn + Wn+1
+)∥ ∥
+2
+Ln
+2p
+≤ 2∥
+∥2f (Zn+1
+)h∥
+∥
+2
+Ln
+2p
++ 2∥
+∥g(Zn+1
+)(Wn + Wn+1
+)∥ ∥
+2
+Ln
+2p
+≤ 4‖f ‖2
+∞h2 + 4‖g‖2
+∞‖N (0, Id)‖2
+L2p h,
+where we also used the inequality (a + b)2 ≤ 2a2 + 2b2. The result now follows from the above.
+With Theorem D.3, it is straightforward to derive a Taylor expansion for the difference Yn+2 − Zn+2 .
+Theorem D.4. For n ∈ {0, 1, · · · , N − 2}, the difference Yn+2 − Zn+2 can be expanded as
+Yn+2 − Zn+2 = Yn − Zn +
+(
+f
+(Zn
+) − f(
+Z ̃n
+)
+)
+h+ 1
+2
+(
+g
+(Zn
+) − g(
+Z ̃n
+)
+)
+(Wn + Wn+ 1
+2
+) (21)
++1
+2
+(
+g′(Zn
+)(g(
+Z ̃n
+)(Wn + Wn+1
+))
+)
+Wn+1
+−1
+2
+(
+g′(
+Z ̃n
+)(g(Zn
+)Wn
+)
+)
+(Wn + Wn+1
+) + RZ
+n,
+where the remainder term RnZ satisfies ∥
+∥RnZ
+∥
+∥Ln
+2
+= O(h 3
+2
+).
+Proof. Expanding the components (17), (18) of the reversible Heun method with Theorem D.3 gives
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)
+=1
+2 f (Zn
+)h + 1
+2 f (Zn+2
+)h − f (Zn+1
+)h
++1
+2 g(Zn
+)Wn + 1
+2 g(Zn+2
+)Wn+1 − 1
+2 g(Zn+1
+)(Wn + Wn+1
+)
+=1
+2 f (Zn
+)h + 1
+2 g(Zn
+)Wn + 1
+2
+(
+f
+(Zn
+) + f ′(Zn
+)(Zn+2 − Zn
+) + Rf,2
+n
+)
+h
+−
+(
+f
+(
+Z ̃n
+) + f′(
+Z ̃n
+)(Zn+1 − Z ̃n
+) + Rf,1
+n
+)
+h
++1
+2
+(
+g
+(Zn
+) + g′(Zn
+)(Zn+2 − Zn
+) + Rg,2
+n
+)
+Wn+1
+−1
+2
+(
+g
+(
+Z ̃n
+) + g′(
+Z ̃n
+)(Zn+1 − Z ̃n
+) + Rg,1
+n
+)
+(Wn + Wn+1
+).
+Since Rfn,1, Rfn,2, Rgn,1, Rgn,2 ∼ O(h), which was shown in Theorem D.3, the above simplifies to
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)
+=
+(
+f
+(Zn
+) − f(
+Z ̃n
+)
+)
+h+ 1
+2
+(
+g
+(Zn
+) − g(
+Z ̃n
+)
+)
+(Wn + Wn+ 1
+2
+)
++1
+2
+(
+f ′(Zn
+)(Zn+2 − Zn
+)
+)
+h−
+(
+f′(
+Z ̃n
+)(Zn+1 − Z ̃n
+)
+)
+h
++1
+2
+(
+g′(Zn
+)(Zn+2 − Zn
+)
+)
+Wn+1 − 1
+2
+(
+g′(
+Z ̃n
+)(Zn+1 − Z ̃n
+)
+)
+(Wn + Wn+1
+) + O(h 3
+2
+).
+19
+
+
+Substituting the formulae (17) and (19) for Zn+1 and Zn+2 respectively produces
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)
+=
+(
+f
+(Zn
+) − f(
+Z ̃n
+)
+)
+h+ 1
+2
+(
+g
+(Zn
+) − g(
+Z ̃n
+)
+)
+(Wn + Wn+ 1
+2
+)
++1
+2
+(
+f ′(Zn
+)(2f (Zn+1
+)h + g(Zn+1
+)(Wn + Wn+1
+))
+)
+h
+−
+(
+f′(
+Z ̃n
+)(f (Zn
+)h + g(Zn
+)Wn
+)
+)
+h
++1
+2
+(
+g′(Zn
+)(2f (Zn+1
+)h + g(Zn+1
+)(Wn + Wn+1
+))
+)
+Wn+1
+−1
+2
+(
+g′(
+Z ̃n
+)(f (Zn
+)h + g(Zn
+)Wn
+)
+)
+(Wn + Wn+1
+) + O(h 3
+2
+).
+As f (Yn+1
+) and g(Yn+1
+) are bounded by ‖f ‖∞ and ‖g‖∞, collecting the O(h 3
+2
+) terms yields
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)=
+(
+f
+(Zn
+) − f(
+Z ̃n
+)
+)
+h+ 1
+2
+(
+g
+(Zn
+) − g(
+Z ̃n
+)
+)
+(Wn + Wn+ 1
+2
+)
++1
+2
+(
+g′(Zn
+)(g(Zn+1
+)(Wn + Wn+1
+))
+)
+Wn+1
+−1
+2
+(
+g′(
+Z ̃n
+)(g(Zn
+)Wn
+)
+)
+(Wn + Wn+1
+) + O(h 3
+2
+).
+We note that it is direct consequence of Theorem D.3 that g(Zn+1
+) = g(
+Z ̃n
+) + O(√h ). Thus,
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)=
+(
+f
+(Zn
+) − f(
+Z ̃n
+)
+)
+h+ 1
+2
+(
+g
+(Zn
+) − g(
+Z ̃n
+)
+)
+(Wn + Wn+ 1
+2
+)
++1
+2
+(
+g′(Zn
+)(g(
+Z ̃n
+)(Wn + Wn+1
+))
+)
+Wn+1
+−1
+2
+(
+g′(
+Z ̃n
+)(g(Zn
+)Wn
+)
+)
+(Wn + Wn+1
+) + O(h 3
+2
+),
+which gives the desired result.
+Using the expansion (21), we shall derive estimates for the L4-norm of the difference Yn+2 − Zn+2 .
+Theorem D.5 (Local bound for Y − Z). Let hmax > 0 be fixed. Then there exist constants c1, c2 > 0 such that for n ∈ {0, 1, · · · , N − 2},
+∥
+∥Yn+2 − Zn+2
+∥ ∥
+4
+Ln
+4
+≤ ec1h∥
+∥Yn − Zn
+∥ ∥
+4
+2 + c2h3,
+provided h ≤ hmax .
+Proof. To begin, we will expand ∥
+∥Yn+2 − Zn+2
+∥ ∥
+4
+Ln
+4
+as
+∥
+∥Yn+2 − Zn+2
+∥ ∥
+4
+Ln
+4
+= En
+[(∥
+∥Yn − Zn
+∥ ∥
+2
+2 + 2 〈Yn − Zn, (Yn+2 − Zn+2
+) − (Yn − Zn
+)〉
++
+∥ ∥
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)∥ ∥
+2 2
+)2 ]
+=
+∥
+∥Yn − Zn
+∥ ∥
+4
+2 + 4 En
+[∥
+∥Yn − Zn
+∥ ∥
+2 2
+〈Yn − Zn, (Yn+2 − Zn+2
+) − (Yn − Zn
+)〉
+]
++ 4 En
+[
+〈Yn − Zn, (Yn+2 − Zn+2
+) − (Yn − Zn
+)〉2]
++ 4 En
+[
+〈Yn − Zn, (Yn+2 − Zn+2
+) − (Yn − Zn
+)〉∥ ∥
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)∥ ∥
+2 2
+]
++ 2 En
+[∥
+∥Yn − Zn
+∥ ∥
+2 2
+∥ ∥
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)∥ ∥
+2 2
+]
++
+∥ ∥
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)∥ ∥
+4
+Ln
+4
+.
+20
+
+
+Using the Cauchy-Schwarz inequality along with the fact that ‖ · ‖Ln
+2 ≤ ‖ · ‖Ln
+4 , we have
+∥
+∥Yn+2 − Zn+2
+∥ ∥
+4
+Ln
+4
+≤
+∥
+∥Yn − Zn
+∥ ∥
+4
+2 +4∥
+∥Yn − Zn
+∥ ∥
+2 2
+〈
+Yn − Zn, En
+[(Yn+2 − Zn+2
+) − (Yn − Zn
+)]
+〉
+(22)
++ 6∥
+∥Yn − Zn
+∥ ∥
+2 2
+∥ ∥
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)∥ ∥
+2
+Ln
+2
++ 4∥
+∥Yn − Zn
+∥ ∥2
+∥ ∥
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)∥ ∥
+3
+Ln
+4
++
+∥ ∥
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)∥ ∥
+4
+Ln
+4
+.
+By Theorem D.4, the second term can be expanded as
+2 En
+[
+〈Yn − Zn, (Yn+2 − Zn+2
+) − (Yn − Zn
+)〉
+]
+=2
+〈
+Yn − Zn, En
+[
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)
+]〉
+=2
+〈
+Yn − Zn, En
+[(
+f
+(Zn
+) − f(
+Z ̃n
+)
+)
+h+ 1
+2
+(
+g
+(Zn
+) − g(
+Z ̃n
+)
+)
+(Wn + Wn+ 1
+2
+)
+]〉
++2
+〈
+Yn − Zn, 1
+2 En
+[(
+g′(Zn
+)(g(
+Z ̃n
+)(Wn + Wn+1
+))
+)
+Wn+1
+]〉
+−2
+〈
+Yn − Zn, 1
+2 En
+[(
+g′(
+Z ̃n
+)(g(Zn
+)Wn
+)
+)
+(Wn + Wn+1
+) + RZ
+n
+]〉
+= 2 〈Yn − Zn, (f (Zn
+) − f(
+Z ̃n
+))〉h + 〈Yn − Zn, (g′(Zn
+)g(
+Z ̃n
+) − g′(Zn
+)g(Zn
+))Id
+〉h
++
+〈Yn − Zn, (g′(Zn
+)g(Zn
+) − g′(
+Z ̃n
+)g(Zn
+))Id
+〉h + 2〈Yn − Zn, En
+[RZ
+n
+]〉.
+The above can be estimated using the Cauchy-Schartz inequality and Young’s inequality as
+∣ ∣
+∣2 En
+[
+〈Yn − Zn, (Yn+2 − Zn+2
+) − (Yn − Zn
+)〉
+]∣ ∣ ∣
+≤ 2∥
+∥Yn − Zn
+∥ ∥2
+∥
+∥f (Zn
+) − f(
+Z ̃n
+)∥
+∥2h + ∥
+∥Yn − Zn
+∥ ∥2
+∥ ∥
+(g′(Zn
+)g(
+Z ̃n
+) − g′(Zn
+)g(Zn
+))Id
+∥
+∥2h
++
+∥
+∥Yn − Zn
+∥ ∥2
+∥ ∥
+(g′(Zn
+)g(Zn
+) − g′(
+Z ̃n
+)g(Zn
+))Id
+∥
+∥2h + 2∥
+∥Yn − Zn
+∥ ∥2
+∥
+∥En
+[RZ
+n
+]∥ ∥2
+≤ 2‖f ′‖∞
+∥
+∥Yn − Zn
+∥ ∥2
+∥
+∥Zn − Z ̃n
+∥
+∥2h + ∥
+∥g′∥
+∥
+2 ∞
+∥
+∥Yn − Zn
+∥
+∥2‖Zn − Z ̃n
+∥
+∥2dh
++
+∥
+∥g′′∥
+∥∞
+∥
+∥g∥
+∥∞
+∥
+∥Yn − Zn
+∥
+∥2‖Zn − Z ̃n
+∥
+∥2dh + 2∥
+∥Yn − Zn
+∥
+∥2h 1
+2
+∥
+∥En
+[RZ
+n
+]∥
+∥2h− 1
+2
+≤
+(4‖f ′‖∞ + 2∥
+∥g′∥
+∥
+2
+∞d + 2∥
+∥g′′∥
+∥∞‖g‖∞d + 1)∥
+∥Yn − Zn
+∥ ∥
+2
+2h + 1
+2
+∥
+∥En
+[RZ
+n
+]∥ ∥
+2
+2h−1.
+By Jensen’s inequality and Theorem D.4, we have that ∥
+∥En
+[RnZ
+]∥ ∥
+2
+2≤∥
+∥RnZ
+∥ ∥
+2
+Ln
+2
+= O(h3). Therefore
+∣
+∣
+∣ En
+[
+〈Yn − Zn, (Yn+2 − Zn+2
+) − (Yn − Zn
+)〉
+]∣ ∣
+∣ ≤ O(h) · ∥
+∥Yn − Zn
+∥ ∥
+2
+2 + O(h2) .
+The final term in (22) can be estimated using Minkowski’s inequality as
+∥ ∥ ∥
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)
+∥ ∥
+∥Lpn
+=
+∥ ∥ ∥
+(
+f
+(Zn
+) − f(
+Z ̃n
+)
+)
+h+ 1
+2
+(
+g
+(Zn
+) − g(
+Z ̃n
+)
+)
+(Wn + Wn+ 1
+2
+)
++1
+2
+(
+g′(Zn
+)(g(
+Z ̃n
+)(Wn + Wn+1
+))
+)
+Wn+1
+−1
+2
+(
+g′(
+Z ̃n
+)(g(Zn
+)Wn
+)
+)
+(Wn + Wn+1
+) + RZ
+n
+∥ ∥
+∥Lpn
+≤ O(√
+h
+)·∥
+∥Yn − Zn
+∥
+∥2 + O(h).
+21
+
+
+Since (a + b)k ≤ 2k−1(ak + bk) for a, b ≥ 0 (which follows from Jensen’s inequality), this gives
+∥ ∥ ∥
+(Yn+2 − Zn+2
+) − (Yn − Zn
+)
+∥ ∥ ∥
+k
+Lpn
+≤ O(h 1
+2k) · ∥
+∥Yn − Zn
+∥ ∥
+k
+2 + O(hk).
+Hence the estimate (22) becomes
+∥
+∥Yn+2 − Zn+2
+∥ ∥
+4
+Ln
+4
+≤
+∥
+∥Yn − Zn
+∥ ∥
+4
+2 +4∥
+∥Yn − Zn
+∥ ∥
+2 2
+(O(h) · ∥
+∥Yn − Zn
+∥ ∥
+2
+2 + O(h2)) (23)
++ 6∥
+∥Yn − Zn
+∥ ∥
+2 2
+(O(h) · ∥
+∥Yn − Zn
+∥ ∥
+2
+2 + O(h2))
++ 4∥
+∥Yn − Zn
+∥ ∥2
+(O(h 3
+2
+)·∥
+∥Yn − Zn
+∥ ∥
+3
+2 + O(h3))
++ O(h2) · ∥
+∥Yn − Zn
+∥ ∥
+4
+2 + O(h4).
+By Young’s inequality, we can further estimate the terms which do not contain ∥
+∥Yn − Zn
+∥ ∥
+4
+2 as
+∥
+∥Yn − Zn
+∥ ∥
+2
+2 · O(h2) = ∥
+∥Yn − Zn
+∥ ∥
+2
+2h 1
+2 · O(h 3
+2
+)
+≤1
+2
+∥
+∥Yn − Zn
+∥ ∥
+4
+2h + O(h3),
+∥
+∥Yn − Zn
+∥
+∥2 · O(h3) = ∥
+∥Yn − Zn
+∥
+∥2 h · O(h2)
+≤1
+2
+∥
+∥Yn − Zn
+∥ ∥
+2
+2 h2 + O(h4)
+≤1
+4
+∥
+∥Yn − Zn
+∥ ∥
+4
+2 h + h3 + O(h4).
+Finally, by applying the above two estimates to the inequality (23), we arrive at
+∥
+∥Yn+2 − Zn+2
+∥ ∥
+4
+Ln
+4
+≤
+(1 + O(h))∥
+∥Yn − Zn
+∥ ∥
+4
+Ln
+4
++ O(h3),
+which gives the desired result.
+We can now prove that Y and Z become close to each other at a rate of O(√h ) in the L4-norm.
+Theorem D.6 (Global bound for Y − Z). Let hmax > 0 be fixed. There exist a constant C1 > 0 such that for all n ∈ {0, 1, · · · , N },
+∥
+∥Yn − Zn
+∥
+∥L4 ≤ C1
+√
+h,
+provided h ≤ hmax .
+Proof. By the tower property of expectations, it follows from Theorem D.5 that
+∥
+∥Yn+2 − Zn+2
+∥ ∥
+4
+L4 ≤ ec1h∥
+∥Yn − Zn
+∥ ∥
+4
+L4 + c2h3,
+which, along with the fact that Y0 = Z0 , implies that
+∥
+∥Y2n − Z2n
+∥ ∥
+4
+L4 ≤ c2
+n−1
+∑
+k=0
+ec1khh2 = c2
+ec1nh − 1
+ec1h − 1 h2 ≤ c2
+e
+1
+2 c1T − 1
+ec1h − 1 h3 = O(h2).
+It is now straightforward to estimate the L4-norm of Y2n+1 − Z2n+1 as
+∥
+∥Y2n+1 − Z2n+1
+∥
+∥L4
+≤
+∥
+∥Y2n − Z2n
+∥
+∥L4 + ∥
+∥
+(Y2n+1 − Z2n+1
+) − (Y2n − Z2n
+)∥
+∥L4
+≤ 2∥
+∥Y2n − Z2n
+∥
+∥L4 + 1
+2
+∥ ∥
+(f (Z2n+1
+) − f (Z2n
+))h + (g(Z2n+1
+) − g(Z2n
+))W2n
+∥
+∥L4
+= O(√
+h
+),
+which gives the desired result.
+22
+
+
+D.3 Strong convergence of the reversible Heun method
+To begin, we will Taylor expand the terms in the Yn 7→ Yn+1 update of the reversible Heun method.
+Theorem D.7 (Further Taylor expansions for the vector fields). Let F be a bounded and twice continuously differentiable function on Re with bounded derivatives. Then for n ≥ 0,
+F
+(Zn
+) = F (Yn
+) + F ′(Yn
+)(Zn − Yn
+) + RF,3
+n,
+F
+(Zn+1
+) = F (Yn
+) + F ′(Yn
+)(Yn − Zn
+) + F ′(Yn
+)(g(Yn
+)Wn
+) + RF,4
+n,
+where the remainder terms RnF,3 and RnF,4 satisfy the following estimates,
+∥
+∥RF,3
+n
+∥
+∥L2 = O(h),
+∥
+∥RF,4
+n
+∥
+∥L2 = O(h),
+∥
+∥RF,3
+n Wn
+∥
+∥L2 = O(h 3
+2
+),
+∥
+∥RF,4
+n Wn
+∥
+∥L2 = O(h 3
+2
+).
+Proof. By Taylor’s theorem with integral remainder [52, Theorem 3.5.6], we have that for k ∈ {0, 1},
+F
+(Zn+k
+) = F (Yn
+) + F ′(Yn
+)(Zn+k − Yn
+)
++
+∫1
+0
+(1 − t)F ′′(Yn + t(Zn+k − Yn
+)) dt (Zn+k − Yn
+)⊗2.
+By the same argument used in the proof of Theorem D.3, we can estimate the remainder term as
+∥ ∥ ∥ ∥
+∫1
+0
+(1 − t)F ′′(Yn + t(Zn+k − Yn
+)) dt (Zn+k − Yn
+)⊗2
+∥ ∥ ∥ ∥
+2
+Ln
+2
+≤1
+3 ‖F ′′‖2
+∞
+∥
+∥Zn+k − Yn
+∥ ∥
+4
+Ln
+4
+,
+Using the inequality (a + b)4 ≤ (2a2 + 2b2)2 ≤ 8a4 + 8b4, we have
+∥
+∥Zn − Yn
+∥ ∥
+4
+Ln
+4
+=
+∥
+∥Yn − Zn
+∥ ∥
+4
+2,
+∥
+∥Zn+1 − Yn
+∥ ∥
+4
+Ln
+4
+=
+∥
+∥Yn − Zn + f (Zn
+)h + g(Zn
+)Wn
+∥ ∥
+4
+Ln
+4
+≤ 8∥
+∥Yn − Zn
+∥ ∥
+4
+2 + 8∥
+∥f (Zn
+)h + g(Zn
+)Wn
+∥ ∥
+4
+Ln
+4
+≤ 8∥
+∥Yn − Zn
+∥ ∥
+4
+2 + 64∥
+∥f (Zn
+)h∥
+∥
+4
+Ln
+4
++ 64∥
+∥g(Zn
+)Wn
+∥ ∥
+2
+Ln
+4
+≤ 8∥
+∥Yn − Zn
+∥ ∥
+4
+2 + 64‖f ‖4
+∞h4 + 64‖g‖4
+∞‖N (0, Id)‖4
+L4 h2.
+Therefore, by the tower property of expectations, for k ∈ {0, 1},
+∥ ∥ ∥ ∥
+∫1
+0
+(1 − t)F ′′(Yn + t(Zn+k − Yn
+)) dt (Zn+k − Yn
+)⊗2
+∥ ∥ ∥ ∥
+2
+L2
+≤1
+3 ‖F ′′‖2
+∞E
+[∥
+∥Zn+k − Yn
+∥ ∥
+4
+Ln
+4
+]
+=O
+(∥
+∥Yn − Zn
+∥ ∥
+4
+L4 + h2)
+= O(h2),
+by the O(√h ) global bound on ‖Yn − Zn‖L4 in Theorem D.6.
+23
+
+
+Similarly, for k ∈ {0, 1},
+∥ ∥ ∥ ∥
+∫1
+0
+(1 − t) F ′′(Yn + t(Zn+k − Yn
+)) dt (Zn+k − Yn
+)⊗2 Wn
+∥ ∥ ∥ ∥
+2
+L2
+=E
+[∥ ∥ ∥ ∥
+∫1
+0
+(1 − t) F ′′(Yn + t(Zn+k − Yn
+)) dt (Zn+k − Yn
+)⊗2 Wn
+∥ ∥ ∥ ∥
+2
+Ln
+2
+]
+≤E
+[∥ ∥ ∥ ∥
+∫1
+0
+(1 − t) F ′′(Yn + t(Zn+k − Yn
+)) dt
+∥ ∥ ∥ ∥
+2
+2
+∥ ∥ ∥
+(Zn+k − Yn
+)⊗2∥
+∥ ∥
+2
+2
+∥
+∥Wn
+∥ ∥
+2 2
+]
+≤E
+[∫ 1
+0
+∥ ∥
+∥(1 − t) F ′′(Yn + t(Zn+k − Yn
+))
+∥ ∥ ∥
+2
+2
+dt ∥
+∥Zn+k − Yn
+∥ ∥
+4 2
+∥
+∥Wn
+∥ ∥
+2 2
+]
+≤1
+3 ‖F ′′‖2
+∞E
+[∥
+∥Zn+k − Yn
+∥ ∥
+4 2
+∥
+∥Wn
+∥ ∥
+2 2
+]
+.
+We consider the k = 0 and k = 1 cases separately. If k = 0, then by the tower property, we have
+∥ ∥ ∥ ∥
+∫1
+0
+(1 − t)F ′′(Yn + t(Zn − Yn
+)) dt (Zn − Yn
+)⊗2 Wn
+∥ ∥ ∥ ∥
+2
+L2
+≤1
+3 ‖F ′′‖2
+∞E
+[
+En
+[∥
+∥Zn − Yn
+∥ ∥
+4 2
+∥
+∥Wn
+∥ ∥
+2 2
+]]
+=1
+3 ‖F ′′‖2
+∞E
+[∥
+∥Zn − Yn
+∥ ∥
+4
+2 En
+[∥
+∥Wn
+∥ ∥
+2 2
+]]
+= O(h3).
+Slightly more care should be taken when k = 1 since Zn+1 − Yn is not independent of Wn.
+∥ ∥ ∥ ∥
+∫1
+0
+(1 − t) F ′′(Yn + t(Zn+1 − Yn
+)) dt (Zn+1 − Yn
+)⊗2 Wn
+∥ ∥ ∥ ∥
+2
+L2
+≤1
+3 ‖F ′′‖2
+∞E
+[
+En
+[∥
+∥Yn − Zn + f (Zn
+)h + g(Zn
+)Wn
+∥ ∥
+4 2
+∥
+∥Wn
+∥ ∥
+2 2
+]]
+≤1
+3 ‖F ′′‖2
+∞E
+[
+En
+[
+8
+∥
+∥Yn − Zn
+∥ ∥
+4 2
+∥
+∥Wn
+∥ ∥
+2
+2 + 8∥
+∥f (Zn
+)h + g(Zn
+)Wn
+∥ ∥
+4 2
+∥
+∥Wn
+∥ ∥
+2 2
+]]
+≤8
+3 ‖F ′′‖2
+∞E
+[∥
+∥Yn − Zn
+∥ ∥
+4
+2 En
+[∥
+∥Wn
+∥ ∥
+2 2
+]
++ En
+[∥
+∥f (Zn
+)h + g(Zn
+)Wn
+∥ ∥
+4 2
+∥
+∥Wn
+∥ ∥
+2 2
+]]
+= O(h3).
+Finally, by Theorem D.6 and the Lipschitz continuity of g, F ′(Yn
+)(Zn+1 − Yn
+) can be expanded as
+F ′(Yn
+)(Zn+1 − Yn
+)
+= F ′(Yn
+)(Yn − Zn
+) + F ′(Yn
+)(g(Yn
+)Wn
+) + F ′(Yn
+)(f (Zn
+)h + (g(Yn
+) − g(Zn
+))Wn
+)
+= F ′(Yn
+)(Yn − Zn
+) + F ′(Yn
+)(g(Yn
+)Wn
+) + O(h).
+The result follows from the above estimates.
+We are now in a position to compute the local Taylor expansion of the numerical approximation Y .
+Theorem D.8 (Taylor expansion of the reversible Heun method). For n ∈ {0, 1, · · · , N − 1},
+Yn+1 = Yn + f (Yn
+)h + g(Yn
+)Wn + 1
+2 g′(Yn
+)(g(Yn
+)Wn
+)Wn + RY
+n,
+where the remainder term satisfies ‖RYn ‖L2 = O(h 3
+2
+).
+24
+
+
+Proof. By Theorem D.7, we can expand Yn+1 as
+Yn+1 = Yn + 1
+2
+(f (Zn
+) + f (Zn+1
+))h + 1
+2
+(g(Zn
+) + g(Zn+1
+))Wn
+= Yn + 1
+2
+(f (Yn
+) + f ′(Yn
+)(Zn − Yn
+) + Rf,3
+n
+)h
++1
+2
+(f (Yn
+) + f ′(Yn
+)(Yn − Zn
+) + f ′(Yn
+)(g(Yn
+)Wn
+) + Rf,4
+n
+)h
++1
+2
+(g(Yn
+) + g′(Yn
+)(Zn − Yn
+) + Rg,3
+n
+)Wn
++1
+2
+(g(Yn
+) + g′(Yn
+)(Yn − Zn
+) + g′(Yn
+)(g(Yn
+)Wn
+) + Rg,4
+n
+)Wn
+= Yn + f (Yn
+)h + g(Yn
+)Wn + 1
+2 g′(Yn
+)(g(Yn
+)Wn
+)Wn
++1
+2 f ′(Yn
+)(g(Yn
+)Wn
+)h + 1
+2
+(Rf,3
+n + Rf,4
+n
+)h + 1
+2
+(Rg,3
+n + Rg,4
+n
+)Wn .
+The result now follows as the bottom line is clearly O(h 3
+2
+) by Theorem D.7.
+Just as in the numerical analysis of ODE solvers, we also compute Taylor expansions for the solution. In our setting, we consider the following stochastic Taylor expansion for the Stratonovich SDE (13).
+Theorem D.9 (Stratonovich–Taylor expansion, [53, Proposition 5.10.1]). For n ∈ {0, 1, · · · , N − 1},
+y(n+1)h = ynh + f (ynh
+)h + g(ynh
+)Wn + g′(ynh
+)g(ynh
+)Wn + Ry
+n,
+where Wn denotes the second iterated integral of Brownian motion, that is the d × d matrix given by
+Wn :=
+∫ (n+1)h
+nh
+(Wt − Wnh
+) ⊗ ◦ dWt ,
+and the remainder term satisfies ‖Ryn‖L2 = O(h 3
+2
+).
+Using the above theorems, we can now obtain a Taylor expansion for the difference Yn+1 − y(n+1)h .
+Theorem D.10. For n ∈ {0, 1, · · · , N − 1}, , the difference Yn+2 − Zn+2 can be expanded as
+Yn+1 − y(n+1)h = Yn − ynh + (f (Yn
+) − f (ynh
+))h + (g(Yn
+) − g(ynh
+))Wn
++1
+2
+(
+g′(Yn
+)g(Yn
+) − g′(ynh
+)g(ynh
+)
+)
+W ⊗2
+n
+− g′(ynh
+)g(ynh
+)
+(
+Wn − 1
+2 W ⊗2
+n
+)
++ Rn ,
+where the remainder term satisfies ‖Rn‖L2 = O(h 3
+2
+).
+Proof. Expanding Yn+1 − y(n+1)h using Theorem D.8 and Theorem D.9 gives
+Yn+1 − y(n+1)h = Yn+1 − ynh − f (ynh
+)h − g(ynh
+)Wn − g′(ynh
+)g(ynh
+)Wn − Ry
+n
+= Yn − ynh + f (Yn
+)h + g(Yn
+)Wn + 1
+2 g′(Yn
+)(g(Yn
+)Wn
+)Wn
+− f (ynh
+)h − g(ynh
+)Wn − g′(ynh
+)g(ynh
+)Wn + RY
+n − Ry
+n,
+where the remainder term Rn satisfies ‖Rn‖L2 ≤ ‖RYn ‖L2 + ‖Ryn‖L2 = O(h 3
+2
+).
+Having derived Taylor expansions for the approximation and solution processes, we will establish the main results of the section (namely, local and global error estimates for the reversible Heun method).
+Theorem D.11 (Local error estimate for the reversible Heun method). Let hmax > 0 be fixed. Then there exist constants c3, c4 > 0 such that for all n ∈ {0, 1, · · · , N − 1},
+∥
+∥Yn+1 − y(n+1)h
+∥ ∥
+2
+L2 ≤ ec3h∥
+∥Yn − ynh
+∥ ∥
+2
+L2 + c4h2, (24)
+provided h ≤ hmax .
+25
+
+
+Proof. Expanding the left hand side of (24) and applying the tower property of expectations yields
+∥
+∥Yn+1 − y(n+1)h
+∥ ∥
+2
+L2 = ∥
+∥Yn − ynh
+∥ ∥
+2
+L2 + 2 E
+[
+〈Yn − ynh , (Yn+1 − y(n+1)h
+) − (Yn − ynh
+)〉
+]
++
+∥ ∥
+(Yn+1 − y(n+1)h
+) − (Yn − ynh
+)∥ ∥
+2
+L2
+=
+∥
+∥Yn − ynh
+∥ ∥
+2
+L2 + 2 E
+[
+〈Yn − ynh , En
+[(Yn+1 − y(n+1)h
+) − (Yn − ynh
+)]〉
+]
++
+∥ ∥
+(Yn+1 − y(n+1)h
+) − (Yn − ynh
+)∥ ∥
+2
+L2 .
+A simple application of the Cauchy-Schwarz inequality then gives
+∥
+∥Yn+1 − y(n+1)h
+∥ ∥
+2
+L2 ≤ ∥
+∥Yn − ynh
+∥ ∥
+2
+L2 + ∥
+∥
+(Yn+1 − y(n+1)h
+) − (Yn − ynh
+)∥ ∥
+2
+L2 (25)
++2E
+[∥
+∥Yn − ynh
+∥ ∥2
+∥
+∥En
+[(Yn+1 − y(n+1)h
+) − (Yn − ynh
+)]∥ ∥2
+]
+.
+To further estimate the above, we note that Wn and 1
+2 Wn⊗2 have the same expectation as
+En
+[Wn
+] = En
+[ ∫ (n+1)h
+nh
+(Wt − Wnh
+) ⊗ ◦ dWt
+]
+= En
+[ ∫ (n+1)h
+nh
+(Wt − Wnh
+) ⊗ dWt + 1
+2 Idh
+]
+=1
+2 Idh,
+where the second lines follws by the Itô–Stratonovich correction.
+This gives the required O(h) cancellation when we expand the final term in (25) using Theorem D.10.
+∥
+∥En
+[(Yn+1 − y(n+1)h
+) − (Yn − ynh
+)]∥ ∥2
+=
+∥ ∥ ∥
+(f (Yn
+) − f (ynh
+))h + 1
+2
+(
+g′(Yn
+)g(Yn
+) − g′(ynh
+)g(ynh
+)
+)
+Idh + En
+[Rn
+]∥ ∥2
+≤ ‖f ′‖∞‖Yn − ynh‖2 h + 1
+2
+(‖g′‖2
+∞ + ‖g′′‖∞‖g‖∞
+)‖Yn − ynh‖2 dh + ∥
+∥En
+[Rn
+]∥
+∥2 .
+Similar to the proof of Theorem D.5, we use Young’s inequality to estimate remainder terms.
+E
+[∥
+∥Yn − ynh
+∥ ∥2
+∥
+∥En
+[(Yn+1 − y(n+1)h
+) − (Yn − ynh
+)]∥ ∥2
+]
+≤
+∥
+∥Yn − ynh
+∥ ∥
+2
+L2 · O(h) + E
+[∥
+∥Yn − ynh
+∥
+∥2h 1
+2
+∥
+∥En
+[Rn
+]∥
+∥2h− 1
+2
+]
+≤
+∥
+∥Yn − ynh
+∥ ∥
+2
+L2 · O(h) + 1
+2E
+[∥
+∥Yn − ynh
+∥ ∥
+2
+2h+∥
+∥En
+[Rn
+]∥ ∥
+2
+2 h−1]
+≤
+∥
+∥Yn − ynh
+∥ ∥
+2
+L2 · O(h) + O(h2),
+where the final line is a consequence of Jensen’s inequality as E[‖En[Rn]‖22
+] ≤ ‖Rn‖2
+L2 = O(h3).
+It is straightforward to estimate the second term in (25) using Minkowski’s inequality as
+∥ ∥
+(Yn+1 − y(n+1)h
+) − (Yn − ynh
+)∥
+∥Ln
+2
+=
+∥ ∥ ∥
+(f (Yn
+) − f (ynh
+))h + (g(Yn
+) − g(ynh
+))Wn
++1
+2
+(
+g′(Yn
+)g(Yn
+) − g′(ynh
+)g(ynh
+)
+)
+W ⊗2
+n
+− g′(ynh
+)g(ynh
+)
+(
+Wn − 1
+2 W ⊗2
+n
+)
++ Rn
+∥ ∥
+∥Ln
+2
+≤ ‖f ′‖∞
+∥
+∥Yn − ynh
+∥
+∥2h + ‖g′‖∞
+∥
+∥Yn − ynh
+∥ ∥2
+√
+dh1
+2
++1
+2
+(‖g′‖2
+∞ + ‖g′′‖∞‖g‖∞
+)‖Yn − ynh
+∥
+∥2‖N (0, Id)‖2
+L4 h
++ ‖g′‖∞‖g‖∞
+∥ ∥
+∥Wn − 1
+2 W ⊗2
+n
+∥ ∥
+∥Ln
+2
++ ‖Rn‖Ln
+2
+≤ ‖Yn − ynh
+∥
+∥2 · O(√
+h
+) + ‖Yn − Zn
+∥
+∥2 · O(√
+h
+) + O(h).
+26
+
+
+Therefore, by the L4-bound on Yn − Zn given by Theorem D.6 and Young’s inequality, we have
+∥ ∥
+(Yn+1 − y(n+1)h
+) − (Yn − ynh
+)∥ ∥
+2
+L2 ≤ ∥
+∥Yn − ynh
+∥ ∥
+2
+L2 · O(h) + O(h2).
+Putting this all together, the inequality (25) becomes
+∥
+∥Yn+1 − y(n+1)h
+∥ ∥
+2
+L2 ≤ (1 + O(h))∥
+∥Yn − ynh
+∥ ∥
+2
+L2 + O(h2),
+and the result follows.
+Just as before, we can immediately obtain a global error estimate by chaining together local estimates.
+Theorem D.12 (Global error estimate for the reversible Heun method). Let hmax > 0 be fixed. Then there exists a constant C2 > 0 such that for all n ∈ {0, 1, · · · , N },
+∥
+∥Yn − ynh
+∥
+∥L2 ≤ C2
+√
+h,
+provided h ≤ hmax .
+Proof. Since Y0 = Z0 , it follows from Theorem D.11 that
+∥
+∥Yn − ynh
+∥ ∥
+2
+L2 ≤ c4
+n−1
+∑
+k=0
+ec3khh2 = c4
+ec3nh − 1
+ec3h − 1 h2 ≤ c4
+ec3T − 1
+ec3h − 1 h2 = O(h),
+which gives the desired result.
+D.4 The reversible Heun method in the additive noise setting
+We now replace the vector field g in the Stratonovich SDE (13) with a fixed matrix σ ∈ Re×d to give dyt = f (yt) dt + σ dWt . (26)
+Unsurprisingly, this simplifies the analysis and gives an O(h) strong convergence rate for the method.
+Theorem D.13 (Taylor expansion of Y when the SDE’s noise is additive). For n ∈ {0, 1 · · · , N − 1},
+Yn+1 = Yn + f (Yn
+)h + σWn + 1
+2 f ′(Yn
+)(σWn
+)h + R ̃Y
+n,
+where the remainder term satisfies ‖R ̃Yn ‖L2 = O(h2).
+Proof. Expanding f (Zn
+) and f (Zn+1
+) at Yn using Taylor’s theorem [52, Theorem 3.5.6] yields
+Yn+1 = Yn + 1
+2
+(f (Zn
+) + f (Zn+1
+))h + σWn
+= Yn + f (Yn
+)h + σWn + 1
+2 f ′(Yn
+)(σWn
+)h + R ̃Y
+n,
+where R ̃Yn is given by
+R ̃Y
+n := 1
+2 f ′(Yn
+)f (Zn
+)h2 + 1
+2
+∫1
+0
+(1 − t)f ′′(Yn + t(Zn − Yn
+)) dt (Zn − Yn
+)⊗2h
++1
+2
+∫1
+0
+(1 − t)f ′′(Yn + t(Zn+1 − Yn
+)) dt (Zn+1 − Yn
+)⊗2h .
+Similar to the proofs of Theorems D.3 and D.7, we can estimate this remainder term as
+‖
+R ̃Y
+n ‖2
+L2 ≤ 2
+∥ ∥ ∥
+1
+2 f ′(Yn
+)f (Zn
+)h2
+∥ ∥ ∥
+2
+L2
++2
+∥ ∥ ∥
+R ̃n − 1
+2 f ′(Yn
+)f (Zn
+)h2
+∥ ∥ ∥
+2
+L2
+≤1
+2 ‖f ′‖2
+∞‖f ‖2
+∞h4 + E
+[∥ ∥ ∥ ∥
+∫1
+0
+(1 − t)f ′′(Yn + t(Zn − Yn
+)) dt (Zn − Yn
+)⊗2
+∥ ∥ ∥ ∥
+2
+Ln
+2
+]
+h2
++E
+[∥ ∥ ∥ ∥
+∫1
+0
+(1 − t)f ′′(Yn + t(Zn+1 − Yn
+)) dt (Zn+1 − Yn
+)⊗2
+∥ ∥ ∥ ∥
+2
+Ln
+2
+]
+h2
+≤1
+2 ‖f ′‖2
+∞‖f ‖2
+∞h4 + E
+[1
+3 ‖f ′′‖2
+∞
+∥
+∥Zn − Yn
+∥ ∥
+4 2
+]
+h2 + E
+[1
+3 ‖f ′′‖2
+∞
+∥
+∥Zn+1 − Yn
+∥ ∥
+4
+Ln
+4
+]
+h2
+≤1
+2 ‖f ′‖2
+∞‖f ‖2
+∞h4 + 3‖f ′′‖2
+∞
+∥
+∥Zn − Yn
+∥ ∥
+4
+L2 h2 + 8
+3 ‖f ′′‖2
+∞E
+[∥
+∥f (Zn
+)h + σWn
+∥ ∥
+4
+Ln
+4
+]
+h2.
+27
+
+
+The result now follows by the L4-bound on Yn − Zn given by Theorem D.6.
+Likewise, the additive noise SDE (26) admits a simpler Taylor expansion than the general SDE (13).
+Theorem D.14 (Stochastic Taylor expansion for additive noise SDEs). For n ∈ {0, 1, · · · , N − 1},
+y(n+1)h = ynh + f (ynh
+)h + σWn + f ′(ynh
+)σJn + R ̃y
+n,
+where Jn denotes the time integral of Brownian motion over the interval [nh, (n + 1)h], that is
+Jn :=
+∫ (n+1)h
+nh
+(Wt − Wnh
+) dt ,
+and the remainder term satisfies ‖R ̃yn‖L2 = O(h2).
+Proof. As σ is constant, the terms involving second and third iterated integrals of W do not appear. Therefore the result follows from more general expansions, such as [53, Proposition 5.10.1].
+To simplify the error analysis, we note the following lemma.
+Lemma D.15. For each n ∈ {0, 1, · · · , N − 1}, we define the random vector Hn := 1
+h Jn − 1
+2 Wn.
+Then Hn is independent of Wn and Hn ∼ N (0, 1
+12 Idh).
+Proof. For the d = 1 case, the lemma was shown in [54, Definition 3.5]. When d > 1, the result is still straightforward as each coordinate of W is an independent one-dimensional Brownian motion.
+Using the same arguments as before, we can obtain error estimates for reversible Heun method.
+Theorem D.16 (Local error estimate for the reversible Heun method in the additive noise setting). Let hmax > 0 be fixed. Then there exist constants c5, c6 > 0 such that for n ∈ {0, 1, · · · , N − 1},
+∥
+∥Yn+1 − y(n+1)h
+∥ ∥
+2
+L2 ≤ ec5h∥
+∥Yn − ynh
+∥ ∥
+2
+L2 + c6h3, (27)
+provided h ≤ hmax .
+Proof. By Theorems D.13 and D.14 along with Lemma D.15, we have
+Yn+1 − y(n+1)h = Yn + f (Yn
+)h + σWn + 1
+2 f ′(Yn
+)(σWn
+)h + R ̃Y
+n
+− ynh − f (ynh
+)h − σWn − f ′(ynh
+)σ
+(1
+2 Wnh + Hnh
+)
+−
+R ̃y
+n
+= Yn − ynh + (f (Yn
+) − f (ynh
+))h + 1
+2
+(f ′(Yn
+) − f ′(ynh
+))(σWn
+)h
+− f ′(ynh
+)(σHn
+)h + R ̃Y
+n − R ̃y
+n.
+The result now follows using exactly the same arguments as in the proof of Theorem D.11.
+Theorem D.17 (Global error estimate for the reversible Heun method in the additive noise setting). Let hmax > 0 be fixed. Then there exists a constant C3 > 0 such that for all n ∈ {0, 1, · · · , N },
+∥
+∥Yn − ynh
+∥
+∥L2 ≤ C3 h,
+provided h ≤ hmax .
+Proof. Since Y0 = Z0 , it follows from Theorem D.16 that
+∥
+∥Yn − ynh
+∥ ∥
+2
+L2 ≤ c6
+n−1
+∑
+k=0
+ec5khh3 = c6
+ec5nh − 1
+ec5h − 1 h3 ≤ c6
+ec5T − 1
+ec5h − 1 h3 = O(h2),
+which gives the desired result.
+28
+
+
+It is known that Heun’s method achieves second order weak convergence for additive noise SDEs [55]. This can make Heun’s method more appealing for SDE simulation than other two-stage methods, such as the standard midpoint method – which is first order weak convergent. Whilst understanding the weak convergence of the reversible Heun method is a topic for future work, we present numerical evidence that it has similar convergence properties as Heun’s method for SDEs with additive noise.
+We apply the standard and reversible Heun methods to the following scalar anharmonic oscillator:
+dyt = sin(yt) dt + dWt , (28)
+with y0 = 1, and compute the following error estimates by standard Monte Carlo simulation:
+SN :=
+√
+E
+[∣
+∣YN − Y fine
+T
+∣ ∣
+],
+EN := ∣
+∣E[YN
+] − E[Y fine
+T
+]∣
+∣,
+VN := ∣
+∣E[Y 2
+N
+] − E[(Y fine
+T
+)2 ]∣
+∣,
+where {Yn} denotes a numerical solution of the SDE (28) obtained with step size h = T
+N and Y fine
+T is
+an approximation of yY obtained by applying Heun’s method to (28) with a finer step size of 1
+10 h.
+Both YN and Y fine
+T are obtained using the same Brownian sample paths and the time horizon is T = 1.
+The results of this simple numerical experiment are presented in Figures 5 and 6. From the graphs, we observe that the standard and reversible Heun methods exhibit very similar convergence rates (strong order 1.0 and weak order 2.0).
+Figure 5: Log-log plot for the strong error estimator SN computed with 107 Brownian sample paths.
+Figure 6: Log-log plots for the weak error estimators computed with 107 Brownian sample paths.
+D.5 Stability properties of the reversible Heun method in the ODE setting
+In this section, we present a stability result for the reversible Heun method when applied to an ODE,
+y′ = f (t, y). (29)
+29
+
+
+Just as for the error analysis, it will be helpful to consider two steps of the reversible Heun method. In particular, the updates for the Z component of the numerical solution satisfy
+Zn+2 = Zn + 2f (tn+1 , Zn+1
+)h, (30)
+with the second value of Z being computed using a standard Euler step as Z1 := Z0 + f (t0 , Z0
+)h. That is, {Zn} is precisely the numerical solution obtained by the leapfrog/midpoint method, see [56]. The absolute stability region of this ODE solver is well-known and given below.
+Theorem D.18 (Stability region of leapfrog/midpoint method [56, Section 2]). Suppose that we apply the leapfrog/midpoint method to obtain a numerical solution {Zn}n≥0 for the linear test equation
+y′ = λy, (31)
+where λ ∈ C with Re(λ) ≤ 0 and y0 6= 0. Then |Zn| is bounded for all n if and only if λh ∈ [−i, i] .
+Using similar techniques, it is straightforward to extend this result to the reversible Heun method.
+Theorem D.19 (Stability region of the reversible Heun method). Suppose that we apply the reversible Heun method to obtain a pair of numerical solutions {Yn}n≥0 , {Zn}n≥0 for the linear test equation
+y′ = λy,
+where λ ∈ C with Re(λ) ≤ 0 and y0 6= 0. Then {Yn, Zn}n≥0 is bounded if and only if λh ∈ [−i, i].
+Proof. By Theorem D.18, it is enough to show that |Yn| is bounded for all n ≥ 0 when λh ∈ [−i, i]. It follows from the difference equation (30) and the formula for Z1 that
+Zn = αηn
+1 + βηn
+2,
+where the constants α, β, η1, η2 ∈ C are given by
+α := 1
+2 y0
+(
+1+ 1
+√1 + λ2h2
+)
+,
+β := 1
+2 y0
+(
+1− 1
+√1 + λ2h2
+)
+,
+η1 := λh +
+√
+1 + λ2h2 ,
+η2 := λh −
+√
+1 + λ2h2 .
+For each k ≥ 0, we have Yk+1 = Yk + 1
+2 λ(Zk + Zk+1
+)h and so we can explicitly compute Yn as
+Yn = y0 + 1
+2 λh
+n−1
+∑
+k=0
+(Zk + Zk+1
+)
+= y0 + 1
+2 λhα(1 + η1
+)
+n−1
+∑
+k=0
+ηk
+1+1
+2 λhβ(1 + η2
+)
+n−1
+∑
+k=0
+ηk
+2
+= y0 + 1
+2 λhα
+( 1 + η1 1 − η1
+)
+(1 − ηn
+1
+)+ 1
+2 λhβ
+( 1 + η2 1 − η2
+)
+(1 − ηn
+2
+). (32)
+Since λh ∈ [−i, i], we have η1 = λh + √1 − |λh|2 and η2 = λh − √1 − |λh|2, which implies that
+|ηi|2 = |λh|2 + (1 − |λh|2) = 1 and Im(ηi) = |λh| ,
+for both i ∈ {1, 2}. When λ 6= 0, it follows that η1, η2 ∈ {z ∈ C : |z| = 1} \ {1} and thus by (32), |Yn| is bounded for all n ≥ 0. On the other hand, when λ = 0, we have Yn = y0 for all n ≥ 0.
+Remark D.20. The reversible Heun method is not A-stable for ODEs as that would require |ηi| < 1.
+Remark D.21. The domain {λ ∈ C : λh ∈ [−i, i]} is also the absolute stability region for the (reversible) asynchronous leapfrog integrator proposed for Neural ODEs in Zhuang et al. [32].
+30
+
+
+E Sampling Brownian motion
+E.1 Algorithm
+We begin by providing the complete traversal and splitting algorithm needed to find or create all intervals in the Brownian Interval, as in Section 4. See Algorithm 4.
+Here, List is an ordered data structure that can be appended to, and iterated over sequentially. For example a linked list would suffice. We let split_seed denote a splittable PRNG as in Salmon et al. [34], Claessen and Pałka [35]. We use ∗ to denote an unfilled part of the data structure, equivalent to None in Python or a null pointer in C/C++; in particular this is used as a placeholder for the (nonexistent) children of leaf nodes. We use = to denote the creation of a new local variable, and ← to denote in-place modification of a variable.
+E.2 Discussion
+The function traverse is a depth-first tree search for locating an interval within a binary tree. The search may split into multiple (potentially parallelisable) searches if the target interval crosses the intervals of multiple existing leaf nodes. If the search’s target is not found then additional nodes are created as needed.
+Sections 4 and E.1 now between them define the algorithm in technical detail.
+There are some further technical considerations worth mentioning. Recall that the context we are explicitly considering is when sampling Brownian motion to solve an SDE forwards in time, then the adjoint backwards in time, and then discarding the Brownian motion. This motivates several of the choices here.
+Small intervals First, the access patterns of SDE solvers are quite specific. Queries will be over relatively small intervals: the step that the solver is making. This means that the list of nodes populated by traverse is typically small. In our experiments we observed it usually only consisting of a single element; occasionally two. In contrast if the Brownian Interval has built up a reasonable tree of previous queries, and was then queried over [0, s] for s 0, then a long (inefficient) list would be returned. It is the fact that SDE solvers do not make such queries that means this is acceptable.
+Search hints: starting from ̂J Moreover, the queries are either just ahead (fixed-step solvers; accepted steps of adaptive-step solvers) or just before (rejected steps of adaptive-step solvers) previous queries. Thus in Algorithm 3, we keep track of the most recent node ̂J, so that we begin traverse near to the correct location. This is what ensures the modal time complexity is only O (1), and not O (log(1/s)) in the average step size s, which for example would be the case if searching commenced from the root on every query.
+LRU cache The fact that queries are often close to one another is also what makes the strategy of using an LRU (least recently used) cache work. Most queries will correspond to a node that have a recently-computed parent in the cache.
+Backward pass The queries are broadly made left-to-right (on the forward pass), and then right-toleft (on the backward pass). (Other than the occasional rejected adaptive step.)
+Left to its own devices, the forward pass will thus build up a highly imbalanced binary tree. At any one time, the LRU cache will contain only nodes whose intervals are a subset of some contiguous subinterval [s, t] of the query space [0, T ]. Letting n be the number of queries on the forward pass, then this means that the backward pass will consume O (n2) time – each time the backward pass moves past s, then queries will miss the LRU cache, and a full recomputation to the root will be triggered, costing O (n). This will then hold only nodes whose intervals are subets of some contiguous subinterval [u, s]: once we move past u then this O (n) procedure is repeated, O (n) times. This is clearly undesirable.
+This is precisely analogous to the classical problem of optimal recomputation for performing backpropagation, whereby a dependency graph is constructed, certain values are checkpointed, and a minimal amount of recomputation is desired; see Griewank [57].
+31
+
+
+Algorithm 4: Definition of traverse
+def bisect(I : Node, x : R): # Only called on leaf nodes
+Let I = ([a, b], s, Iparent, ∗, ∗) sleft, sright = split_seed(s) Ileft = ([a, x], sleft, J, ∗, ∗) Iright = ([x, b], sright, J, ∗, ∗)
+I ← ([a, b], s, Iparent, Ileft, Iright) return
+def traverse_impl(I : Node, [c, d] : Interval, nodes : List[Node]): Let I = ([a, b], s, Iparent, Ileft, Iright)
+# Outside our jurisdiction - pass to our parent if c < a or d > b then
+traverse_impl(Iparent, [c, d], nodes) return # It’s I that is sought. Add I to the list and return. if c = a and d = b then nodes.append(I ) return # Check if I is a leaf or not. if Ileft is ∗ then # I is a leaf if a = c then
+# If the start points align then create children and add on the left child. # (Which is created in bisect.) bisect(I, d)
+nodes.append(Ileft) # nodes is passed by reference
+return
+# Otherwise create children and pass on to our right child. # (Which is created in bisect.) bisect(I, c) traverse_impl(Iright, [c, d], nodes)
+return
+else
+# I is not a leaf.
+Let Ileft = ([a, m], sleft, I, Ill, Ilr) if d ≤ m then
+# Strictly our left child’s problem.
+traverse_impl(Ileft, [c, d], nodes)
+return
+if c ≥ m then
+# Strictly our right child’s problem. traverse_impl(Iright, [c, d], nodes)
+return
+# A problem for both of our children. traverse_impl(Ileft, [c, m], nodes) traverse_impl(Iright, [m, d], nodes) return
+def traverse(I : Node, [c, d] : Interval): Let nodes be an empty List.
+traverse_impl(I, [c, d], nodes) return nodes
+32
+
+
+In principle the same solution may be applied: apply a snapshotting procedure in which specific extra nodes are held in the cache. This is a perfectly acceptable solution, but implementing it requires some additional engineering effort, carefully determining which nodes to augment the cache with.
+Fortunately, we have an advantage that Griewank [57] does not: we have some control over the dependency structure between the nodes, as we are free to prespecify any dependency structure we like. That is, we do not have to start the binary tree as just a stump. We may exploit this to produce an easier solution.
+Given some estimate ν of the average step size of the SDE solver (which may be fixed and known if using a fixed step size solver), a size of the LRU cache L, and before a user makes any queries, then we simply make some queries of our own. These queries correspond to the intervals [0, T /2], [T /2, T ], [0, T /4], [T /4, T /2], . . ., so as to create a dyadic tree, such that the smallest intervals (the final ones in this sequence) are of size not more than νL. (In practice we use 4
+5 νL as an
+additional safety factor.)
+Letting [s, t] be some interval at the bottom of this dyadic tree, where t ≈ s + 4
+5 νL, then we are
+capable of holding every node within this interval in the LRU cache. Once we move past s on the backward pass, then we may in turn hold the entire previous subinterval [u, s] in the LRU cache, and in particular the values of the nodes whose intervals lie within [u, s] may be computed in only logarithmic time, due to the dyadic tree structure.
+This is now analogous to the Virtual Brownian Tree of Li et al. [15], Gaines and Lyons [58]. (Up to the use of intervals rather than points.) If desired, this approach may be loosely interpreted as placing a Brownian Interval on every leaf of a shallow Virtual Brownian Tree.
+Recursion errors We find that for some problems, the recursive computations of traverse (and in principle also sample, but this is less of an issue due to the LRU cache) can occasionally grow very deep. In particular this occurs when crossing the midpoint of the pre-specified tree: for this particular query, the traversal must ascend the tree to the root, and then descend all the way down again. As such traverse should be implemented with trampolining and/or tail recursion to avoid maximum depth recursion errors.
+CPU vs GPU memory We describe this algorithm as requiring only constant memory. To be more precise, the algorithm requires only constant GPU memory, corresponding to the fixed size of the LRU cache. As the Brownian Interval receives queries then its internal tree tracking dependencies will grow, and CPU memory will increase. For deep learning models, GPU memory is usually the limiting (and so more relevant) factor.
+Stochastic integrals What we have not discussed so far is the numerical simulation of integrals such as Ws,t = ∫ t
+s Ws,r ◦ dWr and Hs,t = 1
+t−s
+∫t s
+(Ws,r − ( r−s
+t−s
+)Ws,t
+) dr which are used in higher order SDEs solvers (for example, the Runge-Kutta methods in [59] and the log-ODE method in [54]). Just like increments Ws,t, these integrals fit nicely into an interval-based data structure.
+In general, simulating the pair (Ws,t , Ws,t) is known to be a difficult problem [60], and exact algorithms are only known when W is one or two dimensional [61]. However, the approximation proposed in [62] and further developed in [63, 64] constitutes a simple and computable solution. Their approach is to generate
+ ̃Ws,t := 1
+2 Ws,t ⊗ Ws,t + Hs,t ⊗ Ws,t − Ws,t ⊗ Hs,t + λs,t,
+where λs,t is an anti-symmetric matrix with independent entries λi,j
+s,t ∼ N (0, 1
+12 (t − s)2), i < j.
+In these works, the authors input the pairs {(Wtn,tn+1 ,  ̃ Wtn,tn+1 )}0≤n≤N−1 into a SDE solver (the Milstein and log-ODE methods respectively) and prove that the resulting approximation achieves a 2-Wasserstein convergence rate close to O (1/N ), where N is the number of steps. In particular, this approach is efficient and avoids the use of costly Lévy area approximations, such as in [65, 66, 67].
+33
+
+
+F Experimental Details and Further Results
+F.1 Metrics
+Several metrics were used to evaluate final model performance of the trained Latent SDEs and SDE-GANs.
+Real/fake classification A classifier was trained to distinguish real from generated data. This is trained by taking an 80%/20% split of the test data, training the classifier on the 80%, and evaluating its performance on the 20%. This produces a classification accuracy as a performance metric.
+We parameterise the classifier as a Neural CDE [45], whose vector field is an MLP with two hidden layers each of width 32. The evolving hidden state is also of width 32. A final classification result is given by applying a learnt linear readout to the final hidden state, which produces a scalar. A sigmoid is then applied and this is trained with binary cross-entropy.
+It is trained for 5000 steps using Adam with a learning rate of 10−4 and a batch size of 1024.
+Smaller accuracies – indicating inability to distinguish real from generated data – are better.
+Label classification (train-on-synthetic-test-on-real) Some datasets (in particular the air quality dataset) have labelled classes associated with each sample time series. For these datasets, a classifier was trained on the generated data – possible as every model we train is trained conditional on the class label as an input – and then evaluated on the real test data. This produces a classification accuracy as a performance metric.
+We parameterise the classifier as a Neural CDE, with the same architecture as before. A final classification result is given by applying a learnt linear readout to the final hidden state, which produces a vector of unnormalised class probabilities. These are normalised with a softmax and trained using cross-entropy.
+It is trained for 5000 steps using Adam with a learning rate of 10−4 and a batch size of 1024.
+Larger accuracies – indicating similarity of real and generated data – are better.
+Prediction (train-on-synthetic-test-on-real) A sequence-to-sequence model is trained to perform time series forecasting: given the first 80% of a time series, can the latter 20% be predicted. This is trained on the generated data, and then evaluated on the real test data. This produces a regression loss as a performance metric.
+We parameterise the predictor as a sequence-to-sequence Neural CDE / Neural ODE pair. The Neural CDE is as before. The Neural ODE has a vector field which is an MLP of two hidden layers, each of width 32. Its evolving hidden state is also of width 32. An evolving prediction is given by applying a learnt linear readout to the evolving hidden state, which produces a time series of predictions. These are trained using an L2 loss.
+It is trained for 5000 steps using Adam with a learning rate of 10−4 and a batch size of 1024.
+Smaller losses – indicating similarity of real and generated data – are better.
+Maximum mean discrepancy Maximum mean discrepancies [68] can be used to compute a (semi)distance between probability distributions. Given some set X , a fixed feature map ψ : X → Rm, a norm ‖ · ‖ on Rm, and two probability distributions P and Q on X , this is defined as
+‖EP ∼P [ψ(P )] − EQ∼Q [ψ(Q)]‖ .
+In practice P corresponds to the true distribution, of which we observe samples of data, and Q corresponds to the law of the generator, from which we may sample arbitrarily many times. Given N empirical samples Pi from the true distribution, and M generated samples Qi from the generator, we may thus approximate the MMD distance via
+∥ ∥ ∥ ∥ ∥
+1 N
+N
+∑
+i=1
+ψ(Pi) − 1
+M
+M
+∑
+i=1
+ψ(Qi)
+∥ ∥ ∥ ∥ ∥
+.
+34
+
+
+In our case, X corresponds to the observed time series, and we use a depth-5 signature transform as the feature map [69, 70]. Similarly, the untruncated signature can be used as a feature map [71, 72, 73, 74, 75].
+(Note that MMDs may also be used as differentiable optimisation metrics provided ψ is differentiable [76, 77]. A mistake we have seen ‘in the wild’ for training SDEs is to choose a feature map that is overly simplistic, such as taking ψ to be the marginal mean and variance at all times. Such a feature
+map would fail to capture time-varying correlations; for example W and t 7→ W (0)√t, where W is a Brownian motion, would be equivalent under this feature map.)
+Smaller values – indicating similarity of real and generated data – are better.
+F.2 Common details
+The following details are in common to all experiments.
+Libraries used PyTorch was used as an autodifferentiable tensor framework [27].
+SDEs were solved using torchsde [42]. CDEs were solved using torchcde [78]. ODEs were solved using torchdiffeq [79]. Signatures were computed using Signatory [74].
+Tensors had their shapes annotated using the torchtyping [49] library, which helped to enforce correctness of the implementation.
+Hyperparameter optimisation was performed using the Ax library [80].
+Numerical methods SDEs were solved using either the reversible Heun method or the midpoint method (as per the experiment), and trained using continuous adjoint methods.
+The CDE used in the discriminator of an SDE-GAN was solved using either the reversible Heun method, or the midpoint method, in common with the choice made in the generator, and trained using continuous adjoint methods.
+The ODEs solved for the train-on-synthetic-test-on-real prediction metric used the midpoint method, and were trained using discretise-then-optimise backpropagation. The CDEs solved for the various evaluation metrics used the midpoint method, and trained using discretise-then-optimise backpropagation. (These were essentially arbitrary choices – we merely needed to fix some choices throughout to ensure a fair comparison.)
+Normalisation Every dataset is normalised so that its initial value (at time = 0) has mean zero and unit variance. (That is, calculate mean and variance statistics of just the initial values in the dataset, and then normalise every element of the dataset using these statistics.)
+We speculate that normalising based on the initial condition produces better results than calculating mean and variance statistics over the whole trajectory, as the rest of the trajectory cannot easily be learnt unless its initial condition is well learnt first. We did not perform a thorough investigation of this topic, merely finding that this worked well enough on the problems considered here.
+The times at which observations were made were normalised to have mean zero and unit range. (This is of relevance to the modelling, as the generated samples must be made over the same timespan: that is the integration variable t must correspond to some parameterisation of the time at which data is actually observed.)
+Dataset splits We used 70% of the data for training, 15% for validation and hyperparameter optimisation, and 15% for testing.
+Optimiser The batch size is always taken to be 1024. The number of training steps varies by experiment, see below.
+We use Adam [81] to train every Latent SDE.
+Following Kidger et al. [16] we use Adadelta [82] to train every SDE-GAN.
+35
+
+
+Stochastic weight averaging When training SDE-GANs, we take a Cesàro mean over the latter 50% of the training steps, of the generator’s weights, to produce the final trained model. Known as ‘stochastic weight averaging’ this often slightly improves GAN training [83, 84].
+Architectures Each of ζθ, μθ, σθ, ξφ, fφ, gφ were parameterised as MLPs. (From equations (1), (2), (10).)
+Following Li et al. [15], then νφ (of equation (10)) was parameterised as an MLP composed with a GRU.
+In brief, that is νφ(t, ̂Xt, Ytrue) = ν1
+φ(t, ̂Xt, ν2
+φ(Ytrue|[t,T ])), where ν1
+φ is an MLP, and ν2
+φ is a GRU run backwards-in-time from T to t over whatever discretisation of Ytrue|[t,T ] is observed.
+In all cases, for simplicity, the LipSwish activation function was used throughout.
+Hyperparameter optimisation Hyperparameter optimisation used the default optimisation strategy provided by Ax (initial quasirandom Sobol sampling followed by Bayesian optimisation). The optimisation metric was the MMD evaluation metric, due to the speed at which it can be computed relative to the other optimisation metrics (which require training an auxiliary model).
+The Latent SDE model was hyperoptimised on every dataset. To ensure we do not bias results in our favour, the hyperoptimised models used the midpoint method, not the reversible Heun method, throughout, and was optimised using discretise-then-optimise backpropagation.
+The SDE-GAN models then used the same hyperparameters where applicable, for example on learning rate, neural network size, and so on. This fixes mosts of the hyperparameters. A few extra hyperparameters were then chosen manually.
+First, the size of the initial noise V and the dimensionality of the Brownian motion W were arbitrarily fixed at 10.
+Second, we adjusted the initialisation strategy for the parameters of the SDE. For each dataset, we picked some constants
+α > 0, β > 0, (33)
+and multiplied the parameters θ at initialisation by either α or β, depending on whether the parameters were used to generate the initial condition (ζθ), or were used in the vector fields of the SDE (μθ, σθ, `θ), respectively. This helped to ensure that the SDE had a good initialisation, and therefore took fewer steps to train. The values α, β were chosen by manually plotting generated samples from an untrained model against real data. (A less naïve approach would be nice.)
+The one exception is the Ornstein–Uhlenbeck dataset, for which the SDE-GAN had ζθ, μθ, σθ, ξφ, fφ, gφ parameterised as MLPs with one hidden layer of width 32, and had an evolving hidden state X of size 32; these figures were chosen as being known to work based on early experiments.
+Compute resources Experiments were performed on an internal GPU cluster. Each experiment used only a single GPU at a time. Amount of compute time varied depending on the experiment some took a few hours, some took a few days. Precise times given in the tables of results.
+(Moreover some would likely have taken a few weeks without the algorithmic speed improvements introduced in this paper. Recall that each baseline experiment used the improvements introduced in the other sections of this paper, simply to produce tractable training times. For example the Brownian Interval was used throughout.)
+GPU types varied between GeForce RTX 2080 Ti, Quadro GP100, and A100s.
+F.3 Weights dataset
+Technical details We consider a dataset of weights of a small convolutional network, as it is trained to classify MNIST, with training using stochastic gradient descent, as in Kidger et al. [16]. The network was trained 10 times, and all weight trajectories, across all runs, were aggregated together to form a dataset of univariate time series.
+Each time series is 50 elements long, corresponding to how the weights change over 50 epochs.
+36
+
+
+Table 4: SDE-GAN on weights dataset. Mean ± standard deviation averaged over three runs.
+Test Metrics
+Solver
+Real/fake classification accuracy (%)
+Prediction loss MMD
+(×10−2)
+Training time (days)
+Midpoint 77.0 ± 6.9 0.303 ± 0.369 4.38 ± 0.67 5.12 ± 0.01 Reversible Heun 75.5 ± 0.01 0.068 ± 0.037 1.75 ± 0.3 2.59 ± 0.05
+We train an SDE-GAN on this dataset. We train the generator and discriminator for 80 000 steps each.
+Each MLP (ζθ, μθ, σθ, ξφ, fφ, gφ) is parameterised as having two hidden layers each of width 67. The evolving hidden states X, H are each of size 62.
+The parameters of ζθ, ξφ have a learning rate of 4.9 × 10−3. The parameters of μθ, σθ, fφ, gφ have a learning rate of 1.3 × 10−3.
+The initialisation scaling parameters α and β (of equation (33)) were selected to be 4.5 and 0.25 respectively.
+Results We compare the reversible Heun method to the midpoint method on the weights dataset, by training an SDE-GAN.
+We compute three test metrics: classification of real versus generated data, forecasting via train-onsynthetic-test-on-real, and a maximum mean discrepancy. We additionally report training time. See Table 4.
+First and most notably, we see a dramatic reduction in training time: the training time of the reversible Heun method is roughly half that of the midpoint method. This corresponds to the reduction in vector field evaluations of the reversible Heun method.
+We additionally see better performance on the test metrics, as compared to the midpoint method. This corresponds to the calculation of numerically precise gradients via the reversible Heun method.
+We believe that these test metrics could be further improved (in particular the classification accuracy) given further training time.
+The Brownian Interval (Section 4) is used to sample Brownian noise, and the SDE-GAN is trained using clipping as in Section 5. (Without either of which the baseline experiments would have taken infeasibly long to run.)
+F.4 Air quality dataset
+Technical details This is a dataset of air quality samples over Beijing, as they vary over the course of a day. Each time series is 24 elements long, corresponding to a single hour each day. We consider specifically the PM2.5 particulate matter concentration, and ozone concentration, to produce a dataset of bivariate time series. In particular the ozone channel was selected as displaying obvious non-autonomous behaviour: the latter half of the time series often includes a peak.
+This dataset is available via the UCI machine learning repository [85, 86].
+Each time series has a label, corresponding to which of 12 different locations the measurements were made at.
+We train a Latent SDE on this dataset. We train for 40 000 steps.
+Each MLP (ζθ, μθ, σθ, ξφ, ν1
+φ) is parameterised as having a single hidden layer of width 84. The evolving hidden state X is of size 63.
+ν2
+φ was parameterised as GRU with hidden size 84, whose final hidden state has a learnt affine map applied, to produce vector of size 60.
+37
+
+
+Table 5: Latent SDE on air quality dataset. Mean ± standard deviation averaged over three runs.
+Test Metrics
+Solver
+Real/fake classification accuracy (%)
+Label classification accuracy (%)
+Prediction loss MMD
+(×10−3)
+Training time (hours)
+Midpoint 92.3 ± 0.02 46.3 ± 5.1 0.281 ± 0.009 5.91 ± 2.06 5.58 ± 0.54 Reversible Heun 96.7 ± 0.01 49.2 ± 0.02 0.314 ± 0.005 4.72 ± 2.90 4.47 ± 0.31
+The parameters of ζθ have learning rate 1.1 × 10−4. The parameters of μθ, σθ, ξφ, ν1
+φ, ν2
+φ have learning rate 1.9 × 10−5.
+The initialisation scaling parameters α and β (of equation (33)) were selected to be 2 and 1 respectively.
+Results We compare the reversible Heun method to the midpoint method on the air quality dataset, by training a Latent SDE.
+We compute four test metrics: classification of real versus generated data, classification via train-onsynthetic-test-on-real, forecasting via train-on-synthetic-test-on-real, and a maximum mean discrepancy. We additionally report training time. See Table 5.
+Here, the most important metric is again the improvement in training time: whilst less dramatic than the previous SDE-GAN experiment, it is still a speed improvement of 1.2×.
+Performance on the test metrics varies between the solvers, without a clear pattern.
+It is worth noting the apparently poor real/fake classification accuracies obtained using either solver. This is typical of Latent SDEs in general, in particular as opposed to SDE-GANs. Whilst Latent SDEs are substantially quicker to train, they tend to produce less convincing samples.
+F.5 Gradient error analysis
+We investigate the error made in the gradient calculation using continuous adjoints. We consider using the midpoint method, Heun’s method, and the reversible Heun method, and vary the step size in decreasing powers of two.
+Our test problem is to compute dX1/dX0 and dX1/dθ over a batch of 32 samples of
+dXt = fθ(t, Xt) dt + gθ(t, Xt) ◦ dWt,
+where Xt, fθ(t, Xt) ∈ R32, Wt ∈ R16, gθ(t, Xt) ∈ R32,16 and fθ, gθ are feedforward neural networks with a single hidden layer of width 8, and LipSwish activation function. Additionally fθ has a tanh as a final nonlinearity, and gθ has a sigmoid as final nonlinearity.
+We compare the gradients computed via optimise-then-discretise against discretise-then-optimise, and plot the relative L1 error. Letting δo−d ∈ RM and δd−o ∈ RM denote these gradients (with M equal to the size of X0 plus the size of θ), then this is defined as
+∑M i=1
+∣
+∣δi
+o−d − δi
+d−o
+∣ ∣
+max{∑M
+i=1
+∣
+∣δi
+o−d
+∣
+∣ , ∑M
+i=1
+∣
+∣δi
+d−o
+∣
+∣}.
+Numerical values are shown in Table 6. Results are plotted graphically in the main text.
+F.6 Brownian benchmarks
+We benchmark the Brownian Interval against the Virtual Brownian Tree across several benchmarks.
+Access benchmarks We subdivide the interval [0, 1] into a disjoint union of equal-sized intervals. Across each interval we then place a query for a small Brownian increment.
+38
+
+
+We consider subdividing [0, 1] into different numbers of subintervals (and so of different sizes): either 10, 100 or 1000 subintervals.
+We consider several access patterns.
+Sequential access: this involves querying every interval in order, from 0 to 1. Every interval is queried precisely once. This simulates an SDE solve from 0 to 1.
+Doubly sequential access: this involves querying every interval in order, from 0 to 1, and then querying them again in reverse order, from 1 to 0. Every interval is queried precisely twice. This simulates an SDE solve from 0 to 1, followed by a backpropagation via the continuous adjoint method, from 1 to 0.
+Random access: this involves querying every interval precisely once, in a random order.
+We consider several batch sizes: either a single Brownian simulation, a typical batch size of 2560 simultaneous Brownian simulations (corresponding to a batch of size 256, each with a vector of 10 Brownian motions), and a large batch size of 32768 simultaneous Brownian simulations.
+For every such combination we report metrics for the Brownian Interval and the Virtual Brownian Tree.
+For every such combination we run 32 repeats. The reported metric is the fastest (minimum time) over these repeats.8
+See Tables 7, 8, and 9.
+The Brownian Interval is consistently and substantially faster than the Virtual Brownian Tree, across all access patterns, batch sizes, and number of subintervals.
+On the doubly sequential access benchmark (emulating the SDE solve and backpropagation typical in practice), we see that total speed-ups vary from a factor of 2.89× to a factor of 13.5×. That is, at minimum, speed is roughly tripled. Potentially it is improved by over an order of magnitude. Typical values are speed-ups of 6–8×.
+SDE solve benchmarks We now benchmark the Brownian Interval against the Virtual Brownian Tree on the actual task of solving and backpropagating through an SDE.
+As before we consider several numbers of subintervals, several batch sizes, and run 32 repeats and take the fastest time.
+Our test SDE is an Itô SDE with diagonal noise:
+dX i
+t = tanh(Ai,j Xj
+t ) dt + δi,kδi,l tanh(Bk,j Xj
+t ) dW l
+t,
+where either Xt, Wt ∈ R1, Xt, Wt ∈ R10, or Xt, Wt ∈ R16, corresponding to the small, medium
+and large batch sizes considered in the previous set of benchmarks. Likewise A, B ∈ R1×1, A, B ∈ R10×10, or A, B ∈ R16×16 are random matrices. tanh is applied component-wise.
+For i = 10, 100, 1000 subintervals, we calculate a forward pass for [0, 1] using the Euler–Maruyama method, to calculate Xj/(i−1) for j ∈ {0, . . . , i − 1}. We then backpropagate from the vector (Xj/(i−1))j to X0, using the continuous adjoint method.
+See Table 10.
+We once again see that the Brownian Interval is uniformly and substantially faster than the Virtual Brownian Tree, in all regimes. On smaller problems (batch size equal to 1 or 2560), then it is typically twice as fast; at worst it is 1.89× as fast. Meanwhile on larger problems (batch size equal to 32768), then it is typically ten times as fast.
+These benchmarks include the realistic overheads involved in solving an SDE (such as evaluating its vector fields), and represent typical speed-ups from using the Brownian Interval over the Virtual Brownian Tree.
+8Not the mean. Errors in speed benchmarks are one-sided, and so the minimum time represents the least noisy measurement.
+39
+
+
+Table 6: Relative L1 error on the gradient analysis test problem.
+Step size
+Method 20 2−2 2−4 2−6
+Midpoint 9.4 × 10−2 1.1 × 10−2 2.6 × 10−3 7.2 × 10−4 Heun 1.4 × 10−1 5.9 × 10−2 1.4 × 10−2 2.9 × 10−3 Reversible Heun 1.9 × 10−17 2.7 × 10−16 3.3 × 10−16 5.7 × 10−16
+2−8 2−10 2−14
+1.8 × 10−4 4.8 × 10−5 2.5 × 10−6 8.2 × 10−4 2.8 × 10−4 1.3 × 10−5 1.0 × 10−15 1.8 × 10−15 6.5 × 10−15
+Table 7: Speed on the sequential access benchmark. Minimum over 32 runs.
+Speed (seconds)
+Batch size, subinterval number Virtual Brownian Tree Brownian Interval
+1, 10 8.08 × 10−3 2.59 × 10−3 1, 100 7.84 × 10−2 3.12 × 10−2 1, 1000 7.96 × 10−1 3.27 × 10−1
+2560, 10 1.90 × 10−2 4.13 × 10−3 2560, 100 1.94 × 10−1 4.95 × 10−2 2560, 1000 1.93 × 100 5.15 × 10−1
+32768, 10 1.16 × 10−1 1.71 × 10−2 32768, 100 1.40 × 100 2.02 × 10−1 32768, 1000 1.43 × 101 2.13 × 100
+Table 8: Speed on the doubly sequential access benchmark. Minimum over 32 runs.
+Speed (seconds)
+Batch size, subinterval number Virtual Brownian Tree Brownian Interval
+1, 10 2.02 × 10−2 2.79 × 10−3 1, 100 2.42 × 10−1 4.96 × 10−2 1, 1000 1.67 × 100 5.79 × 10−1
+2560, 10 3.23 × 10−2 4.31 × 10−3 2560, 100 3.91 × 10−1 8.05 × 10−2 2560, 1000 4.01 × 100 9.56 × 10−1
+32768, 10 2.30 × 10−1 1.70 × 10−2 32768, 100 2.92 × 100 3.49 × 10−1 32768, 1000 2.91 × 101 4.36 × 100
+40
+
+
+Table 9: Speed on the random access benchmark. Minimum over 32 runs.
+Speed (seconds)
+Batch size, subinterval number Virtual Brownian Tree Brownian Interval
+1, 10 1.53 × 10−2 2.56 × 10−3 1, 100 1.09 × 10−1 5.17 × 10−2 1, 1000 8.52 × 10−1 1.02 × 100
+2560, 10 1.50 × 10−2 3.56 × 10−3 2560, 100 1.86 × 10−1 8.96 × 10−2 2560, 1000 1.99 × 100 1.80 × 100
+32768, 10 1.18 × 10−1 1.60 × 10−2 32768, 100 1.47 × 100 3.63 × 10−1 32768, 1000 1.44 × 101 9.08 × 100
+Table 10: Speed on the sequential access benchmark. Minimum over 32 runs.
+Speed (seconds)
+Batch size, subinterval number Virtual Brownian Tree Brownian Interval
+1, 10 1.42 × 10−1 7.18 × 10−2 1, 100 1.55 × 100 8.16 × 10−1 1, 1000 1.61 × 101 8.52 × 100
+2560, 10 2.61 × 10−1 1.13 × 10−1 2560, 100 3.00 × 100 1.31 × 100 2560, 1000 3.00 × 101 1.31 × 101
+32768, 10 4.34 × 101 4.66 × 100 32768, 100 4.99 × 102 4.68 × 101 32768, 1000 1.54 × 103 4.74 × 102
+F.7 Time-dependent Ornstein–Uhlenbeck dataset
+Technical details This is a dataset of univariate samples of length 32 from the time-dependent Ornstein–Uhlenbeck process
+dYtrue,t = (ρt − κYtrue,t) dt + χ dWt,
+with ρ = 0.02, κ = 0.1 and χ = 0.4 and t ∈ [0, 31]
+We train an SDE-GAN on this dataset. We train the generator for 20 000 steps and the discriminator for 100 000 steps.
+Each MLP (ζθ, μθ, σθ, ξφ, fφ, gφ) is parameterised as having a single hidden layer of width 32. The evolving hidden states X, H are each of size 32.
+The parameters of ζθ, ξφ have a learning rate of 1.6 × 10−3. The parameters of μθ, σθ, fφ, gφ have a learning rate of 2.0 × 10−4.
+The initialisation scaling parameters α and β (of equation (33)) were selected to be 5 and 0.5 respectively.
+Results We compare training SDE-GANs by careful clipping (as in Section 5) to using gradient penalty (as in Kidger et al. [16]) on the OU dataset.
+As our implementation of the reversible Heun method does not support a double backward, we provide two comparisons of interest: reversible Heun method with clipping against midpoint with gradient penalty, and midpoint with clipping against midpoint with gradient penalty.
+41
+
+
+Table 11: SDE-GAN on OU dataset. Mean ± standard deviation averaged over three runs.
+Test Metrics
+Solver
+Real/fake classification accuracy (%)
+Prediction loss MMD
+(×10−1)
+Training time (hours)
+Midpoint with
+gradient penalty 98.2 ± 2.4 2.71 ± 1.03 2.58 ± 1.81 55.0 ± 27.7
+Midpoint with
+clipping 93.9 ± 6.9 1.65 ± 0.17 1.03 ± 0.10 32.5 ± 12.1
+Reversible Heun
+with clipping 67.7 ± 1.1 1.38 ± 0.06 0.45 ± 0.22 29.4 ± 8.9
+We compute three test metrics: classification of real versus generated data, forecasting via train-onsynthetic-test-on-real, and a maximum mean discrepancy. We additionally report training time. See Table 11.
+We see that reversible Heun with clipping dominates midpoint with clipping, which in turn dominates midpoint with gradient penalty, across all metrics.
+As per Kidger et al. [16], the poor performance of gradient penalty is due in part to the numerical errors of a double adjoint. Switching to midpoint with clipping produces substantially better test metrics. It additionally improves training speed by 1.41×.
+Switching from midpoint with clipping to reversible Heun with clipping then produces another substantial boost to the test metrics – most notably the real-versus-fake classification accuracy. It also improves training speed by another 1.09×.
+G Ethical statement
+SDEs are already a widely used modelling paradigm, primarily in fields such as finance and science. In this regard they are a tried-and-tested mathematical tool, with, to the best of the authors knowledge, no significant ethical concerns attached.
+As this paper extends this existing methodology, then broadly speaking we expect the same to be true.
+Expected applications We anticipate the results of this paper as having applications to finance and the sciences. For example, to model the movement of asset prices, or to model predator-prey interactions.
+As such no significant negative societal impacts are anticipated.
+Environmental impacts The primary contributions of this paper are speed improvements to existing methodologies. As such we anticipate a positive environmental impact from this paper, due to a reduction in the compute resources necessary to train model.
+Dataset content The data we are using contains no personally identifiable or offensive content.
+Dataset provenance All data used has been made publicly available, for example via the UCI machine learning repository [85]. To the best of our knowledge this availability was voluntary, and so we believe the use of the data to be ethical and without licensing issues.
+42

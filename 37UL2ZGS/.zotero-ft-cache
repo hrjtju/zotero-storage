@@ -1,0 +1,635 @@
+International Journal of Production Research
+ISSN: (Print) (Online) Journal homepage: https://www.tandfonline.com/loi/tprs20
+A novel method to forecast energy consumption of selective laser melting processes
+Jingxiang Lv, Tao Peng, Yingfeng Zhang & Yuchang Wang
+To cite this article: Jingxiang Lv, Tao Peng, Yingfeng Zhang & Yuchang Wang (2021) A novel method to forecast energy consumption of selective laser melting processes, International Journal of Production Research, 59:8, 2375-2391, DOI: 10.1080/00207543.2020.1733126 To link to this article: https://doi.org/10.1080/00207543.2020.1733126
+Published online: 27 Feb 2020. Submit your article to this journal Article views: 415 View related articles View Crossmark data Citing articles: 6 View citing articles
+Full Terms & Conditions of access and use can be found at https://www.tandfonline.com/action/journalInformation?journalCode=tprs20
+
+International Journal of Production Research, 2021 Vol. 59, No. 8, 2375–2391, https://doi.org/10.1080/00207543.2020.1733126
+A novel method to forecast energy consumption of selective laser melting processes
+Jingxiang Lva,b,c, Tao Peng d∗, Yingfeng Zhangb∗ and Yuchang Wangc
+aKey Laboratory of Road Construction Technology and Equipment of MOE, School of Construction Machinery, Chang’an University, Xi’an, People’s Republic of China; bKey Laboratory of Contemporary Design and Integrated Manufacturing Technology, Ministry of
+Education, Northwestern Polytechnical University, Xi’an, People’s Republic of China; cCentre for Integrated Renewable Energy Generation and Supply (CIREGS), Cardiff University, Cardiff, UK; d State Key Laboratory of Fluid Power and Mechatronic Systems,
+Institute of Industrial Engineering, Zhejiang University, Hangzhou, People’s Republic of China
+(Received 23 April 2019; accepted 10 February 2020)
+As a promising additive manufacturing (AM) technology, the applications of selective laser melting (SLM) are expanding. Yet, due to the complex structure of SLM machines and low processing rates, the SLM process is highly energy-intensive. Energy forecasting is crucial for accurate evaluation and reduction of SLM energy consumption. However, due to the diversity of SLM machines and their various operating states, the energy consumption of SLM processes is difﬁcult to predict. This article presents a novel method to forecast the energy consumption of SLM processes. The proposed approach is based on the power modelling of machine subsystems and the temporal modelling of sub-processes. Through identifying the working statuses of subsystems of SLM machines in each sub-process, forecast accuracy can be greatly improved. Two cases of aluminium components fabricated by an SLM process using an SLM 280HL facility are selected to demonstrate the effectiveness of the proposed method. Results show that the proposed method outperforms speciﬁc, stage-based and subsystem-based energy benchmark models in energy consumption forecasting.
+Keywords: 3D printing; additive manufacturing; energy consumption; selective laser melting; energy saving
+1. Introduction The industrial sector accounts for almost one third (31.8%) of the global energy consumption (EIA 2016) and imposes tremendous environmental burdens. Lots of attention has been drawn to address the environmental concerns of the industry, including life cycle management of products (Gu et al. 2019; Lv et al. 2019), environmental impact assessment of equipment (Zhang et al. 2018), wastewater discharge (Sun, Xu, et al. 2019), air emissions (Sun, Zhou, et al. 2019), solid waste recycling (Zhao et al. 2018), energy benchmark of machining systems (Cai, Li, et al. 2020), energy performance certiﬁcation (Cai, Liu, et al. 2019) and waste heat recovery (Sun, Yue, et al. 2018; Zhang et al. 2016). Energy consumption prediction and conservation are hot topics in the current research (Sun, Wang, et al. 2018). However, research on energy forecasting and energy saving of emerging technologies is still lacking.
+Additive Manufacturing (AM), also known as three-dimensional (3D) printing, is a technique to produce a 3D part from a digital model layer upon layer under computer control (Huang et al. 2013). AM is particularly applicable in producing highly-complex and lightweight parts, which are widely used in gas turbine, aircraft, medical implants and so on (Li et al. 2019). The global market share of AM is growing rapidly from $5 billion in 2016 to $12.08 billion in 2018, and expected to exceed $21 billion by 2020 (Attaran 2017). Compared to conventional manufacturing, AM could be more environmentally benign due to reduced material use and elimination of the need for moulds, dies, cutting tools and cutting ﬂuids (Walachowicz et al. 2017). However, the introduction of AM technology will place a new burden on the environment mainly due to the electricity usage (Faludi et al. 2017). Recent research has shown that the values of speciﬁc energy consumption (SEC) for AM processes are 1–2 orders of magnitude higher than those for conventional manufacturing processes, such as casting, machining, or injection moulding (Kellens, Baumers, et al. 2017). It can be expected that intensive electricity consumption will become a constraint for the large-scale application of AM technology in the future considering the energy cost and environmental impacts. Fortunately, there is enormous potential for energy savings of AM processes through product and process design. For instance, studies have shown that at least 43% of energy consumption from AM processes could be saved through optimal parameter setting (Mognol, Lepicart, and Perry 2006). In order to quantify and reduce the energy consumed by AM processes, it is imperative to develop simple and accurate methods to forecast the
+*Corresponding author. Email: tao_peng@zju.edu.cn; zhangyf@nwpu.edu.cn
+© 2020 Informa UK Limited, trading as Taylor & Francis Group
+
+2376
+
+J. Lv et al.
+
+energy consumption (Jia et al. 2018, 2019; He et al. 2019). Although some research has been done on the energy modelling of AM processes, it is still limited and insufﬁcient. The energy characteristics of AM machines and temporal characteristics of AM sub-processes are not completely understood, resulting in inevitable model discrepancies. Developing energy consumption models of AM processes, especially power and time models by taking into account the product design, machine settings and process parameters becomes a crucial research question to foster the sustainability of AM.
+Amongst various AM processes, selective laser melting (SLM) is a burgeoning technology due to its ability to manufacture metal components with nearly any geometry from computer aided design (CAD) model (Yap et al. 2015; Olakanmi, Cochrane, and Dalgarno 2015). It creates 3D parts through the power of laser beam which is absorbed by the metal powders and resulting in the locally melting and fusing of the metallic particles (Olakanmi, Cochrane, and Dalgarno 2015). In this study, SLM is selected as a representative AM process for energy consumption prediction. An SLM process can be characterised by multiple stages (such as warming up, building and cooling down) and multiple energy consuming subsystems (such as computer and display, lasers, heating and cooling system). In addition, the subsystems exhibit various states (i.e. on, off or intermitted running) and lead to power variations during the manufacturing process, which increases the complexity of the energy prediction.
+This study aims at developing a simple and accurate model to forecast the total energy consumption of the SLM processes by adding the energy consumption of each subsystem. First, the power consumption of each machine subsystem is modelled by taking into account its operating states and parameters. Then, the temporal model of each sub-process is established based on the product design parameters of volume and surface area and process parameters. Finally, the total energy consumption is calculated using matrix multiplication based on the previously developed power and time models. The proposed method could be used to accurately quantify the energy consumption and the models are readily to be integrated with product or process design software and used for developing sustainable manufacturing options prior to real manufacturing.
+The remainder of the paper is organised as follows: the next section presents a review of the current study on the energy consumption measurement and modelling of AM processes. Section 3 describes the development of the energy consumption modelling methodology for SLM process. Two case studies for predicting the energy consumption of an SLM process are demonstrated in Section 4. Section 5 shows the comparison of the predicted and measured energy consumption for manufacturing the AlSi10Mg components using an SLM 280HL facility and compares the proposed and existing energy prediction models. Finally, the conclusions and future works are summarised in Section 6.
+
+2. State-of-the-art
+AM, which is believed to be a signiﬁcant technology in the fourth industrial revolution, has grown rapidly in the past 5 years (Attaran 2017). With the increased use of the AM technology, increasing concerns on environmental issues, especially on energy consumption, have been presented. Various research efforts have been conducted to evaluate and reduce the environmental impact of the AM processes, such as environmental impact analysis of AM (Faludi et al. 2015), environmental comparison of AM and conventional manufacturing (CM) (Walachowicz et al. 2017) and energy consumption and mechanical properties analysis of AM manufactured parts (Peng et al. 2018; Peng and Chen 2018; Zhu et al. 2019). In these studies, the energy consumption data is indispensable, which is usually acquired through measurement and energy consumption models. Based on the existing studies, the AM energy consumption models can be classiﬁed into three categories: speciﬁc energy models, stage-based energy models and subsystem-based energy models. Models that compute the energy demand by multiplying the SEC and the weight or volume of a part are called ‘speciﬁc energy models’. Here, the SEC refers to the energy consumed for each deposited kilogram or volume of material. Alternatively, models that predict the total energy consumption by calculating and adding the energy consumed in each stage are called ‘stage-based energy models’. Similarly, models that estimate the total energy by adding the energy consumed by each machine subsystem are called ‘subsystem-based energy models’.
+The speciﬁc energy models are often used to estimate the energy consumption of various AM processes, such as electron beam melting (EBM) process for fabricating Ti-6Al-4V alloy parts (Priarone et al. 2017), SLM process for making aluminium alloys (Ingarao et al. 2018) and metal powder-based (AM) processes (Paul and Anand 2015; Watson and Taminger 2018) for making titanium alloys. In these studies, the SEC value is considered as a constant. However, it could be affected by the utilisation of the build volume, build density and orientation (Telenko and Seepersad 2012). In addition, it is highly dependent on the machine usage proﬁles and speciﬁc machine types (Kellens et al. 2011). Therefore, the speciﬁc energy models could only afford the rough estimation of AM energy consumption. For the application of stage-based energy models, the AM processes are divided into different stages, such as warming up and building stage for selective laser sintering (SLS) process (Telenko and Seepersad 2012), machine start-up and vacuum creation, platform preheating, parts building and machine cooling down stage for EBM process (Paris et al. 2016), and drying of printed layer, spreading of new layer, and printing of new layer for binder jetting (BJ) process (Xu et al. 2015). In these studies, the power and
+
+International Journal of Production Research
+
+2377
+
+time values of each operation stage, which could vary dramatically due to different part geometry, weight, orientation, operational stages and associated process parameters, are obtained through measurement. The measured power and time can only be applied on the speciﬁc AM case and mathematical modelling of power and time in each stage of AM process still requires further investigation. For the subsystem-based energy models, most of the published research focus on the energy modelling of machine subsystems. Examples are power modelling of laser, axis motors and cooling system for the direct additive laser manufacturing process (Le Bourhis et al. 2013), energy modelling of SLS laser (Paul and Anand 2012), and ultraviolet curing energy consumption of a stereolithography (SLA) process (Yang et al. 2017). Nonetheless, the current studies are insufﬁcient. The relationship between the AM processes and the machine subsystem and the temporal models of AM sub-processes (e.g. warming up) are barely considered, which hinders the energy consumption prediction of the whole AM processes.
+In addition to theoretical models, data-driven or statistical methods have been used to model the AM processes with the increasing use of artiﬁcial intelligence in AM. Statistical methods like deep learning (Zhang, Wang, and Gao 2019), random forests (Wu, Wei, and Terpenny 2019) and artiﬁcial neural networks (Wang et al. 2019) have been employed to reveal the inﬂuences of the process parameters on the tensile strength, surface roughness and surface defect of AM components. Recently, two research efforts have been performed aiming to address the energy consumption problems. One study is to extract geometry feature using machine learning method for energy consumption prediction in mask image projection stereolithography (Yang, He, and Li 2019). Another study is to establish energy consumption prediction model for AM system using clustering and deep learning techniques (Qin, Liu, and Grosvenor 2018). However, this approach is restricted to the same product design because of a lack of physical insights.
+Although some preliminary research has been done, it cannot meet the need for the development of a comprehensive modelling methodology to forecast the energy consumption of an AM process before real manufacturing. Such models are urgent as the AM process consists of various sub-processes, during which the machine subsystems show high variance in their power proﬁles and activation time. To address this issue, this paper proposes a comprehensive method integrating power consumption modelling of machine subsystems and temporal modelling of each sub-process for energy consumption prediction of SLM processes. A state matrix is used to represent the working status of machine subsystems during each sub-process, which can help to capture the power variations during each sub-process. This approach enables fast, accurate prediction of energy consumption with different machine settings and process parameters. The proposed models are readily to be integrated with product or process design software and used for developing sustainable manufacturing options before real manufacturing.
+
+3. Methodology
+This section describes the method to calculate the energy consumption of the SLM process. First, the power consumption of machine subsystems is modelled. Then, the time consumption of each sub-process is calculated with machine setting, product design and process parameters as input parameters. Finally, the total energy consumption of the SLM process is predicted based on the developed parametric power and temporal models. The product geometry is not considered in this study. Since the main purpose of this paper is to investigate the inﬂuence of process parameters on energy consumption. Moreover, a study on EBM process concluded that process energy consumption is not driven by shape complexity (Baumers et al. 2017). This could be explained by that the product geometry having little impact on both power and time consumption during the EBM process. This conclusion might be true for SLM process. We assume that there are n subsystems in the SLM machine, with each contributing a proportion of energy consumption Ei. The total energy consumption during the SLM process is expressed as:
+
+n
+
+nm
+
+E = Ei =
+
+pitjkij = PKT
+
+(1)
+
+i=1
+
+i=1 j=1
+
+where Ei is the energy consumed by the i-th subsystem, m is the number of sub-processes, pi is the power consumption of the
+i-th subsystem, tj is the runtime of the j-th sub-process, kij is the working status of the i-th subsystem in the j-th sub-process, kij = 0 or 1 when the i-th subsystem is turned off or running at its full power in the j-th sub-process, 0 < kij < 1 when the subsystem runs intermittently. The vector P = (p1, p2, . . . , pn) and T = (t1, t2, . . . , tm)T are used to represent the power of machine subsystems and time of sub-processes, respectively, and K is the state matrix whose (i, j) th entry is kij. The energy
+consumed by the i-th subsystem Ei is:
+
+m
+
+Ei = pi tjkij = piki,∗T
+
+(2)
+
+j=1
+
+2378
+
+J. Lv et al.
+
+Figure 1. Workﬂow for calculating the energy consumption of SLM process.
+
+where ki,∗ refers to the i-th row of K. The energy consumption of the SLM machine during the j-th sub-process is calculated as:
+
+n
+
+EPj = tj pikij = tjPk∗,j
+
+(3)
+
+i=1
+
+where k∗,j refers to the j-th column of K. Flowchart is often used to describe energy modelling process, such as the thermal and electric outputs modelling of microturbines (Xu et al. 2018). Based on Equation (3), the overall workﬂow of the proposed method for calculating the SLM process energy consumption is designed (see Figure 1). Energy consuming subsystems of the SLM machine are ﬁrstly identiﬁed referencing the machine manual. Subsequently, the power data of the subsystems are obtained from experiments and the power models are obtained using statistical analysis. Then, the subprocesses of the whole SLM process are determined from the machine operation instructions, followed by the calculation of the time duration of each sub-process based on part design information and process parameters. At last, the working status of each subsystem in the sub-processes is identiﬁed and the energy consumption of the SLM process, subsystems and sub-processes is calculated. The steps of the method are described in detail in the following subsections.
+
+3.1. Energy consuming subsystems and their power models
+A typical SLM machine consists of various energy consuming subsystems. Among them, the computer, screen, control unit, light work together to ensure the operational readiness of the machine. They also work during the whole manufacturing process, and thus, are deﬁned as basic subsystem. The heater can heat the platform to avoid distortion caused by uneven distribution of temperature of the manufactured parts and the high temperature difference between the scanned powders and adjacent powders. The cooling system is further divided into water circulation unit and water-cooling unit, which are used to cool down the optical elements and the laser. The lasers expose the build ﬁeld via a 3D scan optic to melt the metal powder. The re-coater motor moves to distribute a layer of metal powder on the substrate plate. The gas circulation system includes the electric valves which control the gas inlet and outlet and gas circulation pump motor which drives the pump to convey the inert gas in the circuit to free the process atmosphere of metal particles. The powder vibrating sieving machine sieves and separates metal powder with proper grain sizes.
+
+International Journal of Production Research
+
+2379
+
+The powers of heater, water circulation unit, water-cooling unit, recoater motor, electric valves, gas circulation pump motor and powder vibrating sieve are constant, which can be obtained from the rated power on the nameplate of the motors or measurements. In comparison, the power of laser varies with the output power. The SLM machines are often equipped with ﬁbre lasers. During the working process, the input energy is used to excite light which is propagating in the optical ﬁbre. There are inevitable losses due to the quantum defect, excess pump, signal losses and non-optimised cavity (Zervas and Codemard 2014). Suppose the energy conversion efﬁciencies is η, the power consumption of laser can be estimated as a linear function of laser output power.
+
+PL = n(PL1 + PLo/η)
+
+(4)
+
+where n is the number of lasers working during the SLM process, PL1 is the ﬁxed power consumption of laser, PLo is the laser output power. The efﬁciency of the ﬁbre laser ranges between 10% and 30% depending on the type of laser (Lee et al. 2017).
+
+3.2. Sub-processes and their temporal models
+A typical SLM process consists of three sub-processes: warming up, building and cooling down. In the warming up stage, the inert gas is ﬂooding in the chamber and the platform is heated, which can prevent the oxidisation and the distortion of the manufactured parts, the time spent in this stage can be expressed in the following equation:
+
+tw = tf or tw = th
+
+(5)
+
+where tf and th are the time spent for inert gas ﬂooding and platform preheating, respectively. Of Equations (5), the larger value of tw is used. The tf is decided by the ﬂow rate of inert gas and the volume of the process chamber, and
+th depends on the heating capacity of the machine, ambient temperature and the required operation temperature of the platform.
+The building phase is the main productive process, which includes recoating and laser exposure. The total time spent in this stage is expressed as:
+
+tb = tl + tr
+
+(6)
+
+where tl is the laser exposure time and tr is the recoating time. For each layer, the laser scans the border and ﬁll contour and then volume hatching and supports. The laser exposure time can be calculated as:
+
+tl
+
+=
+
+N i=1
+
+tb,i
+
++
+
+N i=1
+
+tc,i
+
++
+
+N i=1
+
+tp,i
+
++
+
+N i=1
+
+ts,i
+
+=
+
+So nLvb
+
++ So y nLvc
+
+y
+
++
+
+Vp v˙p
+
++
+
+Vs v˙s
+
+(7)
+
+where N is the number of slices, tb,i, tc,i, tp,i and ts,i are the laser exposure time to scan border, ﬁll contour, volume hatching
+and supports, So is the area of outer and inner product surfaces which are scanned as borders during the building process [mm2], nL is the number of lasers working during the manufacturing process, vb and vc are speeds for scanning border and ﬁll contour [mm/s], respectively; y is the layer thickness [mm], Vp and Vs are volumes of part and supports [mm3], respectively; v˙p and v˙s are the build-up rate for the part and supports [mm3/s], respectively, which can be expressed as the
+product of hatch distance, layer thickness and scanning speed:
+
+v˙ = nL × D × y × v
+
+(8)
+
+where D is the hatch distance [mm], v is the scanning speed [mm/s]. The recoating time tr can be calculated as:
+
+tr = N tr0
+
+(9)
+
+where tr0 is the recoating time to add a new powder layer. The number of slices depends on the height and layer thickness of the part, which is calculated as:
+
+N = H/ y
+
+(10)
+
+where H is the height of the part, y is the layer thickness. After the last layer is scanned, the cabinet is gradually cooling down with inert gas protection to prevent the oxidisation
+of the metal powder. The time spent is determined by the initial and ﬁnal temperature and the cooling down rate of the platform. It can be calculated with the help of the temperature-time curve of the platform during the cooling down process.
+
+2380
+
+J. Lv et al.
+
+Figure 2. Working status of different machine subsystems during the SLM process. The slash line, mesh and blank areas represent the subsystems running all the time, intermittently and out of service.
+
+3.3. Working status of different subsystem
+The energy consuming subsystems could be on, off or intermittently running during different sub-processes of the SLM process. It is critical to identify the subsystem working status for energy modelling. Here, the working status coefﬁcient kij is deﬁned as the ratio of running time and the total time spent by subsystem i in sub-process j. The working status of different subsystems during the SLM process is shown in Figure 2. The basic subsystem and water circulation unit run all the time, while the laser, recoater motor, electric valves and gas circulation pump motor only run at a certain stage of the SLM process. In these cases, the working status coefﬁcient kij = 1 or 0. For the platform heater, it is working continuously at its maximum capacity during the warming up stage. When the substrate of the platform is heated to the speciﬁed temperature, the heater works intermittently to keep the substrate at that temperature. The coefﬁcient kij is calculated as:
+
+kij = tho/(tho + thof) = Phb/Ph
+
+(11)
+
+where tho and thof are the running time and idle time of the heater, Ph is the heating capacity of the heater, Phb is the average power consumed by the heater to maintain the platform temperature during the building stage. For water-cooling unit, two states can be observed: standby mode and working mode (Le Bourhis et al. 2013). These two modes appear and disappear alternately. The coefﬁcient kij can be considered as the ratio of the runtime to the cycle time:
+
+kij = tcw/(tcw + tcs)
+
+(12)
+
+where tcw and tcs are the time spent of the water-cooling unit in the working mode and standby mode during one cycle. The powder vibrating sieve is controlled manually by the operator and its working status is excluded from this study.
+Then the energy consumption of the SLM will be calculated using Equation (1) with the obtained power and working status of different components as well as the time spent during each sub-process.
+
+4. Case study
+Two case studies were performed in Xi’an Ruite 3D Technology Company to validate the proposed method. A group of components were used as the ﬁrst case study (case 1). There are 17 components of different shapes and heights and both full dense parts and support structures are fabricated in this case study. The other case study (case 2) employs three components with internal cooling channels. The parts in both case studies were fabricated using aluminium AlSi10Mg powder on an SLM 280HL facility, SLM Solutions GmbH, Germany (see Figure 3). The machine is equipped with two 400 W ﬁbre lasers with a focal laser beam diameter of 80 µm. During the fabricating process, two lasers are working together, and the product design and process parameters are shown in Table 1. The parts were fabricated at an average room temperature of 27.0°C and 5°C for case 1 and case 2, respectively. The part fabrication was conducted in an inert gas atmosphere. Before the building process began, the oxygen level was reduced from 21% in air to below 0.1% to prevent oxidation and reactions of the AlSi10Mg powder. The platform was heated up from 27.0°C and 48.5°C to 150°C to reduce the thermal induced internal stress of the manufactured parts for case 1 and case 2, respectively. During the manufacturing process, the time required for recoating one layer was 11 s (unidirectional recoating) and 8 s (bi-directional recoating) for case 1 and case 2, respectively. After the end of the building process, the platform was
+
+International Journal of Production Research
+
+2381
+
+Figure 3. The components manufactured from (a) three-dimensional models to (b) ﬁnished parts.
+
+Table 1. Product design and process parameters of the studied parts.
+
+Design parameters
+Surface area [mm2] Part volume [mm3] Support volume [mm3] Number of slices
+
+Case 1
+112491 136493 38319
+1856
+
+Case 2
+4228 34795
+0 133
+
+Process parameters
+Laser power [W] Laser scan speed [mm/s] Layer thickness [mm] Hatch distance [mm]
+
+Border
+300 730 0.03
+–
+
+Fill contour
+300 730 0.03
+–
+
+Volume hatching
+350 1650 0.03 0.13
+
+Support structure
+350 1000 0.03 0.18
+
+cooled down to 80°C before unloading the parts. The product volume and height can be calculated based on the STL ﬁle in the Magics Software. Machine operating and process parameters are set in SLM MCS 2.2 software, as shown in Figure 4(a).
+The energy consumption during the manufacturing process of the selected aluminium components was measured for the validation of the proposed method by an in-house developed power acquisition device. The device consists of an NI data acquisition chassis (Cdaq-9174), two data acquisition cards (NI-9215), three voltage sensors (LEM LV25-P) and three current sensors (LEM HAS 50-S) (see Figure 4(b)). The sensors were mounted on the wire in the electrical cabinet of the SLM machine. The data acquisition frequency is 5000 Hz and the power data were recorded every 0.1 s.
+The input data for the proposed method include power and time data, which are used to get the power and time consumption models for predicting the energy consumption of the SLM process. A test procedure is designed to measure the power data of the machine subsystems. First, the SLM machine was started up and the power demand of basic subsystems was measured in idle mode. Then, the power consumed by the remaining subsystems was measured. Each subsystem was activated for three times, and the machine dwelled in each state for at least 10 s to achieve statistically signiﬁcant data. The heater, water circulation unit, water cooling unit, laser, recoater motor, electric valves, gas circulation pump motor and powder vibrating sieving machine were switched on and off one after another. The laser was controlled to operate with different output power levels (0–400 W) and the recoater motor was controlled to move the recoater back and forth. To obtain the input time data, oxygen concentration and the time spent are recorded from the software interface of the SLM machine during the inert gas ﬂooding process. Similarly, temperature of the platform and the time spent are recorded during the preheating and the cooling down processes to obtain the time-temperature curves.
+
+2382
+
+J. Lv et al.
+
+Figure 4. Experimental set-up: (a) snapshots of the build platform setup in SLM MCS 2.2 software and (b) SLM machine and power acquisition device.
+
+4.1. Power consumption modelling of each subsystem
+The measured power of each subsystem of the SLM machine is shown in Figure 5. In Figure 5(a), the power consumed by the heater ﬂuctuates and the average value is used to represent the power of the heater. Similarly, the average power is used to represent the power of recoater motor (see Figure 5(d)). The power consumption of the laser is obtained by linear regression analysis of the measured power data at various output power levels, which is expressed by:
+
+PL = n(129.46 + 2.52PLo)(R2 = 0.998)
+
+(13)
+
+The measured power of each subsystem is summarised in Table 2. From Equation (13), the laser power consumption is calculated to be 1770.9 W for scanning borders and ﬁll contours and to be 2022.9 W for scanning volume hatching and support structure using the parameters given in Table 1. Thus, the vector P = (569.7, 1122.3, 713.3, 1739.4, 1770.9, 1770.9, 2022.9, 2022.9, 52.1, 32.1, 69.1) represents the power values of basic subsystem, platform heater, water circulation unit, water-cooling unit, laser for scanning borders, ﬁll contours, volume hatching and support structure, recoater motor, electric valves and gas circulation pump motor.
+
+4.2. Temporal modelling of each sub-processes
+In the warming up stage, the oxygen is decreasing by ﬁlling the compressed inert gas into the process cabinet. The oxygen concentration-time curve is drawn as shown in Figure 6. The relationship between the time and oxygen concentration is
+
+International Journal of Production Research
+
+2383
+
+Figure 5. Power proﬁle of each subsystem for the SLM machine (10 data points per second, measured at ambient temperature of 27°C): (a) basic subsystem and heater; (b) water circulation unit and water-cooling unit; (c) laser with output power of 320 W; (d) recoater motor; (e) electric valves and gas circulation pump motor; (f) powder vibrating sieving machine.
+
+Table 2. Measured power of each subsystem.
+
+Subsystems
+
+Power [W]
+
+Basic subsystem Platform heater (full run) Platform heater (intermittently run) Water circulation unit Water-cooling unit Laser Recoater motor Electric valves Gas circulation pump motor
+Powder vibrating sieving motor
+
+Pb = 569.7 Ph = 1122.3 Phb = 541.6 Pci = 713.3 Pco = 1739.4 PL = n (129.46 + 2.52 PLo) Pr = 52.1 Pe = 32.1 Pg = 69.1
+Pp = 61.1
+
+obtained by employing logarithmic regression analysis:
+
+tf = −58.23 ln(Co) − 88.02(R2 = 0.979)
+
+(14)
+
+where tf is the time spent during the inert gas ﬂooding process [s], Co is the oxygen concentration. Thus, the time spent for inert gas ﬂooding is:
+
+tf = tf(Co,f) − tf(Co,i)
+
+(15)
+
+where Co,i and Co,f are initial and ﬁnal oxygen concentration during the inert gas ﬁlling process. At the same time, the platform is heated and the time-temperature curve is observed during the preheating process
+(see Figure 7(a)). The time spent during the heating process can be obtained by second order regression analysis of the experimental data:
+
+th = 0.0838T2 + 2.364T − 82.844(R2 = 0.999)
+
+(16)
+
+2384
+
+J. Lv et al.
+
+Figure 6. Oxygen concentration-time curve during the inert gas ﬁlling process.
+
+Figure 7. Temperature-time curve for platform (measured at ambient temperature of 27°C) (a) preheating and (b) cooling down processes.
+
+where th is the time spent during the platform preheating process [s], T is the platform temperature [°C]. Thus, the time spent for heating the platform is:
+
+th = th(Tf) − th(Ti)
+
+(17)
+
+where Ti and Tf are the initial and ﬁnal operation temperature of the platform. In case 1, tf and th are calculated to be 311 and 2115 s, respectively. From Equation (5), tw = th = 2115 s. Similarly, tw = th = 1928 s for case 2.
+During the building phase, the laser exposure time and recoating time can be calculated by Equations (7)–(10) with the part design information and process parameters (see Table 1). The exposure time for scanning borders, ﬁll contours, volume hatching and support structure are calculated to be 2568, 2568, 10606 and 3548 s for case 1 and to be 97, 97, 2704 and 0 s for case 2. And the recoating time is calculated to be 20416 and 1064 s for case 1 and case 2, respectively.
+When the building process has ﬁnished, the heater stops working and the temperature of the platform drops gradually. The time-temperature curve for the platform to be cooled down from 200°C to 80°C is shown in Figure 7(b). The cooling down time can be obtained as:
+
+tc = 0.5048T2 − 192.96T + 18545(R2 = 0.999)
+
+(18)
+
+where tc is the time spent during the cooling down process [s], T is the platform temperature [°C]. Thus, the time spent for cooling down the platform is:
+
+tc = tc(Tc) − tc(Tb)
+
+(19)
+
+where Tb and Tc are the platform temperatures in the building process and at the end of the cooling down stage, respectively. In both cases, tc = tc (80°C) – tc (150°C) = 5380 s. Thus for case 1, the vector T = (2115, 2568, 2568, 10606, 3548, 20416, 5380)T, which represents the time spent during the warming up, laser exposure for scanning borders, ﬁll contours,
+volume hatching and support structure, recoating and cooling down processes, and for case 2, T = (1928, 97, 97, 2704, 0, 1064, 5380)T.
+
+4.3. Identiﬁcation of working status matrix
+For most machine subsystems, the working status can be determined to be 0 or 1, as shown in Figure 2. From Table 2, the working status kij of platform heater during the building stage is calculated as Phb/Ph = 0.4826. For the selected machine, the water-cooling unit starts or stops running when the temperature of the cooling water reaches to 21.6°C or 20.4°C. The temperature-time curves of the cooling water are shown in Figure 8.
+Using Equation (12), kij for water-cooling unit are calculated to be 16.8%, 21.9%, 35.3% and 21.6% in the warming up, building (with one laser), building (with two lasers) and cooling down phases, respectively. Thus, the working status
+
+International Journal of Production Research
+
+2385
+
+Figure 8. Temperature-time curve of the cooling water during two cycles (1 data point every 10 s, average ambient temperature = 27°C) in (a) warming up phase; (b) building phase (operating with one laser); (c) building phase (operating with two lasers) and (d) cooling down phase.
+
+matrix is:
+
+⎡
+
+⎤
+
+1
+
+1
+
+1
+
+1
+
+1
+
+1
+
+1
+
+K = ⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎢⎣0.11100000168
+
+0.4826 1
+0.353 1 0 0 0 0 1
+
+0.4826 1
+0.353 0 1 0 0 0 1
+
+0.4826 1
+0.353 0 0 1 0 0 1
+
+0.4826 1
+0.353 0 0 0 1 0 1
+
+0.4826 1
+0.353 0 0 0 0 1 1
+
+0.20100000016⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎥⎦
+
+(20)
+
+0
+
+1
+
+1
+
+1
+
+1
+
+1
+
+0
+
+With the obtained power, time and working status matrix, the energy consumption of the SLM process, machine subsystems and sub-processes can be calculated using Equations (1)–(3). The predicted and measured energy consumption are compared in the following section.
+
+5. Results and discussion
+5.1. Measured and predicted energy consumption
+The power and time consumption during the SLM process were measured, as shown in Figure 9. The total time consumed is 16 h 27 min and 3 h 21 min, during which the machine consumed 50.79 and 8.87 kWh for case 1 and case 2, respectively. The power ﬂuctuates due to the intermittent operation of water-cooling system and lasers. The building phase dominates the energy consumption of the SLM process, accounting for 91.79% and 57.53% of total energy use, followed by the cooling down phase at 5.13% and 23.19%, and the warming up phase at 3.08% and 19.28% for case 1 and case 2, respectively.
+The results of the experiments to manufacture the part shown in Figure 3 using process parameters in Table 1 are summarised in Table 3. The predicted times in the warming up and cooling down phases for case 1 are very close to the measured times. For case 2, the measured time is longer than the predicted time in the warming up and shorter than the predicted time in the cooling down phase due to low ambient temperature of 5°C. For both cases, the measured time in the building process is over 20% longer than the predicted time. This could be explained by that the laser jump time being not included in the prediction model and the unsynchronised operating of the two lasers. For the scanning of one layer, one laser usually works longer than the other. The predicted total energy consumption is lower than the measured one, which could be explained by the predicted time being less than the actual time consumption. For case 1, the relative errors for predicting the energy consumption during the warming up and cooling down phases fall within 5%, and become 16.8% for energy prediction of building phase. For case 2, these prediction errors range between 13.28% and 20.54% for all phases due to the high time prediction errors (more than 13%). The errors for predicting the total energy consumption are smaller (15.59%
+
+2386
+
+J. Lv et al.
+
+Figure 9. Measured power consumption of the SLM process (1 data point per second) in: (a) warming up phase, (b) building phase and (c) cooling down phase for case 1 and (d) warming up phase, (e) building phase and (f) cooling down phase for case 2.
+
+Table 3. Summary of time and energy consumption prediction of the SLM process for manufacturing the AlSi10Mgcomponents.
+
+Cases Phases Measured time [s] Predicted time [s] Errora [%] Measured energy [MJ] Predicted energy [MJ] Errora [%]
+
+Case1 Warming up Building Cooling down Total
+
+2170 51651
+5400 59221
+
+2115 39706
+5380 47201
+
+2.53 23.13
+0.37 20.30
+
+Case2 Warming up Building Cooling down Total
+
+2221 5143 4677 12041
+
+1928 3961 5380 11269
+
+13.18 22.99 15.03 6.41
+
+aError = |predicted value – measured value|/ measured value × 100%.
+
+5.63 167.83
+9.38 182.84
+6.16 18.37 7.40 31.93
+
+5.77 139.64
+8.92 154.33
+5.26 15.93 8.92 30.11
+
+2.49 16.80
+4.90 15.59
+14.61 13.28 20.54 5.67
+
+for case 1 and 5.70% for case 2) because the overestimations and underestimations on the energy consumption of the three phases are cancelled out when they are summed up to calculate the total energy consumption. Therefore, the proposed method could achieve a moderately accurate estimation on the total energy consumption of SLM process for manufacturing whole parts and provide reliable reference for energy consumption analysis.
+The predicted energy consumption of the energy consuming subsystems during the SLM process is shown in Figure 10. The cooling system (including the water circulation unit and water-cooling unit) consumes the greatest proportion of total energy (39.32% and 43.35% for case 1 and case 2). Other subsystems which account for more than 10% of total energy consumption include lasers, basic subsystem and platform heater. The rest subsystems together, including recoater motor, electric valves and gas circulation pump motor, account for less than 3.4% of the total energy consumption.
+
+5.2. Model comparison
+There are three types of models for energy prediction of AM process: speciﬁc energy models, stage-based energy models and subsystem-based energy models. The speciﬁc model is expressed as:
+
+E = SEC × m
+
+(21)
+
+International Journal of Production Research
+
+2387
+
+Figure 10. Subsystem-based energy breakdown of the SLM process for manufacturing the AlSi10Mg components.
+
+where SEC is the energy consumed for each deposited kilogram of material, m is the weight of the part. The stage-based energy model is expressed as (Faludi et al. 2017):
+
+E = Pwtw + Pbutbu + Pcdtcd
+
+(22)
+
+where Pw, Pb and Pc are the power consumption of SLM machine during the warmup, build, and cool down stage, tw, tb and tc are the time spent during the warmup, build, and cool down stage, respectively. The subsystem-based model is expressed as (Yi, Krenkel, and Aurich 2018):
+
+n
+
+E = Piti
+
+(23)
+
+i=1
+
+where Pi and ti are the power and time consumption of the i-th machine subsystem in the manufacturing process. The unknown coefﬁcients are key for application of the above models. For speciﬁc energy model, the SEC values range from 309.1 up to 533.0 MJ/kg (Kellens, Mertens, et al. 2017) or calculated to be 471 MJ/kg (Ingarao et al. 2018) or 341.3 MJ/kg (Yi, Krenkel, and Aurich 2018). For the existing stage- and subsystem-based energy models, their power and time coefﬁcients are obtained using the power measurement results in Section 4.2 and the time models in Section 4.3, as illustrated in Table 4.
+The energy consumption of the SLM process is predicted by the above three models and compared with the measured values. The prediction accuracy is taken as performance metric, which is calculated as (Lv et al. 2018):
+
+Acc = 1 − |Epred − Emes| × 100%
+
+(24)
+
+Emes
+
+where Epred and Emes are the predicted and measured energy consumption, respectively. The comparison results are shown in Table 5. In general, the prediction accuracy for the speciﬁc energy model is low, most of which is below 90%, except two of 90.27% and 99.67%. This low accuracy could be explained by the large difference between the values of SEC given in literature and the real SEC value. The prediction accuracy for stage- and subsystem-based energy models are 76.06% and 74.84% for case 1 and those values are 93.72% and 89.74% for case 2. This could be explained by that the values of power consumption in the two models are taken as constant, which could not reﬂect the variations of the power of each stage and subsystem during the SLM process. The model proposed by this work could provide the most accurate prediction of energy consumption and outperforms the other models.
+
+2388
+
+J. Lv et al.
+
+Table 4. Coefﬁcients of the stage- and subsystem-based energy models.
+
+Stages/Subsystems
+
+Power [W]
+
+Time [s]
+
+Case1
+
+Case2
+
+Warm up Build Cool down Basic subsystem Heater Water circulation unit Water-cooling unit Laser Recoater motor Electric valves Gas circulation pump motor
+
+2729.6 3132.3 1658.7 569.7
+541.6 713.3 1739.4 2022.9
+52.1 32.1 69.1
+
+2115 39706
+5380 47201 41821 47201 15534 10606 20416 41821 39706
+
+1928 3961 5380 11269 5889 11269 2884 2704 1064 5889 3961
+
+Table 5. Comparison of the predicted and measured energy consumption of SLM process.
+
+Predicted energy [MJ] Prediction accuracy [%]
+
+Models
+
+SEC [MJ/kg] Case 1
+
+Speciﬁc energy model
+Stage-based energy model Subsystem-based energy model Model proposed by this work
+
+309.1a 533.0a 471.0b 341.3c
+–
+–
+–
+
+144.81 249.71 220.66 159.90 139.07 136.83 154.33
+
+aThe SEC value is from Kellens, Mertens, et al. (2017).
+bThe SEC value is from Ingarao et al. (2018). cThe SEC value is from Yi, Krenkel, and Aurich (2018).
+
+Case 2
+28.82 49.70 43.92 31.83 29.92 28.65 30.11
+
+Case 1
+79.20 63.43 79.31 87.45 76.06 74.84 84.41
+
+Case 2
+90.27 44.34 62.45 99.67 93.72 89.74 94.30
+
+The case study has demonstrated the effectiveness of the proposed methodology. The model input parameters, including the product volume and height, area of outer and inner surfaces of the fabricated parts, machine settings and process parameters, could be obtained from process preparing software, such as SLM MCS 2.2 (see Figure 4(a)). This implies that the proposed model could be easily integrated with the existing software and applied as a tool for estimating the energy demand of the SLM process to enhance its sustainability. Based on the proposed method, measures including shortening process time, increasing the number of parts in a single build and switching off the machine subsystems when not in use, could be developed to reduce the energy consumption of SLM process.
+
+6. Conclusions and future work
+As one of the most promising AM technologies, SLM has experienced notable increases in manufacturing industrial in recent years, which results in increased electricity consumption. It is imperative to forecast this part of energy for environmental impact analysis and energy reduction purpose. The contributions and ﬁndings of this paper can be summarised as follows:
+• This paper proposed a novel method that uses the power models of machine subsystems, time models of sub processes and machine subsystem working status to forecast the energy consumption of SLM processes.
+• The power data of each machine subsystem is obtained by measurement and the laser power model is acquired through statistical analysis of the measured data. The time of each sub-process is modelled as a function of product volume and height, area of outer and inner surfaces of the fabricated parts, process parameters and machine operating parameters.
+• The effectiveness of the proposed method is demonstrated by two case studies. The prediction accuracy of the proposed method is signiﬁcantly better than those of the speciﬁc energy model, stage- and subsystem-based energy models.
+• The subsystem level and sub-process level energy consumption breakdown can be obtained using the proposed method, which makes the energy ﬂow more transparent.
+
+International Journal of Production Research
+
+2389
+
+The proposed energy model can be easily integrated within lifecycle analysis, product design, process design and task scheduling applications given its very simple formulation. The method presented here could be used for other AM processes such as SLA, SLS and EBM with modiﬁcations of process type and time and power study. One limitation of the study is that the product geometry, laser jump time and scan control of multi-laser system are not involved. Future work will be conducted to investigate the inﬂuence of product geometry, laser jump time and multi-laser scan strategy on process energy consumption and assess how the proposed method can be extended and generalised for other AM processes. Detailed time and power study, as well as energy consumption measurements will be conducted to assess the feasibility of the proposed method on other AM processes.
+
+Disclosure statement No potential conﬂict of interest was reported by the author(s).
+
+Funding This work was supported by the Natural Science Foundation of Zhejiang Province [grant number LY19E050019]; National Natural Science Foundation of China [grant number 51505423, 51675441]; the International Clean Energy Talent Program (iCET) of China Scholarship Council [grant number Liujinfa[2017]5047, Liujinfa[2018]5023] and the Fundamental Research Funds for the Central Universities, CHD [grant number 300102250303, 300102259201].
+ORCID Tao Peng http://orcid.org/0000-0003-1646-6166
+
+References
+Attaran, Mohsen. 2017. “The Rise of 3-D Printing: The Advantages of Additive Manufacturing Over Traditional Manufacturing.” Business Horizons 60 (5): 677–688.
+Baumers, Martin, Chris Tuck, Ricky Wildman, Ian Ashcroft, and Richard Hague. 2017. “Shape Complexity and Process Energy Consumption in Electron Beam Melting: A Case of Something for Nothing in Additive Manufacturing?” Journal of Industrial Ecology 21: S157–SS67.
+Cai, Wei, Li Li, Shun Jia, Conghu Liu, Jun Xie, and Luoke Hu. 2020. “Task-Oriented Energy Benchmark of Machining Systems for Energy-Efﬁcient Production.” International Journal of Precision Engineering and Manufacturing-Green Technology 7 (1): 205– 218.
+Cai, Wei, Conghu Liu, Kee-hung Lai, Li Li, Jorge Cunha, and Luoke Hu. 2019. “Energy Performance Certiﬁcation in Mechanical Manufacturing Industry: A Review and Analysis.” Energy Conversion and Management 186: 415–432.
+EIA, U.S. 2016. Energy Consumption by Sector. Assessed December 2018. www.eia.gov/totalenergy/data/monthly/pdf/sec2_3.pdf. Faludi, Jeremy, Martin Baumers, Ian Maskery, and Richard Hague. 2017. “Environmental Impacts of Selective Laser Melting: Do Printer,
+Powder, Or Power Dominate?” Journal of Industrial Ecology 21: S144–SS56. Faludi, Jeremy, Cindy Bayley, Suraj Bhogal, and Myles Iribarne. 2015. “Comparing Environmental Impacts of Additive Manufacturing
+vs Traditional Machining via Life-Cycle Assessment.” Rapid Prototyping Journal 21 (1): 14–33. Gu, Fu, Jianfeng Guo, Philip Hall, and Xinjian Gu. 2019. “An Integrated Architecture for Implementing Extended Producer Responsibility
+in the Context of Industry 4.0.” International Journal of Production Research 57 (5): 1458–1477. He, Keyan, Renzhong Tang, Mingzhou Jin, Yanlong Cao, and Sachin U. Nimbalkar. 2019. “Energy Modeling and Efﬁciency Analysis of
+Aluminum die-Casting Processes.” Energy Efﬁciency 12 (5): 1167–1182. Huang, Samuel H., Peng Liu, Abhiram Mokasdar, and Liang Hou. 2013. “Additive Manufacturing and Its Societal Impact: A Literature
+Review.” International Journal of Advanced Manufacturing Technology 67 (5–8): 1191–1203. Ingarao, Giuseppe, Paolo C. Priarone, Yelin Deng, and Dimos Paraskevas. 2018. “Environmental Modelling of Aluminium Based Com-
+ponents Manufacturing Routes: Additive Manufacturing Versus Machining Versus Forming.” Journal of Cleaner Production 176: 261–275. Jia, Shun, Qinghe Yuan, Wei Cai, Meiyan Li, and Zhaojun Li. 2018. “Energy Modeling Method of Machine-Operator System for Sustainable Machining.” Energy Conversion and Management 172: 265–276. Jia, Shun, Qinghe Yuan, Wei Cai, Jingxiang Lv, and Luoke Hu. 2019. “Establishing Prediction Models for Feeding Power and Material Drilling Power to Support Sustainable Machining.” The International Journal of Advanced Manufacturing Technology 100 (9–12): 2243–2253. Kellens, Karel, Martin Baumers, Timothy G. Gutowski, William Flanagan, Reid Lifset, and Joost R. Duﬂou. 2017. “Environmental Dimensions of Additive Manufacturing Mapping Application Domains and Their Environmental Implications.” Journal of Industrial Ecology 21: S49–S68.
+
+2390
+
+J. Lv et al.
+
+Kellens, Karel, Raya Mertens, Dimos Paraskevas, Wim Dewulf, and Joost R. Duﬂou. 2017. “Environmental Impact of Additive Manufacturing Processes: Does AM Contribute to a More Sustainable Way of Part Manufacturing?” Procedia CIRP 61: 582–587.
+Kellens, K., E. Yasa, Renaldi, W.Dewulf, J. P.Kruth, and J. R.Duﬂou. 2011. “Energy and Resource Efﬁciency of SLS/SLM Processes.” Sff Symposium 1–16.
+Le Bourhis, Florent, Olivier Kerbrat, Jean-Yves Hascoet, and Pascal Mognol. 2013. “Sustainable Manufacturing: Evaluation and Modeling of Environmental Impacts in Additive Manufacturing.” The International Journal of Advanced Manufacturing Technology 69 (9–12): 1927–1939.
+Lee, Hyub, Chin Huat Joel Lim, Mun Ji Low, Nicholas Tham, Vadakke Matham Murukeshan, and Young-Jin Kim. 2017. “Lasers in Additive Manufacturing: A Review.” International Journal of Precision Engineering and Manufacturing-Green Technology 4 (3): 307–322.
+Li, Yao, Yang Cheng, Qing Hu, Shenghan Zhou, Lei Ma, and Ming K. Lim. 2019. “The Inﬂuence of Additive Manufacturing on The Conﬁguration of Make-to-Order Spare Parts Supply Chain Under Heterogeneous Demand.” International Journal of Production Research 57 (11): 3622–3641.
+Lv, Jingxiang, Fu Gu, Wujie Zhang, and Jianfeng Guo. 2019. “Life Cycle Assessment and Life Cycle Costing of Sanitary Ware Manufacturing: A Case Study in China.” Journal of Cleaner Production 238. doi:10.1016/j.jclepro.2019.117938.
+Lv, Jingxiang, Renzhong Tang, Wangchujun Tang, Shun Jia, Ying Liu, and Yanlong Cao. 2018. “An Investigation Into Methods for Predicting Material Removal Energy Consumption in Turning.” Journal of Cleaner Production 193: 128–139.
+Mognol, Pascal, Denis Lepicart, and Nicolas Perry. 2006. “Rapid Prototyping: Energy and Environment in the Spotlight.” Rapid Prototyping Journal 12 (1): 26–34.
+Olakanmi, E. O., R. F. Cochrane, and K. W. Dalgarno. 2015. “A Review on Selective Laser Sintering/Melting (SLS/SLM) of Aluminium Alloy Powders: Processing, Microstructure, and Properties.” Progress in Materials Science 74: 401–477.
+Paris, Henri, Hossein Mokhtarian, Eric Coatanea, Matthieu Museau, and Inigo Flores Ituarte. 2016. “Comparative Environmental Impacts of Additive and Subtractive Manufacturing Technologies.” Cirp Annals-Manufacturing Technology 65 (1): 29–32.
+Paul, Ratnadeep, and Sam Anand. 2012. “Process Energy Analysis and Optimization in Selective Laser Sintering.” Journal of Manufacturing Systems 31 (4): 429–437.
+Paul, Ratnadeep, and Sam Anand. 2015. “A Combined Energy and Error Optimization Method for Metal Powder Based Additive Manufacturing Processes.” Rapid Prototyping Journal 21 (3): 301–312.
+Peng, Tao, and Chao Chen. 2018. “Inﬂuence of Energy Density on Energy Demand and Porosity of 316L Stainless Steel Fabricated by Selective Laser Melting.” International Journal of Precision Engineering and Manufacturing – Green Technology 5 (1): 55–62.
+Peng, Tao, Karel Kellens, Renzhong Tang, Chao Chen, and Gang Chen. 2018. “Sustainability of Additive Manufacturing: An Overview on Its Energy Demand and Environmental Impact.” Additive Manufacturing 21: 694–704.
+Priarone, Paolo C., Giuseppe Ingarao, Rosa di Lorenzo, and Luca Settineri. 2017. “Inﬂuence of Material-Related Aspects of Additive and Subtractive Ti-6Al-4V Manufacturing on Energy Demand and Carbon Dioxide Emissions.” Journal of Industrial Ecology 21: S191–S202.
+Qin, Jian, Ying Liu, and Roger Grosvenor. 2018. “Multi-source Data Analytics for AM Energy Consumption Prediction.” Advanced Engineering Informatics 38: 840–850.
+Sun, Wenqiang, Yanhui Wang, Fengyuan Zhang, and Yueqiang Zhao. 2018. “Dynamic Allocation of Surplus by-Product Gas in a Steel Plant by Dynamic Programming with a Reduced State Space Algorithm.” Engineering Optimization 50 (9): 1578–1592.
+Sun, Wenqiang, Xiandong Xu, Ziqiang Lv, Hujun Mao, and Jianzhong Wu. 2019. “Environmental Impact Assessment of Wastewater Discharge with Multi-Pollutants From Iron and Steel Industry.” Journal of Environmental Management 245: 210–215.
+Sun, Wenqiang, Xiaoyu Yue, Yanhui Wang, and Jiuju Cai. 2018. “Energy and Exergy Recovery from Exhaust Hot Water Using Organic Rankine Cycle and a Retroﬁtted Conﬁguration.” Journal of Central South University 25 (6): 1464–1474.
+Sun, Wenqiang, Yue Zhou, Jingxiang Lv, and Jianzhong Wu. 2019. “Assessment of Multi-air Emissions: Case of Particulate Matter (Dust), SO2, NOx and CO2 from Iron and Steel Industry of China.” Journal of Cleaner Production 232: 350–358.
+Telenko, Cassandra, and Carolyn Conner Seepersad. 2012. “A Comparison of the Energy Efﬁciency of Selective Laser Sintering and Injection Molding of Nylon Parts.” Rapid Prototyping Journal 18 (6): 472–481.
+Walachowicz, Frank, Ingo Bernsdorf, Ulrike Papenfuss, Christine Zeller, Andreas Graichen, Vladimir Navrotsky, Noorie Rajvanshi, and Christoph Kiener. 2017. “Comparative Energy, Resource and Recycling Lifecycle Analysis of the Industrial Repair Process of Gas Turbine Burners Using Conventional Machining and Additive Manufacturing.” Journal of Industrial Ecology 21: S203–SS15.
+Wang, Yuanbin, Yuan Lin, Ray Y. Zhong, and Xun Xu. 2019. “IoT-enabled Cloud-Based Additive Manufacturing Platform to Support Rapid Product Development.” International Journal of Production Research 57 (12): 3975–3991.
+Watson, J. K., and K. M. B. Taminger. 2018. “A Decision-Support Model for Selecting Additive Manufacturing Versus Subtractive Manufacturing Based on Energy Consumption.” Journal of Cleaner Production 176: 1316–1322.
+Wu, Dazhong, Yupeng Wei, and Janis Terpenny. 2019. “Predictive Modelling of Surface Roughness in Fused Deposition Modelling Using Data Fusion.” International Journal of Production Research 57 (12): 3992–4006.
+Xu, Xiandong, Kang Li, Hongjie Jia, Xiaodan Yu, Jing Deng, and Yunfei Mu. 2018. “Data-Driven Dynamic Modeling of Coupled Thermal and Electric Outputs of Microturbines.” IEEE Transactions on Smart Grid 9 (2): 1387–1396.
+Xu, Xin, Simon Meteyer, Nicolas Perry, and Yaoyao Fiona Zhao. 2015. “Energy Consumption Model of Binder-Jetting Additive Manufacturing Processes.” International Journal of Production Research 53 (23): 7005–7015.
+
+International Journal of Production Research
+
+2391
+
+Yang, Yiran, Miao He, and Lin Li. 2019. “A new Machine Learning Based Geometry Feature Extraction Approach for Energy Consumption Estimation in Mask Image Projection Stereolithography.” Procedia CIRP 80: 741–745.
+Yang, Yiran, Lin Li, Yayue Pan, and Zeyi Sun. 2017. “Energy Consumption Modeling of Stereolithography-Based Additive Manufacturing Toward Environmental Sustainability.” Journal of Industrial Ecology 21: S168–SS78.
+Yap, C. Y., C. K. Chua, Z. L. Dong, Z. H. Liu, D. Q. Zhang, L. E. Loh, and S. L. Sing. 2015. “Review of Selective Laser Melting: Materials and Applications.” Applied Physics Reviews 2: 4.
+Yi, Li, Nicole Krenkel, and Jan C. Aurich. 2018. “An Energy Model of Machine Tools for Selective Laser Melting.” Procedia CIRP 78: 67–72.
+Zervas, M. N., and C. A. Codemard. 2014. “High Power Fiber Lasers: A Review.” IEEE Journal of Selected Topics in Quantum Electronics 20 (5): 219–241.
+Zhang, Wujie, Fu Gu, Feng Dai, Xinjian Gu, Fang Yue, and Banglong Bao. 2016. “Decision Framework for Feasibility Analysis of Introducing the Steam Turbine Unit to Recover Industrial Waste Heat Based on Economic and Environmental Assessments.” Journal of Cleaner Production 137: 1491–1502.
+Zhang, Wujie, Jianfeng Guo, Fu Gu, and Xinjian Gu. 2018. “Coupling Life Cycle Assessment and Life Cycle Costing as an Evaluation Tool for Developing Product Service System of High Energy-Consuming Equipment.” Journal of Cleaner Production 183: 1043– 1053.
+Zhang, Jianjing, Peng Wang, and Robert X. Gao. 2019. “Deep Learning-Based Tensile Strength Prediction in Fused Deposition Modeling.” Computers in Industry 107: 11–21.
+Zhao, Peng, Chengchen Rao, Fu Gu, Nusrat Sharmin, and Jianzhong Fu. 2018. “Close-looped Recycling of Polylactic Acid Used in 3D Printing: An Experimental Investigation and Life Cycle Assessment.” Journal of Cleaner Production 197: 1046–1055.
+Zhu, Yi, Tao Peng, Guofei Jia, Hong Zhang, Shuangmei Xu, and Huayong Yang. 2019. “Electrical Energy Consumption and Mechanical Properties of Selective-Laser-Melting-Produced 316L Stainless Steel Samples Using Various Processing Parameters.” Journal of Cleaner Production 208: 77–85.
+

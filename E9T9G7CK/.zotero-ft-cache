@@ -1,0 +1,1057 @@
+Simplified Diffusion Schrödinger Bridge
+Zhicong Tang1∗, Tiankai Hang2∗, Shuyang Gu3†, Dong Chen3, and Baining Guo3
+1Tsinghua University 2Southeast University 3Microsoft Research Asia
+tzc21@mails.tsinghua.edu.cn, tkhang@seu.edu.cn, {shuyanggu,doch,bainguo}@microsoft.com
+Abstract. This paper introduces a novel theoretical simplification of the Diffusion Schrödinger Bridge (DSB) that facilitates its unification with Score-based Generative Models (SGMs), addressing the limitations of DSB in complex data generation and enabling faster convergence and enhanced performance. By employing SGMs as an initial solution for DSB, our approach capitalizes on the strengths of both frameworks, ensuring a more efficient training process and improving the performance of SGM. We also propose a reparameterization technique that, despite theoretical approximations, practically improves the network’s fitting capabilities. Our extensive experimental evaluations confirm the effectiveness of the simplified DSB, demonstrating its significant improvements. We believe the contributions of this work pave the way for advanced generative modeling.
+Keywords: Schrödinger Bridge · Score-based Generative Models
+1 Introduction
+Score-based Generative Models (SGMs) [24, 48, 49] have recently achieved remarkable success, as highlighted in recent literature [14,20,38–40]. Despite their advancements, SGMs necessitate a carefully crafted schedule for adding noise, tailored to diverse tasks [8, 19, 27, 30]. Without this customization, training SGMs to handle complex data types, including video [1, 5, 23] and 3D contents [26,36,50], may present significant difficulties. Besides, SGMs are limited to modeling the target data distribution based on a predefined known distribution, e.g. Gaussian [24,49], which narrows their applicability in certain scenarios, such as conditional generation tasks like unpaired domain transfer [54]. The Schrödinger Bridge (SB) problem [10,17,44] is considered a more generalized framework that construct a transition between two arbitrary distributions. Numerous approximations of SB have been proposed [4, 6, 9, 15, 37, 45], and one theoretical solution is the Iterative Proportional Fitting (IPF) [18,28,42]. Nevertheless, practical application remains challenging because it involves optimizing
+*Equal contribution. †Corresponding author.
+arXiv:2403.14623v5 [cs.LG] 29 Oct 2024
+
+
+ 2 Z. Tang et al.
+joint distributions, which can be highly complex. The previous work IPML [52] simplifies IPF, and proves that solving the Schrödinger Bridge is equivalent to an autoregressive maximum likelihood estimation objective. A recent work, Diffusion Schrödinger Bridge (DSB) [13], also simplifies this by approximating the joint distribution optimization as a conditional distribution optimization problem. It employs two neural networks to enable the transition from one distribution to another by iteratively training them.
+While DSB possesses theoretical superiority compared to SGMs, its practical implementation is hindered by a slow convergence rate and potential issues with network fitting capabilities [13]. Moreover, distinct training methodologies between DSB and SGM currently prevent the former from leveraging the rapid advancements being made in the field of SGM.
+In this paper, we bridge the gap between the DSB and SGM by formulating a simplified optimization objective for DSB. Through this unification, SGM can be served as an initial solution for DSB, enabling enhanced outcomes with further iterations according to DSB [13]. Our theoretical analysis reveals that this initialization strategy is pivotal for the training of DSB, addressing the issue of slow convergence and yielding improved performance. Simultaneously, from the perspective of SGM, a pre-trained model can experience consistent enhancement through supplementary training using the DSB approach.
+Furthermore, a key to the success of SGM [14, 38, 40] and other generative models, e.g. Flow Matching (FM) [31], Conditional Flow Matching (CFM) [51] and Rectified Flow [33], lies in their use of reparameterization [24, 43] to create a consistent output space across different timesteps, which maximizes the shared network’s fitting capabilities. Drawing inspiration from them, we propose a reparameterization trick to standardize the output space for the DSB. Despite the reliance on a considerable number of theoretical approximations, we were pleasantly surprised to discover that this also unlocked the network’s potential, subsequently speeding up convergence and leading to enhanced results.
+We conduct comprehensive experiments to confirm the effectiveness of our proposed simplification and to showcase the significant enhancements it brings to DSB. Our contributions are summarized as follows:
+• We introduce a theoretical simplification of DSB, proving its equivalence to the original formulation.
+• By employing the simplified version, we successfully integrate SGM with DSB. Using SGM as the initialization for DSB significantly accelerates its convergence.
+• We devise a reparameterization technique that, despite some theoretical approximations, practically enhances the network’s fitting capabilities.
+• Through extensive experimentation, we examine practical training for DSB and validate the effectiveness of our proposed simplification.
+
+
+ Simplified Diffusion Schrödinger Bridge 3
+2 Preliminary
+In this section, we initiate by recalling some essential preliminaries of SGM in Section 2.1. Then, we introduce the SB problem and DSB, an approximate solution of it, in Section 2.2. Finally, in Section 2.3, we summarized prevalent dynamic generative models and unified them into the SDE form of SB. Notation Consider a data distribution pdata and a prior distribution pprior, each defined over the Rd with positive density. We denote the transformation from pdata to pprior as the forward process, whereas the reverse transformation as the backward process. The symbols k ∈ {0, . . . , N } and t ∈ [0, T ] represent discrete and continuous time horizons, respectively. In discrete-time scenarios, Pl = P (Rd)l signifies the probability of a l-state joint distribution for any l ∈ N. In continuous-time scenarios, we use P(C) where C = C [0, T ], Rd . H(p) = −
+R p(x) log p(x)dx denotes the entropy of p. The Kullback-Leibler divergence between distributions p and q is defined by KL(p|q) = R p(x) log p(x)
+q(x) dx, and Jeffrey’s divergence is denoted as J(p|q) = 1
+2 (KL(p|q) + KL(q|p)).
+2.1 Score-based Generative Models
+Score-based Generative Models (SGMs) [24, 46–48] connect two distributions through a dual process: a forward process that transitions the data distribution, pdata, toward a prior distribution, pprior, and a reverse process, typically guided by neural networks, that converts the prior back to the data distribution. These two processes can be modeled as Markov chains. Given an initial data distribution pdata and a target prior distribution pprior, the forward process pk+1|k(xk+1|xk) is designed to transition from p0 = pdata step-by-step towards a close approximation of pprior. This process generates a sequence x0:N from the (N + 1) intermediate steps. This trajectory’s joint probability density is then formally defined as:
+p(x0:N ) = p0(x0)
+N −1
+Y
+k=0
+pk+1|k(xk+1|xk). (1)
+Through the backward process, the joint density can also be reformulated as a time-reversed distribution:
+p(x0:N ) = pN (xN )
+N −1
+Y
+k=0
+pk|k+1 (xk |xk+1 )
+where pk|k+1(xk|xk+1) = pk+1|k(xk+1|xk)pk(xk)
+pk+1(xk+1) ,
+(2)
+However, directly computing pk|k+1(xk|xk+1) is typically challenging. SGM utilizes a simplified approach that regard the forward process as a gradual adding of Gaussian noise:
+
+
+ 4 Z. Tang et al.
+pk+1|k(xk+1|xk) = N (xk+1; xk + γk+1fk(xk), 2γk+1I). (3)
+It follows that for a sufficiently extensive N , the distribution pN will converge to Gaussian distribution, which we set as pprior. Moreover, the temporal inversion in Equation 2 can be analytically approximated [2, 25, 53] as
+pk|k+1(xk|xk+1) = pk+1|k(xk+1|xk) exp (log pk(xk) − log pk+1(xk+1))
+≈ N (xk; xk+1 − γk+1fk+1(xk+1) + 2γk+1∇ log pk+1(xk+1), 2γk+1I) (4) under the assumption that pk ≈ pk+1 and fk(xk) ≈ fk+1(xk+1). Subsequently, SGM employs neural networks sθ(xk+1, k + 1) to approximate the score term ∇ log pk+1(xk+1), thus the reverse process can be effectively modeled. By sampling xN ∼ pprior, followed by iteratively applying ancestral sampling via xk ∼ pk|k+1(xk|xk+1), culminating in the estimation of x0 ∼ pdata. The diffusion and denoising processes can also be formulated as continuoustime Markov chains. The forward process can be represented as a continuoustime Stochastic Differential Equation (SDE) [49]:
+dXt = ft(Xt)dt + √2dBt, (5)
+where f : Rd → Rd is the drift term and (Bt)t∈[0,T ] denotes the Brownian motion, we called it the diffusion term. We note that the Markov chain with transition kernel (3) can be viewed as the Euler-Maruyama discretization of this SDE. The backward process, on the other hand, is conceptualized by solving the time-reversed SDE [7, 16, 22] which corresponds to (4):
+dYt = (−ft(Yt) + 2∇ log pT −t(Yt)) dt + √2dBt. (6)
+2.2 Schrödinger Bridge and Diffusion Schrödinger Bridge
+Consider a reference density pref ∈ PN+1 given by Equation 1, the Schrödinger Bridge (SB) problem aims to find π∗ ∈ PN+1 which satisfies
+π∗ = arg min{KL(π|pref) : π ∈ PN+1, π0 = pdata, πN = pprior}. (7)
+Upon acquiring the optimal solution π∗, we can sample x0 ∼ pdata by initially drawing xN ∼ pprior and iterates the ancestral sampling πt|t+1(xt|xt+1). Conversely, the sampling of xN ∼ pprior is also feasible via the commencement of x0 ∼ pdata followed by πt+1|t(xt+1|xt). SB facilitates a bidirectional transition that is not predicated upon any presuppositions regarding pdata and pprior. Generally, the SB problem lacks a closed-form solution. Researchers employ the Iterative Proportional Fitting (IPF) [18,28,41] to address it through iterative optimization:
+π2n+1 = arg min{KL(π|π2n) : π ∈ PN+1, πN = pprior},
+π2n+2 = arg min{KL(π|π2n+1) : π ∈ PN+1, π0 = pdata}. (8)
+
+
+ Simplified Diffusion Schrödinger Bridge 5
+where π0 = pref is the initialization condition. Nevertheless, the IPF method needs to compute and optimize the joint density, which is usually infeasible within practical settings due to its computational complexity. Diffusion Schrödinger Bridge (DSB) [13] can be conceptualized as an approximate implementation of IPF. It dissects the optimization of the joint density into a series of conditional density optimization problems. Specifically, π is disentangled into πt+1|t and πt|t+1 in the forward and backward trajectory, respectively.
+π2n+1 = arg min{KL(πk|k+1|π2n
+k|k+1) : π ∈ PN+1, πN = pprior},
+π2n+2 = arg min{KL(πk+1|k|π2n+1
+k+1|k) : π ∈ PN+1, π0 = pdata}. (9)
+We can verify that when the conditional densities (Equation 9) is optimized, the joint distribution (Equation 8) can also be optimized. To optimize it, DSB follows the common practice of SGM [24, 48] to assume the conditional distributions πt+1|t and πt|t+1 are Gaussian distributions. It allows DSB to analytically calculate the time reversal process. Following this, DSB employs two separate neural networks to model the forward and backward transitions, respectively. Through a series of mathematical derivation and approximation [13], the training loss of DSB is resembled as
+LBn
+k+1 = E(xk,xk+1)∼pn
+k,k+1
+h
+Bn
+k+1(xk+1) − (xk+1 + F n
+k (xk) − F n
+k (xk+1)) 2i
+LF n+1
+k
+= E(xk,xk+1)∼qn
+k,k+1
+h
+F n+1
+k (xk) − xk + Bn
+k+1(xk+1) − Bn
+k+1(xk) 2i
+(10) where pn = π2n, qn = π2n+1 denotes the forward and backward joint densities, respectively. pn
+k+1|k(xk+1|xk) = N (xk+1; xk + γk+1f n
+k (xk), 2γk+1I) is the forward process and qn
+k|k+1(xk|xk+1) = N (xk; xk+1 + γk+1bn
+k+1(xk+1), 2γk+1I) is the backward process, where f n
+k (xk) and bn
+k+1(xk+1) are drift terms. In practice, DSB uses two neural networks to approximate Bβn (k, x) ≈
+Bn
+k (x) = x + γkbn
+k (x) and Fαn (k, x) ≈ F n
+k (x) = x + γk+1f n
+k (x), α and β denotes the network parameters. With the initialization p0 = pref manually pre-defined as Equation 3, DSB iteratively optimizes the backward network Bβn and the forward network Fαn for n ∈ {0, 1, . . . , L} to minimize Equation 9. For (2n + 1)-th epoch of DSB, we refer to the optimization of the backward network Bβn , and we optimize the forward network in Fαn with (2n + 2)-th epoch. [13] proves the convergence of this approach:
+Proposition 1. Assume pN > 0, pprior > 0, |H(pprior)| < +∞,
+R
+Rd log pN|0(xN |x0) pdata(x0)pprior(xN )dx0dxN < +∞. Then (πn)n∈N is well
+defined and for any n > 1 we have
+KL(πn+1|πn) < KL(πn−1|πn), KL(πn|πn+1) < KL(πn|πn−1)
+In addition, πn+1 − πn
+TV n∈N and J(πn+1, πn) n∈N are non-increasing. Fi
+nally, we have limn→+∞ n{KL(π0n|pdata) + KL(πn
+N |pprior)} = 0.
+
+
+ 6 Z. Tang et al.
+2.3 A General Perspective of Dynamic Generative Models
+Previous works [29, 44] have pointed out the optimal solution of Schrödinger Bridge follows the form of SDE:
+dXt = f (Xt, t) + g2(t)∇ log Ψ(Xt, t) dt + g(t)dWt, X0 ∼ pdata
+dXt = f (Xt, t) − g2(t)∇ log ˆΨ(Xt, t) dt + g(t)dW ̄ t, XT ∼ pprior
+(11)
+where Wt is Wiener process and W ̄ t its time reversal. Ψ, ˆΨ ∈ C2,1 [0, T ], Rd are time-varying energy potentials that constrained by the interconnected PDEs:
+( ∂Ψ
+∂t = −∇xΨ⊤f − 1
+2 Tr g2∇2xΨ
+∂Ψˆ
+∂t = −∇x · ( ˆΨf ) + 1
+2 Tr g2∇2x ˆΨ
+s.t. Ψ(x, 0) ˆΨ(x, 0) = pdata, Ψ(x, T )Ψˆ (x, T ) = pprior.
+(12)
+More generally, for the distribution of SB at time t, we can acheived by:
+pt = Ψ(x, t) ˆΨ(x, t) (13)
+Upon close inspection, one can observe that Equation 5 and Equation 11 differ only by the additional non-linear drift term g2(t)∇ log Ψ(Xt, t). Notably, SGMs may be regarded as a particular instantiation of DSB when the non-linear drift terms are set to zero, i.e. Ψ(Xt, t) ≡ C. For Variance Preserving (VP) [24] and Variance Exploding (VE) [48] noise schedule in SGMs, f (Xt, t) = −αtXt where αt ∈ R≥0, and the denoising model is essentially solving Equation 11 using a learnable network. More general, other dynamic generative models, such as Flow Matching (FM) [31], I2SB [32], Bridge-TTS [11], can be encapsulated within the framework of Equation 11 by selecting appropriate functions for f (Xt, t) and Ψ(Xt, t). We leave a more comprehensive discussion in the appendix. This unification of dynamic generative models suggests the possibility of a more profound linkage between DSB, SGM and other dynamic generative models, which we will explore in the following sections.
+3 Simplified Diffusion Schrödinger Bridge
+In this section, we start by analyzing the training function of DSB. We introduce a streamlined training objective and establish its equivalence to the original form in Section 3.1. In Section 3.2, we analyze the convergence of DSB and point out that initialization is the key for optimization. Leveraging our proposed simplified objective, we are able, for the first time, to treat SGMs as the backward solution of the DSB’s initial epoch, which will be elucidated in Section 3.3. In Section 3.4, we explore how to employ an SGM or FM model as a suitable initialization for the first forward epoch in DSB.
+
+
+ Simplified Diffusion Schrödinger Bridge 7
+3.1 Simplified training target
+In vanilla DSB, the training target for both forward and backward models is complex, as shown in Equation 10, which is hard to understand its physical meaning. Firstly, we propose a simplified version of training loss for DSB as
+L
+′ Bn
+k+1 = E(xk,xk+1)∼pn
+k,k+1
+h
+Bn
+k+1(xk+1) − xk
+2
+i
+,
+L′
+F n+1
+k
+= E(xk,xk+1)∼qn
+k,k+1
+h
+F n+1
+k (xk) − xk+1
+2
+i
+.
+(14)
+The following proposition demonstrates that the Simplified DSB (S-DSB) is equivalent to the original one shown in Equation 10.
+Proposition 2. Assume that for any n ∈ N and k ∈ {0, 1, . . . , N −1}, γk+1 > 0, qn
+k|k+1 = N xk; Bn
+k+1(xk+1), 2γk+1I , pn
+k+1|k = N (xk+1; F n
+k (xk), 2γk+1I), where Bn
+k+1(x) = x + γk+1bn
+k+1(x) and F n
+k (x) = x + γk+1f n
+k (x). Assume bn
+k+1(xk+1) ≈
+bn
+k+1(xk) and f n
+k (xk+1) ≈ f n
+k (xk). Then we have
+L′
+Bn
+k+1 ≈ LBn
+k+1 , L′
+F n+1
+k
+≈ LF n+1
+k
+. (15)
+We leave the proof in the appendix. It is worth noting that this approximation is predicated on the assumptions that bn
+k+1(xk+1) ≈ bn
+k+1(xk) and f n
+k (xk) ≈
+fn
+k (xk+1), which were previously employed in the original formulation [13] of DSB (Equation 10) to derive the reverse-time transition. Hence, the approximation introduced by this simplification is theoretically acceptable. This simplified loss has two advantages. First, it saves half of the number of forward evaluations (NFE) when computing the prediction target. The original loss Equation 10 needs to run model twice (F n
+k (xk) and F n
+k (xk+1)), while the simplified target in Equation 14 needs only one evaluation. This may be critical when the networks Bn
+k+1(x) and F n
+k (x) are large or the dimension of x is high in practical settings, e.g., image and video generation. Secondly, and of greater significance, the simplified optimization objective aligns with SGM, enhancing our intuitive grasp of the process. Whether dealing with a forward or backward process, the requirement is merely to predict the subsequent state, akin to the approach of SGM. In the following section, we will see that this unification is crucial for the effective training of DSB.
+3.2 The convergence analysis
+We illustrate the framework of DSB in Figure 1. Note that DSB can transit between two unknown distributions. In order to be consistent with SGM, we use pdata and pprior to refer to these two distributions. Specifically, for each epoch, the backward model is trained to map from pprior back to pdata. Subsequently, the forward model is trained to approximate the mapping from pdata to pprior. During practical training, we observed that the results of DSB frequently exhibit slow convergence, requiring an excessive number of epochs to reach optimal state. To elucidate the underlying cause, we conducted an analysis of the
+
+
+ 8 Z. Tang et al.
+pp0 pp1 ppNN−1 ppNN
+qq0 qq1 qqNN−1 qqNN
+Forward (ppnn = ππ2nn)
+Backward (qqnn = ππ2nn+1)
+ppdata ppprior
+Fig. 1: Illustration of the pipeline of Diffusion Schrödinger Bridge.
+convergence performance and take the backward process as an example. Note
+that pdata = π02n = p0n = R pN (xN ) QN−1
+i=0 pn
+i|i+1(xi|xi+1)dxi, we have
+π2n+1
+0 − pdata = qn
+0 (x0) − pdata
+=
+Z
+qn
+0|1(x0|x1)qn
+1 (x1)dx1 − pdata
+= ···
+=
+Z
+qn
+N (xN )
+N −1
+Y
+i=0
+qn
+i|i+1(xi|xi+1)dxi −
+Z
+pn
+N (xN )
+N −1
+Y
+i=0
+pn
+i|i+1(xi|xi+1)dxi
+*=
+Z
+(pprior(xN ) − pn
+N (xN ))
+N −1
+Y
+i=0
+pn
+i|i+1(xi|xi+1)dxi,
+(16) where (∗) is established because DSB assumes every epoch achieves the convergence state (Equation 9), i.e. qn
+i|i+1(xi|xi+1) = pn
+i|i+1(xi|xi+1) for any i ∈ {0, 1, . . . , N − 1}. Similarly, we can get
+π2n+2
+N − pprior =
+Z
+(qdata(x0) − qn
+0 (x0))
+N
+Y
+i=1
+qn
+i+1|i(xi+1|xi)dxi. (17)
+Consequently, our findings indicate that the convergence of (n + 1)-th epoch relies on the convergence of previous n-th epoch. This observation underscores the stability of DSB when each epoch reaches the optimal solution. Moreover, these insights suggest that an effective initial state may significantly expedite the convergence process.
+3.3 SGM as the first backward epoch
+As previously noted, our simplified DSB and SGM share the same training objective. Hence, by setting the pref in Equation 7 the same as the noise schedule of SGM, the first epoch of DSB is theoretically equivalent to the training of SGM. Therefore, we can utilize a pre-trained SGM as the solution of the first backward epoch (Bβ1 ). Through multiple rounds of forward and backward training, the quality of the generated data will be continuously improved according to the
+
+
+ Simplified Diffusion Schrödinger Bridge 9
+progressively enhancing attributes of DSB (as stated in Proposition 1). Consequently, this process yields a new model that surpasses the initial SGM in terms of modeling the target distribution. It’s noteworthy that the majority of current SGMs [20, 40] employ the reparameterization trick [24], whereby the denoising model typically predicts either the noise (ε ∈ pprior) or the clean data (x0 ∈ pdata). We adapt this approach to align with our simplified optimization target in Equation 14 by reverting the prediction focus to the next state [24]. As for Flow Matching [31] models, it can be considered as a variant of SGM that utilizes a unique noise schedule (f (Xt, t) = − t
+T Xt) and is reparameterized to produce outputs based on x0 − ε
+via neural networks. By recalibrating these models, we can seamlessly integrate them as the initial backward epoch in the training process of DSB.
+3.4 Initialization of the first forward epoch
+The training of the first forward epoch is the second epoch in the entire training, which is designed to train a neural network (Fα1 ) to transform pdata into pprior. It ensures that the intermediate states adhere to the KL constraint imposed by trajectories of the first backward epoch, as described in Equation 10. Rather than training from scratch, it is advantageous to leverage a pretrained SGM as a starting point and refine it according to Equation 14. Specifically, we directly train an SGM to facilitate the transition from pdata to pprior, and shift the training objective to the subsequent state. Although standard SGMs typically model the transition from the prior distribution to the data distribution, we find that by utilizing FM models and reversing the roles of pprior and pdata, we can also approximate a rough transformation from the data distribution to the prior distribution. This approximation serves as an effective initial state for training the first forward epoch of DSB. Additionally, an alternative strategy involves utilizing the same SGM we used in the first backward epoch but adopts an altered reparameterization. Unlike the backward process that requires the prediction of E(xk−1), the forward process focuses on estimating E(xk+1). To facilitate this shift, we adjust the reparameterization coefficients accordingly. For instance, in Variance Preserving [24]
+SGM, we can employ √α ̄k+1x0 + √1 − α ̄k+1ε to initialize the result, where x0 is the prediction made by the denoising network, and ε can be calculated by
+√α ̄kx0 + √1 − α ̄kε = xk. Empirical results have shown that initiating training with this adjusted reparameterization leads to more efficient convergence compared to training from scratch.
+4 Reparameterized Diffusion Schrödinger Bridge
+Score-based generative models (SGMs) employ neural networks sθ(xk+1, k + 1) to approximate the score ∇ log pk+1(xk+1) as described in Equation 4. However, contemporary SGMs [24] tend to predict noise (ε ∈ pprior) or data (x0 ∈ pdata) rather than directly estimating the score. Researchers [43] find that a suitable
+
+
+ 10 Z. Tang et al.
+reparameterization is crucial in the training of SGM, since a single network may struggle with the dynamic distribution of score across time [3, 21]. Reparameterization simplifies the network’s task by allowing it to focus on a consistent output target at different timesteps. Within the framework of S-DSB, both the forward and backward networks aim to predict the expectation of subsequent states, as depicted in Equation 14. This challenge parallels the one encountered in the training of original SGM. To circumvent this difficulty, we introduce Reparameterized DSB (R-DSB). Similar to Denoising Diffusion Probabilistic Models [24], we first derive an estimation for the posterior transitions pn
+k|k+1,0(xk|xk+1, x0) and qn
+k+1|k,N (xk+1|xk, xN ),
+where pn = π2n and qn = π2n+1 are defined in Equation 9. In the subsequent
+discussion, we denote γ ̄k = Pk
+n=1 γn and γ ̄0 = 0.
+Proposition 3. Assume PN
+k=1 γk = 1. Given the forward and backward trajec
+tories x0:N ∼ pn(x0:N ) = p0n(x0) QN−1
+k=0 pn
+k+1|k(xk+1|xk) and x′
+0:N ∼ qn(x0:N ) =
+qn
+N (xN ) QN−1
+k=0 pn
+k|k+1(xk|xk+1). Under some assumptions, we have
+qn
+k|k+1(xk|xk+1) ≈ pn
+k|k+1,0(xk|xk+1, x0) = N (xk; μn
+k+1(xk+1, x0), σk+1I),
+pn+1
+k+1|k(xk+1|xk) ≈ qn
+k+1|k,N (x′
+k+1|x′
+k, x′
+N ) = N (x′
+k+1; μ ̃n
+k (x′
+k, x′
+N ), σ ̃k+1I), (18)
+μn
+k+1(xk+1, x0) ≈ xk+1 + γk+1
+γ ̄k+1
+(x0 − xk+1), σk+1 = 2γk+1γ ̄k
+γ ̄k+1
+,
+μ ̃n
+k (x′
+k, x′
+N ) ≈ x′
+k + γk+1
+1 − γ ̄k
+(x′
+N − x′
+k), σ ̃k+1 = 2γk+1(1 − γ ̄k+1)
+1 − γ ̄k
+.
+(19)
+We leave the proof in the appendix. The proposition suggests that when learning the forward process, xk+1 depends on the previous state xk and the terminal xN . While in the backward process, xk also depends on the previous state xk+1 and the terminal x0. These leads to the following reparameterization.
+Terminal Reparameterized DSB (TR-DSB) Following DDPM [24], we design two neural networks to output the terminal points of the forward and backward trajectories, respectively. The training losses are
+LB ̃ n
+k+1
+= E(x0,xk+1)∼pn
+0,k+1
+B ̃ n
+k+1(xk+1) − x0
+2
+,
+LF ̃n+1
+k
+= E(xk,xN )∼qn
+k,N
+F ̃ n+1
+k (xk) − xN
+2
+.
+(20)
+Upon completion of training, we can perform sampling using Equation 18 and Equation 19, where xN = F ̃n
+k (xk) and x0 = B ̃n
+k+1(xk+1).
+Flow Reparameterized DSB (FR-DSB) Following Flow Matching [31], we can also employ neural networks to predict the vector that connects the start point to the end point. The training losses are
+
+
+ Simplified Diffusion Schrödinger Bridge 11
+Ep 1
+Ep 5
+DSB S-DSB
+without init
+S-DSB
+init BBαα1
+S-DSB
+init BBαα1, FFββ1 same
+S-DSB
+init BBαα1, FFββ1 sep. TR-DSB FR-DSB
+ppdata
+(a) Backward process results
+Ep 2
+Ep 6 ppprior
+S-DSB
+without init
+S-DSB
+init BBαα1
+S-DSB
+init BBαα1, FFββ1 same
+S-DSB
+DSB init BBαα1, FFββ1 sep. TR-DSB FR-DSB
+(b) Forward process results
+Fig. 2: Comparison between DSB, S-DSB with different initialization, and R-DSB on checkerboard ↔ pinwheel.
+L ̃bn
+k+1
+= E(x0,xk+1)∼pn
+0,k+1
+"
+ ̃bn
+k+1(xk+1) − x0 − xk+1
+γ ̄k+1
+2
+#
+,
+Lf ̃n+1
+k
+= E(xk,xN )∼qn
+k,N
+"
+f ̃n+1
+k (xk) − xN − xk
+1 − γ ̄k
+2
+#
+.
+(21)
+By employing this reparameterization, we are able to generate samples via Equation 18 using μ ̃n
+k (xk, xN ) ≈ xk + γk+1f ̃n
+k (xk) for the forward process, and
+μn
+k+1(xk+1, x0) ≈ xk+1 + γk+1 ̃bn
+k+1(xk+1) for the backward process.
+5 Experiment
+5.1 Simplified training objectives
+We first compare our proposed Simplified DSB (S-DSB) with the vanilla DSB using 2D synthetic datasets. The data distribution and prior distribution are configured as checkerboard and pinwheel, respectively, as depicted in Figure 2. For S-DSB, we explore various initialization approaches: (1) without init, where Bβ1 and Fα1 are trained from scratch; (2) init Bβ1 , where a pretrained SGM is employed as the initial backward transition Bβ1 and training starts from the subsequent forward epoch; (3) init Bβ1 and Fα1 with same model, utilizing the same SGM to initialize both Bβ1 and Fα1 , then start training from the first forward epoch; (4) init Bβ1 and Fα1 separately, we adopt two distinct SGMs
+
+
+ 12 Z. Tang et al.
+8 16 32 64 128
+Training iterations per epoch M (×1000)
+2
+3
+4
+5
+6
+KL(qN|pdata)
+DSB S-DSB (w/o init) S-DSB (init B 1) S-DSB (init B 1 and F 1 same) S-DSB (init B 1 and F 1 sep.) TR-DSB FR-DSB
+Fig. 3: Evolution of performance with the increase of training iterations per epoch.
+8 80 160 240 320 400 480 560 640
+Total training iterations (×1000)
+2
+4
+8
+KL(qN|pdata)
+DSB S-DSB (w/o init) S-DSB (init B 1) S-DSB (init B 1 and F 1 same) S-DSB (init B 1 and F 1 sep.) TR-DSB FR-DSB
+Fig. 4: Evolution of performance with the increase of total training iterations.
+to initialize Bβ1 and Fα1 , followed by training from the first forward epoch. Furthermore, we also compare these configurations against our Reparameterized DSB (R-DSB). The results are presented in Figure 2, showing that both DSB and S-DSB with random initialization exhibit comparable performance, which suggests a theoretical equivalence between them. Notably, S-DSB requires half of network function evaluations (NFEs) for caching training pairs, thereby accelerating the training process. Furthermore, by capitalizing on pretrained SGMs, S-DSB achieves superior results within the same number of training iterations. This finding aligns with our analysis in Section 3.2, which states that the convergence of q0n and pn+1
+N
+depends on pn
+N and q0n, respectively. Effective initializations that bridge the gap
+between p0
+N and pprior significantly expedite and stabilize the training of S-DSB. In addition, the results indicate that FR-DSB exhibits robust performance, while the results of TR-DSB are relatively poor. This is analogous to insights from the reparameterization trick in SGMs, suggesting that distinct reparameterization strategies may be more suitable to specific target distributions.
+5.2 Convergence of DSB
+We explore several critical factors that may impact the convergence of DSB, including training iterations per epoch M , and the overall training iterations. To gauge convergence, we measured the KL divergence between the output of the backward networks and the real data distribution pdata. As depicted in Figure 3, we subject all configurations to training over 10 epochs. When M is low, the DSB training fails to converge. As M increases, the optimization process gradually approaches Equation 9, ultimately yielding improved final performance. Figure 4 elucidates the enhancement of sample quality throughout the training duration. We set the default M as 32K. We note that the performance of DSB stops improving after 320K iterations. Conversely, both our S-DSB and R-DSB demonstrate consistent improvements. Moreover, even with random initialization, R-DSB surpasses the vanilla DSB in terms of sample quality.
+
+
+ Simplified Diffusion Schrödinger Bridge 13
+4.14
+2.87
+1.88
+(SGM)
+3
+9
+KL qqNN|ppdata
+Epoch
+ppdata
+Generation results qqNN
+Fig. 5: Improving pretrained SGM with S-DSB. First row illustrates the results of converged SGMs. KL divergences KL(qN |pdata) measure the average generation performance of each rows.
+(SGM) 1 3 5 Training epochs
+11
+12
+13
+14
+FID
+(a) Dog→Cat
+(SGM) 2 4 6 Training epochs
+15
+20
+25
+30
+FID
+(b) Cat→Dog
+Fig. 6: FID comparison of image translation on the AFHQ dataset.
+5.3 Improving SGM
+Fig. 8: From left to right: input images, results from Flow Matching model, DSB 2-th epoch, and DSB 6-th epoch.
+As discussed in Section 3.3, the simplified training objective in Equation 14 enables leveraging a pretrained SGM as the initial epoch for S-DSB and further improves it. In Figure 5, we first train diffusion models on various data distributions until convergence, and then employ these models as the starting point of S-DSB training. As depicted, the initial performance is suboptimal, with visually discernible artifacts presented in generated samples. However, after few epochs of S-DSB training, the sample quality is greatly improved. With continued training, the results progressively approximate the ground truths. Additionally, we conducted validation on the AFHQ [12] dataset to transfer between dog and cat subsets. We utilized a pretrained Flow Matching (FM) [31] model as our initial model and applied Terminal Reparameterization to train the DSB. Given that FM constrains pprior to be Gaussian, it is understandable that the generated results may not be sufficiently good. As demonstrated in Figure 6 and Figure 8, our model is capable of progressively generating improved results. This further corroborates the efficacy of DSB in enhancing pretrained SGMs. We provide more translation results in Figure 7, which illustrate our method is capable of producing results with rich details and realistic textures.
+
+
+ 14 Z. Tang et al.
+Fig. 7: Generated samples on unpaired dog ↔ cat translation. Left: cat to dog; right: dog to cat. We observe that DSB could preserve pose and texture to a certain extent.
+Fig. 10: Generation trajectories with different γt. Taking the same cat image as input, the trajectory with smaller γt can retain more details, such as pose and color. Above: γt ∈ linear(10−4, 10−3). Below: γt ∈ linear(10−3, 10−2).
+5.4 γ term in DSB
+0.0 0.5 1.0 Time t
+0.1
+0.5
+1.0×10 2 t
+Fig. 9: Linear symmetrical schedule for γt.
+We adopt a symmetrical schedule for γt in our experiments, with values that linearly ascend from 10−3 at both sides to 10−2 at the center, as depicted in Figure 9. To examine the influence of γ, we present visualizations of two transformation trajectories from cat to dog under varying γt settings in Figure 10. Our observations indicate that a smaller γt tends to preserve more information throughout the trajectory, such as pose and color, whereas a larger γt can potentially lead to high-quality generated results.
+
+
+ Simplified Diffusion Schrödinger Bridge 15
+6 Conclusion and Future Prospects
+This paper proposes Simplified Diffusion Schrödinger Bridge (S-DSB), which unifies the training objectives of Diffusion Schrödinger Bridge (DSB) and Scorebased generative models (SGMs). By leveraging SGMs as initialization, S-DSB achieves faster convergence and improved performance. The iterative refinement process inherent in DSB further enhances the outcomes of SGM. Our investigation delves deeply into the practical training of DSB, identifying critical factors that influence its success. Moreover, we introduce reparameterization techniques tailored for DSB that yield superior performance in real-world applications. The authors firmly believe that approaches based on the Schrödinger Bridge problem represent the forward path for future generative models, as previous studies [13, 45] have unveiled its close connection with the optimal transport theory. Consequently, DSB has the theoretical potential to possess stronger generation capabilities and a deeper understanding of semantics. However, the authors acknowledge that the current DSB may still lag behind SGMs due to the complexity of its training process or a lack of effective reparameterization strategy to alleviate difficulties encountered during network training. This paper makes exploratory strides toward this goal and hopes to inspire future works.
+References
+1. Video generation models as world simulators. https://openai.com/research/ video-generation-models-as-world-simulators, accessed: 2024-03-01 1
+2. Anderson, B.D.: Reverse-time diffusion equation models. Stochastic Processes and their Applications 12(3), 313–326 (1982) 4 3. Balaji, Y., Nah, S., Huang, X., Vahdat, A., Song, J., Kreis, K., Aittala, M., Aila, T., Laine, S., Catanzaro, B., et al.: ediffi: Text-to-image diffusion models with an ensemble of expert denoisers. arXiv preprint arXiv:2211.01324 (2022) 10 4. Bernton, E., Heng, J., Doucet, A., Jacob, P.E.: Schrödinger bridge samplers. arXiv preprint arXiv:1912.13170 (2019) 1 5. Blattmann, A., Dockhorn, T., Kulal, S., Mendelevitch, D., Kilian, M., Lorenz, D., Levi, Y., English, Z., Voleti, V., Letts, A., et al.: Stable video diffusion: Scaling latent video diffusion models to large datasets. arXiv preprint arXiv:2311.15127 (2023) 1 6. Caluya, K.F., Halder, A.: Wasserstein proximal algorithms for the schrödinger bridge problem: Density control with nonlinear drift. IEEE Transactions on Automatic Control 67(3), 1163–1178 (2021) 1 7. Cattiaux, P., Conforti, G., Gentil, I., Léonard, C.: Time reversal of diffusion processes under a finite entropy condition. arXiv preprint arXiv:2104.07708 (2021) 4
+8. Chen, T.: On the importance of noise scheduling for diffusion models. arXiv preprint arXiv:2301.10972 (2023) 1 9. Chen, Y., Georgiou, T., Pavon, M.: Entropic and displacement interpolation: a computational approach using the hilbert metric. SIAM Journal on Applied Mathematics 76(6), 2375–2396 (2016) 1 10. Chen, Y., Georgiou, T.T., Pavon, M.: Optimal transport in systems and control. Annual Review of Control, Robotics, and Autonomous Systems 4 (2021) 1
+
+
+ 16 Z. Tang et al.
+11. Chen, Z., He, G., Zheng, K., Tan, X., Zhu, J.: Schrodinger bridges beat diffusion models on text-to-speech synthesis. arXiv preprint arXiv:2312.03491 (2023) 6, 24, 25 12. Choi, Y., Uh, Y., Yoo, J., Ha, J.W.: Stargan v2: Diverse image synthesis for multiple domains. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 8188–8197 (2020) 13 13. De Bortoli, V., Thornton, J., Heng, J., Doucet, A.: Diffusion schrödinger bridge with applications to score-based generative modeling. Advances in Neural Information Processing Systems 34, 17695–17709 (2021) 2, 5, 7, 15, 20, 23, 24, 25 14. Dhariwal, P., Nichol, A.: Diffusion models beat gans on image synthesis. Advances in neural information processing systems 34, 8780–8794 (2021) 1, 2 15. Finlay, C., Gerolin, A., Oberman, A.M., Pooladian, A.A.: Learning normalizing flows from entropy-kantorovich potentials. arXiv preprint arXiv:2006.06033 (2020) 1
+16. Föllmer, H.: An entropy approach to the time reversal of diffusion processes. In: Stochastic Differential Systems: Filtering and Control, pp. 156–163. Springer (1985) 4 17. Föllmer, H.: Random fields and diffusion processes. In: École d’Été de Probabilités de Saint-Flour XV–XVII, 1985–87, pp. 101–203. Springer (1988) 1 18. Fortet, R.: Résolution d’un système d’équations de M. Schrödinger. Journal de Mathématiques Pures et Appliqués 1, 83–105 (1940) 1, 4 19. Gu, J., Zhai, S., Zhang, Y., Bautista, M.A., Susskind, J.: f-dm: A multi-stage diffusion model via progressive signal transformation. International Conference on Learning Representations (2021) 1 20. Gu, S., Chen, D., Bao, J., Wen, F., Zhang, B., Chen, D., Yuan, L., Guo, B.: Vector quantized diffusion model for text-to-image synthesis. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. pp. 1069610706 (2022) 1, 9 21. Hang, T., Gu, S., Li, C., Bao, J., Chen, D., Hu, H., Geng, X., Guo, B.: Efficient diffusion training via min-snr weighting strategy. arXiv preprint arXiv:2303.09556 (2023) 10 22. Haussmann, U.G., Pardoux, E.: Time reversal of diffusions. The Annals of Probability 14(4), 1188–1205 (1986) 4 23. Ho, J., Chan, W., Saharia, C., Whang, J., Gao, R., Gritsenko, A., Kingma, D.P., Poole, B., Norouzi, M., Fleet, D.J., et al.: Imagen video: High definition video generation with diffusion models. arXiv preprint arXiv:2210.02303 (2022) 1 24. Ho, J., Jain, A., Abbeel, P.: Denoising diffusion probabilistic models. Advances in neural information processing systems 33, 6840–6851 (2020) 1, 2, 3, 5, 6, 9, 10, 24, 25 25. Hyvärinen, A., Dayan, P.: Estimation of non-normalized statistical models by score matching. Journal of Machine Learning Research 6(4) (2005) 4 26. Jun, H., Nichol, A.: Shap-e: Generating conditional 3d implicit functions. arXiv preprint arXiv:2305.02463 (2023) 1 27. Karras, T., Aittala, M., Aila, T., Laine, S.: Elucidating the design space of diffusionbased generative models. Advances in Neural Information Processing Systems 35, 26565–26577 (2022) 1 28. Kullback, S.: Probability densities with given marginals. The Annals of Mathematical Statistics 39(4), 1236–1243 (1968) 1, 4 29. Léonard, C.: A survey of the Schrödinger problem and some of its connections with optimal transport. Discrete & Continuous Dynamical Systems-A 34(4), 1533–1574 (2014) 6
+
+
+ Simplified Diffusion Schrödinger Bridge 17
+30. Lin, S., Liu, B., Li, J., Yang, X.: Common diffusion noise schedules and sample steps are flawed. In: Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision. pp. 5404–5411 (2024) 1 31. Lipman, Y., Chen, R.T., Ben-Hamu, H., Nickel, M., Le, M.: Flow matching for generative modeling. International Conference on Learning Representations (2023) 2, 6, 9, 10, 13, 24, 25 32. Liu, G.H., Vahdat, A., Huang, D.A., Theodorou, E.A., Nie, W., Anandkumar, A.: I 2 sb: Image-to-image schrödinger bridge. International Conference on Machine Learning (2023) 6, 24, 25 33. Liu, X., Gong, C., Liu, Q.: Flow straight and fast: Learning to generate and transfer data with rectified flow. International Conference on Learning Representations (2023) 2 34. Liu, Z., Luo, P., Wang, X., Tang, X.: Deep learning face attributes in the wild. In: Proceedings of International Conference on Computer Vision (ICCV) (December 2015) 26 35. Nelson, E.: Dynamical theories of brownian motion (1967) 24 36. Nichol, A., Jun, H., Dhariwal, P., Mishkin, P., Chen, M.: Point-e: A system for generating 3d point clouds from complex prompts. arXiv preprint arXiv:2212.08751 (2022) 1 37. Pavon, M., Trigila, G., Tabak, E.G.: The data-driven schrödinger bridge. Communications on Pure and Applied Mathematics 74(7), 1545–1573 (2021) 1 38. Ramesh, A., Dhariwal, P., Nichol, A., Chu, C., Chen, M.: Hierarchical textconditional image generation with clip latents. arXiv preprint arXiv:2204.06125 1(2), 3 (2022) 1, 2 39. Ramesh, A., Pavlov, M., Goh, G., Gray, S., Voss, C., Radford, A., Chen, M., Sutskever, I.: Zero-shot text-to-image generation. In: International Conference on Machine Learning. pp. 8821–8831. PMLR (2021) 1 40. Rombach, R., Blattmann, A., Lorenz, D., Esser, P., Ommer, B.: High-resolution image synthesis with latent diffusion models. In: Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. pp. 10684–10695 (2022) 1, 2, 9 41. Rüschendorf, L., Thomsen, W.: Note on the schrödinger equation and i-projections. Statistics & probability letters 17(5), 369–375 (1993) 4 42. Ruschendorf, L., et al.: Convergence of the iterative proportional fitting procedure. The Annals of Statistics 23(4), 1160–1174 (1995) 1 43. Salimans, T., Ho, J.: Progressive distillation for fast sampling of diffusion models. International Conference on Learning Representations (2022) 2, 9 44. Schrödinger, E.: Sur la théorie relativiste de l’électron et l’interprétation de la mécanique quantique. Annales de l’Institut Henri Poincaré 2(4), 269–310 (1932) 1, 6 45. Shi, Y., De Bortoli, V., Campbell, A., Doucet, A.: Diffusion schrödinger bridge matching. Advances in Neural Information Processing Systems 36 (2024) 1, 15 46. Sohl-Dickstein, J., Weiss, E., Maheswaranathan, N., Ganguli, S.: Deep unsupervised learning using nonequilibrium thermodynamics. In: International conference on machine learning. pp. 2256–2265. PMLR (2015) 3 47. Song, J., Meng, C., Ermon, S.: Denoising diffusion implicit models. International Conference on Learning Representations (2021) 3 48. Song, Y., Ermon, S.: Generative modeling by estimating gradients of the data distribution. Advances in neural information processing systems 32 (2019) 1, 3, 5, 6, 24, 25
+
+
+ 18 Z. Tang et al.
+49. Song, Y., Sohl-Dickstein, J., Kingma, D.P., Kumar, A., Ermon, S., Poole, B.: Scorebased generative modeling through stochastic differential equations. International Conference on Learning Representations (2021) 1, 4 50. Tang, Z., Gu, S., Wang, C., Zhang, T., Bao, J., Chen, D., Guo, B.: Volumediffusion: Flexible text-to-3d generation with efficient volumetric encoder. arXiv preprint arXiv:2312.11459 (2023) 1 51. Tong, A., Malkin, N., Huguet, G., Zhang, Y., Rector-Brooks, J., Fatras, K., Wolf, G., Bengio, Y.: Improving and generalizing flow-based generative models with minibatch optimal transport. In: ICML Workshop on New Frontiers in Learning, Control, and Dynamical Systems (2023) 2 52. Vargas, F., Thodoroff, P., Lamacraft, A., Lawrence, N.: Solving schrödinger bridges via maximum likelihood. Entropy 23(9), 1134 (2021) 2 53. Vincent, P.: A connection between score matching and denoising autoencoders. Neural Computation 23(7), 1661–1674 (2011) 4 54. Zhu, J.Y., Park, T., Isola, P., Efros, A.A.: Unpaired image-to-image translation using cycle-consistent adversarial networks. In: Proceedings of the IEEE international conference on computer vision. pp. 2223–2232 (2017) 1
+
+
+ Simplified Diffusion Schrödinger Bridge 19
+A Proof of Proposition 2
+Proof. By asssumption, we have
+(xk+1 + F n
+k (xk) − F n
+k (xk+1)) − xk
+= (xk+1 + xk + γk+1f n
+k (xk) − (xk+1 + γk+1f n
+k (xk+1))) − xk
+= (xk + γk+1f n
+k (xk) − γk+1f n
+k (xk+1)) − xk
+= γk+1f n
+k (xk) − γk+1f n
+k (xk+1)
+= fn
+k (xk) − f n
+k (xk+1)
+≈ 0,
+(22)
+and thus L′
+Bn
+k+1 ≈ LBn
+k+1 . L′
+F n+1
+k
+≈ LF n+1
+k can also be proved likewise.
+B Proof of Proposition 3
+B.1 Continuous-time DSB
+To prove Proposition 3, we first introduce continuous-time DSB. Given a reference measure P ∈ P(C), the continuous-time SB problem aims to find
+Π∗ = arg min{KL(Π|P) : Π ∈ P(C), Π0 = pdata, ΠT = pprior}. (23)
+Similar to Equation 8, continuous-time IPF iterations (Πn)n∈N where Π0 = P for any n ∈ N can be defined in continuous time as
+Π2n+1 = arg min{KL(Π|Π2n) : Π ∈ P(C), ΠT = pprior},
+Π2n+2 = arg min{KL(Π|Π2n+1) : Π ∈ P(C), Π0 = pdata}. (24)
+DSB partitions the continuous time horizon [0, T ] into N +1 discrete timesteps {γ ̄0, γ ̄1, . . . , γ ̄N } where γ ̄k = Pk
+n=1 γn, γ ̄0 = 0 and γ ̄N = T . The forward
+process is pn
+γ ̄k+1|γ ̄k = N xγ ̄k+1 ; xγ ̄k + γk+1fγ ̄nk (xγ ̄k ), 2γk+1I and the backward
+process is qn
+γ ̄k|γ ̄k+1 = N xγ ̄k ; xγ ̄k+1 + γk+1bγ ̄nk+1 (xγ ̄k+1 ), 2γk+1I , where fγ ̄nk (xγ ̄k )
+and bγ ̄nk+1 (xγ ̄k+1 ) are drift terms, and pn and qn are discretizations of Π2n and Π2n+1, respectively. DSB uses two neural networks to approximate Bβn (γ ̄k, x) ≈ Bγ ̄nk (x) = x + γ ̄kbγ ̄nk (x) and Fαn (γ ̄k, x) ≈ Fγ ̄nk (x) = x + γ ̄k+1fγ ̄nk (x).
+B.2 Posterior estimation
+First, we introduce some notations in continuous-time SDEs. We rewrite Equation 11 as
+dXt = f (Xt, t) + g2(t)∇ log Ψ(Xt, t) dt + g(t)dWt, X0 ∼ pdata
+:= h(Xt, t)dt + g(t)dWt, X0 ∼ pdata, (25a)
+dXt = f (Xt, t) − g2(t)∇ log ˆΨ(Xt, t) dt + g(t)dW ̄ t, X0 ∼ pdata
+:= l(Xt, t)dt + g(t)dW ̄ t, X1 ∼ pprior, (25b)
+
+
+ 20 Z. Tang et al.
+where h(Xt, t) and l(Xt, t) are drift terms. Given the forward trajectory x0:N ∼ pn(x0:N ) and the backward trajectory x′
+0:N ∼ qn(x0:N ), {xγ ̄i := xi}N
+i=0 and
+{x′γ ̄i := x′
+i}N
+i=0 denote the trajectories of Equation 25a and Equation 25b at time {γ ̄0, γ ̄1, . . . , γ ̄N }, respectively. For simplicity, we denote the integration
+Rb
+a h(Xt, t) and R b
+a l(Xt, t) as  ̃h(a, b) and l ̃(a, b), respectively.
+Here we give a full version of Proposition 3:
+Proposition 4. Assume γ ̄N = 1. Given the forward and backward trajecto
+ries x0:N ∼ pn(x0:N ) = p0n(x0) QN−1
+k=0 pn
+k+1|k(xk+1|xk) and x′
+0:N ∼ qn(x0:N ) =
+qn
+N (xN ) QN−1
+k=0 pn
+k|k+1(xk|xk+1). Assume ft(Xt) = −αXt, g(t) = √2,
+1 γ ̄k
+ ̃h(0, γ ̄k) ≈ 1
+γ ̄k+1
+ ̃h(0, γ ̄k+1), 1
+1 − γ ̄k
+l ̃(γ ̄k, 1) ≈ 1
+1 − γ ̄k+1
+l ̃(γ ̄k+1, 1). (26)
+We have
+qn
+k|k+1(xk|xk+1) ≈ pn
+k|k+1,0(xk|xk+1, x0) = N (xk; μn
+k+1(xk+1, x0), σk+1I), (27a)
+pn+1
+k+1|k(xk+1|xk) ≈ qn
+k+1|k,N (x′
+k+1|x′
+k, x′
+N ) = N (x′
+k+1; μ ̃n
+k (x′
+k, x′
+N ), σ ̃k+1I), (27b)
+μn
+k+1(xk+1, x0) ≈ xk+1 + γk+1
+γ ̄k+1
+(x0 − xk+1), σk+1 = 2γk+1γ ̄k
+γ ̄k+1
+, (28a)
+μ ̃n
+k (x′
+k, x′
+N ) ≈ x′
+k + γk+1
+1 − γ ̄k
+(x′
+N − x′
+k), σ ̃k+1 = 2γk+1(1 − γ ̄k+1)
+1 − γ ̄k
+. (28b)
+It is worth noticing that ft(Xt) = −αXt and g(t) = √2 are assumptions of the original DSB [13]. We prove Proposition 4 with the following lemmas.
+Lemma 1. Given the forward and backward trajectories x0:N ∼ pn(x0:N ) = p0n(x0) QN−1
+k=0 pn
+k+1|k(xk+1|xk) and x′
+0:N ∼ qn(x0:N ) = qn
+N (xN ) QN−1
+k=0 pn
+k|k+1 (xk |xk+1 ).
+Suppose the IPF in Equation 24 achieve the optimal state. Then we have
+qn
+k|k+1(xk|xk+1) ≈ pn
+k|k+1,0(xk|xk+1, x0), (29a)
+pn+1
+k+1|k(xk+1|xk) ≈ qn
+k+1|k,N (x′
+k+1|x′
+k, x′
+N ). (29b)
+Proof. We first prove Equation 29a. In (2n + 1)-th iteration, IPF aims to solve
+KL (qn|pn) = Eqn log qn(xN ) QN−1
+k=0 qn(xk|xk+1)
+pn(x0)pn(xN |x0) QN−1
+k=1 pn(xk|xk+1, x0)
+!
+= Eqn log qn(x0|x1)
+pn(x0)
+| {z }
+reconstruction
++ log qn(xN )
+pn(xN |x0)
+| {z }
+prior matching
++
+N −1
+X
+k=1
+log qn(xk|xk+1)
+pn(xk|xk+1, x0)
+| {z }
+denoising matching
+.
+(30)
+
+
+ Simplified Diffusion Schrödinger Bridge 21
+On the minimization of Equation 30, we have the denoising matching terms to be zero and thus Equation 29a. We can prove Equation 29b likewise.
+Lemma 2. Assume γ ̄N = 1. Given the forward trajectory x0:N ∼ pn(x0:N ) = p0n(x0) QN−1
+k=0 pn
+k+1|k(xk+1|xk) and the and backward trajectory x′
+0:N ∼ qn(x0:N ) =
+qn
+N (xN ) QN−1
+k=0 pn
+k|k+1(xk|xk+1). Assume ft(Xt) = −αXt and g(t) = √2. We have
+pn
+k|k+1,0(xk|xk+1, x0) = N (xk; μn
+k+1(xk+1, x0), σk+1I), (31a)
+qn
+k+1|k,N (x′
+k+1|x′
+k, x′
+N ) = N (x′
+k+1; μ ̃n
+k (x′
+k, x′
+N ), σ ̃k+1I), (31b)
+where
+μn
+k+1(xk+1, x0) = xk+1 + γk+1
+γ ̄k+1
+(x0 − xk+1) −  ̃h(γ ̄k, γ ̄k+1) + γk+1
+γ ̄k+1
+ ̃h(0, γ ̄k+1),
+σk+1 = 2γk+1γ ̄k
+γ ̄k+1
+, (32a)
+μ ̃n
+k (x′
+k, x′
+N ) = x′
+k + γk+1
+1 − γ ̄k
+(x′
+N − x′
+k) + l ̃(γ ̄k, γ ̄k+1) − γk+1
+1 − γ ̄k
+l ̃(γ ̄k, 1),
+σ ̃k+1 = 2γk+1(1 − γ ̄k+1)
+1 − γ ̄k
+. (32b)
+Proof. We first prove Equation 31a and Equation 32a. Denote for simplicity
+ ̃h1 =  ̃h(γ ̄k, γ ̄k+1) =
+Z γ ̄k+1
+γ ̄k
+f (xt, t) + g2(t)∇ log Ψ(xt, t) dt,
+ ̃h2 =  ̃h(γ ̄0, γ ̄k) =
+Z γ ̄k
+γ ̄0
+f (xt, t) + g2(t)∇ log Ψ(xt, t) dt,
+ ̃h3 =  ̃h(γ ̄0, γ ̄k+1) =
+Z γ ̄k+1
+γ ̄0
+f (xt, t) + g2(t)∇ log Ψ(xt, t) dt,
+(33)
+and we have
+pn
+k+1|k(xk+1|xk) = N xk+1; xk +  ̃h1, 2γk+1I ,
+pn
+k|0(xk|x0) = N xk; x0 +  ̃h2, 2γ ̄kI ,
+pn
+k+1|0(xk+1|x0) = N xk+1; x0 +  ̃h3, 2γ ̄k+1I ,
+(34)
+
+
+ 22 Z. Tang et al.
+pn
+k|k+1,0(xk|xk+1, x0)
+=
+pn
+k+1|k (xk+1 |xk )pn
+k|0 (xk |x0 )
+pn
+k+1|0(xk+1|x0)
+=
+N xk+1; xk +  ̃h1, 2γk+1I N xk; x0 +  ̃h2, 2γ ̄kI
+N xk+1; x0 +  ̃h3, 2γ ̄k+1I
+∝ exp
+
+ 
+ 
+−1
+2
+
+ 
+xk+1 − xk −  ̃h1
+2
+2γk+1
++
+xk − x0 −  ̃h2
+2
+2γ ̄k
+−
+xk+1 − x0 −  ̃h3
+2
+2γ ̄k+1
+
+ 
+
+ 
+ 
+= exp
+(
+−1
+4
+"
+1
+γk+1
++1
+γ ̄k
+x2
+k − 2 xk+1 −  ̃h1
+γk+1
++ x0 +  ̃h2
+γ ̄k
+!
+xk + C1
+#)
+= exp
+
+ 
+ 
+−1
+2
+
+ 
+h
+xk − γ ̄k
+γ ̄k+1 (xk+1 −  ̃h1) + γk+1
+γ ̄k+1 (x0 +  ̃h2)
+i2
+2γk+1 γ ̄k γ ̄k+1
++ C2
+
+ 
+
+ 
+ 
+= exp
+
+ 
+ 
+−1
+2
+
+ 
+h
+xk − xk+1 + γk+1
+γ ̄k+1 (x0 − xk+1) −  ̃h1 + γk+1
+γ ̄k+1
+ ̃h3
+i2
+2γk+1 γ ̄k γ ̄k+1
++ C2
+
+ 
+
+ 
+ 
+∝ N (xk; xk+1 + γk+1
+γ ̄k+1
+(x0 − xk+1) −  ̃h1 + γk+1
+γ ̄k+1
+ ̃h3, 2γk+1γ ̄k
+γ ̄k+1
+I),
+(35) where C1 and C2 are constants up to {x0, xk+1,  ̃h1,  ̃h2,  ̃h3}. We can also prove Equation 31b and Equation 32b likewise.
+Lemma 3. Assume that
+1 γ ̄k
+ ̃h(0, γ ̄k) ≈ 1
+γ ̄k+1
+ ̃h(0, γ ̄k+1), 1
+1 − γ ̄k
+l ̃(γ ̄k, 1) ≈ 1
+1 − γ ̄k+1
+l ̃(γ ̄k+1, 1). (36)
+Then, we have
+ ̃h(γ ̄k, γ ̄k+1) − γk+1
+γ ̄k+1
+ ̃h(0, γ ̄k+1) ≈ 0, (37a)
+l ̃(γ ̄k, γ ̄k+1) − γk+1
+1 − γ ̄k
+l ̃(γ ̄k, 1) ≈ 0. (37b)
+
+
+ Simplified Diffusion Schrödinger Bridge 23
+Proof. We first prove Equation 37a. We have
+ ̃h(γ ̄k, γ ̄k+1) − γk+1
+γ ̄k+1
+ ̃h(0, γ ̄k+1)
+= γ ̄k
+1 γ ̄k
+ ̃h(γ ̄k, γ ̄k+1) − 1
+γ ̄k
+−1
+γ ̄k+1
+ ̃h(0, γ ̄k+1)
+= γ ̄k − 1
+γ ̄k
+ ̃h(0, γ ̄k) + 1
+γ ̄k+1
+ ̃h(0, γ ̄k+1)
+≈ 0.
+(38)
+We can also prove Equation 37b likewise.
+Lemma 1, Lemma 2 and Lemma 3 together conclude the proof of Proposition 4.
+B.3 Reparameterization
+According to the forward and backward propagation formulas of DSB, we have:
+xγ ̄k+1 = F n
+γ ̄k (xγ ̄k ) + p2γk+1ε = xγ ̄k + γk+1f n
+γ ̄k (xγ ̄k ) + p2γk+1ε,
+xγ ̄k = Bn
+γ ̄k+1 (xγ ̄k+1 ) + p2γk+1ε = xγ ̄k+1 + γk+1bn
+γ ̄k+1 (xγ ̄k+1 ) + p2γk+1ε. (39)
+By Equation 11, the DSB aims to solve:
+xγ ̄k+1 = xγ ̄k +
+Z γ ̄k+1
+γ ̄k
+f (xt, t) + g2(t)∇ log Ψ(xt, t) dt + g(t)dWt
+= xγ ̄k +
+Z γ ̄k+1
+γ ̄k
+f (xt, t) + g2(t)∇ log Ψ(xt, t) dt + p2γk+1ε,
+xγ ̄k = xγ ̄k+1 +
+Z γ ̄k
+γ ̄k+1
+h
+f (xt, t) − g2(t)∇ log ˆΨ(xt, t) dt + g(t)dW ̄ t
+i
+= xγ ̄k+1 +
+Z γ ̄k
+γ ̄k+1
+f (xt, t) − g2(t)∇ log ˆΨ(xt, t) dt + p2γk+1ε,
+(40)
+where g(t) ≡ √2 in [13] and ε ∼ N (0, 1). By comparing Equation 39 and Equation 40, we find that DSB essentially learns
+fn
+γ ̄k (xγ ̄k ) ≈ 1
+γk+1
+Z γ ̄k+1
+γ ̄k
+f (xt, t) + g2(t)∇ log Ψ(xt, t) dt,
+bn
+γ ̄k+1 (xγ ̄k+1 ) ≈ 1
+γk+1
+Z γ ̄k
+γ ̄k+1
+f (xt, t) − g2(t)∇ log ˆΨ(xt, t) dt,
+(41)
+where Equation 11 can be viewed as the limit at γk+1 → 0. However, dXt can be noisy to learn as Xt is sampled from SDE, which involves iteratively
+
+
+ 24 Z. Tang et al.
+adding Gaussian noise, and the network is hard to converge in our practical settings. Given Proposition 4 and the observations in Equation 41, we propose two reparameterization methods inspired by prevalent SGMs in Section 4. Here we provide some intuitive understandings.
+Terminal Reparameterization (TR) We use two neural networks to learn F ̃αn (γ ̄k, xγ ̄k ) ≈ F ̃γ ̄nk (xγ ̄k ) and B ̃βn (γ ̄k+1, xγ ̄k+1 ) ≈ B ̃γ ̄nk+1 (xγ ̄k+1 ) s.t.
+B ̃ n
+γ ̄k+1 (xγ ̄k+1 ) ≈ x0 = xγ ̄k+1 +
+Z γ ̄0
+γ ̄k+1
+f (xt, t) − g2(t)∇ log ˆΨ(xt, t) dt,
+F ̃n
+γ ̄k (xγ ̄k ) ≈ x1 = xγ ̄k +
+Z γ ̄N
+γ ̄k
+f (xt, t) + g2(t)∇ log Ψ(xt, t) dt,
+(42)
+and the training loss is Equation 20. Intuitively, the networks learn to predict terminal points x0 ∼ pdata and x1 ∼ pprior given xt. This recovers DDPM [24] when ∇ log Ψ(xt, t) = 0.
+Flow Reparameterization (FR) We use two neural networks to learn f ̃αn (γ ̄k, xγ ̄k ) ≈ f ̃γ ̄nk (xγ ̄k ) and  ̃bβn (γ ̄k+1, xγ ̄k+1 ) ≈  ̃bγ ̄nk+1 (xγ ̄k+1 ) s.t.
+ ̃bn
+γ ̄k+1 (xγ ̄k+1 ) ≈ 1
+γ ̄k+1 − γ ̄0
+Z γ ̄0
+γ ̄k+1
+f (xt, t) − g2(t)∇ log ˆΨ(xt, t) dt,
+f ̃n
+γ ̄k (xγ ̄k ) ≈ 1
+γ ̄N − γ ̄k
+Z γ ̄N
+γ ̄k
+f (xt, t) + g2(t)∇ log Ψ(xt, t) dt,
+(43)
+and the training loss is Equation 21. Intuitively, the networks learn the vector field that points from xt to x0 and x1. This recovers Flow Matching [31] when ∇ log Ψ(xt, t) = 0.
+In summary, R-DSB learns the integration of Equation 11.
+C General Framework of Dynamic Generative Models
+The field of dynamic generative models is currently a subject of intense scholarly interest and researchers have proposed different methods, including Scorebased Generative Models (SGMs) [24, 48], Flow Matching (FM) [31], Image-toImage Schrödinger Bridge (I2SB) [32], Bridge-TTS (BTTS) [11] and Diffusion Schrödinger Bridge (DSB) [13]. We find that these methods share similarities and can be summarized with Algorithm 1 and Table 1. In practice, we find that these approaches share a general framework of training, differ only by the network prediction target and how to sample noised data xk. These methods can all be summarized by Equation 11, and to a certain extent can be regarded as special cases of solving the Schrödinger Bridge (SB) problem. For example, if we set the non-linear drift ∇ log Ψ(Xt, t) to zero, by Nelson’s duality [35] and Equation 13 we have
+
+
+ Simplified Diffusion Schrödinger Bridge 25
+Algorithm 1 Training dynamic generative models
+Input: Rounds R, Timesteps N , Data distribution pdata, Prior distribution pprior, Learning rate η
+Output: Model Mθ
+1: for n ∈ {1, . . . , R} do
+2: while not converged do 3: Sample x0 ∼ pdata, xN ∼ pprior and k ∈ {0, 1, . . . , N − 1} 4: Get noised sample xk 5: Get prediction target yk 6: Compute loss L = ∥Mθ(k, xk) − yk∥ 7: Optimize θ ← θ − η∇θL 8: end while 9: end for
+R xk yk
+SGM [48] 1 x0 + βkxN ∇ log pk
+SGM [24] 1 √α ̄kx0 + √1 − α ̄kxN xN FM [31] 1 (1 − k
+N )x0 + k
+N xN xN − x0
+I2SB [32] 1 σ ̄2
+k
+σ ̄ 2
+k +σ2
+k
+x0 + σ2
+k
+σ ̄ 2
+k +σ2
+k
+xN + σkσ ̄k
+√
+σ ̄ 2
+k +σ2
+k
+ε1
+σk (xk − x0)
+BTTS [11] 1 αkσ ̄2
+k
+σ2
+N
+x0 + α ̄kσ2
+k
+σ2
+N
+xN + αkα ̄kσk
+σN ε x0
+DSB [13] > 1 Fk−1(xk−1) + √2γkε|n=1,3,...
+Bk+1(xk+1) + √2γkε|n=2,4,...
+xk + Fk−1(xk−1) − Fk−1(xk)|n=1,3,...
+xk + Bk+1(xk+1) − Bk+1(xk)|n=2,4,...
+S-DSB > 1 Fk−1(xk−1) + √2γkε|n=1,3,...
+Bk+1(xk+1) + √2γkε|n=2,4,...
+xk−1 |n=1,3,...
+xk+1 |n=2,4,...
+TR-DSB > 1 Fk−1(xk−1) + √2γkε|n=1,3,...
+Bk+1(xk+1) + √2γkε|n=2,4,...
+x0 |n=1,3,...
+xN |n=2,4,...
+FR-DSB > 1 Fk−1(xk−1) + √2γkε|n=1,3,...
+Bk+1(xk+1) + √2γkε|n=2,4,...
+1
+γ ̄k−γ ̄0 (xk − x0)|n=1,3,...
+1
+γ ̄N −γ ̄k (xN − xk)|n=2,4,...
+Table 1: Specific choices of different methods on training rounds R, noised sample xk, and prediction target yk in Algorithm 1, where ε ∼ N (0, 1), x0 ∼ pdata, and xN ∼ pprior.
+∇ log ˆΨ(Xt, t) = −∇ log Ψ(Xt, t) + ∇ log pt(Xt)
+= ∇ log pt(Xt), (44)
+where pt is the marginal density at time t, which is indeed the score in SGM. This unification motivates us to integrate beneficial designs of SGMs into our Simplified DSB (S-DSB) and Reparameterized DSB (R-DSB), and may inspire future works.
+Finally, the training pipeline of our S-DSB is summarized in Algorithm 2, where we highlight all differences with the original DSB [13] in blue.
+
+
+ 26 Z. Tang et al.
+Algorithm 2 Simplified Diffusion Schrödinger Bridge
+1: for n ∈ {0, . . . , L} do
+2: while not converged do 3: Sample {Xj
+k }N,M
+k,j=0, where Xj
+0 ∼ pdata, and Xj
+k+1 = Fαn (k, Xj
+k) + √2γk+1ε
+4: lˆb
+n ← ∇βn
+h
+Bβn (k + 1, Xj
+k+1) − Xj
+k
+2
+i
+5: βn ← Gradient Step(lˆb
+n(βn)) 6: end while
+7: while not converged do 8: Sample {Xj
+k }N,M
+k,j=0, where Xj
+N ∼ pprior, and Xj
+k−1 = Bβn (k, Xj
+k) + √2γkε
+9: lˆf
+n+1 ← ∇αn+1
+h
+Fαn+1 (k, Xj
+k) − Xj
+k+1
+2
+i
+10: αn+1 ← Gradient Step(lˆf
+n+1(αn+1)) 11: end while 12: end for
+D Limitation
+Although we propose a simplified training target in Equation 14 and two reparameterization techniques in Section 4, we find that the convergence of DSB is still time-consuming. For example, it takes about one day and 8× V100 GPUs to train an unpaired image-to-image translation model on the AFHQ cat-dog dataset and 256 × 256 resolution, even provided two pretrained Flow Matching models as initialization. It also hinders us from scaling up experiments on larger datasets. Besides, our R-DSB is based on the assumption of Equation 26, which may cause errors in practical applications. While R-DSB presents promising performances, we believe better approximation and error analysis will be a valuable direction for future research.
+E More Results
+In Figure 11, we illustrate unconditional generation results on the CelebA [34] dataset at 64 × 64 resolution. Our method is capable of generating images from Gaussian priors (pprior = N (0, 1)). We show more results on the AFHQ dataset at 256 × 256 resolution in Figure 12. Moreover, we also scale up the image resolution to 512×512 in Figure 13. It demonstrates that our method generates realistic appearances and rich details on high-dimensional space.
+
+
+ Simplified Diffusion Schrödinger Bridge 27
+Fig. 11: Generation results on CelebA.
+Fig. 12: More results at 256 × 256 resolution on unpaired dog ↔ cat translation. Left: cat to dog; right: dog to cat. For each case, the left is the input image and the right is the translated result from our model.
+
+
+ 28 Z. Tang et al.
+Fig. 13: More results at 512 × 512 resolution on unpaired dog ↔ cat translation. Left: cat to dog; right: dog to cat. For each case, the left is the input image and the right is the translated result from our model.

@@ -1,0 +1,66 @@
+Skip to main content
+Computer Science > Computer Vision and Pattern Recognition
+arXiv:2310.05873 (cs)
+[Submitted on 9 Oct 2023 (v1), last revised 8 Oct 2024 (this version, v8)]
+Implicit Concept Removal of Diffusion Models
+Zhili Liu, Kai Chen, Yifan Zhang, Jianhua Han, Lanqing Hong, Hang Xu, Zhenguo Li, Dit-Yan Yeung, James Kwok
+View PDF
+HTML (experimental)
+Text-to-image (T2I) diffusion models often inadvertently generate unwanted concepts such as watermarks and unsafe images. These concepts, termed as the "implicit concepts", could be unintentionally learned during training and then be generated uncontrollably during inference. Existing removal methods still struggle to eliminate implicit concepts primarily due to their dependency on the model's ability to recognize concepts it actually can not discern. To address this, we utilize the intrinsic geometric characteristics of implicit concepts and present the Geom-Erasing, a novel concept removal method based on the geometric-driven control. Specifically, once an unwanted implicit concept is identified, we integrate the existence and geometric information of the concept into the text prompts with the help of an accessible classifier or detector model. Subsequently, the model is optimized to identify and disentangle this information, which is then adopted as negative prompts during generation. Moreover, we introduce the Implicit Concept Dataset (ICD), a novel image-text dataset imbued with three typical implicit concepts (i.e., QR codes, watermarks, and text), reflecting real-life situations where implicit concepts are easily injected. Geom-Erasing effectively mitigates the generation of implicit concepts, achieving the state-of-the-art results on the Inappropriate Image Prompts (I2P) and our challenging Implicit Concept Dataset (ICD) benchmarks.
+Comments:	Accepted by ECCV2024. Project Page: this https URL
+Subjects:	Computer Vision and Pattern Recognition (cs.CV)
+Cite as:	arXiv:2310.05873 [cs.CV]
+ 	(or arXiv:2310.05873v8 [cs.CV] for this version)
+ 	
+https://doi.org/10.48550/arXiv.2310.05873
+Focus to learn more
+Submission history
+From: Zhili Liu [view email]
+[v1] Mon, 9 Oct 2023 17:13:10 UTC (1,438 KB)
+[v2] Tue, 10 Oct 2023 12:32:32 UTC (1,440 KB)
+[v3] Fri, 13 Oct 2023 02:04:57 UTC (1,440 KB)
+[v4] Wed, 31 Jan 2024 02:31:03 UTC (5,200 KB)
+[v5] Wed, 3 Jul 2024 15:45:26 UTC (9,282 KB)
+[v6] Mon, 26 Aug 2024 16:55:02 UTC (12,641 KB)
+[v7] Mon, 2 Sep 2024 15:46:13 UTC (12,641 KB)
+[v8] Tue, 8 Oct 2024 02:29:45 UTC (12,641 KB)
+
+Access Paper:
+View PDFHTML (experimental)TeX SourceOther Formats
+view license
+Current browse context: cs.CV
+< prev next >
+
+newrecent2023-10
+Change to browse by: cs
+References & Citations
+NASA ADS
+Google Scholar
+Semantic Scholar
+Export BibTeX Citation
+Bookmark
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer (What is the Explorer?)
+Connected Papers Toggle
+Connected Papers (What is Connected Papers?)
+Litmaps Toggle
+Litmaps (What is Litmaps?)
+scite.ai Toggle
+scite Smart Citations (What are Smart Citations?)
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax (What is MathJax?)
+About
+Help
+Contact
+Subscribe
+Copyright
+Privacy Policy
+Web Accessibility Assistance
+
+arXiv Operational Status 
+Get status notifications via email or slack

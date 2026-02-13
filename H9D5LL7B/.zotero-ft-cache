@@ -1,0 +1,314 @@
+Lorentzian Graph Isomorphic Network
+Srinitish Srinivasan srinitish.srinivasan2021@vitstudent.ac.in School of Computer Science and Engineering Vellore Institute of Technology
+Omkumar CU omkumar.cu@vit.ac.in School of Computer Science and Engineering Vellore Institute of Technology
+Abstract
+We introduce the Lorentzian Graph Isomorphic Network (LGIN), a novel graph neural network (GNN) designed to operate in hyperbolic spaces, leveraging the Lorentzian model to enhance graph representation learning. Existing GNNs primarily operate in Euclidean spaces, which can limit their ability to capture hierarchical and multi-relational structures inherent to complex graphs. LGIN addresses this by incorporating curvature-aware aggregation functions that preserve the Lorentzian metric tensor, ensuring embeddings remain constrained within the hyperbolic space by proposing a new update rule that effectively captures both local neighborhood interactions and global structural properties, enabling LGIN to distinguish non-isomorphic graphs with expressiveness at least as powerful as the Weisfeiler-Lehman test. Through extensive evaluation across nine benchmark datasets, including molecular and protein structures, LGIN consistently outperforms or matches state-of-the-art GNNs, demonstrating its robustness and efficacy in modeling complex graph structures. To the best of our knowledge, this is the first study to extend the concept of a powerful graph neural network to Riemannian manifolds, paving the way for future advancements in hyperbolic graph learning. The code for our paper can be found at https://github.com/Deceptrax123/LGIN.
+1 Introduction
+Graphs constitute an abstract concept for modeling relationships and structures across diverse scientific and technological domains comprising of social networks(Li et al., 2023), biological systems(Zhang et al., 2021b) and knowledge graphs(Ye et al., 2022). Extracting representational information from graphs by mapping such abstraction to coordinate spaces is critical for downstream tasks such as node classification(Zhao et al., 2021), link prediction(Yun et al., 2021) and graph classification(Xie et al., 2022). Graph Neural Networks ((Kipf & Welling, 2016),(Veličković et al., 2017),(Hamilton et al., 2017)) have achieved notable success in these areas by employing a scheme of feature transformation followed by neighbor aggregation. However, these methods significantly operate in Euclidean spaces, potentially overlooking the hierarchical and multirelational characteristics inherent to complex graphs.
+The limitations of Euclidean space for modeling graphs with hierarchical and multi-scale structures have motivated researchers to explore alternative geometries. Hyperbolic geometry, in particular, has emerged as a promising alternative for graph representation learning. Unlike Euclidean space, hyperbolic space grows exponentially in volume with radius, making it naturally suited for embedding hierarchical data with minimal distortion (Zhu et al., 2023). This property enables hyperbolic embeddings to more accurately capture the intricate relationships present in hierarchical data, such as taxonomies, protein-protein interaction networks, and social hierarchies. Additionally, hyperbolic geometry requires fewer dimensions to represent such structures effectively, resulting in improved computational efficiency and better preservation of structural information (Zhang et al., 2021a).
+1
+arXiv:2504.00142v1 [cs.LG] 31 Mar 2025
+
+
+In parallel, the theoretical framework of Graph Isomorphic Networks (GINs) (Xu et al., 2018) has gained attention due to its ability to capture structural features of graphs and distinguish non-isomorphic graphs. GINs leverage injective aggregation mechanisms and readout functions to ensure that distinct graph structures map to different embeddings, making them as powerful as the Weisfeiler-Lehman (WL) test for graph isomorphism. This has made GINs a popular choice for tasks requiring high expressivity, such as molecular property prediction and community detection. Despite the successes of GINs in Euclidean space, there is a notable absence of such frameworks adapted for hyperbolic spaces, which could potentially unlock even greater representational power by harnessing the unique properties of hyperbolic geometry.
+However, extending such frameworks to the hyperbolic analogy is inherently challenging due to the need to ensure that embeddings remain constrained within the Riemannian manifold. In particular, ensuring that the operations performed during aggregation and transformation preserve the hyperbolic metric is non-trivial. Motivated by the potential to unify high expressive power with geometry suited for hierarchical data, we propose the Lorentzian Graph Isomorphic Network (LGIN). LGIN operates on the hyperboloid (Lorentzian) model of hyperbolic space. It introduces a curvature-aware aggregation mechanism designed to maintain injectivity while effectively leveraging the negative curvature to capture both local neighborhood patterns and global graph structures. We show that LGIN enhances discriminative capability compared to Euclidean GINs, particularly for graphs with underlying hierarchical or complex relational patterns, by integrating structural isomorphism testing principles with the geometric inductive biases of hyperbolic space.
+Therefore, we summarize our key contributions as follows:
+• To the best of our knowledge, this is the first study that introduces an isomorphic Graph Neural Network(GNN) that incorporates both constant and variable curvature information.
+• We show that GNNs built using the hyperbolic-tangent-hyperbolic approach while preserving the metric tensor at the origin has the ability to distingush non-isomorphic graphs.
+• We propose Lorentzian Graph Isomorphic Netork(LGIN), with a modified cardinalityscaled aggregation rule to preserve the cardinality information of multisets, as a more powerful alternative to Graph Isomorphic Network(GIN).
+• We conduct several experiments across 9 benchmark datasets ranging from MoleculeNet to TU benchmarks and show that our approach consistently outperforms or matches most baselines.
+2 Related Work
+In this section we describe the related work with respect to Hyperbolic GNNs, mathematical frameworks explaining powerful GNNs and applications of hyperbolic graph neural networks.
+2.1 Advances in Hyperbolic Graph Neural Networks
+Hyperbolic graph neural networks, as discussed above, have emerged as a powerful method for modeling complex and hierarchical structures. (Liu et al., 2019) generalized graph neural networks to be manifoldagnostic and demonstrated that hyperbolic graph neural networks are more efficient at capturing structural properties than their Euclidean counterpart. (Khatir et al., 2022) proposed the Poincare disk model as the search space to apply all approximations on the disk, thus eliminating the need for inter-space transformations. This framework introduces a hyperbolic normalization layer that simplifies the entire hyperbolic model to a Euclidean model cascaded with the normalization layer, maintaining the advantages of both geometric approaches. (Fu et al., 2023) introduced ACE-HGNN which dynamically learns the optimal curvature based on the input graph and downstream tasks. Using a multi-agent reinforcement learning framework with two agents—ACE-Agent and HGNN-Agent—for learning curvature and node representations respectively, this model adapts to the specific hierarchical structures present in different graphs rather than using a manually fixed curvature value. (Zhang et al., 2021a) introduced Lorentzian Graph Convolutional Networks(LGCN) for modeling hierarchical architectures. They design a neighborhood aggregation method based on the centroid of Lorentzian distance to constrain embeddings within the hyperboloid. Further, they theoretically
+2
+
+
+prove that some proposed graph operations are equivalent to those defined in other hyperbolic models such as the Poincare ball model. (Choudhary et al., 2023) introduced H-GRAM, a meta-learning framework specifically designed for hyperbolic graph neural networks. The model learns transferable information from local subgraphs in the form of hyperbolic meta gradients and label hyperbolic protonets thereby enabling faster learning over new tasks dealing with disjoint subgraphs, thus addressing the generalization challenge.
+2.2 Applications of Hyperbolic Graph Neural Networks
+(Ramirez et al., 2025) used a Fully Hyperbolic Graph Neural Network(FHGNN) to embed functional brain connectivity graphs derived from magnetoencephalography (MEG) data into low dimensions on a Lorentz model of hyperbolic space. (Wu et al., 2021) developed a graph-based Quantitative Structure-Activity Relationship(QSAR) method by building a hyperbolic relational graph convolution network. It leverages both molecular structure and molecular descriptors to achieve state-of-the-art performance on 11 drug discoveryrelated datasets. (Bao et al., 2025) introduced Hyperbolic Graph Convolutional Network-based Knowledge Graph Embedding (HGCGE) which addresses challenges in traditional GCN-based KGE methods, such as oversmoothing and high distortion in Euclidean space. It employs GCN operations in hyperbolic space with Möbius transformations to embed entities and relationships in the Poincaré model, enhancing hierarchical data representation. The proposed scoring function improves entity distinction across relationships, achieving superior performance on multiple datasets, even at low dimensions and training rounds.
+2.3 Graph Expressiveness
+(Xu et al., 2018) presented a theoretical framework for analyzing the expressive power of GNNs. Their analysis demonstrated that popular GNN variants such as Graph Convolutional Networks and GraphSAGE cannot distinguish certain simple graph structures, limiting their discriminative capabilities. The researchers then developed a simple architecture—the Graph Isomorphism Network—that is provably the most expressive among the class of message-passing GNNs and as powerful as the 1-dimensional Weisfeiler-Lehman(WL) graph isomorphism test. (Hevapathige & Wang, 2023) showed that partitioning a graph into sub-graphs that preserve structural properties provides a powerful means to exploit interactions among different structural components of the graph. The researchers proposed Graph Partitioning Neural Networks(GPNNs) that combines structural interactions via permutation invariant graph partitioning to enhance graph representation learning.
+3 Preliminaries
+In this section, we formally define the key terms and establish the theoretical framework underlying our proposed work. For a deeper understanding of geometric topology, refer to (Martelli, 2016).
+3.1 Graph Preliminaries
+Graph. Consider the definition of a Graph G = (V, E). Let V be the set of vertices {v1, v2, ...vnv } and E be the set of edges {e1, e2, .....ene }. nv, ne are the number of vertices and edges in G respectively. Each vertex v is characterized by an initial n dimensional vector depending on the problem set. The problem set may be a set of molecular graphs, protein networks, citation networks etc.
+Weisfeiler-Lehman(WL) Test. The Weisfeiler-Lehman (WL) test is a graph isomorphism heuristic that iteratively refines node representations based on local neighborhood aggregation. Given a graph, the test assigns initial labels to nodes and updates them iteratively by incorporating labels from neighboring nodes. This process continues until convergence, producing a unique representation for each node that captures its structural role within the graph(Morris et al., 2019). The WL test is widely used to distinguish nonisomorphic graphs efficiently and serves as a foundation for many graph neural networks (GNNs)(Xu et al., 2018).
+3
+
+
+3.2 Definitions of Key Topological Concepts
+Definition 1 (Differential Manifold). A differential manifold is a topological space M that is locally homeomorphic to Rn and consists of a smooth structure that allows for the differentiation of functions. In other words, there is a covering {Ui} of M consisting of open sets Ui homeomorphic to open sets Vi in Rn.
+Definition 2 (Tangent Space). Let M be a differential manifold of dimension n. We define for every point p ∈ M a n dimensional vector space TpM called the tangent space. The space TpM may be defined briefly as the set of all curves γ : (−a, a) → M such that γ(0) = p and a > 0 is arbitrary, considered up to some equivalence relation. The relation is that we identify two curves, that read on some chart (Ui, φ) have the same tangent vector at φi(p). The relationship between the hyperbolic space and the corresponding tangent space is called a map.
+Definition 3 (Metric Tensor). A metric tensor on a differentiable manifold M assigns a smoothly varying inner product to each tangent space TpM at every point p ∈ M. A metric tensor on M is a smooth, symmetric, bilinear map
+g : TM×TM → R
+such that for each point p ∈ M, the restriction gp to the tangent space TpM satisfies:
+gp(X, Y ) = gp(Y, X), ∀X, Y ∈ TpM,
+where gp is a symmetric, positive-definite bilinear form. This tensor defines an inner product structure on each tangent space, allowing the measurement of angles, lengths, and distances on M. Based on this, we can define that the Riemannian manifold is a differentiable manifold with a metric tensor that is positive semi-definite at every point.
+Definition 4 (Curvature). The curvature of a Riemannian manifold (M, g) is a mathematical entity that measures how distorted the metric tensor g is when compared to the Euclidean structure on Rn. Let (M, g) be a Riemannian manifold, where g is the metric tensor. The Riemann curvature tensor is defined as
+R(X, Y )Z = ∇X ∇Y Z − ∇Y ∇X Z − ∇[X,Y ]Z, (1)
+for vector fields X, Y, Z on M, where ∇ is the Levi-Civita connection.
+The sectional curvature at a point p for a 2-plane σ spanned by {X, Y } in the tangent space TpM is given by
+K(X, Y ) = ⟨R(X, Y )Y, X⟩g
+∥X∥g2∥Y ∥g2 − ⟨X, Y ⟩g2
+. (2)
+For a Lorentzian space with constant curvature K, the Riemann tensor satisfies
+R(X, Y )Z = K (⟨Y, Z⟩gX − ⟨X, Z⟩gY ) . (3)
+Definition 5 (Isometry). A diffeomorphism f : M → N between two Riemannian manifolds (M, g) and (N , h) is an isometry if it preserves the scalar product i.e, the equality,
+⟨v, w⟩ = ⟨dfp(v), dfp(w)⟩ (4)
+holds for all p ∈ M and every pair of vectors v, w ∈ TpM. The symbol ⟨, ⟩ indicates the scalar products in TpM and Tf(p)N .
+Definition 6 (Parallel Transport). Parallel transport is a geometric operation that moves a vector along a curve on a manifold while preserving its inner product with tangent vectors along the path. In the context of hyperbolic geometry, parallel transport ensures that vectors remain tangent to the hyperboloid model while accounting for the manifold’s curvature. It is a way to slide frames along geodesics.
+4
+
+
+3.3 Hyperboloid Model
+In the hyperboloid model, we define Hn as the set of all points of norm -1 in Rn+1, equipped with the Lorentzian scalar product. The Lorentzian scalar product on Rn+1 is given by
+⟨x, y⟩η = −x0y0 +
+n
+∑
+i=1
+xiyi (5)
+The Lorentz model of the hyperbolic space, is formally defined as follows:
+Hn = {x ∈ Rn+1 | ⟨x, x⟩η = −1, x0 > 0} (6)
+The set of points x with ⟨x, x⟩ is a hyperboloid with two sheets. As mentioned earlier, maps form the relationship between the hyperbolic space and the corresponding tangent space. Formally, for a point p ∈ M, the exponential map expp : TpM −→ M
+is defined as follows: A vector v ∈ TpM determines a maximal geodesic γv : R → M with γv(0) = p and γ′v(0) = v. We set expp(v) = γv(1). The logarithmic map logp is the inverse of the exponential map. In the hyperboloid space, the exponential and logarithmic maps are given by equations 7 and 8 respectively.
+expp(v) = cosh
+(√|c|∥v∥η
+)
+p + sinh
+(√|c|∥v∥η
+)v
+∥v∥η
+(7)
+where p ∈ Hn, c is the curvature and v ∈ TpHn is a tangent vector at p.
+logp(q) = dH(p, q)
+sinh
+(√|c|dH(p, q)
+)
+(
+q − cosh
+(√|c|dH(p, q)
+)
+p
+)
+(8)
+where
+dH(p, q) = 1
+√|c| cosh−1(−⟨p, q⟩η) (9)
+is the hyperbolic distance in the Lorentzian space. The parallel transport is given by:
+PTc
+p→q(v) = v − c⟨q, v⟩η
+1 + c⟨p, q⟩η
+(p + q) (10)
+4 Proposed Framework
+In this section, we define a powerful Graph Neural Network(GNN) in the hyperbolic space. We show that it can distinguish different graph structures by mapping them to different embeddings in the hyperboloid model and is as powerful as the WL test.
+4.1 Overview
+Theorem 1. Let G1 = (V1, E1) and G2 = (V2, E2) be two graphs. Consider a smooth Lorentzian manifold (M, g) of constant negative curvature c < 0, where g is the Lorentzian metric tensor. Suppose we define an embedding Φ : G → M (11)
+such that each vertex v ∈ V is mapped into the hyperboloid model of Hn . If G1 and G2 are non-isomorphic, then their embeddings Φ(G1) and Φ(G2) cannot be related by a global isometry f of (M, g), i.e., there does not exist a diffeomorphism f : M → M (12)
+such that f ∗g = g and f ◦ Φ(G1) = Φ(G2) (13)
+5
+
+
+We present the proof for theorem 1 in the appendix section. Therefore, we can demonstrate that a graph neural network mapping node features onto a hyperboloid can achieve representational power comparable to the Weisfeiler-Lehman (WL) test. Further, the following must be taken into consideration:
+• A maximally powerful graph neural network requires both the neighborhood aggregation and readout functions to be injective(Xu et al., 2018).
+• Additionally, geometric consistency i.e the preservation of metric tensors of the hyperboloid model needs to be ensured.
+To account for the above considerations, we have provided a detailed explanation in the following sections.
+4.2 Injectivity of Lorentz Transformation
+To ensure the injectivity of the Lorentz transformation, we follow the hyperbolic-tangential-hyperbolic approach (Zhang et al., 2021a). This is because the tangent space at a point is locally isometric to Euclidean space. The Lorentz transformation used in our proposed method is given by:
+W ⊗L
+c xL := expc
+o
+(
+0, W logc
+o
+(xL)
+[1:n]
+)
+, (14)
+where xL ∈ Lcn, W ∈ Rd×n. This method ensures the first coordinate is consistently zero, signifying that the resultant transformation is invariably within the tangent space at o. From (Amir et al., 2023), we have the following result for the Euclidean space: Consider shallow neural networks f : Rd → Rm of the form
+f (x; A, b) = σ(Ax + b), A ∈ Rm×d, b ∈ Rm, (15)
+with the activation function σ : R → R applied entrywise to Ax + b. Suppose that σ is analytic and non-polynomial; such activations include the sigmoid, softplus, tanh, swish, and sin. For a large enough m, such networks f (x; A, b) with random parameters A, b are moment-injective on M≤n(Ω) and on S≤n(Ω); namely, their induced moment functions fˆ are injective. This holds for various natural choices of Ω. fˆ is given by f : Ω → Rm that induces a moment function
+fˆ : M≤n(Ω) → Rm
+defined by
+fˆ(μ) =
+∫
+Ω
+f (x)dμ(x) =
+n
+∑
+i=1
+wif (xi), where μ =
+n
+∑
+i=1
+wiδxi . (16)
+Now, extending the theory from eq.16 to the hyperboloid, we have the transformation defined in eq.14, where xL is first mapped to the tangent space. We already know that the tangent space at a point is locally isometric to the Euclidean space. Therefore, by the isometry, the moment function in this transformed space becomes:
+fˆ(μ) =
+∫
+Lc
+f (xL)dμ(xL) =
+n
+∑
+i=1
+wif (xL
+i ), μ =
+n
+∑
+i=1
+wiδxL
+i . (17)
+Therefore, a shallow(2-Layer) Lorentzian network based on transformation equation 14 with a pointwise Tanh/Sigmoid function is moment injective.
+4.3 Lorentzian Graph Isomorphic Network
+Based on the conditions mentioned in section 4.1, proof in section 4.2 and corollary 6 in (Xu et al., 2018), we finally define the update rule for the Lorentzian Graph Isomorphic Network(LGIN) as follows:
+xLk = LTk(expc
+o((1 + εk).PxLk−1 −→T (logc
+o(xLk−1 )) + logc
+o(T (xLk−1 )))) (18)
+6
+
+
+where xL is a point in the Lorentzian space, LT represents the Lorentz transformation which is a 2-layer model with Tanh activation, k is the step and T is the output of neighbor aggregation given by the cardinality aware Lorentz centroid method as follows:
+T (xLk−1
+i ) :=
+√c ∑
+j∈Ni αij xL
+j
+(1 + |Ni|)∥∑
+j∈Ni αij xL
+j ∥L
+(19)
+where αij refers to weights with squared hyperbolic distance to lay emphasis on geometry. It is given by:
+αij = softmaxj∈N (i)
+(−d2
+c (xL
+i , xL
+j )) (20)
+The pseudo code for the above rules is given in algorithm 1. Each variable is described in the appendix section.
+Algorithm 1 LorentzGIN Forward Pass Require: manif old, eps, c_in, nn, x, adj 1: x ← manif old.exp_map_zero(x, c_in) 2: if x is Tensor then 3: x ← (x, x) 4: end if
+5: out ← aggregate(x[0], adj) 6: xr ← x[1]
+7: if xr ̸= None then
+8: log_out ← manif old.log_map_zero(out, c = c_in) 9: log_x_r ← manif old.log_map_zero(xr, c = c_in) 10: pt_xr ← manif old.ptransp(xr, out, log_x_r, c = c_in) 11: out ← manif old.exp_map_zero(log_out + (1 + eps) × pt_xr, c = c_in) 12: end if 13: return nn(out)
+4.3.1 Justification of Lorentz Centroid
+Equation 19 ensures embeddings reside on the hyperbolic manifold after aggregation i.e the preservation of metric tensors. Normalization prevents the node embeddings from collapsing into the origin or drifting too far. However, since attention-based aggregators are usually not strictly injective, it may lead to nonisomorphic graphs having the same embeddings. To mitigate this, we modify the Lorentz aggregation function to preserve the cardinality information of multisets during aggregation which can approximate the injective property(Zhang & Xie, 2020).
+4.3.2 Justification of Parallel Transport
+Parallel Transport in equation 18 preserves the hyperbolic structure and avoids distorting embeddings. The embeddings of two neighboring nodes reside in different tangent spaces because each node has its own local geometry due to curvature. A direct aggregation of features between nodes would lead to the mixing of incompatible spaces, thereby leading to node representations that are not completely representative of that node. We provide an empirical analysis by comparing the model’s performance with and without parallel transport in the following section.
+5 Experiments
+In this section, we discuss the experimental conditions and results obtained from testing the Lorentzian Graph Isomorphic Network over various datasets.
+7
+
+
+Table 1: Performance of GNN Variants against LGIN. The best score for all variants are marked in bold along with LGINs comparable with GIN variants based on a paired t-test with significance level of 10%. Models performing significantly better are marked in bold with an asterisk. Evaluation standard defined as per (Xu et al., 2018)
+Datasets MUTAG PROTEINS PTC NCI1 # graphs 188 1113 344 4110 # classes 2 2 2 2 Avg # nodes 17.9 39.1 25.5 29.8 WL subtree 90.4 ± 5.7 75.0 ± 3.1 59.9 ± 4.3 86.0 ± 1.8* DCNN 67.0 61.3 56.6 62.6 PATCHYSAN 92.6 ± 4.2* 75.9 ± 2.8 60.0 ± 4.8 78.6 ± 1.9 DGCNN 85.8 75.5 58.6 74.4 AWL 87.9 ± 9.8 - - SUM-MLP (GIN-0) 89.4 ± 5.6 76.2 ± 2.8 64.6 ± 7.0 82.7 ± 1.7 SUM-MLP (GIN-ε) 89.0 ± 6.0 75.9 ± 3.8 63.7 ± 8.2 82.7 ± 1.6 SUM-1-LAYER 90.0 ± 8.8 76.2 ± 2.6 63.1 ± 5.7 82.0 ± 1.5 MEAN-MLP 83.5 ± 6.3 75.5 ± 3.4 66.6 ± 6.9 80.9 ± 1.8 MEAN-1-LAYER (GCN) 85.6 ± 5.8 76.0 ± 3.2 64.2 ± 4.3 80.2 ± 2.0 MAX-MLP 84.0 ± 6.1 76.0 ± 3.2 64.6 ± 10.2 77.8 ± 1.3 MAX-1-LAYER (GraphSAGE) 85.1 ± 7.6 75.9 ± 3.2 63.9 ± 7.7 77.7 ± 1.5 SUM-Lorentz (LGIN Variable Curvature) 88.1 ± 5.0 79.1 ± 4.4* 68.2 ± 5.1* 82.3 ± 1.5 SUM-Lorentz (LGIN Fixed Curvature) 90.6 ± 3.9 76.9 ± 2.5 68.4 ± 5.2* 83.2 ± 1.6
+5.1 Experimental conditions
+5.1.1 Datasets
+For our experiments, we use 6 Bioinformatics datasets and 3 MoleculeNet datasets. The bio informatics datasets include, namely, Proteins, Mutag, NCI1, PTC, Enzymes, and DD(Yanardag & Vishwanathan, 2015). The MoleculeNet datasets include, namely, BBBP, BACE and HIV(Wu et al., 2018). The initial features of the Bioinformatics datasets are mostly the node degree, while for MoleculeNet, each node is assigned 9 features such as atomic number, chirality, formal charge, or whether the atom is in a ring or not.
+5.1.2 Hyperparameters and model configuration
+In our proposed method, we evaluate on sets of variants. One with a constant curvature c and the other with variable curvature, which is essentially a trainable parameter. All initial curvatures were set to 4. The trainable parameter ε was initially set to 0.1. We use the Riemannian Adam(Bécigneul & Ganea, 2018) to train our model with a cosine annealing learning rate scheduler with warm restarts. We use the same model architecture for all datasets, which is a 3-layer Lorentzian Graph Isomorphic Network predicting 128, 256 and 512 features respectively. To ensure stability of gradient flow, we make use of gradient clip after gradient computation at each step. The number of Lorentz Transformation layers have been set to 2.
+5.2 Evaluations
+In this section, we compare our framework against several baselines as mentioned in the previous section. We mainly compare our model with Graph Isomorphic Network(GIN), a powerful GNN framework defined for the Euclidean space and its variants. Unless otherwise mentioned, for Bioinformatics datasets, we record the mean and standard deviation of the test accuracy on 10 splits. For MoleculeNet datasets, we consider the average accuracy on 3 splits.
+8
+
+
+5.2.1 Evaluations against Graph Isomorphic Network
+Table 1 contains the performance of our model against powerful baselines. The performance of various GNN variants against LGIN was evaluated across four datasets: MUTAG, PROTEINS, PTC, and NCI1.The proposed LGIN variants demonstrate competitive performance across diverse datasets. Notably, LGIN with Fixed Curvature achieves the highest accuracy on the MUTAG dataset (90.6 ± 3.9) and the PTC dataset (68.4 ± 5.2), outperforming several existing models. Furthermore, LGIN with Variable Curvature attains the best performance on the PROTEINS dataset (79.1 ± 4.4), showing statistically significant improvement (p < 0.1). In the case of the NCI1 dataset, the Weisfeiler-Lehman (WL) subtree kernel achieved the best performance with 86.0 ± 1.8, while the PATCHYSAN model showed competitive performance on the MUTAG dataset with 92.6 ± 4.2. Across other datasets, several GIN variants such as SUM-MLP (GIN-ε) and SUM-1-LAYER also reported consistent results. The performance gains observed in LGIN, particularly in datasets with varying node sizes and graph complexities, underscore its ability to effectively model hierarchical relationships by leveraging Lorentzian geometry. Overall, the results demonstrate that incorporating curvature into Graph Isomorphism Networks enhances representational capacity, enabling more effective learning across diverse graph structures.
+5.2.2 Performance on Enzymes, Proteins and DD against state of the art graph neural networks
+Table 2 presents the detailed performance analysis across the Proteins, Enzymes, and DD datasets. We evaluate multiple models, including MLP, Vanilla GCN, GraphSage, MoNet, GAT, GatedGCN, GIN, RingGNN, 3WLGNN, and our proposed methods LGIN Variable and LGIN Fixed. On the Enzymes dataset, our LGIN Fixed model achieves the highest test accuracy of 71.50%, outperforming other models. The LGIN Variable variant follows closely with a test accuracy of 67.38%, showcasing the robustness of our method. For the DD dataset, GAT achieves the best test accuracy of 75.90%, surpassing other approaches. Our LGIN Variable model achieves a test accuracy of 73.73%, demonstrating its competitiveness and stability. In the Proteins dataset, our LGIN Variable model attains the highest accuracy at 79.10%, with the LGIN Fixed model following closely with 76.90%. This indicates the superior generalization capabilities of our proposed approach compared to existing models. Across all datasets, the proposed LGIN models show remarkable performance, consistently achieving either the best or second-best results, highlighting their ability to model complex graph structures effectively.
+5.2.3 Performance on MoleculeNet Datasets
+Table 3 presents the performance analysis of our framework on the MoleculeNet datasets, comparing it against various baseline models, including GAT, GIN, and DGN, as well as their enhanced versions incorporating ECFP and MFP features. Results are reported across three datasets: BACE, BBBP, and HIV.
+Our method achieves state-of-the-art performance on multiple datasets. Specifically, on the BBBP dataset, LGIN Fixed c achieves the highest score of 91.54, outperforming all other models, while LGIN Variable c secures the second-best score of 89.08. On the BACE dataset, DGCL achieves the best performance with 91.48, closely followed by LGIN Variable c with 90.30, surpassing the performance of GIN-based models such as GIN-ECFP (82.84*) and GIN-MFP (82.03*). Similarly, for the HIV dataset, DGCL attains the highest score of 81.49, with GAT-MFP achieving the second-best score of 76.47.
+Furthermore, our LGIN models consistently outperform the baseline GIN models across all datasets, demonstrating the effectiveness of leveraging Lorentzian geometry for molecular representation learning. These results highlight the robustness of our approach in capturing complex molecular structures, thereby achieving superior performance in molecular property prediction tasks.
+5.2.4 Empirical Analysis on Curvature and Parallel Transport
+In this section, we provide an ablation study on parallel transport and curvatures on the BBBP dataset. As mentioned earlier, in eq.18, we use parallel transport between 2 tangent spaces to ensure geometric consistency and numerical stability. We perform an analysis by considering the following equation i.e eq.21
+9
+
+
+Table 2: Detailed Analysis on Proteins, Enzymes and DD. The best accuracy on the test splits are marked in bold while the second best score is underlined. Hyphen indicates the scores were not reported by the authors owing to out-of-memory(OOM) issues.
+Model L Test Acc. ± s.d. Train Acc. ± s.d. #Epoch ENZYMES
+MLP 4 55.833±3.516 93.062±7.551 332.30 vanilla GCN 4 65.833±4.610 97.688±3.064 343.00 GraphSage 4 65.000±4.944 100.000±0.000 294.20 MoNet 4 63.000±8.090 95.229±5.864 333.70 GAT 4 68.500±5.241 100.000±0.000 299.30 GatedGCN 4 65.667±4.899 99.979±0.062 316.80 GIN 4 65.333±6.823 100.000±0.000 402.10 RingGNN 2 18.667±1.795 20.104±2.166 337.30 3WLGNN 3 61.000±6.799 98.875±1.571 381.80 LGIN Variable c(Ours) 3 67.380±4.100 100.000±0.000 500.00 LGIN Fixed c(Ours) 3 71.500±1.600 100.000±0.000 500.00 DD
+MLP 4 72.239±3.854 73.816±1.015 371.80 vanilla GCN 4 72.758±4.083 100.000±0.000 266.70 GraphSage 4 73.433±3.429 75.289±2.419 267.20 MoNet 4 71.736±3.365 81.003±2.593 252.60 GAT 4 75.900±3.824 95.851±2.575 201.60 GatedGCN 4 72.918±2.090 82.796±2.242 300.70 GIN 4 71.910±3.873 99.851±0.136 275.70 RingGNN 2 - - 3WLGNN 3 - - LGIN Variable c(Ours) 3 73.730±3.200 100.000±0.000 297.00 LGIN Fixed c(Ours) 3 70.300±3.500 100.000±0.000 281.00 PROTEINS
+MLP 4 75.644±2.681 79.847±1.551 244.20 vanilla GCN 4 76.098±2.406 81.387±2.451 350.90 GraphSage 4 75.289±2.419 85.182±3.489 245.40 MoNet 4 76.452±2.898 78.206±0.548 306.10 GAT 4 76.277±2.410 83.186±2.000 344.10 GatedGCN 4 76.363±2.904 79.471±0.695 293.80 GIN 4 74.117±3.357 75.351±1.267 420.90 RingGNN 2 67.564±7.551 67.564±7.551 450.10 3WLGNN 3 61.712±4.859 62.427±4.548 211.40 LGIN Variable c(Ours) 3 79.100±4.400 81.750±10.030 1000.00 LGIN Fixed c(Ours) 3 76.900±2.500 84.180±5.530 700.00
+as well, and show the importance of parallel transport by measuring the performance difference.
+xLk = LTk(expc
+o((1 + εk). logc
+o(xLk−1 ) + logc
+o(T (xLk−1 )))) (21)
+figure 1 represents the AUC scores for curvature and parallel transport modes while provides a direct comparison between the results of the two update rules. As noted, cases where parallel transport is employed to the first term of eq.21 perform considerably better. We hypothesize that this is probably due to the fact that parallel transport aligns embeddings which were otherwise distorted due to aggregation, despite all transformations taking place with respect to the origin. With respect to curvature type, there is no significant difference between fixed and variable curvature models, in line with evaluations described in previous sections and (Zhang et al., 2021a).
+10
+
+
+Table 3: Analysis of our framework’s performance on MoleculeNet baselines. The best score is marked in bold and the second best score is underlined. GIN models have been marked with an asterisk to indicate that our proposed model significantly outperforms GIN baselines. Hyphen indicates OOM on an 8GB M1 Macbook Pro.
+Datasets BACE BBBP HIV #Molecule 1513 2039 41127 #Tasks 1 1 1 GAT 83.60 65.48 69.26 GIN 73.38∗ 61.25∗ 60.33∗ DGN 79.88 65.01 75.63 GAT-ECFP 90.99 67.71 75.14 GIN-ECFP 82.84∗ 64.36∗ 54.92∗ DGN-ECFP 89.56 64.17 73.19 GAT-MFP 89.84 71.70 76.47 GIN-MFP 82.03∗ 71.04∗ 62.68∗ DGCL 91.48 73.78 81.49 LGIN Variable c(Ours) 90.30 89.08 LGIN Fixed c(Ours) 86.56 91.54 73.27
+Figure 1: Abalation Study on Curvature and Parallel Transport on BBBP
+References
+Tal Amir, Steven Gortler, Ilai Avni, Ravina Ravina, and Nadav Dym. Neural injective functions for multisets, measures and graphs via a finite witness theorem. Advances in Neural Information Processing Systems, 36:42516–42551, 2023.
+11
+
+
+Liming Bao, Yan Wang, Xiaoyu Song, and Tao Sun. Hgcge: hyperbolic graph convolutional networks-based knowledge graph embedding for link prediction. Knowledge and Information Systems, 67(1):661–687, 2025.
+Gary Bécigneul and Octavian-Eugen Ganea. Riemannian adaptive optimization methods. arXiv preprint arXiv:1810.00760, 2018.
+Nurendra Choudhary, Nikhil Rao, and Chandan Reddy. Hyperbolic graph neural networks at scale: A meta learning approach. Advances in Neural Information Processing Systems, 36:44488–44501, 2023.
+Xingcheng Fu, Jianxin Li, Jia Wu, Jiawen Qin, Qingyun Sun, Cheng Ji, Senzhang Wang, Hao Peng, and Philip S Yu. Adaptive curvature exploration geometric graph neural network. Knowledge and Information Systems, 65(5):2281–2304, 2023.
+Will Hamilton, Zhitao Ying, and Jure Leskovec. Inductive representation learning on large graphs. Advances in neural information processing systems, 30, 2017.
+Asela Hevapathige and Qing Wang. Uplifting the expressive power of graph neural networks through graph partitioning. arXiv preprint arXiv:2312.08671, 2023.
+Mehrdad Khatir, Nurendra Choudhary, Sutanay Choudhury, Khushbu Agarwal, and Chandan K Reddy. A unification framework for euclidean and hyperbolic graph neural networks. arXiv preprint arXiv:2206.04285, 2022.
+Thomas N Kipf and Max Welling. Semi-supervised classification with graph convolutional networks. arXiv preprint arXiv:1609.02907, 2016.
+Xiao Li, Li Sun, Mengjie Ling, and Yan Peng. A survey of graph neural network based recommendation in social networks. Neurocomputing, 549:126441, 2023.
+Brian Godwin Lim, Galvin Brice Lim, Renzo Roel Tan, and Kazushi Ikeda. Contextualized messages boost graph representations. arXiv preprint arXiv:2403.12529, 2024.
+Qi Liu, Maximilian Nickel, and Douwe Kiela. Hyperbolic graph neural networks. Advances in neural information processing systems, 32, 2019.
+Bruno Martelli. An introduction to geometric topology. arXiv preprint arXiv:1610.02592, 2016.
+Christopher Morris, Martin Ritzert, Matthias Fey, William L Hamilton, Jan Eric Lenssen, Gaurav Rattan, and Martin Grohe. Weisfeiler and leman go neural: Higher-order graph neural networks. In Proceedings of the AAAI conference on artificial intelligence, volume 33, pp. 4602–4609, 2019.
+Hugo Ramirez, Davide Tabarelli, Arianna Brancaccio, Paolo Belardinelli, Elisabeth B Marsh, Michael Funke, John C Mosher, Fernando Maestu, Mengjia Xu, and Dimitrios Pantazis. Fully hyperbolic neural networks: A novel approach to studying aging trajectories. IEEE Journal of Biomedical and Health Informatics, 2025.
+Petar Veličković, Guillem Cucurull, Arantxa Casanova, Adriana Romero, Pietro Lio, and Yoshua Bengio. Graph attention networks. arXiv preprint arXiv:1710.10903, 2017.
+Zhenqin Wu, Bharath Ramsundar, Evan N Feinberg, Joseph Gomes, Caleb Geniesse, Aneesh S Pappu, Karl Leswing, and Vijay Pande. Moleculenet: a benchmark for molecular machine learning. Chemical science, 9(2):513–530, 2018.
+Zhenxing Wu, Dejun Jiang, Chang-Yu Hsieh, Guangyong Chen, Ben Liao, Dongsheng Cao, and Tingjun Hou. Hyperbolic relational graph convolution networks plus: a simple but highly efficient qsar-modeling method. Briefings in Bioinformatics, 22(5):bbab112, 2021.
+Yu Xie, Yanfeng Liang, Maoguo Gong, A Kai Qin, Yew-Soon Ong, and Tiantian He. Semisupervised graph neural networks for graph classification. IEEE Transactions on Cybernetics, 53(10):6222–6235, 2022.
+Keyulu Xu, Weihua Hu, Jure Leskovec, and Stefanie Jegelka. How powerful are graph neural networks? arXiv preprint arXiv:1810.00826, 2018.
+12
+
+
+Pinar Yanardag and SVN Vishwanathan. Deep graph kernels. In Proceedings of the 21th ACM SIGKDD international conference on knowledge discovery and data mining, pp. 1365–1374, 2015.
+Zi Ye, Yogan Jaya Kumar, Goh Ong Sing, Fengyan Song, and Junsong Wang. A comprehensive survey of graph neural networks for knowledge graphs. IEEE Access, 10:75729–75741, 2022.
+Seongjun Yun, Seoyoon Kim, Junhyun Lee, Jaewoo Kang, and Hyunwoo J Kim. Neo-gnns: Neighborhood overlap-aware graph neural networks for link prediction. Advances in Neural Information Processing Systems, 34:13683–13694, 2021.
+Shuo Zhang and Lei Xie. Improving attention mechanism in graph neural networks via cardinality preservation. In IJCAI: proceedings of the conference, volume 2020, pp. 1395, 2020.
+Yiding Zhang, Xiao Wang, Chuan Shi, Nian Liu, and Guojie Song. Lorentzian graph convolutional networks. In Proceedings of the web conference 2021, pp. 1249–1261, 2021a.
+Zaixi Zhang, Qi Liu, Hao Wang, Chengqiang Lu, and Chee-Kong Lee. Motif-based graph self-supervised learning for molecular property prediction. Advances in Neural Information Processing Systems, 34:1587015882, 2021b.
+Tianxiang Zhao, Xiang Zhang, and Suhang Wang. Graphsmote: Imbalanced node classification on graphs with graph neural networks. In Proceedings of the 14th ACM international conference on web search and data mining, pp. 833–841, 2021.
+Zihong Zhu, Weiyu Zhang, Xinchao Guo, and Xinxiao Qiao. Lorentzian graph convolution networks for collaborative filtering. In 2023 International Joint Conference on Neural Networks (IJCNN), pp. 1–8. IEEE, 2023.
+A Proof of Theorem 1
+In this section, we present the proof to theorem 1. Before presenting the proof, we recall the theorem as
+Theorem. Let G1 = (V1, E1) and G2 = (V2, E2) be two graphs. Consider a smooth Lorentzian manifold (M, g) of constant negative curvature c < 0, where g is the Lorentzian metric tensor. Suppose we define an embedding Φ : G → M (22)
+such that each vertex v ∈ V is mapped into the hyperboloid model of Hn . If G1 and G2 are non-isomorphic, then their embeddings Φ(G1) and Φ(G2) cannot be related by a global isometry f of (M, g), i.e., there does not exist a diffeomorphism f : M → M (23)
+such that f ∗g = g and f ◦ Φ(G1) = Φ(G2) (24)
+Proof. Assume, for contradiction, that such a diffeomorphism f : M → M exists, satisfying:
+f ∗g = g and f ◦ Φ(G1) = Φ(G2)
+Since M is a Lorentzian manifold with constant negative curvature c < 0, it admits a unique global isometry group preserving the Lorentzian metric g. Therefore, any isometry f would map geodesics in M to geodesics in M.
+By definition, the embeddings Φ(G1) and Φ(G2) map vertices of G1 and G2 into the hyperboloid model of Hn, such that graph distances are preserved through the Lorentzian distance function. If G1 and G2 are non-isomorphic, then there exists no bijection between their vertex sets preserving adjacency and distances.
+However, the existence of such an f implies that the embeddings Φ(G1) and Φ(G2) are related by an isometry, contradicting the assumption that G1 and G2 are non-isomorphic. Hence, no such f exists.
+13
+
+
+∴ Φ(G1) ̸= f ◦ Φ(G2) for any isometry f
+B Variable Description of Algorithm 1
+Algorithm 1 describes the update rule of LGIN. The following is the description of each variable in algorithm 1:
+• manif old : Lorentzian manifold class containing all operations
+• eps : Epsilon value controlling the importance of current node features
+• c_in : Input curvature
+• nn : Lorentz Transformation Function
+• x : Node Features
+• adj : Adjacency Matrix
+• out : Output of Lorentz Aggregation
+• xr : Node Features before aggregation
+• log_out : Logarithmic map of updated features after aggregation
+• log_x_r : Logarithmic map of initial node features
+• pt_xr : Node Features adjusted after Parallel Transport
+The functions for logarithmic, exponential maps and parallel transport have been described in section 3.3.
+C Additional Related Work
+(Zhang & Xie, 2020) showed that attention-based GNNs may face limitations in discriminative power due to non-injective aggregation functions. This non-injectivity can lead to different substructures being mapped to the same representation, reducing the model’s effectiveness. To mitigate this, methods have been proposed to enhance injectivity, such as preserving the cardinality information of multisets during aggregation. (Lim et al., 2024) introduced the concept of soft-injective functions. These functions aim to approximate injectivity by ensuring that distinct inputs are mapped to sufficiently different outputs, considering a predefined dissimilarity measure. This approach allows GNNs to maintain discriminative power without necessitating strictly injective aggregation functions.
+D Declarations
+D.1 Availability of Data and Materials
+The datasets used in all experiments during this study are available in a publicly accessible repository. They can be obtained at https://pytorch-geometric.readthedocs.io/en/latest/modules/datasets.html
+D.2 Code Availability
+The codes used for all experiments in this study are designed by us and is available at https://github. com/Deceptrax123/LGIN
+D.3 Conflict of Interest
+The authors declare that they have no conflicts of interest to report regarding the present study.
+14

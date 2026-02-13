@@ -1,0 +1,2800 @@
+Diffusion Schrödinger Bridge with Applications to Score-Based Generative Modeling
+Valentin De Bortoli Department of Statistics, University of Oxford, UK
+James Thornton
+Department of Statistics, University of Oxford, UK
+Jeremy Heng
+ESSEC Business School, Singapore
+Arnaud Doucet
+Department of Statistics, University of Oxford, UK
+Abstract
+Progressively applying Gaussian noise transforms complex data distributions to approximately Gaussian. Reversing this dynamic defines a generative model. When the forward noising process is given by a Stochastic Differential Equation (SDE), Song et al. (2021) demonstrate how the time inhomogeneous drift of the associated reverse-time SDE may be estimated using score-matching. A limitation of this approach is that the forward-time SDE must be run for a sufficiently long time for the final distribution to be approximately Gaussian while ensuring that the corresponding time-discretization error is controlled. In contrast, solving the Schrödinger Bridge (SB) problem, i.e. an entropy-regularized optimal transport problem on path spaces, yields diffusions which generate samples from the data distribution in finite time. We present Diffusion SB (DSB), an original approximation of the Iterative Proportional Fitting (IPF) procedure to solve the SB problem, and provide theoretical analysis along with generative modeling experiments. The first DSB iteration recovers the methodology proposed by Song et al. (2021), with the flexibility of using shorter time intervals, as subsequent DSB iterations reduce the discrepancy between the final-time marginal of the forward (resp. backward) SDE with respect to the Gaussian prior (resp. data) distribution. Beyond generative modeling, DSB offers a computational optimal transport tool as the continuous state-space analogue of the popular Sinkhorn algorithm (Cuturi, 2013).
+1 Introduction
+Score-Based Generative Modeling (SGM) is a recently developed approach to probabilistic generative modeling that exhibits state-of-the-art performance on several audio and image synthesis tasks; see e.g. Song and Ermon (2019); Cai et al. (2020); Chen et al. (2021a); Kong et al. (2021); Gao et al. (2020); Jolicoeur-Martineau et al. (2021b); Ho et al. (2020); Song and Ermon (2020); Song et al. (2020, 2021); Niu et al. (2020); Durkan and Song (2021); Hoogeboom et al. (2021); Saharia et al. (2021); Luhman and Luhman (2021, 2020); Nichol and Dhariwal (2021); Popov et al. (2021); Dhariwal and Nichol (2021). Existing SGMs generally consist of two parts. Firstly, noise is incrementally added to the data in order to obtain a perturbed data distribution approximating an easy-to-sample prior distribution e.g. Gaussian. Secondly, a neural network is used to learn the reverse-time denoising dynamics, which when initialized at this prior distribution, defines a generative model (Sohl-Dickstein et al., 2015; Ho et al., 2020; Song and Ermon, 2019; Song et al., 2021). Song et al. (2021) have shown that one could fruitfully view the noising process as a Stochastic Differential Equation (SDE) that progressively perturbs the initial data distribution into an approximately Gaussian one.
+35th Conference on Neural Information Processing Systems (NeurIPS 2021), Sydney, Australia.
+arXiv:2106.01357v5 [stat.ML] 5 Apr 2023
+
+
+Forward
+Forward
+Backward
+Backward
+DSB Steps
+DSB 1
+DSB 5
+t
+t=0 t=T
+Generative Model
+Figure 1: The reference forward diffusion initialized from the 2-dimensional data distribution fails to converge to the Gaussian prior in T = 0.2 diffusion-time (N = 20 discrete time steps), and the reverse diffusion initialized from the Gaussian prior does not converge to the data distribution. However, convergence does occur after 5 DSB iterations.
+The corresponding reverse-time SDE is an inhomogeneous diffusion whose drift depends on the logarithmic gradients of the perturbed data distributions, i.e. the scores. In practice, these scores are approximated using neural networks and score-matching techniques (Hyvärinen and Dayan, 2005; Vincent, 2011) while numerical SDE integrators are used for the sampling procedure.
+Although SGM provides state-of-the-art results (Dhariwal and Nichol, 2021), sample generation is computationally expensive. In order to learn the reverse-time SDE from the prior, i.e. the generative model, the forward noising SDE must be run for a sufficiently long time to converge to the prior and the step size must be sufficiently small to obtain a good numerical approximation of this SDE. By reformulating generative modeling as a Schrödinger bridge (SB) problem, we mitigate this issue and propose a novel algorithm to solve SB problems. Our detailed contributions are as follows.
+Generative modeling as a Schrödinger bridge problem. The SB problem is a famous entropyregularized Optimal Transport (OT) problem introduced by Schrödinger (1932); see e.g. (Léonard, 2014b; Chen et al., 2021b) for reviews. Given a reference diffusion with finite time horizon T , a data distribution and a prior distribution, solving the SB amounts to finding the closest diffusion to the reference (in terms of Kullback–Leibler divergence on path spaces) which admits the data distribution as marginal at time t = 0 and the prior at time t = T . The reverse-time diffusion solving this SB problem provides a new SGM algorithm which enables approximate sample generation from the data distribution using shorter time intervals compared to the original SGM methods. Our method differs from the entropy-regularized OT formulation in (Genevay et al., 2018), which deals with discrete distributions and relies on a static formulation of SB, as opposed to our dynamical approach for continuous distributions which operates on path spaces. It also differs from (Finlay et al., 2020) which approximates the SB solution by a diffusion whose drift is computed using potentials of the dual formulation of SB. Finally, Wang et al. (2021) have recently proposed to perform generative modeling by solving not one but two SB problems. Contrary to us, they do not formulate generative modeling as computing the SB between the data and prior distributions.
+Solving the Schrödinger bridge problem using score-based diffusions. The SB problem can be solved using Iterative Proportional Fitting (IPF) (Fortet, 1940; Kullback, 1968; Chen et al., 2021b). We propose Diffusion SB (DSB), a novel implementation of IPF using score-based diffusion techniques. DSB does not require discretizing the state-space (Chen et al., 2016; Reich, 2019), approximating potential functions using regression (Bernton et al., 2019; Dessein et al., 2017; Pavon et al., 2021), nor performing kernel density estimation (Pavon et al., 2021). The first DSB iteration recovers the method proposed by Song et al. (2021), with the flexibility of using shorter time intervals, as additional DSB iterations reduce the discrepancy between the final-time marginal of the forward (resp. backward) SDE w.r.t. the prior (resp. data) distribution; see Figure 1 for an illustration. An algorithm akin to DSB has been proposed concurrently and independently by Vargas et al. (2021); the main difference
+2
+
+
+with our algorithm is that they estimate the drifts of the SDEs using Gaussian processes while we use neural networks and score matching ideas.
+Theoretical results. We provide the first quantitative convergence results for the methodology of Song et al. (2021). In particular, we show that while we simulate Langevin-type diffusions in potentially extremely high-dimensional spaces, the SGM approach does not suffer from poor mixing times. Additionally, we derive novel quantitative convergence results for IPF in continuous state-space which do not rely on classical compactness assumptions (Chen et al., 2016; Ruschendorf et al., 1995) and improve on the recent results of Léger (2020). Finally, we show that DSB may be viewed as the time discretization of a dynamic version of IPF on path spaces based on forward/backward diffusions.
+Experiments. We validate our methodology by generating image datasets such as MNIST and CelebA. In particular, we show that using multiple steps of DSB always improve the generative model. We also show how DSB can be used to interpolate between two data distributions.
+Notation. In the continuous-time setting, we set C = C([0, T ] , Rd) the space of continuous functions from [0, T ] to Rd and B(C) the Borel sets on C. For any measurable space (E, E), we denote by P(E) the space of probability measures on (E, E). For any ` ∈ N, let P` = P((Rd)`). When it is defined,
+we denote H(p) = − ∫
+Rd p(x) log p(x)dx as the entropy of p and KL(p|q) as the Kullback–Leibler
+divergence between p and q. When there is no ambiguity, we use the same notation for distributions and their densities. All proofs are postponed to the supplementary.
+2 Denoising Diffusion, Score-Matching and Reverse-Time SDEs
+2.1 Discrete-Time: Markov Chains and Time Reversal
+Consider a data distribution with positive density pdata1, a positive prior density pprior w.r.t. Lebesgue measure both with support on Rd and a Markov chain with initial density p0 = pdata on Rd evolving according to positive transition densities pk+1|k for k ∈ {0, . . . , N − 1}. Hence for any x0:N = {xk }N
+k=0 ∈ X = (Rd)N+1, the joint density may be expressed as
+p(x0:N ) = p0(x0) ∏N−1
+k=0 pk+1|k(xk+1|xk). (1)
+This joint density also admits the backward decomposition
+p(x0:N ) = pN (xN ) ∏N−1
+k=0 pk|k+1(xk|xk+1), with pk|k+1(xk|xk+1) = pk(xk)pk+1|k(xk+1|xk)
+pk+1(xk+1) , (2)
+where pk(xk) = ∫ pk|k−1(xk|xk−1)pk−1(xk−1)dxk−1 is the marginal density at step k ≥ 1. For the purpose of generative modeling, we will choose transition densities such that pN (xN ) =
+∫ p(x0:N )dx0:N−1 ≈ pprior(xN ) for large N , where pprior is an easy-to-sample prior density. One may sample approximately from pdata using ancestral sampling with the reverse-time decomposition (2), i.e. first sample XN ∼ pprior followed by Xk ∼ pk|k+1(·|Xk+1) for k ∈ {N − 1, . . . , 0}. This idea is at the core of all recent SGM methods. The reverse-time transitions in (2) cannot be simulated exactly but may be approximated if we consider a forward transition density of the form
+pk+1|k(xk+1|xk) = N (xk+1; xk + γk+1f (xk), 2γk+1I), (3)
+with drift f : Rd → Rd and stepsize γk+1 > 0. We first make the following approximation from (2)
+pk|k+1(xk|xk+1) = pk+1|k(xk+1|xk) exp[log pk(xk) − log pk+1(xk+1)]
+≈ N (xk; xk+1 − γk+1f (xk+1) + 2γk+1∇ log pk+1(xk+1), 2γk+1I), (4)
+using that pk ≈ pk+1, a Taylor expansion of log pk+1 at xk+1 and f (xk) ≈ f (xk+1). In practice, the approximation holds if ‖xk+1 − xk‖ is small which is ensured by choosing γk+1 small enough. Although ∇ log pk+1 is not available, one may obtain an approximation using denoising scorematching methods (Hyvärinen and Dayan, 2005; Vincent, 2011; Song et al., 2021).
+Assume that the conditional density pk+1|0(xk+1|x0) is available analytically as in (Ho et al., 2020; Song et al., 2021). We have pk+1(xk+1) = ∫ p0(x0)pk+1|0(xk+1|x0)dx0 and elementary calculations show that ∇ log pk+1(xk+1) = Ep0|k+1 [∇xk+1 log pk+1|0(xk+1|X0)]. We can therefore
+1In this presentation, we assume that all distributions admit a density w.r.t. the Lebesgue measure for simplicity. However, the algorithms presented here only require having access to samples from pdata and pprior.
+3
+
+
+formulate score estimation as a regression problem and use a flexible class of functions, e.g. neural networks, to parametrize an approximation sθ? (k, xk) ≈ ∇ log pk(xk) such that
+θ? = arg minθ
+∑N
+k=1 Ep0,k [||sθ(k, Xk) − ∇xk log pk|0(Xk|X0)||2],
+where p0,k(x0, xk) = p0(x0)pk|0(xk|x0) is the joint density at steps 0 and k. If pk|0 is not available,
+we use θ? = arg minθ
+∑N
+k=1Epk−1,k [||sθ(k, Xk) − ∇xk log pk|k−1(Xk|Xk−1)||2]. In summary,
+SGM involves first estimating the score function sθ? from noisy data, and then sampling X0 using XN ∼ pprior and the approximation (4), i.e.
+Xk = Xk+1 − γk+1f (Xk+1) + 2γk+1sθ? (k + 1, Xk+1) + √2γk+1Zk+1, Zk+1
+i.i∼.d. N (0, I). (5)
+The random variable X0 is approximately p0 = pdata distributed if pN (xN ) ≈ pprior(xN ). In what follows, we let {Yk}N
+k=0 = {XN−k}N
+k=0 and remark that {Yk}N
+k=0 satisfies a forward recursion.
+2.2 Continuous-Time: SDEs, Reverse-Time SDEs and Theoretical results
+For appropriate transition densities, Song et al. (2021) showed that the forward and reverse-time Markov chains may be viewed as discretized diffusions. We derive the continuous-time limit of the procedure presented in Section 2.1 and establish convergence results. The Markov chain with kernel (3) corresponds to an Euler–Maruyama discretization of (Xt)t∈[0,T ], solving the following SDE
+dXt = f (Xt)dt + √2dBt, X0 ∼ p0 = pdata, (6)
+where (Bt)t∈[0,T ] is a Brownian motion and f : Rd → Rd is regular enough so that (strong) solutions exist. Under conditions on f , it is well-known (see Haussmann and Pardoux (1986); Föllmer (1985); Cattiaux et al. (2021) for instance) that the reverse-time process (Yt)t∈[0,T ] = (XT −t)t∈[0,T ] satisfies
+dYt = {−f (Yt) + 2∇ log pT −t(Yt)} dt + √2dBt, (7)
+with initialization Y0 ∼ pT , where pt denotes the marginal density of Xt.
+The reverse-time Markov chain {Yk}N
+k=0 associated with (5) corresponds to an Euler–Maruyama
+discretization of (7), where the score functions ∇ log pt(x) are approximated by sθ? (t, x).
+In what follows, we consider f (x) = −αx for α ≥ 0. This framework includes the one of Song and Ermon (2019) (α = 0, pprior(x) = N (x; 0, 2T I)) for which (Xt)t∈[0,T ] is simply a Brownian motion and Ho et al. (2020) (α > 0, pprior(x) = N (x; 0, I/α)) for which it is an Ornstein–Uhlenbeck process, see Appendix C.3 for more details. Contrary to Song et al. (2021) we consider time homogeneous diffusions. Both approaches approximate (5) using distinct discretizations but our setting leverages the ergodic properties of the Ornstein–Uhlenbeck process to establish Theorem 1.
+Theorem 1. Assume that there exists M ≥ 0 such that for any t ∈ [0, T ] and x ∈ Rd
+‖sθ? (t, x) − ∇ log pt(x)‖ ≤ M, (8)
+with sθ? ∈ C([0, T ] × Rd, Rd). Assume that pdata ∈ C3(Rd, (0, +∞)) is bounded and that there exist d1, A1, A2, A3 ≥ 0, β1, β2, β3 ∈ N and m1 > 0 such that for any x ∈ Rd and i ∈ {1, 2, 3}
+‖∇i log pdata(x)‖ ≤ Ai(1 + ‖x‖βi ), 〈∇ log pdata(x), x〉 ≤ −m1 ‖x‖2 + d1 ‖x‖ ,
+with β1 = 1. Then for any α ≥ 0, there exist Bα, Cα, Dα ≥ 0 such that for any N ∈ N and {γk}N
+k=1
+with γk > 0 for any k ∈ {1, . . . , N }, the following bounds on the total variation distance hold:
+(a) if α > 0, we have ‖L(X0) − pdata‖TV ≤ Cα(M + γ ̄1/2) exp[DαT ] + Bα exp[−α1/2T ];
+(b) if α = 0, we have ‖L(X0) − pdata‖TV ≤ C0(M + γ ̄1/2) exp[D0T ] + B0(T −1 + T −1/2);
+where T = ∑N
+k=1 γk, γ ̄ = supk∈{1,...,N} γk and L(X0) is the distribution of X0 given in (5).
+Proof. We provide here a sketch of the proof. The whole proof is detailed in Appendix C.2. Denote P ∈ P(C) the path measure associated with (6) and PR its time-reversal. Denote QN the Markov kernel taking us from Y0 to YN induced by (5). We have
+‖ppriorQN − pdata‖TV = ‖ppriorQN − pdataPT |0(PR)T |0‖TV
+4
+
+
+≤ ‖ppriorQN − pprior(PR)T |0‖TV + ‖pprior(PR)T |0 − pdataPT |0(PR)T |0‖TV
+≤ ‖ppriorQN − pprior(PR)T |0‖TV + ‖pprior − pT ‖TV.
+We control the first term by bounding the discretization error of QN when compared to (PR)T |0 via the Girsanov theorem. The second term is controlled using the mixing properties of the forward diffusion process.
+Condition (8) ensures that the neural network approximates the score with a given precision M ≥ 0. Under (8) and conditions on pdata, Theorem 1 states how the Markov chain defined by (5) approximates pdata in the total variation norm ‖ · ‖TV. The bounds of Theorem 1 show that there is a trade-off between the mixing properties of the forward diffusion which increases with α, and the quality of the discrete-time approximation which deteriorates as α and T increase, since Bα, CαDα →α→+∞ +∞. Indeed increasing α makes the drift steeper and the continuous-time process converges faster but smaller step sizes are required in order to control the error between the discrete and the continuoustime processes. Theorem 1 is the first theoretical result assessing the convergence of SGM methods. Indeed while Block et al. (2020) establish convergence results for a time-homogeneous Langevin diffusion targeting a density whose score is approximated by a neural network, all SGM methods used in practice rely on time-inhomogeneous processes. Contrary to the time-homogeneous case, this approach does not suffer from poor mixing times as the mixing time dependency in the bounds of Theorem 1 is entirely determined by the mixing time of the forward process, given by a simple Brownian motion or an Ornstein–Ulhenbeck process, and is independent of the dimension. Finally, note that (8) is a strong assumption. In practice we expect to obtain such bounds in expectation over X with high probability w.r.t. the data distribution as in (Block et al., 2020, Proposition 9). Our results are also related to (Tzen and Raginsky, 2019, Theorem 3.1) which establishes the expressiveness of related generative models using tools from stochastic control.
+3 Diffusion Schrödinger Bridge and Generative Modeling
+3.1 Schrödinger Bridges
+The SB problem is a classical problem appearing in applied mathematics, optimal control and probability; see e.g. Föllmer (1988); Léonard (2014b); Chen et al. (2021b). In the discrete-time setting, it takes the following (dynamic) form. Consider as reference density p(x0:N ) given by (1),
+describing the process adding noise to the data. We aim to find π? ∈ PN+1 such that
+π? = arg min {KL(π|p) : π ∈ PN+1, π0 = pdata, πN = pprior} . (9)
+Assuming π? is available, a generative model can be obtained by sampling XN ∼ pprior, followed by
+the reverse-time dynamics Xk ∼ π?
+k|k+1(·|Xk+1) for k ∈ {N − 1, . . . , 0}. Before deriving a method
+to approximate π? in Section 3.2, we highlight some desirable features of Schrödinger bridges.
+Static Schrödinger bridge problem. First, we recall that the dynamic formulation (9) admits a static analogue. Using e.g. Léonard (2014a, Theorem 2.4), the following decomposition holds for any π ∈ PN+1, KL(π|p) = KL(π0,N |p0,N ) + Eπ0,N [KL(π|0,N |p|0,N )], where for any μ ∈ PN+1 we have μ = μ0,N μ|0,N with μ|0,N the conditional distribution of X1:N−1 given X0, XN 2. Hence
+we have π?(x0:N ) = πs,?(x0, xN )p|0,N (x1:N−1|x0, xN ) where πs,? ∈ P2 with marginals πs,?
+0 and
+πs,?
+N is the solution of the static SB problem
+πs,? = arg min {KL(πs|p0,N ) : πs ∈ P2, πs0 = pdata, πs
+N = pprior} . (10)
+Link with optimal transport. Under mild assumptions, the static SB problem can be seen as an entropy-regularized optimal transport problem since (10) is equivalent to
+πs,? = arg min {−Eπs [log pN|0(XN |X0)] − H(πs) : πs ∈ P2, πs0 = pdata, πs
+N = pprior
+}.
+If pk+1|k(xk+1|xk) = N (xk+1; xk, σ2
+k+1) as in Song and Ermon (2019), then pN|0(xN |x0) =
+N (xN ; x0, σ2) with σ2 = ∑N
+k=1 σ2
+k which induces a quadratic cost and
+πs,? = arg min {Eπs [||X0 − XN ||2] − 2σ2H(πs) : πs ∈ P2, πs0 = pdata, πs
+N = pprior
+}.
+2See Appendix D.1 for a rigorous presentation using the disintegration theorem for probability measures.
+5
+
+
+Mikami (2004) showed that πs,? → π?
+W weakly and 2σ2 KL(πs,?|p0,N ) → W22(pdata, pprior) as
+σ → 0, where π?
+W is the optimal transport plan between pdata and pprior and W2 is the 2-Wasserstein
+distance. Note that the transport cost c(x, x′) = − log pN|0(x′|x) is not necessarily symmetric.
+3.2 Iterative Proportional Fitting and Time Reversal
+In all but trivial cases, the SB problem does not admit a closed-form solution. However, it can be solved using Iterative Proportional Fitting (IPF) (Fortet, 1940; Kullback, 1968; Ruschendorf et al., 1995) which is defined by the following recursion for n ∈ N with initialization π0 = p given in (1):
+π2n+1 = arg min {KL(π|π2n) : π ∈ PN+1, πN = pprior
+} , (11)
+π2n+2 = arg min {KL(π|π2n+1) : π ∈ PN+1, π0 = pdata
+}.
+This sequence is well-defined if there exists π ̃ ∈ PN+1 such that π ̃0 = pdata, π ̃N = pprior and
+KL(π ̃|p) < +∞. A standard representation of πn is obtained by updating the joint density p using potential functions, see Appendix D.2 for details. However, this representation of the IPF iterates is difficult to approximate as it requires approximating the potentials. Our methodology builds upon an alternative representation that is better suited to numerical approximations for generative modeling where one has access to samples of pdata and pprior.
+Proposition 2. Assume that KL(pdata ⊗ pprior|p0,N ) < +∞. Then for any n ∈ N, π2n and π2n+1
+admit positive densities w.r.t. the Lebesgue measure denoted as pn resp. qn and for any x0:N ∈ X ,
+we have p0(x0:N ) = p(x0:N ) and
+qn(x0:N ) = pprior(xN ) ∏N−1
+k=0 pn
+k|k+1(xk|xk+1), pn+1(x0:N ) = pdata(x0) ∏N−1
+k=0 qn
+k+1|k (xk+1 |xk ).
+In practice we have access to pn
+k+1|k and qn
+k|k+1. Hence, to compute pn
+k|k+1 and qn
+k+1|k we use
+pn
+k|k+1(xk|xk+1) =
+pn
+k+1|k (xk+1 |xk )pn
+k (xk)
+pn
+k+1(xk+1) , qn
+k+1|k(xk+1|xk) =
+qn
+k|k+1 (xk |xk+1 )q n
+k+1(xk+1)
+qn
+k (xk) .
+To the best of our knowledge, this representation of the IPF iterates has surprisingly neither been presented nor explored in the literature. One may interpret these formulas as follows. At iteration 2n, we have π2n = pn with p0 = p given by the noising process (1). This forward process initalized with p0n = pdata defines reverse-time transitions pn
+k|k+1, which, when combined with an initialization pprior
+at step N defines the reverse-time process π2n+1 = qn. The forward transitions qn
+k+1|k associated to
+qn are then used to obtain π2n+2 = pn+1. IPF then iterates this procedure.
+3.3 Diffusion Schrödinger Bridge as Iterative Mean-Matching Proportional Fitting
+To approximate the IPF recursion defined in Proposition 2, we use similar approximations to Section 2.1. If at step n ∈ N we have pn
+k+1|k(xk+1|xk) = N (xk+1; xk + γk+1f n
+k (xk), 2γk+1I) where
+p0 = p and f 0
+k = f , then we can approximate the reverse-time transitions in Proposition 2 by qn
+k|k+1(xk|xk+1) = pn
+k+1|k(xk+1|xk) exp[log pn
+k (xk) − log pn
+k+1(xk+1)]
+≈ N (xk; xk+1 + γk+1bn
+k+1(xk+1), 2γk+1I),
+with bn
+k+1(xk+1) = −f n
+k (xk+1) + 2∇ log pn
+k+1(xk+1). We can also approximate the forward transitions in Proposition 2 by pn+1
+k+1|k(xk+1|xk) ≈ N (xk+1; xk + γk+1f n+1
+k (xk), 2γk+1I) with
+f n+1
+k (xk) = −bn
+k+1(xk)+2∇ log qn
+k (xk). Hence we have f n+1
+k (xk) = f n
+k (xk)−2∇ log pn
+k+1 (xk ) + 2∇ log qn
+k (xk). It follows that one could estimate f n+1
+k , bn+1
+k by using score-matching to approximate
+{∇ log pi
+k+1(x)}n
+i=0 , {∇ log qi
+k (x)}n
+i=0. This approach is prohibitively costly in terms of memory and compute, see Appendix E. We follow an alternative approach which avoids these difficulties. Proposition 3. Assume that for any n ∈ N and k ∈ {0, . . . , N − 1}, qn
+k|k+1(xk|xk+1) = N (xk; Bn
+k+1(xk+1), 2γk+1I), pn
+k+1|k(xk+1|xk) = N (xk+1; F n
+k (xk), 2γk+1I),
+with Bn
+k+1(x) = x + γk+1bn
+k+1(x), F n
+k (x) = x + γk+1f n
+k (x) for any x ∈ Rd. Then we have for any n ∈ N and k ∈ {0, . . . , N − 1} Bn
+k+1 = arg minB∈L2(Rd,Rd) Epn
+k,k+1 [‖B(Xk+1) − (Xk+1 + F n
+k (Xk) − F n
+k (Xk+1))‖2], (12)
+F n+1
+k = arg minF∈L2(Rd,Rd) Eqn
+k,k+1 [‖F(Xk) − (Xk + Bn
+k+1(Xk+1) − Bn
+k+1(Xk))‖2]. (13)
+6
+
+
+Proposition 3 shows how one can recursively approximate Bn
+k+1 and F n+1
+k . In practice, we use
+neural networks Bβn (k, x) ≈ Bn
+k (x) and Fαn (k, x) ≈ F n
+k (x). Note that the networks could also be
+learned jointly. In this case, at equilibrium, we would obtain a bridge between pdata and pprior but not necessarily the Schrödinger bridge.
+Network parameters αn, βn are learnt through gradient descent to minimize empirical versions of the sum over k of the loss functions given by (12) and (13) computed using M samples and denoted as `ˆbn(β) and `ˆf
+n+1(α). The resulting algorithm approximating L ∈ N IPF iterations is called Diffusion
+Schrödinger Bridge (DSB) and is summarized in Algorithm 1 with Zj
+k, Z ̃j
+k
+i.i∼.d. N (0, I), see Figure 1 for an illustration.
+Algorithm 1 Diffusion Schrödinger Bridge
+1: for n ∈ {0, . . . , L} do
+2: while not converged do 3: Sample {Xj
+k }N,M
+k,j=0, where Xj
+0 ∼ pdata, and Xj
+k+1 = Fαn (k, Xj
+k) + √2γk+1Zj
+k+1
+4: Compute `ˆbn(βn) approximating (12)
+5: βn ← Gradient Step(`ˆbn(βn)) 6: end while
+7: while not converged do 8: Sample {Xj
+k }N,M
+k,j=0, where Xj
+N ∼ pprior, and Xj
+k−1 = Bβn (k, Xj
+k) + √2γkZ ̃j
+k
+9: Compute `ˆf
+n+1(αn+1) approximating (13)
+10: αn+1 ← Gradient Step(`ˆf
+n+1(αn+1)) 11: end while 12: end for 13: Output: (αL+1, βL)
+The DSB algorithm is initialized using the reference dynamics fα0 (k, x) =
+f (x). Once βL is learnt we can easily approximately sample from pdata by sampling XN ∼ pprior and then using
+Xk−1 = BβL (k, Xk) + √2γkZk with
+Zk
+i.i∼.d. N (0, I). The resulting samples X0 will be approximately distributed from pdata. Although DSB requires learning a sequence of network parameters, αn, βn, fewer diffusion steps are needed compared to standard SGM. In addition, as detailed in Appendix I, β0 may be trained efficiently in a similar manner to previous SGM methods. Subsequent αn+1, βn+1 are refinements of αn, βn, hence may be fine-tuned from previous iterations.
+3.4 Convergence of Iterative Proportional Fitting
+In this section, we investigate the theoretical properties of IPF. When the state-space is discrete and finite (Franklin and Lorenz, 1989; Peyré and Cuturi, 2019) or in the case where pdata and pprior are compactly supported (Chen et al., 2016), IPF converges at a geometric rate w.r.t. the HilbertBirkhoff metric, see Lemmens and Nussbaum (2014) for a definition. Other than recent work by Léger (2020), only qualitative results exist in the general case where pdata or pprior is not compactly supported (Ruschendorf et al., 1995; Rüschendorf and Thomsen, 1993). We establish here quantitative convergence of IPF in this non-compact setting as well as novel monotonicity results. We require only the following mild assumption. A1. pN , pprior > 0, |H(pprior)| < +∞, ∫
+Rd | log pN|0(xN |x0)|pdata(x0)pprior(xN )dx0dxN < +∞.
+Assumption A1 is satisfied in all of our experimental settings. We recall that for μ, ν ∈ P(E) with (E, E) a measurable space, the Jeffrey’s divergence is given by J(μ, ν) = KL(μ|ν) + KL(ν|μ). Proposition 4. Assume A1. Then (πn)n∈N is well-defined and for any n ≥ 1 we have
+KL(πn+1|πn) ≤ KL(πn−1|πn), KL(πn|πn+1) ≤ KL(πn|πn−1).
+In addition, (‖πn+1 − πn‖TV)n∈N and (J(πn+1, πn))n∈N are non-increasing. Finally, we have
+limn→+∞ n {KL(π0n|pdata) + KL(πn
+N |pprior)} = 0.
+A more general result with additional monotonicity properties is given in Appendix F. Under similar assumptions, Léger (2020, Corollary 1) established KL(π0n|p0) ≤ C/n with C ≥ 0 using a Bregman divergence gradient descent perspective. In contrast, our proof relies only on tools from information geometry. In addition, we improve the convergence rate and show that (πn)n∈N converges in total
+variation towards π∞, i.e. we not only obtain convergence of the marginals but also convergence of the joint distribution. Under restrictive conditions on pdata and pprior, Ruschendorf et al. (1995)
+showed that π∞ is the Schrödinger bridge. In the following proposition, we avoid this assumption using results on automorphisms of measures (Beurling, 1960).
+7
+
+
+Proposition 5. Assume A1. Then there exists a solution π? ∈ PN+1 to the SB problem and we
+have limn→+∞ ‖πn − π∞‖TV = 0 with π∞ ∈ PN+1. Let h = p0,N /(p0 ⊗ pN ) and assume that h ∈ C((Rd)2, (0, +∞)) and that there exist Φ0, ΦN ∈ C(Rd, (0, +∞)) such that
+∫
+Rd×Rd (|log h(x0, xN )| + |log Φ0(x0)| + |log ΦN (xN )|)pdata(x0)pprior(xN )dx0dxN < +∞,
+with h(x0, xN ) ≤ Φ0(x0)ΦN (xN ). If p is absolutely continuous w.r.t. π∞ then π∞ = π?.
+Proposition 5 extends previous IPF convergence results without the assumption that the mapping h is lower bounded, see Ruschendorf et al. (1995); Chen et al. (2016). Our assumption on h can be relaxed and replaced by a tighter condition on π∞, see Appendix F.2. Proposition 4 suggests a convergence rate of order o(n) for the IPF in the non-compact setting. However, in some situations, we recover geometric convergence rates with explicit dependency w.r.t. the problem constants, see Appendix G. In practice, we do not run IPF for pdata, pprior but using empirical versions of these distributions. Recent results in Deligiannidis et al. (2021) show that the iterates of IPF based on empirical distributions remain close to the iterates one would obtain using the true distributions, uniformly in time. In particular, the SB computed using the empirical distributions converges to the one computed using the true distributions as the number of samples goes to infinity.
+3.5 Continuous-time IPF
+We describe an IPF algorithm for solving SB problems in continuous-time. We show that DSB proposed in Algorithm 1 can be seen as a discretization of this IPF. Given a reference measure P ∈ P(C), the continuous formulation of the SB involves solving the following problem
+Π? = arg min {KL(Π|P) : Π ∈ P(C), Π0 = pdata, ΠT = pprior} , T = ∑N−1
+k=0 γk+1. (14)
+Similarly to (11), we define the IPF (Πn)n∈N with Π0 = P associated with (6) and for any n ∈ N
+Π2n+1 = arg min {KL(Π|Π2n) : Π ∈ P(C), ΠT = pprior
+},
+Π2n+2 = arg min {KL(Π|Π2n+1) : Π ∈ P(C), Π0 = pdata
+}.
+One can show that for any n ∈ N, Πn = πs,nP|0,T , with (πs,n)n∈N the IPF for the static SB problem. In particular, Proposition 4 and Proposition 5 extend to the continuous IPF framework. In what follows, for any P ∈ P(C), we define PR as the reverse-time measure, i.e. for any A ∈ B(C) we have PR(A) = P(AR) where AR = {t 7→ ω(T − t) : ω ∈ A}. The following result is the continuous counterpart of Proposition 2 and states that each IPF iteration is associated with a diffusion, showing that DSB can be seen as a discretization of the continuous IPF.
+Proposition 6. Assume A1 and that there exist M ∈ P(C), U ∈ C1(Rd, R), C ≥ 0 such that for any n ∈ N, x ∈ Rd, KL(Πn|M) < +∞, 〈x, ∇U (x)〉 ≥ −C(1 + ‖x‖2) and M is associated with
+dXt = −∇U (Xt)dt + √2dBt, (15) with X0 distributed according to the invariant distribution of (15). Then, for any n ∈ N we have:
+(a) (Π2n+1)R is associated with dY2n+1
+t = bn
+T −t(Y2n+1
+t )dt + √2dBt with Y2n+1
+0 ∼ pprior;
+(b) Π2n+2 is associated with dX2n+2
+t = f n+1
+t (X2n+2
+t )dt + √2dBt with X2n+2
+0 ∼ pdata;
+where for any n ∈ N, t ∈ [0, T ] and x ∈ Rd, btn(x) = −ftn(x) + 2∇ log ptn(x), f n+1
+t (x) =
+−btn(x) + 2∇ log qtn(x), with ft0(x) = f (x), see (6), and ptn, qtn the densities of Πt2n and Π2n+1
+t.
+4 Experiments
+Gaussian example. We first confirm that our algorithm recovers the true SB in a Gaussian setting where the ground truth is available. Let pprior = N (−a, I), pdata = N (a, I) with a ∈ Rd and consider a Brownian motion as reference dynamics. The analytic expression for the static SB is N ((−a, a), Σ) with Σ ∈ R2d×2d given in Appendix G.2. We let a = 0.1 × 1 with d = 50 or d = 5. In Figure 2, we illustrate the convergence of DSB. We train each DSB with a batch size of 128, N = 20 and γ = 1/40. We compare two network configurations: “small” where the network is given by Figure 9 (30k parameters) whereas “large” corresponds to the same network but with twice as many latent dimensions (240k parameters). The small network recovers the statistics of SB in the low-dimensional setting (d = 5) but is unable to recover the variance and covariance for d = 50. Increasing the size of the network solves this problem.
+8
+
+
+Mean Variance Covariance
+Figure 2: Convergence of DSB to ground-truth. From left to right: estimated mean, variance and covariance (first component) after each DSB iteration. The ground-truth value is given by the dashed line in each scenario.
+Data distribution
+DSB Iteration 1
+DSB Iteration 20
+Figure 3: Data distributions pdata vs distribution at t = 0 for T = 0.2 after 1 and 20 DSB iterations.
+Two dimensional toy experiments. We evaluate the validity of our approach on toy two dimensional examples. Contrary to existing SGM approaches we do not require that the number of steps is large enough for pN ≈ pprior to hold. We use a fully connected network with positional encoding (Vaswani et al., 2017) to approximate Bn
+k and F n
+k , see Appendix J.1 and our code3 for implementation details. Animated plots of the DSB iterations may be found online on our project webpage4. In Figure 3, we illustrate the benefits of DSB over classical SGM. We fix f (x) = −αx and choose pprior = N (0, σ2
+dataI),
+hence α = 1/σ2
+data where σ2
+data is the variance
+of the dataset. We let N = 20 and γk = 0.01, i.e. T = 0.2. Since T is small, we do not have pN ≈ pprior and the reverse-time process obtained after the first DSB iteration (corresponding to original SGM methods) does not yield a satisfactory generative model. However, multiple iterations of DSB improve the quality of the synthesis.
+Generative modeling. DSB is the first practical algorithm for approximating the solution to the SB problem in high dimension (d = 3072 for CelebA). Whilst our implementation does not yet compete with state-of-the-art methods, we show promising results with fewer diffusion steps compared to initial SGMs (Song and Ermon, 2019) and demonstrate its performance on MNIST (LeCun and Cortes, 2010) and CelebA (Liu et al., 2015).
+t = 0 t = 0.31 t = 0.60 t = 0.63
+Figure 4: Generative model for CelebA 32 × 32 after 10 DSB iterations with N = 50 (T = 0.63)
+A reduced U-net architecture based on Nichol and Dhariwal (2021) is used to approximate Bn
+k and
+Fn
+k . Further details are given in Appendix J.2. Our method is validated on downscaled CelebA in
+Figure 4. Figure 5 illustrates qualitative improvement over 8 DSB iterations with as few as N = 12 diffusion steps. Note, as shown in Appendix J.2, we obtain better results with higher N yet still significantly fewer steps than in the original SGM procedures (Song and Ermon, 2020, 2019) which
+3Code is available here https://github.com/JTT94/diffusion_schrodinger_bridge 4https://vdeborto.github.io/publication/schrodinger_bridge/
+9
+
+
+use N = 100. Figure 6 illustrates how the sample quality, measured quantitatively in terms of Fréchet Inception Distance (FID) (Heusel et al., 2017), improves with the number of DSB iterations for various numbers of steps N .
+DSB 1 DSB 8
+Figure 5: Generated samples (N = 12) Figure 6: FID vs DSB Iterations.
+Dataset interpolation. Schrödinger bridges not only reduce the number of steps in SGM methods but also enable flexibility in the choice of the prior density pprior. Our approach is still valid for non
+Gaussian pprior, contrary to previous SGM works, and can be set as any other data distribution p′
+data.
+In this case DSB converges towards a bridge between pdata and p′
+data, see Figure 7. These experiments pave the way towards high-dimensional optimal transport between arbitrary data distributions.
+Figure 7: First row: Swiss-roll to S-curve (2D). Iteration 9 of DSB with T = 1 (N = 50). From left to right: t = 0, 0.4, 0.6, 1. Second row: EMNIST (Cohen et al., 2017) to MNIST. Iteration 10 of DSB with T = 1.5 (N = 30). From left to right: t = 0, 0.4, 1.25, 1.5.
+5 Discussion
+Score-based generative modeling (SGM) may be viewed as the first stage of solving a Schrödinger bridge problem. Building on this interpretation, we develop novel methodology, the Diffusion Schrödinger Bridge (DSB), that extends SGM approaches and allows one to perform generative modeling with fewer diffusion steps. DSB complements recent techniques to speed up existing SGM methods that rely on either different noise schedules (Nichol and Dhariwal, 2021; San-Roman et al., 2021; Watson et al., 2021), alternative discretizations (Jolicoeur-Martineau et al., 2021a) or knowledge distillation (Luhman and Luhman, 2021). Additionally, as the solution of the Schrödinger problem is a diffusion, it is possible as in Song et al. (2021, Section 4.3) to obtain an equivalent neural ordinary differential equation that admits the same marginals as the diffusion but enables exact likelihood computation, see Appendix H.3. Even though the final time T > 0 within DSB can be arbitrarily small, we observed that this has limits as choosing T too close to 0 decreases the quality of the generative models. One reason for this behavior is that if the endpoint of the original forward process is too far from the target distribution pprior, then learning the score around the support of pprior is challenging even for DSB. From a theoretical point of view, we have provided quantitative convergence results for SGM methods and derived new state-of-the-art convergence bounds for IPF as well as novel monotonicity results. We have demonstrated DSB on generative modeling and data interpolation tasks. Finally, although this work was motivated by generative modeling, DSB is much more widely applicable as it can be thought of as the continuous state-space counterpart of the celebrated Sinkhorn algorithm (Cuturi, 2013; Peyré and Cuturi, 2019). For example, DSB could be used to solve multi-marginal Schrödinger bridges problems (Di Marino and Gerolin, 2020), compute Wasserstein barycenters, find the minimizers of entropy-regularized Gromov–Wasserstein problems (Mémoli, 2011) or perform domain adaptation in continuous state-spaces.
+10
+
+
+Acknowledgments and Disclosure of Funding
+Valentin De Bortoli and Arnaud Doucet are supported by the EPSRC CoSInES (COmputational Statistical INference for Engineering and Security) grant EP/R034710/1, James Thornton by the OxWaSP CDT through grant EP/L016710/1 and Jeremy Heng by the CY Initiative of Excellence (grant “Investissements d’Avenir” ANR-16-IDEX-0008). Computing resources were provided through the Google Cloud research credits programme. Arnaud Doucet also acknowledges support from the UK Defence Science and Technology Laboratory (DSTL) and EPSRC under grant EP/R013616/1. This is part of the collaboration between US DOD, UK MOD and UK EPSRC under the Multidisciplinary University Research Initiative.
+References
+Ambrosio, L., Gigli, N., and Savaré, G. (2008). Gradient Flows in Metric Spaces and in the Space of Probability Measures. Lectures in Mathematics ETH Zürich. Birkhäuser Verlag, Basel, second edition.
+Bakry, D., Gentil, I., and Ledoux, M. (2014). Analysis and Geometry of Markov Diffusion Operators, volume 348. Springer.
+Bernton, E., Heng, J., Doucet, A., and Jacob, P. E. (2019). Schrödinger bridge samplers. arXiv preprint arXiv:1912.13170.
+Beurling, A. (1960). An automorphism of product measures. Annals of Mathematics, 72(1):189–200.
+Block, A., Mroueh, Y., and Rakhlin, A. (2020). Generative modeling with denoising auto-encoders and Langevin sampling. arXiv preprint arXiv:2002.00107.
+Cai, R., Yang, G., Averbuch-Elor, H., Hao, Z., Belongie, S., Snavely, N., and Hariharan, B. (2020). Learning gradient fields for shape generation. European Conference on Computer Vision.
+Cattiaux, P., Conforti, G., Gentil, I., and Léonard, C. (2021). Time reversal of diffusion processes under a finite entropy condition. arXiv preprint arXiv:2104.07708.
+Chen, N., Zhang, Y., Zen, H., Weiss, R. J., Norouzi, M., and Chan, W. (2021a). Wavegrad: Estimating gradients for waveform generation. International Conference on Learning Representations.
+Chen, R. T., Rubanova, Y., Bettencourt, J., and Duvenaud, D. (2018). Neural ordinary differential equations. arXiv preprint arXiv:1806.07366.
+Chen, Y., Georgiou, T., and Pavon, M. (2016). Entropic and displacement interpolation: a computational approach using the Hilbert metric. SIAM Journal on Applied Mathematics, 76(6):2375–2396.
+Chen, Y., Georgiou, T. T., and Pavon, M. (2021b). Optimal transport in systems and control. Annual Review of Control, Robotics, and Autonomous Systems, 4.
+Cohen, G., Afshar, S., Tapson, J., and van Schaik, A. (2017). EMNIST: an extension of MNIST to handwritten letters. arXiv preprint arXiv:1702.05373.
+Constantine, G. M. and Savits, T. H. (1996). A multivariate Faà di Bruno formula with applications. Transactions of the American Mathematical Society, 348(2):503–520.
+Csiszár, I. (1975). I-divergence geometry of probability distributions and minimization problems. The Annals of Probability, 3(1):146–158.
+Cuturi, M. (2013). Sinkhorn distances: Lightspeed computation of optimal transport. In Advances in Neural Information Processing Systems.
+Deligiannidis, G., De Bortoli, V., and Doucet, A. (2021). Quantitative uniform stability of the iterative proportional fitting procedure. arXiv preprint arXiv:2108.08129.
+Dellacherie, C. and Meyer, P.-A. (1988). Probabilities and Potential. C, volume 151 of North-Holland Mathematics Studies. North-Holland Publishing Co., Amsterdam. Potential theory for discrete and continuous semigroups, Translated from the French by J. Norris.
+11
+
+
+Deming, W. E. and Stephan, F. F. (1940). On a least squares adjustment of a sampled frequency table when the expected marginal totals are known. The Annals of Mathematical Statistics, 11(4):427–444.
+Dessein, A., Papadakis, N., and Deledalle, C.-A. (2017). Parameter estimation in finite mixture models by regularized optimal transport: A unified framework for hard and soft clustering. arXiv preprint arXiv:1711.04366.
+Dhariwal, P. and Nichol, A. (2021). Diffusion models beat GAN on image synthesis. arXiv preprint arXiv:2105.05233.
+Di Marino, S. and Gerolin, A. (2020). An optimal transport approach for the Schrödinger bridge problem and convergence of Sinkhorn algorithm. Journal of Scientific Computing, 85(2):1–28.
+Douc, R., Moulines, E., Priouret, P., and Soulier, P. (2019). Markov Chains. Springer.
+Durkan, C. and Song, Y. (2021). On maximum likelihood training of score-based generative models. arXiv preprint arXiv:2101.09258.
+Durmus, A. and Moulines, E. (2017). Nonasymptotic convergence analysis for the unadjusted Langevin algorithm. The Annals of Applied Probability, 27(3):1551–1587.
+Enderton, H. B. (1977). Elements of Set Theory. Academic Pres, New York-London.
+Ethier, S. N. and Kurtz, T. G. (1986). Markov Processes. Wiley Series in Probability and Mathematical Statistics: Probability and Mathematical Statistics. John Wiley & Sons, Inc., New York. Characterization and convergence.
+Finlay, C., Gerolin, A., Oberman, A. M., and Pooladian, A.-A. (2020). Learning normalizing flows from entropy-Kantorovich potentials. arXiv preprint arXiv:2006.06033.
+Föllmer, H. (1985). An entropy approach to the time reversal of diffusion processes. In Stochastic Differential Systems: Filtering and Control, pages 156–163. Springer.
+Föllmer, H. (1988). Random fields and diffusion processes. In École d’Été de Probabilités de Saint-Flour XV–XVII, 1985–87, pages 101–203. Springer.
+Fortet, R. (1940). Résolution d’un système d’équations de M. Schrödinger. Journal de Mathématiques Pures et Appliqués, 1:83–105.
+Franklin, J. and Lorenz, J. (1989). On the scaling of multidimensional matrices. Linear Algebra and Its Applications, 114:717–735.
+Gao, R., Song, Y., Poole, B., Wu, Y. N., and Kingma, D. P. (2020). Learning energy-based models by diffusion recovery likelihood. arXiv preprint arXiv:2012.08125.
+Genevay, A., Peyré, G., and Cuturi, M. (2018). Learning generative models with Sinkhorn divergences. In International Conference on Artificial Intelligence and Statistics.
+Haussmann, U. G. and Pardoux, E. (1986). Time reversal of diffusions. The Annals of Probability, 14(4):1188–1205.
+Heusel, M., Ramsauer, H., Unterthiner, T., Nessler, B., and Hochreiter, S. (2017). GANs trained by a two time-scale update rule converge to a local Nash equilibrium. arXiv preprint arXiv:1706.08500.
+Ho, J., Jain, A., and Abbeel, P. (2020). Denoising diffusion probabilistic models. Advances in Neural Information Processing Systems.
+Hoogeboom, E., Nielsen, D., Jaini, P., Forré, P., and Welling, M. (2021). Argmax flows and multinomial diffusion: Towards non-autoregressive language models. arXiv preprint arXiv:2102.05379.
+Hutchinson, M. F. (1989). A stochastic estimator of the trace of the influence matrix for laplacian smoothing splines. Communications in Statistics-Simulation and Computation, 18(3):1059–1076.
+12
+
+
+Hyvärinen, A. and Dayan, P. (2005). Estimation of non-normalized statistical models by score matching. Journal of Machine Learning Research, 6(4).
+Ikeda, N. and Watanabe, S. (1989). Stochastic Differential Equations and Diffusion Processes, volume 24 of North-Holland Mathematical Library. North-Holland Publishing Co., Amsterdam; Kodansha, Ltd., Tokyo, second edition.
+Jolicoeur-Martineau, A., Li, K., Piché-Taillefer, R., Kachman, T., and Mitliagkas, I. (2021a). Gotta go fast when generating data with score-based models. arXiv preprint arXiv:2105.14080.
+Jolicoeur-Martineau, A., Piché-Taillefer, R., Tachet des Combes, R., and Mitliagkas, I. (2021b). Adversarial score matching and improved sampling for image generation. International Conference on Learning Representations.
+Kingma, D. P. and Ba, J. (2014). Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980.
+Kober, H. (1939). A theorem on Banach spaces. Compositio Mathematica, 7:135–140.
+Kong, Z., Ping, W., Huang, J., Zhao, K., and Catanzaro, B. (2021). Diffwave: A versatile diffusion model for audio synthesis. International Conference on Learning Representations.
+Kruithof, J. (1937). Telefoonverkeersrekening. De Ingenieur, 52:15–25.
+Kullback, S. (1968). Probability densities with given marginals. The Annals of Mathematical Statistics, 39(4):1236–1243.
+Kullback, S. (1997). Information Theory and Statistics. Dover Publications, Inc., Mineola, NY. Reprint of the second (1968) edition.
+Laumont, R., De Bortoli, V., Almansa, A., Delon, J., Durmus, A., and Pereyra, M. (2021). Bayesian imaging using plug & play priors: when Langevin meets Tweedie. arXiv preprint arXiv:2103.04715.
+LeCun, Y. and Cortes, C. (2010). MNIST handwritten digit database.
+Léger, F. (2020). A gradient descent perspective on Sinkhorn. Applied Mathematics & Optimization, pages 1–13.
+Leha, G. and Ritter, G. (1984). On diffusion processes and their semigroups in Hilbert spaces with an application to interacting stochastic systems. The Annals of Probability, 12(4):1077–1112.
+Lemmens, B. and Nussbaum, R. D. (2014). Birkhoff’s version of Hilbert’s metric and its applications in analysis. Handbook of Hilbert Geometry, pages 275–303.
+Léonard, C. (2011). Stochastic derivatives and generalized h-transforms of markov processes. arXiv preprint arXiv:1102.3172.
+Léonard, C. (2014a). Some properties of path measures. In Séminaire de Probabilités XLVI, pages 207–230. Springer.
+Léonard, C. (2014b). A survey of the Schrödinger problem and some of its connections with optimal transport. Discrete & Continuous Dynamical Systems-A, 34(4):1533–1574.
+Léonard, C. (2019). Revisiting Fortet’s proof of existence of a solution to the Schrödinger system. arXiv preprint arXiv:1904.13211.
+Liptser, R. S. and Shiryaev, A. N. (2001). Statistics of Random Processes. I, volume 5 of Applications of Mathematics (New York). Springer-Verlag, Berlin, expanded edition. General theory, Translated from the 1974 Russian original by A. B. Aries, Stochastic Modelling and Applied Probability.
+Liu, Z., Luo, P., Wang, X., and Tang, X. (2015). Deep learning face attributes in the wild. In International Conference on Computer Vision.
+Luhman, E. and Luhman, T. (2021). Knowledge distillation in iterative generative models for improved sampling speed. arXiv preprint arXiv:2101.02388.
+13
+
+
+Luhman, T. and Luhman, E. (2020). Diffusion models for handwriting generation. arXiv preprint arXiv:2011.06704.
+Mémoli, F. (2011). Gromov–Wasserstein distances and the metric approach to object matching. Foundations of Computational Mathematics, 11(4):417–487.
+Meyn, S. P. and Tweedie, R. L. (1993). Stability of Markovian processes. III. Foster-Lyapunov criteria for continuous-time processes. Advances in Applied Probability, 25(3):518–548.
+Mikami, T. (2004). Monge’s problem with a quadratic cost by the zero-noise limit of h-path processes. Probability Theory and Related Fields, 129(2):245–260.
+Nichol, A. and Dhariwal, P. (2021). Improved denoising diffusion probabilistic models. arXiv preprint arXiv:2102.09672.
+Niu, C., Song, Y., Song, J., Zhao, S., Grover, A., and Ermon, S. (2020). Permutation invariant graph generation via score-based generative modeling. In International Conference on Artificial Intelligence and Statistics.
+Pavon, M., Trigila, G., and Tabak, E. G. (2021). The data-driven Schrödinger bridge. Communications on Pure and Applied Mathematics, 74:1545–1573.
+Petersen, K. B., Pedersen, M. S., et al. (2008). The matrix cookbook. Technical University of Denmark, 7(15):510.
+Peyré, G. and Cuturi, M. (2019). Computational optimal transport. Foundations and Trends® in Machine Learning, 11(5-6):355–607.
+Popov, V., Vovk, I., Gogoryan, V., Sadekova, T., and Kudinov, M. (2021). Grad-tts: A diffusion probabilistic model for text-to-speech. arXiv preprint arXiV:2105.06337.
+Reich, S. (2019). Data assimilation: the Schrödinger perspective. Acta Numerica, 28:635–711.
+Revuz, D. and Yor, M. (1999). Continuous Martingales and Brownian Motion, volume 293 of Grundlehren der Mathematischen Wissenschaften [Fundamental Principles of Mathematical Sciences]. Springer-Verlag, Berlin, third edition.
+Rogers, L. C. G. and Williams, D. (2000). Diffusions, Markov processes, and martingales. Vol. 2. Cambridge Mathematical Library. Cambridge University Press, Cambridge. Itô calculus, Reprint of the second (1994) edition.
+Ruschendorf, L. et al. (1995). Convergence of the iterative proportional fitting procedure. The Annals of Statistics, 23(4):1160–1174.
+Rüschendorf, L. and Thomsen, W. (1993). Note on the Schrödinger equation and i-projections. Statistics & Probability letters, 17(5):369–375.
+Saharia, C., Ho, J., Chan, W., Salimans, T., Fleet, D. J., and Norouzi, M. (2021). Image superresolution via iterative refinement. arXiv preprint arXiv:2104.07636.
+San-Roman, R., Nachmani, E., and Wolf, L. (2021). Noise estimation for generative diffusion models. arXiv preprint arXiv:2104.02600.
+Schrödinger, E. (1932). Sur la théorie relativiste de l’électron et l’interprétation de la mécanique quantique. Annales de l’Institut Henri Poincaré, 2(4):269–310.
+Sinkhorn, R. and Knopp, P. (1967). Concerning nonnegative matrices and doubly stochastic matrices. Pacific Journal of Mathematics, 21(2):343–348.
+Skilling, J. (1989). The eigenvalues of mega-dimensional matrices. In Maximum Entropy and Bayesian Methods, pages 455–466. Springer.
+Sohl-Dickstein, J., Weiss, E., Maheswaranathan, N., and Ganguli, S. (2015). Deep unsupervised learning using nonequilibrium thermodynamics. In International Conference on Machine Learning.
+14
+
+
+Song, J., Meng, C., and Ermon, S. (2020). Denoising diffusion implicit models. arXiv preprint arXiv:2010.02502.
+Song, Y. and Ermon, S. (2019). Generative modeling by estimating gradients of the data distribution. In Advances in Neural Information Processing Systems.
+Song, Y. and Ermon, S. (2020). Improved techniques for training score-based generative models. In Advances in Neural Information Processing Systems.
+Song, Y., Sohl-Dickstein, J., Kingma, D. P., Kumar, A., Ermon, S., and Poole, B. (2021). Score-based generative modeling through stochastic differential equations. In International Conference on Learning Representations.
+Tzen, B. and Raginsky, M. (2019). Theoretical guarantees for sampling and inference in generative models with latent diffusions. Conference on Learning Theory, 99:3084–3114.
+Vargas, F., Thodoroff, P., Lawrence, N. D., and Lamacraft, A. (2021). Solving Schrödinger bridges via maximum likelihood. arXiv preprint arXiv:2106.02081.
+Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., and Polosukhin, I. (2017). Attention is all you need. In Advances in Neural Information Processing Systems.
+Vincent, P. (2011). A connection between score matching and denoising autoencoders. Neural Computation, 23(7):1661–1674.
+Wang, G., Jiao, Y., Xu, Q., Wang, Y., and Yang, C. (2021). Deep generative learning via Schrödinger bridge. In International Conference on Machine Learning.
+Watson, D., Ho, J., Norouzi, M., and Chan, W. (2021). Learning to efficiently sample from diffusion probabilistic models. arXiv preprint arXiv:2106.03802.
+15
+
+
+A Organization of the supplementary
+The supplementary is organized as follows. We define our notation in Appendix B. In Appendix C, we prove Theorem 1 and draw links between our approach of SGM and existing works. We recall the classical formulation of IPF, prove Proposition 2 and draw links with autoencoders in Appendix D. In Appendix E we present alternative variational formulas for Algorithm 1 and prove Proposition 3. We gather the proofs of our theoretical study of Schrödinger bridges (Proposition 4 and Proposition 5) in Appendix F. A quantitative study of IPF with Gaussian targets and reference measure is presented in Appendix G. In particular, we show that the convergence rate of IPF is geometric in this case. In Appendix H we study the links between continuous-time and discrete-time IPF and prove Proposition 6. We also provide details on the likelihood computation of generative models obtained with Schrödinger bridges. We detail training techniques to improve training times in Appendix I then present architecture details and additional experiments in Appendix J.
+B Notation
+For ease of reading in this section we recall and detail some of the notation introduced in Section 1. For any measurable space (E, E), we denote by P(E) the space of probability measures over E. For any ` ∈ N, we also denote P` = P((Rd)`). For any π ∈ P(E) and Markov kernel K : E × F → [0, 1] where (F, F) is a measurable space, we define πK ∈ P(F) such that for any A ∈ F we have
+πK(A) = ∫
+E K(x, A)dπ(x). If E = C then for any P ∈ P(E) and s, t ∈ [0, T ], we denote by Ps,t
+the marginals of P at time s and t. In addition, we denote by P|s,t the disintegration Markov kernel given by the mapping ω 7→ (ω(s), ω(t)), see Appendix D.1 for a definition. In particular, we have P = Ps,tP|s,t. All defined mappings are considered to be measurable unless stated otherwise.
+For any P ∈ P(C) we define PR the reverse-time measure, i.e. for any A ∈ B(C) we have PR(A) = P(AR) where AR = {t 7→ ω(T − t) : ω ∈ A}. We say that P ∈ P(C) is associated with a diffusion if it solves the corresponding martingale problem. More precisely, P ∈ P(C) is associated
+with dXt = b(t, Xt)dt + √2dBt for b : [0, T ] × Rd → Rd measurable if for any v ∈ Cc2(Rd, R),
+(Mtv)t∈[0,T ] is a P-local martingale, where for any t ∈ [0, T ]
+Mtv = v(Xt) − ∫ t
+0 As(v)(Xs)ds (16)
+with for any v ∈ C2(Rd, R), t ∈ [0, t] and x ∈ Rd
+At(v)(x) = 〈b(t, x), ∇v(x)〉 + ∆v(x).
+We refer to Revuz and Yor (1999) for a rigorous treatment of local martingales. Note that (16) uniquely defines Pt|s for any s, t ∈ [0, T ] with t ≥ s. Hence P is uniquely defined up to P0.
+In some cases, we say that P ∈ P(C) is associated with a diffusion if it solves the corresponding martingale problem with initial condition. More precisely, P ∈ P(C) is associated with dXt =
+b(t, Xt)dt + √2dBt and X0 ∼ μ0 ∈ P(Rd) if it solves the martingale problem and P0 = μ0. Note that in this case P is uniquely defined.
+Finally, for any measurable space (E, E) and μ, ν ∈ P(E) we recall that the Jeffrey’s divergence is given by J(μ, ν) = KL(μ|ν) + KL(ν|μ).
+C Time-reversal and existing work
+Before giving the proof of Theorem 1 we start by deriving estimates on the logarithmic derivatives of the density of the Ornstein-Ulhenbeck process given growth conditions on the initial density in Appendix C.1. Note that our estimates are uniform w.r.t. the time variable. We give the proof of Theorem 1 in Appendix C.2. Finally, we draw links with existing works in Appendix C.3.
+C.1 Estimates for logarithmic derivatives
+We start by recalling the following multivariate Faa di Bruno’s formula and a useful technical lemma. Then in Appendix C.1.1 we derive bounds for the logarithmic derivatives which are non-vacuous
+16
+
+
+for small times. In Appendix C.1.2 we derive bounds for the logarithmic derivatives which are non-vacuous for large times. We combine them in Appendix C.1.3.
+For any α ∈ Nd we denote |α| = ∑d
+i=1 αi and α! = ∏d
+i=1 αi!. If f : Rd → R is m
+differentiable with m ∈ N, then for any λ ∈ Nd with |λ| ≤ m we denote for any x ∈ Rd, ∂λf (x) = ∂λ1
+1 . . . ∂λd
+d f (x). Similarly to Constantine and Savits (1996), we define ≺ the order on Nd
+such that for any λ1, λ2 ∈ Nd, λ1 ≺ λ2 if |λ1| < |λ2| or |λ1| = |λ2| and there exists j ∈ {1, . . . , d} such that λ1
+j < λ2
+j and for any i ∈ {1, . . . , j}, λ1
+i = λ2
+i.
+Proposition 7. Let U ⊂ R open, N ∈ N, f ∈ CN (U, R), g ∈ CN (Rd, U) and h = f ◦ g. Then for any λ ∈ Nd with |λ| ≤ N and x ∈ Rd we have
+∂λh(x) = ∑|λ|
+k,s=1
+∑
+ps(λ,k) f (k)(g(x))λ! ∏s
+j=1 ∂`j g(x)mj /(mj !`j !mj ),
+with
+ps(λ, k) = {{`i}s
+i=1 ∈ (Nd)s, {mi}s
+i=1 ∈ Ns : `1 ≺ · · · ≺ `s, ∑s
+i=1 mi = k, ∑s
+i=1 mi`i = λ}.
+Proof. The proposition is a direct application of Constantine and Savits (1996).
+From this multivariate Faa di Bruno formula we derive the following lemma drawing links between exponential and logarithmic derivatives.
+Lemma 8. Let N ∈ N, g1 ∈ CN (Rd, R), g2 ∈ CN (Rd, (0, +∞)), h1 = exp[g1] and h2 = log(g2).
+Then for any λ ∈ Nd with |λ| ≤ N let cd,λ = ∑|λ|
+k=1 dk and the following hold:
+(a) There exists Pλ,exp a real polynomial with cd,λ variables such that for any x ∈ Rd
+∂λh1(x) = Pλ,exp((∂`g1(x))|`|≤|λ|)h1(x).
+(b) There exists Pλ,log a real polynomial with cd,λ variables such that for any x ∈ Rd
+∂λh2(x) = Pλ,log((∂`g2(x)/g2(x))|`|≤|λ|).
+Proof. The proof of (a) is a direct application of Proposition 7 upon noting that for any k ∈ N, f (k) = exp if f = exp. Similarly, the proof of (b) is a direct application of Proposition 7 upon noting that, in the case where f = log, for any k ∈ N and x > 0, f (k)(x) = (−1)k−1(k − 1)!x−k and that
+for any s ∈ {1, . . . , |λ|} and (`1, . . . , `s, m1, . . . , ms) ∈ ps(λ, k) we have ∑s
+i=1 mi = k.
+We will also make use of the following technical lemma.
+Lemma 9. Let p ∈ N. Then for any a ≥ 0, b > 0 and x ∈ Rd we have
+− b‖x‖2p + a‖x‖2p−1 ≤ −(b/2)‖x‖2p + a(2a/b)2p−1, (17)
+− b‖x‖2p + a‖x‖2p−2 ≤ −(b/2)‖x‖2p + a(2a/b)p−1. (18)
+In addition for any a ≥ 0, b > 0 and x ∈ Rd we have
+−b‖x‖2p + a‖x‖2p−1 ≤ (2p − 1)2p−1(2p)−2pa2pb1−2p.
+Proof. For the first part of the proof, we only prove (17). The proof of (18) is similar. Let a ≥ 0, b > 0. For any x ∈ Rd with ‖x‖ ≤ (b/2a)−1 we have a‖x‖2p−1 ≤ a(b/2a)−2p+1. For any x ∈ Rd with ‖x‖ ≥ (b/2a)−1 we have a‖x‖2p−1 ≤ (b/2)‖x‖2p. Hence, we get that for any x ∈ Rd we have
+a‖x‖2p−1 − b‖x‖2p ≤ a(b/2a)−2p+1 − (b/2) ‖x‖2p ,
+which concludes the first part of the proof. For the second part of the proof, remark that the maximum of h : t 7→ −bt2p + at2p−1 is attained for t? = (2p − 1)/(2p)(a/b). We conclude upon noting that h(t?) = (2p − 1)2p−1(2p)−2pa2pb1−2p.
+17
+
+
+C.1.1 Small times estimates
+Lemma 8 is key in the following proposition which establishes upper bounds on the logarithmic derivatives of the density of the Ornstein-Ulhenbeck process. In what follows, we define (pt)t∈[0,T ] the density w.r.t. the Lebesgue measure of Xt satisfying
+dXt = −αXtdt + √2dBt, X0 ∼ pdata,
+with α ≥ 0. In the rest of this section, α is fixed.
+Proposition 10. Let N ∈ N. Assume that pdata ∈ CN (Rd, (0, +∞)) is bounded and that for any ` ∈ {1, . . . , N } there exist A` ≥ 0 and α` ∈ N such that for any x ∈ Rd
+‖∇` log pdata(x)‖ ≤ A`(1 + ‖x‖α` ). (19)
+Then for any t ≥ 0, pt ∈ CN (Rd, (0, +∞)) and for any ` ∈ {1, . . . , N }, there exist B` ≥ 0 and β` ∈ N such that for any t ≥ 0
+‖∇` log pt(x)‖ ≤ c−2β`
+t B`(1 + ∫
+Rd ‖x0‖β` p0|t(x0|xt)dx0),
+with ct2 = exp[−2αt].
+Proof. First note that for any t ≥ 0 and xt ∈ Rd we have
+pt(xt) = ∫
+Rd pdata(x0)g(xt − ctx0)dx0, (20)
+with for any x ̃ ∈ Rd
+ct = exp[−αt], g(x ̃) = (2πσ2
+t )−d/2 exp[− ‖x ̃‖2 /(2σ2
+t )], σ2
+t = (1 − exp[−2αt])/α.
+Let t ≥ 0. We have that pt ∈ CN (Rd, (0, +∞)) upon combining the fact that pdata is bounded, (20) and the dominated convergence theorem. Let ` ∈ {1, . . . , N } and λ ∈ Nd such that |λ| ≤ `. Using Lemma 8-(b) we have for any xt ∈ Rd
+∂λ log pt(xt) = Pλ,log((∂mpt(xt)/pt(xt))|m|≤|λ|). (21)
+Using (20) and the change of variable z = xt − ctx0, we have for any xt ∈ Rd
+pt(xt) = c−1
+t
+∫
+Rd pdata((xt − z)/ct)g(z)dz.
+Hence, combining this result, the dominated convergence theorem and Lemma 8-(a) we get that for any xt ∈ Rd and m ∈ Nd with |m| ≤ `
+∂mpt(xt) = c−|m|
+t
+∫
+Rd ∂mpdata(x0)g(xt − ctx0)dx0
+= c−|m|
+t
+∫
+Rd Pm,exp((∂j log pdata(x0))|j|≤|m|)pdata(x0)g(xt − ctx0)dx0.
+We conclude the proof upon combining this result, (19), (21) and the fact that ct ≤ 1.
+For any t ≥ 0 and xt ∈ Rd we introduce the infinitesimal generator At,xt : C2(Rd, R) → C2(Rd, R) given for any φ ∈ C2(Rd, R) and x0 ∈ Rd by
+At,xt (φ)(x0) = 〈∇x0 log p0|t(x0|xt), ∇φ(x0)〉 + ∆φ(x0) (22)
+= 〈∇ log pdata(x0), ∇φ(x0)〉 + (ct/σ2
+t )〈xt − ctx0, ∇φ(x0)〉 + ∆φ(x0).
+Establishing Foster-Lyapunov drift condition for this infinitesimal generator will allow us to derive moment bounds for x0 7→ p0|t(x0|xt). We now introduce the Lyapunov functional which will allow us to control these moments. For any p ∈ N, t > 0 and xt ∈ Rd, let Vp,t,xt : Rd → [1, +∞) given for any x0 ∈ Rd by
+Vp,t,xt (x0) = 1 + ‖x0 − xt/ct‖2p, ct = exp[−αt].
+Proposition 11. Assume pdata ∈ C1(Rd, R) and that there exist m0 > 0, d0, C0 ≥ 0 such that for any x0 ∈ Rd we have
+〈x0, ∇ log pdata(x0)〉 ≤ −m0‖x0‖2 + d0 ‖x0‖ , ‖∇ log pdata(x0)‖ ≤ C0(1 + ‖x0‖). (23)
+Then for any t > 0, xt ∈ Rd and p ∈ N there exist βp ∈ N, ap > 0 and bp ≥ 0 (independent of t and xt) such that for any x0 ∈ Rd we have
+At,xt (Vp,t,xt )(x0) ≤ −apVp,t,xt (x0) + bp(1 + ‖xt/ct‖βp ),
+with βp = 2p.
+18
+
+
+Proof. Let t ≥ 0, x0, xt ∈ Rd and p ∈ N. First, we have for any x0 ∈ Rd
+Vp,t,xt (x0) = ‖x0 − xt/ct‖2p, ∇Vp,t,xt (x0) = 2p(x0 − xt/ct)‖x0 − xt/ct‖2(p−1), (24)
+∆Vp,t,xt (x0) = 2p(2p − 1)‖x0 − xt/ct‖2(p−1).
+Second, using Lemma 9, the Cauchy-Schwarz inequality and (23), we have for any x0 ∈ Rd
+〈∇ log pdata(x0), x0 − xt/ct〉 ≤ −m0‖x0‖2 + d0 ‖x0‖ + ‖∇ log pdata(x0)‖‖xt/ct‖
+≤ −m0‖x0 − xt/ct‖2 + 2m0‖x0‖‖xt‖/ct + C0(1 + ‖x0‖)‖xt‖/ct
++ d0 ‖x0 − xt/ct‖ + d0 ‖xt‖ /ct + m0‖xt‖2/c2
+t
+≤ −m0‖x0 − xt/ct‖2 + {(2m0 + C0)‖xt‖/ct + d0}‖x0 − xt/ct‖
++ (3m0 + C0)‖xt‖2/c2
+t + (C0 + d0)‖xt‖/ct.
+Combining this result and (24), we have for any x0 ∈ Rd
+〈∇ log pdata(x0), ∇Vp,t,xt (x0)〉
+≤ −2pm0‖x0 − xt/ct‖2p + 2p{(2m0 + C0)‖xt‖/ct + d0}‖x0 − xt/ct‖2p−1
++ 2p((3m0 + C0)‖xt‖2/c2
+t + (C0 + d0)‖xt‖/ct)‖x0 − xt/ct‖2p−2.
+Combining this result with (22) and the fact that for any x0 ∈ Rd, (ct/σt2)〈xt−ctx0, ∇Vp,t,xt (x0)〉 ≤ 0, we get that for any x0 ∈ Rd
+At,xt (Vp,t,xt )(x0) ≤ −2pm0‖x0 − xt/ct‖2p + 2p{(2m0 + C0)‖xt‖/ct + d0}‖x0 − xt/ct‖2p−1
++ 2p((3m0 + C0)‖xt‖2/c2
+t + (C0 + d0)‖xt‖/ct)‖x0 − xt/ct‖2p−2.
+Using Lemma 9 there exist βp ∈ N, ap > 0 and bp ≥ 0 (independent of xt and t) such that for any x0 ∈ Rd we have
+At,xt (Vp,t,xt )(x0) ≤ −apVp,t,xt (x0) + bp(1 + (‖xt‖/ct)βp ),
+which concludes the proof.
+Using this Foster-Lyapunov drift we are now ready to bound the moments of x0 7→ p0|t(x0|xt).
+Proposition 12. Assume that pdata ∈ C2(Rd, R) and that there exist m0 > 0, d0, C0 ≥ 0 such that for any x0 ∈ Rd we have
+〈x0, ∇ log pdata(x0)〉 ≤ −m0‖x0‖2 + d0‖x0‖, ‖∇ log pdata(x0)‖ ≤ C0(1 + ‖x0‖).
+Then, for any p ∈ N there exist Cp ≥ 0 and βp ∈ N such that for any t ≥ 0 and xt ∈ Rd
+∫
+Rd ‖x0‖p p(x0|xt)dx0 ≤ Cpc−2βp
+t (1 + ‖xt‖βp ), (25)
+with ct2 = exp[−2αt] and βp = p.
+Proof. Let t ≥ 0 and xt ∈ Rd. Using (Ikeda and Watanabe, 1989, Theorem 2.3, Theorem 3.1),
+Proposition 11 and (Meyn and Tweedie, 1993, Theorem 2.1) for any x ∈ Rd, there exists a unique strong solution (Xxu)u≥0 such that X0x ∼ δx and
+dXx
+u = ∇ log p0|t(Xx
+u|xt)du + √2dBu.
+Using (Leha and Ritter, 1984, Theorem 5.19) we get that {(Xxu)u≥0 : x ∈ Rd} is associated with a Feller semi-group. In addition, we have that for any f ∈ Cc2(Rd), ∫
+Rd At,xt (f )(x0)p0|t(x0|xt)dx0 =
+0. Therefore, using (Revuz and Yor, 1999, Proposition 1.5) and (Ethier and Kurtz, 1986, Theorem 9.17) we get that the probability distribution with density x0 7→ p0|t(x0|xt) is an invariant distribution
+for the semi-group associated with {(Xxu)u≥0 : x ∈ Rd}. Therefore, using Proposition 11 and (Meyn and Tweedie, 1993, Theorem 4.6) we get that for any p ∈ N
+∫
+Rd (1 + ‖x0 − c−1
+t xt‖2p)p0|t(x0|xt)dx0 ≤ bp(1 + ‖xt/ct‖βp )/ap
+which concludes the proof upon using that ct ≤ 1 and Jensen’s inequality.
+19
+
+
+C.1.2 Large times estimates
+In Proposition 12, the bound in (25) goes to +∞ as t → +∞ since limt→+∞ c−1
+t = +∞ (if α > 0). This does not yield any degeneracy in our setting since we consider a fixed time horizon T > 0. However, we can improve the result by deriving another bound which is bounded at t → +∞ but explodes as t → 0. In this section we assume that h : u 7→ (exp[u] − 1)/u is extended to 0 by continuity with h(0) = 1.
+The following proposition is the equivalent of Proposition 10 with a bound which explodes for t → 0 instead of t → +∞. Note that contrary to Proposition 10 we do not require any differentiability condition the initial distribution pdata.
+Proposition 13. Let N ∈ N. Assume that pdata ∈ C0(Rd, (0, +∞)) is bounded. Then for any t ≥ 0, pt ∈ CN (Rd, (0, +∞)) and for any ` ∈ {1, . . . , N }, there exist B` ≥ 0 and β` ∈ N such that for any t ≥ 0
+‖∇` log pt(x)‖ ≤ σ−β`
+t B`(1 + ∫
+Rd ‖xt − ctx0‖β` p0|t(x0|xt)dx0)
+≤ σ−β`
+t B`(1 + ∫
+Rd ‖xt − x0‖β` q0|t(x0|xt)dx0).
+with σt2 = (1 − exp[−2αt])/α and for any x ̃ ∈ Rd
+q0|t(x0|xt) = pdata(x0/ct)g(xt − x0)/ ∫
+Rd pdata(x0/ct)g(xt − x0)dx0,
+g(x ̃) = (2πσ2
+t ) exp[− ‖x ̃‖2 /(2σ2
+t )].
+Proof. First note that for any t ≥ 0 and xt ∈ Rd we have
+pt(xt) = ∫
+Rd pdata(x0)g(xt − ctx0)dx0, (26)
+with
+ct = exp[−αt], g(x ̃) = (2πσ2
+t )−d/2 exp[− ‖x ̃‖2 /(2σ2
+t )], σ2
+t = (1 − exp[−2αt])/α.
+Let t ≥ 0. We have pt ∈ CN (Rd, (0, +∞)) upon combining the fact that pdata is bounded, (26) and the dominated convergence theorem. Let ` ∈ {0, . . . , N } and λ ∈ Nd such that |λ| ≤ `. Using Lemma 8-(b) we have for any xt ∈ Rd
+∂λ log pt(xt) = Pλ,log((∂mpt(xt)/pt(xt))|m|≤|λ|).
+For any m ∈ Nd with |m| ≤ |λ|, using the dominated convergence theorem, there exist Cm ≥ 0 and βm ∈ N such that for any xt ∈ Rd we have
+|∂mpt(xt)| ≤ Cmσ−2βm
+t
+∫
+Rd (1 + ‖xt − ctx0‖βm )pdata(x0)g(xt − ctx0)dx0,
+which concludes the proof.
+For any t ≥ 0 and xt ∈ Rd we introduce the infinitesimal generator A ̃t,xt : C2(Rd, R) → C2(Rd, R) given for any φ ∈ C2(Rd, R) and x0 ∈ Rd by
+A ̃t,xt (f )(x0) = 〈∇ log q0|t(x0|xt), ∇φ(x0)〉 + ∆φ(x0)
+= c−1
+t 〈∇ log pdata(x0/ct), ∇φ(x0)〉 + σ−2
+t 〈xt − x0, ∇φ(x0)〉 + ∆φ(x0).
+For any p ∈ N, let Vp : Rd → [1, +∞) given for any x0 ∈ Rd by
+Vp(x0) = 1 + ‖x0‖2p.
+The following proposition is the counterpart to Proposition 11.
+Proposition 14. Assume that pdata ∈ C1(Rd, R) and that there exist m0 > 0, d0 ≥ 0 such that for any x0 ∈ Rd we have
+〈x0, ∇ log pdata(x0)〉 ≤ −m0‖x0‖2 + d0 ‖x0‖ . (27)
+Then for any t > 0, xt ∈ Rd and p ∈ N there exist βp ∈ N, ap > 0 and bp ≥ 0 (independent of t and xt) such that for any x0 ∈ Rd we have
+A ̃t,xt (Vp)(x0) ≤ −apσ−2
+t Vp(x0) + bp(1 + ‖xt/σ2
+t ‖βp ),
+with βp = 2p.
+20
+
+
+Proof. Let t ≥ 0, x0, xt ∈ Rd and p ∈ N. First, we have for any x0 ∈ Rd
+Vp(x0) = 1+‖x0‖2p , ∇Vp(x0) = 2p ‖x0‖2(p−1) x0, ∆Vp(x0) = 2p(2p−1) ‖x0‖2(p−1) .
+Using this result, (27) and Lemma 9, we get that for any x0 ∈ Rd
+2p〈∇ log pdata(x0/ct), x0/ct〉 ‖x0‖2(p−1) ≤ 2pc−1
+t (−m0 ‖x0‖2p /ct + d0 ‖x0‖2p−1)
+≤ c−1
+t (2p − 1)2p−1(2p)1−2p(m0/ct)1−2pd2p
+0.
+Combining this result and the fact that ct ≤ 1, there exists dp ≥ 0 (independent from t and xt) such that for any x0 ∈ Rd
+2p〈∇ log pdata(x0/ct), x0/ct〉 ‖x0‖2(p−1) ≤ dp. (28)
+In addition, we have for any x0 ∈ Rd
+(2p/σ2
+t )〈x0, xt − x0〉 ‖x0‖2(p−1) + 2p(2p − 1) ‖x0‖2(p−1)
+≤ −(2p/σ2
+t ) ‖x0‖2p + (2p/σ2
+t ) ‖x0‖2p−1 ‖xt‖ + 2p(2p − 1) ‖x0‖2p−1 + 2p(2p − 1).
+Combining this result and (28) we have for any x0 ∈ Rd
+A ̃t,xt (Vp)(x0)
+≤ −(2p/σ2
+t ) ‖x0‖2p + (2p/σ2
+t ) ‖x0‖2p−1 ‖xt‖ + 2p(2p − 1) ‖x0‖2p−1 + 2p(2p − 1) + dp.
+We conclude upon using Lemma 9.
+The next proposition is the counterpart of Proposition 12.
+Proposition 15. Assume that pdata ∈ C2(Rd, R) and that there exist m0 > 0, d0 ≥ 0 such that for any x0 ∈ Rd we have
+〈x0, ∇ log pdata(x0)〉 ≤ −m0‖x0‖2 + d0‖x0‖.
+Then, for any p ∈ N there exist Cp ≥ 0 and βp ∈ N such that for any t ∈≥ 0 and xt ∈ Rd
+∫
+Rd ‖xt − x0‖p q0|t(x0|xt)dx0 ≤ Cpσ−2βp
+t (1 + ‖xt‖βp ),
+with σt2 = (1 − exp[−2αt])/α and βp = p.
+Proof. The proof is similar to the one of Proposition 12.
+C.1.3 Uniform in time logarithmic derivatives estimates
+In this section we combine the results of Appendix C.1.2 and Appendix C.1.1 to establish uniform in time estimates for the logarithmic derivatives of the density of the Ornstein-Ulhenbeck diffusion.
+Theorem 16. Let N ∈ N with N ≥ 2. Assume that pdata ∈ CN (Rd, R) and that there exist m0 > 0, d0, C0 ≥ 0 such that for any x0 ∈ Rd we have
+〈x0, ∇ log pdata(x0)〉 ≤ −m0‖x0‖2 + d0‖x0‖, ‖∇ log pdata(x0)‖ ≤ C0(1 + ‖x0‖).
+In addition, assume that pdata is bounded and that for any ` ∈ {1, . . . , N } there exist A` ≥ 0 and α` ∈ N such that for any x0 ∈ Rd
+‖∇` log pdata(x0)‖ ≤ A`(1 + ‖x0‖α` ). (29)
+Then for any t ≥ 0, pt ∈ CN (Rd, (0, +∞)) and for any ` ∈ {1, . . . , N }, there exist D` ≥ 0 and β` ∈ N such that for any t ≥ 0
+‖∇` log pt(xt)‖ ≤ D`(1 + ‖xt‖β` ).
+In particular if α1 = 1 then β1 = 1.
+21
+
+
+Proof. Let t ≥ 0 and ` ∈ {1, . . . , N }. Using Proposition 10 and Proposition 12 there exist D1
+` ≥0
+and β1
+` ∈ N such that for any xt ∈ Rd we have
+‖∇` log pt(xt)‖ ≤ D1
+` c−2β1
+`
+t (1 + ‖xt‖β1
+` ).
+Similarly, using Proposition 13 and Proposition 15 there exist D2
+` ≥ 0 and β2
+` ∈ N such that for any
+xt ∈ Rd we have
+‖∇` log pt(xt)‖ ≤ D2
+` (α1/2σt)−2β2
+` (1 + ‖xt‖β2
+` ).
+Therefore, there exist D ̃` ≥ 0 and β` ∈ N such that for any xt ∈ Rd we have
+‖∇` log pt(xt)‖ ≤ D ̃ ` min(α−1σ−2
+t , c−2
+t )β` (1 + ‖xt‖β` ).
+Since for any c−2
+t = exp[2αt] and α−1σ−2
+t = (1 − exp[−2αt])−1. Hence we have
+min(α−1σ−2
+t , c−2
+t )β` ≤ max{min(1/u, 1/(1 − u)) : u ∈ [0, 1]} ≤ 2β` ,
+which concludes the first part proof. We now show that if α1 = 1 then β1 = 1. Recall that for any
+t ≥ 0 and xt ∈ Rd we have
+pt(xt) = ∫
+Rd pdata(x0)g(xt − ctx0)dx0,
+with for any x ̃ ∈ Rd
+ct = exp[−αt], g(x ̃) = (2πσ2
+t )−d/2 exp[− ‖x ̃‖2 /(2σ2
+t )], σ2
+t = (1 − exp[−2αt])/α.
+Therefore, using the dominated convergence theorem we get that for any xt ∈ Rd
+∇ log pt(xt) = σ−2
+t
+∫
+Rd (xt − ctx0)p0|t(x0|xt)dx0 = σ−2
+t
+∫
+Rd (xt − ctx0)q0|t(x0|xt)dx0. (30)
+Similarly, using the dominate convergence theorem and change of variable z = xt − ctx0, we have
+for any xt ∈ Rd
+∇ log pt(xt) = c−1
+t
+∫
+Rd ∇ log pdata(x0)p0|t(x0|xt)dx0.
+We conclude the proof upon combining this result, (30), (29) with α1 = 1, Proposition 15 and Proposition 12. In particular, we use that β1 = 1.
+C.2 Proof of Theorem 1
+We start by recalling the following basic lemma.
+Lemma 17. Let (E, E) and (F, F) be two measurable spaces and K : E × F → [0, 1] be a Markov kernel. Then for any μ0, μ1 ∈ P(E) we have
+‖μ0K − μ1K‖TV ≤ ‖μ0 − μ1‖TV.
+In addition, for any φ : E → F measurable we get that
+‖φ#μ0 − φ#μ1‖TV ≤ ‖μ0 − μ1‖TV,
+with equality if φ is injective.
+Proof. We divide the proof into two parts.
+(a) Note that for any f : F → R such that ‖f ‖∞ ≤ 1 we have ‖Kf ‖∞ ≤ 1. Using this result we get
+‖μ0K − μ1K‖TV = sup{∫
+F f (y)d(μ0K)(y) − ∫
+F f (y)d(μ1K)(y) : ‖f ‖∞ ≤ 1}
+= sup{∫
+E Kf (x)dμ0(x) − ∫
+E Kf (x)dμ0(x) : ‖f ‖∞ ≤ 1} ≤ ‖μ0 − μ1‖TV.
+(b) We have
+‖φ#μ0 − φ#μ1‖TV = sup{∫
+E f (φ(x))dμ0(x) − ∫
+E f (φ(x))dμ1(x) : ‖f ‖∞ ≤ 1}
+≤ sup{∫
+E f (x)dμ0(x) − ∫
+E f (x)dμ1(x) : ‖f ‖∞ ≤ 1} ≤ ‖μ0 − μ1‖TV.
+If φ is injective then there exists φ−1 : F → F (measurable) such that φ−1 ◦ φ = Id. Therefore, for any f : E → R with ‖f ‖∞ ≤ 1 we have f = (f ◦ φ−1) ◦ φ and ‖f ◦ φ−1‖∞ ≤ 1. Hence we have
+‖μ0 − μ1‖TV = sup{∫
+E f (x)dμ0(x) − ∫
+E f (x)dμ1(x) : ‖f ‖∞ ≤ 1}
+≤ sup{∫
+E f (φ(x))dμ0(x) − ∫
+E f (φ(x))dμ1(x) : ‖f ‖∞ ≤ 1} ≤ ‖φ#μ0 − φ#μ1‖TV,
+which concludes the proof.
+22
+
+
+We will also make use of the following inequality.
+Lemma 18. Let ε > 0, x, y ∈ Rd, t > 2/ε and φ : [0, 1] → R such that for any s ∈ [0, 1], φ(s) = exp[− ‖x − sy‖2 /(4t)]. Then φ ∈ C1([0, 1] , R) and we have for any s ∈ [0, 1]
+|φ′(s)| ≤ 2(1 + ε−1)(1 + ‖x‖) exp[− ‖x‖2 /(8t)] exp[ε ‖y‖2]/t.
+Proof. Let s ∈ [0, 1], we have
+φ′(s) = (〈x, y〉 − s ‖y‖2) exp[− ‖x − sy‖2 /(4t)]/(2t).
+Using the Cauchy-Schwarz inequality and that for any a, b ∈ Rd, − ‖a + b‖2 ≤ − ‖a‖2 /2 + ‖b‖2 we get
+|φ′(s)| ≤ (‖x‖ ‖y‖ + ‖y‖2) exp[− ‖x‖2 /(8t) + ‖y‖2 /(4t)]/(2t). (31)
+In addition, we have
+‖y‖ exp[‖y‖2/(4t)] ≤ ‖y‖ exp[ε‖y‖2/2] ≤ (1 + ‖y‖2) exp[ε ‖y‖2 /2] ≤ 2(1 + ε−1) exp[ε ‖y‖2]. (32)
+Finally we also have ‖y‖2 exp[‖y‖2/(4t)] ≤ (1 + ε−1) exp[ε ‖y‖2]. Combining this result, (31) and (32) concludes the proof.
+Finally we show the following lemma which is a straightforward consequence of Girsanov’s theorem (Liptser and Shiryaev, 2001, Theorem 7.7). A similar version of this lemma can be found in the proof of (Durmus and Moulines, 2017, Proposition 2) and in (Laumont et al., 2021, Lemma 26) (version where the dependence of the drift in w ∈ C([0, T ] , Rd) is replaced by a (simpler) dependence in x ∈ Rd). We refer to (Liptser and Shiryaev, 2001, Section 4) for the definitions of semi-group, non-anticipative processes and diffusion type processes.
+Lemma 19. Let T > 0, b1, b2 : [0, +∞) × C([0, T ] , Rd) → Rd measurable such that for
+any i ∈ {1, 2} and x ∈ Rd, dX(i)
+t = bi(t, (X(i)
+s )s∈[0,T ])dt + √2dBt admits a unique strong
+solution with X(i)
+0 = x and (bi(t, (X(i)
+s ))t∈[0,T ] is non-anticipative, with Markov semi-group
+(P(i)
+t )t≥0. In addition, assume that for any x ∈ Rd and i ∈ {1, 2}, P(∫ T
+0 {‖bi(t, (X(i)
+s )s∈[0,T ])‖2 +
+‖bi(t, (Bs)s∈[0,T ])‖2}dt < +∞) = 1. Then for any x ∈ Rd we have
+‖δxP(1)
+T − δxP(2)
+T ‖2
+TV ≤ (1/2) ∫ T
+0 E[‖b1(t, (X(1)
+s )s∈[0,T ]) − b2(t, (X(1)
+s )s∈[0,T ])‖2]dt.
+Proof. Let T > 0 and x ∈ Rd. For any i ∈ {1, 2}, denote μx
+(i) the distribution of (X(i)
+t )t∈[0,T ] on
+the Wiener space (C, B(C)) with X(i)
+0 = x. Similarly denote μx
+B the distribution of (Bt)t∈[0,T ] with B0 = x, where we recall that (Bt)t∈[0,T ] is a d-dimensional Brownian motion. Using Pinsker’s inequality (Bakry et al., 2014, Equation 5.2.2) and the transfer theorem (Kullback, 1997, Theorem 4.1) we get that
+‖δxP(1)
+T − δxP(2)
+T ‖2
+TV ≤ 2 KL(μ(1)|μ(2)).
+Since for any i ∈ {1, 2}, P(∫ T
+0 {‖bi(t, (X(i)
+s )s∈[0,T ])‖2 + ‖bi(t, (Bs)s∈[0,T ])‖2}dt < +∞) = 1 and
+the processes (X(i)
+t )t∈[0,T ] are of diffusion type for i ∈ {1, 2} we can apply Girsanov’s theorem (Liptser and Shiryaev, 2001, Theorem 7.7) and μB-almost surely for any w ∈ C([0, T ] , R) we get
+(dμx
+(1)/dμx
+B )((wt)t∈[0,T ])
+= exp[(1/2) ∫ T
+0 〈b1(t, (ws)s∈[0,T ]), dwt〉 − (1/4) ∫ T
+0 ‖b1(t, (ws)s∈[0,T ])‖2dt]
+(dμx
+B /dμx
+(2))((wt)t∈[0,T ])
+= exp[−(1/2) ∫ T
+0 〈b2(t, (ws)s∈[0,T ])), dwt〉 + (1/4) ∫ T
+0 ‖b2(t, (ws)s∈[0,T ]))‖2dt].
+Hence, we obtain that
+KL(μx
+(1)|μx
+(2)) = E[log((dμx
+(1)/dμx
+(2))((X(1)
+t )t∈[0,T ]))]
+23
+
+
+= (1/4) ∫ T
+0 E[‖b1(t, (X(1)
+s )s∈[0,T ]) − b2(t, (X(1)
+s )s∈[0,T ])‖2]dt
+which concludes the proof.
+We study distributions satisfying some curvature assumption and show that they are sub-Gaussian. More precisely, we show the following proposition.
+Lemma 20. Let q ∈ C1(Rd, (0, +∞)) and m > 0 and c ≥ 0 such that for any x ∈ Rd we have 〈∇ log q(x), x〉 ≤ −m ‖x‖2 + c ‖x‖. Then for any ε ∈ [0, m/2) we have
+∫
+Rd exp[ε ‖x‖2]q(x)dx < +∞.
+Proof. For any x ∈ Rd we have
+log q(x) = log q(0) + ∫ 1
+0 〈∇ log q(tx), x〉dt
+≤ log q(0) − m ∫ 1
+0 t ‖x‖2 dt + c‖x‖ ≤ log q(0) + c‖x‖ − m ‖x‖2.
+which concludes the proof.
+Finally, we will use the following basic lemma.
+Lemma 21. Let μ ∈ P(Rd), α1 ∈ R, β1 > 0 and (Xt)t≥0 such that X0 has distribution μ and
+dXt = α1Xtdt + β1/2
+1 dBt,
+where (Bt)t≥0 is a Brownian motion. Then for any α2 ∈ R and β2 > 0 we have that (Yt)t≥0 given for any t ≥ 0 by Yt = α2Xβ2t satisfies
+dYt = β2α1Ytdt + α2(β2β1)1/2d  ̃Bt,
+where (  ̃Bt)t≥0 is a Brownian motion, and Y0 has distribution (τα2 )#μ, where for any x ∈ Rd, τα2 (x) = α2x.
+Proof. Let t ≥ 0. Using the change of variable u 7→ β2u the following equalities hold in distribution
+Yt = α2α1
+∫ β2t
+0 Xsds + α2β1/2
+1 Bβ2t
+= β2α2α1
+∫t
+0 Xβ2sds + α2(β1β2)1/2Bt = β2α1
+∫t
+0 Ysds + α2(β1β2)1/2Bt,
+which concludes the proof.
+We now turn to the proof of Theorem 1
+Proof. Let α ≥ 0. For any k ∈ {1, . . . , N }, denote Rk the Markov kernel such that for any x ∈ Rd, A ∈ B(Rd) and k ∈ {0, . . . , N − 1} we have
+Rk+1(x, A) = (4πγk+1)−1/2 ∫
+A exp[− ‖x ̃ − Tk+1(x)‖2 /(4γk+1)]dx ̃,
+where for any x ∈ Rd, Tk+1(x) = x + γk+1 {αx + 2sθ(tk, x)}, where tk = ∑k−1
+`=0 γ`. Define for
+any k0, k1 ∈ {1, . . . , N } with k1 ≥ k0 Qk0,k1 = ∏k1
+`=k0 R`. Finally, for ease of notation, we also define for any k ∈ {1, . . . , N }, Qk = Q1,k. Note that for any k ∈ {1, . . . , N }, Yk has distribution π∞Qk, where π∞ ∈ P(Rd) with density w.r.t. the Lebesgue measure pdata. Let P ∈ P(C) be the probability measure associated with the diffusion
+dXt = −αXtdt + √2dBt, X0 ∼ π0,
+where π0 ∈ P(Rd) admits a density w.r.t. the Lebesgue measure given by pdata. First note that using that P0 = π0 we have for any A ∈ B(Rd)
+π0PT |0(PR)T |0(A) = PT (PR)T |0(A) = (PR)0(PR)T |0(A) = (PR)T (A) = π0(A).
+Hence π0 = π0PT |0(PR)T |0. Using this result and Lemma 17, we have
+‖π0 − π∞QN ‖TV = ‖π0PT |0(PR)T |0 − π∞QN ‖TV
+24
+
+
+≤ ‖π0PT |0(PR)T |0 − π∞(PR)T |0‖TV + ‖π∞(PR)T |0 − π∞QN ‖TV
+≤ ‖π0PT |0 − π∞‖TV + ‖π∞(PR)T |0 − π∞QN ‖TV.
+Note that L(X0) = L(YN ) = π∞QN and therefore
+‖L(X0) − π0‖TV ≤ ‖π0PT |0 − π∞‖TV + ‖π∞(PR)T |0 − π∞QN ‖TV.
+We now bound each one of these terms.
+(a) First, assume that α > 0. Let Tα = αT and  ̃P ∈ P(C([0, Tα] , Rd)) be associated with (Zt)t∈[0,Tα] the classical Ornstein-Ulhenbeck process with Z0 ∼ (τα)#π0, where for any x ∈ Rd
+we have τα(x) = α1/2x, satisfying the following SDE: dZt = −Ztdt + √2dBt. We denote
+π0α = (τα)#π0, μ = (τα)#π∞. Note that since pprior is the Gaussian density with zero mean and covariance matrix (1/α) Id, μ is the Gaussian distribution with zero mean and identity covariance matrix.
+First, using (Bakry et al., 2014, Proposition 4.1.1, Proposition 4.3.1, Theorem 4.2.5), we get that for any t ∈ [0, Tα], f ∈ L1(μ) and x ∈ Rd
+∫
+Rd ( ̃Pt|0g(x))2dμ(x) ≤ exp[−2t] ∫
+Rd g2(x)dμ(x), with g(x) = f (x) − ∫
+Rd f (x ̃)dμ(x ̃). (33)
+Recall that (Xt)t≥0 satisfies dXt = −αXt + dBt. Using Lemma 21 we have that for any t ∈ [0, T ], Zt and α1/2Xα−1t have the same distribution. Hence for any t ∈ [0, T ] we have Pt = (τα−1)#  ̃Pαt.
+Therefore, using that (τα)#π∞ = μ, that  ̃P is Markov and Lemma 17, we get that
+‖π0Pt|0 − π∞‖TV = ‖Pt − π∞‖TV = ‖(τα)#Pt − (τα)#π∞‖TV
+= ‖ ̃Pαt − μ‖TV = ‖ ̃Pαt0 P ̃α(t−t0)|0 − μ‖TV.
+Finally, note that we have for any t ≥ t0 ∈ [0, T ] and x ∈ Rd
+(d( ̃Pαt0 P ̃α(t−t0)|0)/dμ)(x) =  ̃Pα(t−t0)|0f (x), with f (x) = (d ̃Pαt0 /dμ)(x). (34)
+Let g = f − 1. Using (34), (33) and that (τα)#π∞ = μ, we get that for any t ≥ t0 with t ∈ [0, T ]
+‖π0Pt|0 − π∞‖TV ≤ ‖ ̃Pαt0 P ̃α(t−t0)|0 − μ‖TV (35)
+≤
+∫
+Rd |P ̃α(t−t0)|0f (x) − 1|dμ(x)
+≤ (∫
+Rd (P ̃α(t−t0)|0g(x))2dμ(x))1/2
+≤ exp[−α(t − t0)](∫
+Rd g2(x)dμ(x))1/2
+≤ exp[−α(t − t0)](∫
+Rd g2(α1/2x)dπ∞(x))1/2.
+In addition, we have for any φ ∈ Cc(Rd, R)
+∫
+Rd φ(x)f (α1/2x)dπ∞(x) = ∫
+Rd φ(α−1/2x)f (x)dμ(x)
+=
+∫
+Rd φ(α−1/2x)d ̃Pαt0 (x) = ∫
+Rd φ(x)dPt0 (x).
+Hence, for any x ∈ Rd, g(α1/2x) = (dPt0 /dπ∞)(x) − 1. Combining this result and (35) we get that for any t ≥ t0 with t ∈ [0, T ]
+‖π0Pt|0 − π∞‖TV ≤ √2 exp[−α(t − t0)] (1 + ∫
+Rd (dPt0 /dπ∞)(x)2dπ∞(x))1/2 . (36)
+Let t0 ∈ [0, T ]. We now derive an upper bound for ∫
+Rd (dPt0 /dπ∞)(x)2dπ∞(x). We recall that Pt0
+and π∞ admit density w.r.t. the Lebesgue measure denoted pt0 and p∞ such that for any x ∈ Rd
+pt0 (x) = ∫
+Rd Gt0 (x, x ̃)dπ0(x ̃), p∞(x) = (2π/α)−d/2 exp[−α ‖x‖2 /2],
+where for any x, x ̃ ∈ Rd
+Gt0 (x, x ̃) = (2πσ2
+t0 )−d/2 exp[− ‖x − mt0 (x ̃)‖2 /(2σ2
+t0 )],
+σ2
+t0 = (1 − exp[−2αt0])/α, mt0 (x ̃) = exp[−αt0]x ̃.
+25
+
+
+Combining this result and Jensen’s inequality we get
+∫
+Rd pt20 (x)p−∞1(x)dx ≤ α−d/2(2π)−d/2σ−2d
+t0
+∫
+Rd exp[− ‖x − mt0 (x ̃)‖2 /σt20 + α ‖x‖2 /2]dxdπ0(x ̃).
+(37) For any x, x ̃ ∈ Rd we have
+‖x − mt0 (x ̃)‖2 /σ2
+t0 − α ‖x‖2 /2 = ∥
+∥x − mt0 (x ̃)(2σ ̃2
+t0 /σ2
+t0 )∥
+∥
+2 /(2σ ̃2
+t0 ) − ‖x ̃‖2 φ(α, t0)/σ2
+t0 ,
+with σ ̃t20 = (σt20 /2)(1 − ασt20 /2)−1 and φ(α, t0) = ασt20 (1 − σt20 α)/(2 − σt20 α). Using this result,
+we get that
+∫
+Rd exp[−‖x − mt0 (x ̃)‖2/σt20 + α‖x‖2/2]dxdπ0(x ̃) ≤ (2πσ ̃t20 )d/2 ∫
+Rd exp[φ(α, t0)‖x ̃‖2]dπ0(x ̃),
+Let ε = m/4 and t0 ≥ 0 such that φ(α, t0) ≤ ε. Using Lemma 20, we get that
+∫
+Rd exp[− ‖x − mt0 (x ̃)‖2 /σt20 + α ‖x‖2 /2]dxdπ0(x ̃) ≤ (2πσ ̃t20 )d/2 ∫
+Rd exp[ε ‖x ̃‖2]dπ0(x ̃).
+Combining this result, the fact that σt20 ≤ α−1, (37) and that for any t ≥ 0, (1 − e−t)−1 ≤ 1 + 1/t,
+we obtain
+∫
+Rd pt20 (x)p−∞1(x)dx≤ (α−1σ ̃t20 σ−4
+t0 )d/2 ∫
+Rd exp[ε ‖x ̃‖2]dπ0(x ̃)
+≤ (1 − exp[−2αt0])−d/2 ∫
+Rd exp[ε ‖x ̃‖2]dπ0(x ̃)
+≤ (1 + 1/(2αt0))d/2 ∫
+Rd exp[ε ‖x ̃‖2]dπ0(x ̃).
+Combining this result and (36), we get that for any t > t0
+‖π0Pt|0 − π∞‖TV ≤ Ca
+1 exp[−αt],
+with
+C1a = √2(1 + 1/(2αt0))d/2(1 + (∫
+Rd exp[ε‖x ̃‖2]dπ0(x ̃))1/2) exp[αt0].
+For t ≤ t0, using that ‖π0Pt|0 − π∞‖TV ≤ 1 we have
+‖π0Pt|0 − π∞‖TV ≤ Cb
+1 exp[−αt], with Cb
+1 = exp[αt0].
+Let C1 = C1a + C1b and we have that for any t ∈ [0, T ]
+‖π0Pt|0 − π∞‖TV ≤ C1 exp[−αt]. (38)
+(b) Second assume that α = 0.
+‖π0PT |0 − π∞‖TV ≤ ∫
+Rd
+∫
+Rd (4πT )−d/2| exp[− ‖x − x ̃‖2 /(4T )] − exp[− ‖x‖2 /(4T )]|dxdπ0(x ̃).
+For any x, x ̃ ∈ Rd, let φ ∈ C1([0, 1], R) with for any s ∈ [0, 1], φ(s) = exp[− ‖x − sx ̃‖2 /(4T )]. First, assume that T ≥ 2/ε. Using Lemma 18, we get that for any s ∈ [0, 1]
+|φ′(s)| ≤ (1 + ε−1)(1 + ‖x‖) exp[− ‖x‖2 /(8T )] exp[ε ‖y‖2]/T.
+Using this result we get that
+‖π0PT |0 − π∞‖TV ≤ ∫
+Rd
+∫
+Rd (4πT )−d/2| exp[− ‖x − x ̃‖2 /(4T )] − exp[− ‖x‖2 /(4T )]|dxdπ0(x ̃)
+≤
+∫
+Rd
+∫
+Rd (4πT )−d/2(1 + ε−1)(1 + ‖x‖) exp[− ‖x‖2 /(8T )] exp[ε ‖x ̃‖2]/T dxdπ0(x ̃)
+≤ 2d/2(1 + ε−1)∫
+Rd (8πT )−d/2(1 + ‖x‖) exp[− ‖x‖2 /(8T )]dx ∫
+Rd exp[ε ‖x ̃‖2]/T dπ0(x ̃)
+≤ 2d/2(1 + ε−1)(1 + 2√2d1/2T 1/2)∫
+Rd exp[ε ‖x ̃‖2]/T dπ0(x ̃).
+In addition, if T ≤ 2/ε then
+‖π0PT |0 − π∞‖TV ≤ (ε/2 + (ε/2)1/2)−1(T −1 + T −1/2).
+Hence, we get that there exists C2 ≥ 0 such that
+‖π0PT |0 − π∞‖TV ≤ C2(T −1 + T −1/2), (39)
+with
+C2 = (ε/2 + (ε/2)1/2)−1 + 2d/2(1 + ε−1)(1 + 2√2d1/2)∫
+Rd exp[ε ‖x ̃‖2]dπ0(x ̃).
+26
+
+
+(c) Recall that PR is associated with the diffusion (Yt)t≥0 such that for any t ∈ [0, T ] and x ∈ Rd
+dYt = b1(t, Yt)dt + √2Bt, b1(t, x) = αx + 2∇ log pT −t(x).
+Similarly, for any k ∈ {1, . . . , N } we have Qk = Qtk where Q is associated with the diffusion
+(Y ̄ t)t∈[0,T ] such that for any (wt)t∈[0,T ] ∈ C([0, T ], Rd) we have
+dY ̄ t = b2(t, (Y ̄ s)s∈[0,T ])dt + √2Bt,
+b2(t, (wt)t∈[0,T ]) = ∑N−1
+k=0 1[tk,tk+1)(t) {2αwtk + sθ(tk, wtk )}
+where for any k ∈ {0, . . . , N }, tk = ∑k−1
+`=0 γ`+1. Recall that for any i ∈ {1, 2, 3} there exist Ai ≥ 0
+and αi ∈ N such that for any x0 ∈ Rd
+‖∇i log p0(x)‖ ≤ Ai(1 + ‖x0‖αi ),
+with α1 = 1. Using this result and Theorem 16 we get that for any i ∈ {1, 2, 3} there exist Bi ≥ 0 and βi ∈ N with β1 = 1 such that for any xt ∈ Rd and t ∈ [0, T ]
+‖∇i log pt(xt)‖ ≤ Bi(1 + ‖xt‖βi ). (40)
+In addition, for any t ∈ [0, T ] and x ∈ Rd we have
+∂tpt(x) = −div(bpt)(x) + ∆pt(x),
+with b(x) = −αx. Therefore, since log p ∈ C∞((0, T ] × Rd, R) we obtain that for any t ∈ (0, T ] and xt ∈ Rd
+∂t log pt(xt) = −div(b log pt)(xt) + ∆ log pt(xt) + ‖∇ log pt(xt)‖2 .
+Finally, we get that for any t ∈ (0, T ] and xt ∈ Rd
+∂t∇ log pt(xt) = −∇div(b log pt)(xt) + ∇∆ log pt(xt) + ∇ ‖∇ log pt‖2 (xt).
+Therefore combining this result and (40) there exist A ̃ ≥ 0 and β ∈ N such that for any xt ∈ Rd and t ∈ (0, T ], ‖∂t∇ log pt(xt)‖ ≤ A ̃(1 + ‖xt‖β). Hence, for any t1, t2 ∈ [0, T ] and x ∈ Rd
+‖∇ log pt2 (x) − ∇ log pt1 (x)‖ ≤ A ̃ |t2 − t1| (1 + ‖x‖β). (41)
+In addition, using (40), we have for any t ∈ [0, T ] and x1, x2 ∈ Rd
+‖∇ log pt(x1) − ∇ log pt(x2)‖ ≤ ∫ 1
+0 ‖∇2 log pt((1 − s)x1 + sx2)‖ds‖x1 − x2‖ (42)
+≤ B2(1 + ∫ 1
+0 ‖(1 − s)x1 + sx2‖β2 ds)‖x1 − x2‖
+≤ B2(1 + ‖x1‖β2 + ‖x2‖β2 )‖x1 − x2‖.
+Since sθ ∈ C([0, T ] × Rd, Rd) and ∇ log p ∈ C([0, T ] × Rd, Rd) we have using Lemma 19, (41), (42) and the Cauchy-Schwarz inequality
+‖π∞(PR)T |0 − π∞QN ‖2
+TV ≤ (1/2)∫ T
+0 E[‖b1(t, Yt) − b2(t, (Yt)t∈[0,T ])‖2]dt (43)
+≤ 2∑N−1
+k=0
+∫ tk+1
+tk E[‖∇ log pT −t(Yt) − sθ(Ytk )‖2]dt
++
+∑N −1 k=0
+∫ tk+1
+tk α2E[‖Yt − Ytk ‖2]dt
+≤ 6∑N−1
+k=0
+∫ tk+1
+tk E[‖∇ log pT −t(Yt) − ∇ log pT −t(Ytk )‖2]dt
++ 6∑N−1
+k=0
+∫ tk+1
+tk E[‖∇ log pT −t(Ytk ) − ∇ log pT −tk (Ytk )‖2]dt
++ 6∑N−1
+k=0
+∫ tk+1
+tk E[‖∇ log pT −tk (Ytk ) − sθ(tk, Ytk )‖2]dt
++
+∑N −1 k=0
+∫ tk+1
+tk α2E[‖Yt − Ytk ‖2]dt
+≤ 18√2B22(1 + 2NT (4β2))1/2 ∑N−1
+k=0
+∫ tk+1
+tk E[‖Yt − Ytk ‖4]1/2dt
++ 12A ̃2(1 + NT (2β))∑N−1
+k=0
+∫ tk+1
+tk (t − tk)2dt + 6T M2
+27
+
+
++ ∑N−1
+k=0
+∫ tk+1
+tk α2E[‖Yt − Ytk ‖2]dt
+≤ {18√2B22(1 + 2NT (4β2))1/2 + α2} ∑N−1
+k=0
+∫ tk+1
+tk E[‖Yt − Ytk ‖4]1/2dt
++ 4A ̃2(1 + NT (2β))∑N−1
+k=0 (tk+1 − tk)3 + 6T M2
+≤ {18√2B22(1 + 2NT (4β2))1/2 + α2} ∑N−1
+k=0
+∫ tk+1
+tk E[‖Yt − Ytk ‖4]1/2dt
++ 4A ̃2(1 + NT (2β))T γ ̄2 + 6T M2,
+where for any ` ∈ N, NT (`) = supt∈[0,T ] E[‖Yt‖`]. For any t ∈ [0, T ], let At : C2(Rd) → C2(Rd, R) the generator given for any t ≥ 0, φ ∈ C2(Rd, R) and x ∈ Rd by
+At(φ)(x) = 〈αx + 2∇ log pT −t(x), ∇φ(x)〉 + ∆φ(x).
+For any ` ∈ N, let V`(x) = ‖x‖2`. Hence, for any ` ∈ N, x ∈ Rd and t ∈ [0, T ] we have using (40)
+At(V`)(x) = 2`α ‖x‖2` + 2`B1 ‖x‖2`−1 + 2`B1 ‖x‖2` + 2`(2` − 1) ‖x‖2(`−1) .
+Hence, for any ` ∈ N there exist B ̃` such that x ∈ Rd and t ∈ [0, T ]
+|At(V`)(x)| ≤ B ̃`(1 + V`(x)). (44)
+For any ` ∈ N, (M`,t)t∈[0,T ] = (V`(Yt) − V`(Y0) − ∫ t
+0 At(V`)(Ys)ds)t∈[0,T ] is a local martingale. For any ` ∈ N, there exists (τ`,k)k∈N a sequence of stopping times such that limk→+∞ τ`,k = T and (M`,t∧τ`,k )t∈[0,T ] is a martingale. Using (44), we have for any t ∈ [0, T ], ` ∈ N and k ∈ N
+E[V`(Yt∧τ`,k )] ≤ E[V`(Y0)] + B ̃`
+∫t
+0 (1 + E[V`(Ys∧τ`,k )])ds.
+Hence, using Grönwall’s lemma we get that for any ` ∈ N, supk∈N E[V`(Yt∧τ`,k )] < +∞. Therefore for any ` ∈ N, ((M`,t∧τk )t∈[0,T ])k∈N is uniformly integrable and we have that for any ` ∈ N, (M`,t)t∈[0,T ] is a martingale. Therefore we get that for any t ∈ [0, T ], ` ∈ N
+E[V`(Yt)] ≤ E[V`(Y0)] + B ̃`
+∫t
+0 (1 + E[V`(Ys)]ds).
+Using Grönwall’s lemma we get that for any ` ∈ N there exist C ̃` ≥ 0 such that
+NT (`) = sup
+t∈[0,T ]
+E[‖Yt‖2`] ≤ C ̃` exp[B ̃`T ]. (45)
+We have that for any s, t ∈ [0, T ]
+Yt = Ys + ∫ t
+s {αYu + 2∇ log pT −t(Yu)}du + √2 ∫ t
+s dBu.
+Using (41) and Cauchy-Schwarz inequality we have for any s, t ∈ [0, T ]
+E[‖Yt − Ys‖4] ≤ 64(t − s)3∫ t
+s {α4E[‖Yu‖4] + 16E[‖∇ log pT −t(Yu)‖4]}du + 48√2(t − s)2
+≤ 64(t − s)3∫ t
+s {α4E[‖Yu‖4] + 128B14(1 + E[‖Yu‖4])}du + 48√2(t − s)2
+≤ 64(α4 + 128B4
+1 )(1 + NT (4))(t − s)4 + 48√2(t − s)2. (46)
+Combining (45) and (46) in (43) we get that there exist C3 ≥ 0 such that
+‖π∞(PR)T |0 − π∞QN ‖2
+TV ≤ C3 exp[C3T ](γ ̄ + M2), (47)
+We conclude the proof upon combining (38) and (47) if α > 0 and (39) and (47) if α = 0.
+C.3 General SGM and links with existing works
+In this section we describe a general algorithm for SGM in Appendix C.3.1 and show that the formulation (6) encompasses the ones of (Song et al., 2021; Ho et al., 2020) in Appendix C.3.2.
+28
+
+
+C.3.1 General SGM algorithm
+We first present a general algorithm to compute approximate reverse dynamics, i.e. to compute the reverse-time Markov chain associated with the forward process
+dXt = ft(Xt)dt + √2dBt, X0 ∼ pdata. (48)
+We use the Euler-Maruyama discretization of (48), i.e. let X0 ∼ pdata and for any k ∈ {0, . . . , N − 1}
+Xk+1 = Xk + γk+1fk(Xk) + √2γk+1Zk+1.
+In general, we do not have that p(xk|x0) is a Gaussian density contrary to Song and Ermon (2019); Ho et al. (2020). However, in this case, we obtain that for any x ∈ Rd,
+pk+1(x) = (4πγk+1)−d/2 ∫
+Rd pk(x ̃) exp[− ‖Tk+1(x ̃) − x‖2 /(4γk+1)]dx ̃,
+with Tk+1(x) = x ̃ + γk+1fk(x ̃). Therefore, we get that for any x ∈ Rd
+(2γk+1pk+1(x))∇ log pk+1(x) = ∫
+Rd (Tk+1(x ̃) − x)pk(x ̃) exp[− ‖Tk+1(x ̃) − x‖2 /(4γk+1)]dx ̃.
+Hence, we get that for any x ∈ Rd
+∇ log pk+1(x) = E[Tk+1(Xk) − Xk+1|Xk+1 = x]/(2γk+1) = −(2γk+1)1/2E[Zk+1|Xk+1 = x]. (49) From this formula we derive a regression problem similar to the one of Section 2.1. We obtain Algorithm 2. We highlight a few differences between our approach and the ones of Song and Ermon (2019); Ho et al. (2020):
+(a) As emphasized in (49), the regression problem in Algorithm 2 is different from the one usually considered in SGM which restrict themselves to the setting fk(x) = αx with α = 0 (Song and Ermon, 2019) or α > 0 (Ho et al., 2020).
+(b) In the present algorithm we do not use any corrector step (Song et al., 2021) at sampling time. Note that the use of a corrector step is only justified in the context of classical SGM algorithms and not the DSB method introduced in Section 3.3. This is because, we do not have access to the marginal of the time-reverse density during the IPF iterations contrary to classical SGMs.
+(c) Finally, we do not present the Exponential Moving Average (EMA) procedure Song and Ermon (2020) which is key to prevent the network from oscillating. Contrary to the corrector step, this technique can easily be incorporated in Algorithm 2.
+Further comments and additional techniques are presented in Appendix I.
+C.3.2 Links with existing work
+In this section, we show that we can recover the training and sampling algorithm of Song and Ermon (2019) and Ho et al. (2020) by reversing homogeneous diffusions. Note that Song et al. (2021) identified links with non-homogeneous SDEs. We explicitly characterize the fundamental difference between the approaches of Song and Ermon (2019); Ho et al. (2020) by identifying the two corresponding forward homogeneous processes (Brownian motion or Ornstein-Ulhenbeck).
+Brownian motion First, we show that we can recover the sampling procedure and the loss function of Song and Ermon (2019) by reversing a Brownian motion. Assume that we have
+dXt = √2dBt, X0 ∼ pdata. (50)
+In what follows we define {Yk}N−1
+k=0 such that {Yk}N−1
+k=0 approximates {XT −tk }N−1
+k=0 for a specific
+sequence of times {tk}N−1
+k=0 ∈ [0, T ]N . We recall that the time-reversal of (50) is associated with the following SDE
+dYt = 2∇ log pT −t(Yt) + √2dBt. (51)
+The Euler-Maruyama discretization of (51) yields for any k ∈ {0, . . . , N − 1}
+Y ̃k+1 = Y ̃k + 2γk+1∇ log pT −tk (Y ̃k) + √2γk+1Zk+1.
+29
+
+
+Algorithm 2 Generalized score-matching
+1: Inputs: (bk)k∈{0,...,N−1} , N ∈ N (nb. of iterations), M ∈ N (batch size), Nepochs (nb. of epochs), (γk)k∈{0,...,N−1} (stepsizes), {sθ : θ ∈ Θ} (neural network), opt (optimizer), pprior (prior distribution), λ(k) (weights) 2: for nepoch = 0, . . . , Nepoch − 1 do 3: for j ∈ {1, . . . , M } do 4: Xj
+0 ∼ pdata
+5: for k ∈ {0, . . . , N − 1} do 6: Xj
+k+1 = Xj
+k + γk+1fk(Xj
+k) + √2γk+1Zj
+k+1
+7: end for 8: end for
+9: ̂`(θ) = M −1 ∑M
+j=1
+∑N −1
+k=0 λ(k)/(2γk+1) ∑M
+j=1 ‖√2γk+1sθ(k + 1, Xj
+k+1) + Zj
+k+1‖2
+10: θnepoch+1 = opt(`, θnepoch )
+11: end for
+12: XN ∼ pprior
+13: for k ∈ {N − 1, . . . , 0} do
+14: Xk = Xk+1 + γk+1{−fk(Xk+1) + 2sθNepoch (k + 1, Xk+1)} + √2γk+1Zk+1
+15: end for 16: Output: X0
+where {γk+1}N−1
+k=0 is a sequence of stepsizes and for any k ∈ {0, . . . , N }, tk = ∑k−1
+j=0 γj+1. A close
+form for {∇ log pT −tk }N−1
+k=0 is not available and in practice we consider
+Yk+1 = Yk + 2γk+1sθ? (T − tk, Yk) + √2γk+1Zk+1, (52)
+where for any k ∈ {0, . . . , N − 1}, sθ? (T − tk, ·) is an approximation of ∇ log pT −tk . The sampling procedure (52) is similar to the one of Song and Ermon (2019) upon setting (with the notations of Song and Ermon (2019)) T ← 1 in (Song and Ermon, 2019, Algorithm 1) (no corrector step), αk/2 ← γk and sθθθ(·, σk+1) ← 2sθ? (T − tk, ·). It remains to show that 2sθ? is the solution to the same regression problem as sθθθ in (Song and Ermon, 2019, Equation 6). First, note that for any t > 0
+and xt ∈ Rd we have
+pt(xt) = (4πt)−d/2 ∫
+Rd pdata(x0) exp[− ‖xt − x0‖2 /(4t)]dx0.
+Therefore, we get that for any t > 0 and xt ∈ Rd
+∇ log pt(xt)= ∫
+Rd (x0 − xt)/(2t)p0|t(x0|xt)dx0 = E[X0 − Xt|Xt = xt]/(2t).
+Hence, we have that θ? satisfies the following regression problem
+θ? = arg minθ
+∑N −1
+k=0 λ(k)E[‖(X0 − XT −tk )/(T − tk) − 2sθ(T − tk, XT −tk )‖].
+Note that this loss function is similar to the one of (Song and Ermon, 2019, Equation 6) upon letting σ2
+k+1 ← 2(T − tk) and L ← N . Hence, the two recursions approximately define the same scheme if
+for any k ∈ {0, . . . , N − 1}, σ12 − σ2
+k+1 ≈ (1/2) ∑k−1
+j=0 αj+1 since t0 = 0 implies T = (1/2)σ12. In
+Song and Ermon (2019) we have for any k ∈ {0, . . . , N − 1}, σ2
+k = κN−kσ2
+N (recall that N = L)
+with κ > 1. In addition, we have for any k ∈ {0, . . . , N − 1}, αk = εσ2
+k /σ 2
+N for some ε > 0. We get that
+(1/2)∑k−1
+j=0 αj+1 = (ε/2)κN−1 ∑k−1
+j=0 κ−j
+= (ε/2)(κN−1 − κN−k−1)/(1 − κ−1)
+= ε/(2(1 − κ−1)σ2
+N )(σ2
+1 − σ2
+k+1).
+Hence, the two schemes are identical if ε = 2(1 − κ−1)σ2
+N . In practice in Song and Ermon (2019) the authors choose N = 10, σN = 10−2, σ1 = 1 (hence κ = 104/9) and ε = 2 × 10−5. We have
+2(1 − κ−1)σ2
+N ≈ 1.3 × 10−4 which has one order of difference with ε.
+30
+
+
+Ornstein-Ulhenbeck Second, we show that we can recover the sampling procedure and the loss function of Ho et al. (2020) by reversing an Ornstein-Ulhenbeck process. Contrary to the previous analysis we do not show a strict equivalence between the two recursions but instead that our algorithm can be seen as a first order approximation of the one of Ho et al. (2020).
+In this section, we consider the following diffusion
+dXt = −αXtdt + √2dBt, X0 ∼ pdata. (53)
+In what follows we define {Yk}N−1
+k=0 such that {Yk}N−1
+k=0 approximates {XT −tk }N−1
+k=0 for a specific
+sequence of times {tk}N−1
+k=0 ∈ [0, T ]N . We recall that the time-reversal of (53) is associated with the following SDE
+dYt = {αYt + 2∇ log pT −t(Yt)}dt + √2dBt. (54) In what follows, we fix α = 1. The Euler-Maruyama discretization of (54) yields for any k ∈ {0, . . . , N − 1}
+Y ̃k+1 = (1 + γk+1)Y ̃k + 2γk+1∇ log pT −tk (Y ̃k) + √2γk+1Zk+1.
+where {γk+1}N−1
+k=0 is a sequence of stepsizes and for any k ∈ {0, . . . , N − 1}, tk = ∑k−1
+j=0 γj+1. A
+close form for {∇ log pT −tk }N−1
+k=0 is not available and in practice we consider
+Yk+1 = (1 + γk+1)Yk + 2γk+1sθ? (T − tk, Yk)dt + √2γk+1Zk+1. (55) In (Ho et al., 2020, Equation 11) the backward recursion is given for any k ∈ {0, . . . , N − 1}
+Yk+1 = α−1/2
+N−k (Yk − βN−k/(1 − α ̄N−k)1/2 θ(Yk, T − tk)) + σN−kZk+1. (56)
+In (56) we set σ2
+k = βk as suggested in Ho et al. (2020) where for any k ∈ {0, . . . , N − 1}
+σ2
+k+1 = βk+1, αk+1 = 1 − βk+1, α ̄k+1 = ∏k+1
+i=1 αi.
+We consider a first-order expansion of (56) with respect to {βk+1}N−1
+k=0 . We obtain the following
+recursion for any k ∈ {0, . . . , N − 1}
+Yk+1 = (1 + βN−k/2)Yk − βN−k/(1 − α ̄N−k)1/2 θ(Yk, T − tk) + √βN−kZk+1.
+This last recursion is equivalent to (55) upon setting βN−k ← 2γk+1 and − θ(·, T − tk)/(1 − α ̄N−k)1/2 ← −sθ? (T − tk, ·). It remains to show that sθ? is the solution to the same regression problem as θ/(1 − α ̄N−·) in (Ho et al., 2020, Equation 12). First, note that for any t > 0 and xt ∈ Rd we have
+pt(xt) = (2πσ ̄t2)−d/2 ∫
+Rd pdata(x0) exp[− ‖xt − ctx0‖2 /(2σ ̄t2)]dx0,
+with
+c2
+t = exp[−2t], σ ̄2
+t = 1 − exp[−2t]. Therefore we get that for any t ∈ [0, T ] and xt ∈ Rd
+∇ log pt(xt) = ∫
+Rd (ctx0 − xt)pdata(x0) exp[− ‖xt − ctx0‖2 /(2σ ̄t2)]dx0
+= E [ctX0 − Xt|Xt = xt] /σ ̄2
+t = −E [Z|Xt = xt] /σ ̄t,
+where we recall that Xt has the same distribution as ctX0 + σ ̄tZ, with Z a d-dimensional Gaussian
+random variable with zero mean and identity covariance matrix. Hence, we have that θ? satisfies the following regression problem
+θ? = arg minθ
+∑N −1
+k=0 λ(k)E[‖Z/σT −tk + sθ(T − tk, XT −tk )‖].
+Note that we have
+∑N −k
+i=1 βi = ∑N−1
+i=k βN−i = 2 ∑N−1
+i=k γi+1 = 2(T − tk). Using this result we have for any k ∈ {0, . . . , N − 1}
+1 − α ̄N−k = 1 − exp[− ∑N−k
+i=1 log(1 − βi)] ≈ 1 − exp[− ∑N−k
+i=1 βi] ≈ σ ̄2
+T −tk .
+Let θ ̃? the minimizer of (Ho et al., 2020, Equation 12) we have
+θ ̃? ≈ arg minθ
+∑N −1
+k=0 (2αN−k(1 − αN−k))−1E[‖Z − θ(XT −tk , T − tk)‖2]
+≈ arg minθ
+∑N −1
+k=0 (2αN−k)−1E[‖Z/(1 − αN−k)1/2 − θ(XT −tk , T − tk)/(1 − αN−k)1/2‖2]
+≈ arg minθ
+∑N −1
+k=0 (2αN−k)−1E[‖Z/σ ̄T −tk + sθ(T − tk, XT −tk )‖2].
+Hence the two regression problems are approximately the same (for small values of {βk+1}N−1
+k=0 ) if
+we set λ(k) = (2αN−k)−1.
+31
+
+
+D Schrödinger bridges with potentials and DSB recursion
+In this section, we start by proving an additive formula for the Kullback–Leibler divergence in Appendix D.1 following Léonard (2014a). We recall the classical IPF formulation using potentials in Appendix D.2. Then, Proposition 2 is proved in Appendix D.3. Finally, we highlight a link between our formulation and autoencoders in Appendix D.4.
+D.1 Additive formula for the Kullback–Leibler divergence
+In this section, we prove a formula for the Kullback–Leibler divergence following the proof of Léonard (2014a) which extends the result to unbounded measures defined on the space of rightcontinuous left-limited functions from [0, T ]. We recall that a Polish space is a complete metric separable space.
+We start with the following disintegration theorem for probability measures.
+Theorem 22. Let (X, X ) and (Y, Y) be two Polish spaces. Let π ∈ P(X) and φ : X → Y measurable. Then there exists a Markov kernel Kπφ : Y × X → [0, 1] such that the following hold:
+(a) For any y ∈ Y, Kπφ(y, φ−1({y})) = 1.
+(b) For any f : X → [0, +∞) measurable we have ∫
+X f (x)dπ(x) = ∫
+Y Kπφ(y, f )dπφ(y),
+where πφ = φ#π.
+Proof. See (Dellacherie and Meyer, 1988, III-70) for instance.
+Kπφ is called the disintegration of π w.r.t. φ and is unique, see (Dellacherie and Meyer, 1988, III-70). In particular, for any X-valued random variable X with distribution π we have E[f (X)|φ(X)] = Kπφ(φ(X), f ). Next we prove the following proposition, see (Léonard, 2014a, Proposition A.13) for an extension to unbounded measures. In what follows, for any φ : XtoR measurable we denote πφ = φ#π.
+Proposition 23. Let (X, X ) and (Y, Y) be two Polish spaces. Let π, μ ∈ P(X) and φ : X → Y measurable. Assume that π μ. Then the following holds:
+(a) πφ μφ
+(b) There exists A ∈ Y with πφ(A) = 1 such that for any y ∈ A, Kπφ(y, ·) Kμφ(y, ·).
+In addition, we have for any y ∈ Y, y′ ∈ A and x ∈ X
+(dπφ/dμφ)(y) = Kμ
+φ(y, (dπ/dμ)), (dKπ
+φ(y′, ·)/dKμ
+φ(y′, ·))(x) = (dπ/dμ)(x)/(dπφ/dμφ)(y′).
+Finally, there exists C ∈ X with π(C) = 1 such that for any x ∈ C we have
+(dπ/dμ)(x) = (dπφ/dμφ)(φ(x))(dKπ
+φ(φ(x), ·)/dKμ
+φ(φ(x), ·))(x).
+Proof. Let f : X → [0, +∞) measurable. Using Theorem 22 we have
+πφ[f ] = ∫
+X f (φ(x))dπ(x) = ∫
+X f (φ(x))(dπ/dμ)(x)dμ(x) = ∫
+X f (y)Kμφ(y, (dπ/dμ))dμφ(y),
+which concludes the first part of the proof. For the second part of the proof, let B = {y ∈ Y : (dπφ/dμφ)(y) = 0}. We have
+0=∫
+Y 1B(y)(dπφ/dμφ)(y)dμφ(y) = πφ(B).
+Therefore, there exists A1 ∈ Y such that πφ(A1) = 1 and for any y ∈ A1, (dπφ/dμφ)(y) > 0. Let g : Y → [0, +∞). Using Theorem 22 we have
+∫
+X g(φ(x))f (x)dπ(x) = ∫
+X g(φ(x))f (x)(dπ/dμ)(x)dμ(x) = ∫
+Y g(y)Kμφ(y, f × (dπ/dμ))dμφ(y).
+Similarly, using Theorem 22 we have
+∫
+X g(φ(x))f (x)dπ(x) = ∫
+Y g(y)Kπφ(y, f )dπφ(y) = ∫
+Y g(y)Kπφ(y, f )(dπφ/dμφ)(y)dπφ(y).
+32
+
+
+Hence, we get that there exists A2 ∈ Y with μφ(A2) = 1 (hence πφ(A2) = 1) such that for any y ∈ A2 we have
+Kπ
+φ(y, f )(dπφ/dμφ)(y) = Kμ
+φ(y, f × (dπ/dμ)).
+We conclude upon letting A = A1 ∩ A2 and using the fact that for any y ∈ A, (dπφ/dμφ)(y) > 0. Finally, since πφ(A) = 1 if and only if π(φ−1(A)) = 1, we have for any x ∈ φ−1(A)
+(dπ/dμ)(x) = (dπφ/dμφ)(φ(x))(dKπ
+φ(φ(x), ·)/dKμ
+φ(φ(x), ·))(x),
+which concludes the proof.
+We are now ready to state the additive formula.
+Proposition 24. Let (X, X ) and (Y, Y) be two Polish spaces and π, μ ∈ P(X) with π μ. Then for any φ : X → Y we have
+KL(π|μ) = KL(πφ|μφ) + ∫
+Y KL(Kπφ(y, ·)|Kμφ(y, ·))dπφ(y).
+Proof. First assume that ∫
+X |log((dπ/dμ)(x))| dπ(x) = +∞. Then, using Proposition 23 we have
+∫
+X |log((dπφ/dμφ)(φ(x)))| dπ(x) = +∞ or ∫
+X
+∣
+∣log((dKπφ(φ(x), ·)/dKμφ(φ(x), ·))(x))∣
+∣ dπ(x) = +∞, i.e. either KL(πφ|μφ) = +∞ or ∫
+X KL(Kπφ(φ(x), ·)|Kμφ(φ(x), ·))dπ(x) = +∞ us
+ing Theorem 22, which concludes the first part of the proof. Second, assume that
+∫
+X |log((dπ/dμ)(x))| dπ(x) < +∞. Using Pinsker’s inequality (Bakry et al., 2014, Equation
+5.2.2) we get that KL(πφ|μφ) < +∞, i.e. ∫
+X |log((dπφ/dμφ)(φ(x)))| dπ(x) < +∞. Hence, we
+get that ∫
+X
+∣
+∣log((dKπφ(φ(x), ·)/dKμφ(φ(x), ·))(x))∣
+∣ dπ(x) < +∞. Therefore we have
+KL(π|μ) = KL(πφ|μφ) + ∫
+Y KL(Kπφ(y, ·)|Kμφ(y, ·))dπφ(y)
+which concludes the proof
+We emphasize that in the case where X = Rd × Rd, φ = proj0 the projection on the first variable
+and π, μ admit densities w.r.t. the Lebesgue measure denoted p and q such that for any x, y ∈ Rd, p(x, y) = p0(x)p1|0(y|x) and q(x, y) = q0(x)q1|0(y|x) then one can avoid using disintegration theory and Proposition 24 can be proved directly.
+D.2 Iterative Proportional Fitting via potentials
+In this section, before recalling the usual definition of the IPF via potentials we provide a condition under which the IPF sequence is well-defined which is used throughout Section 3.2.
+Proposition 25. Assume that there exists π ̃ ∈ PN+1 such that π ̃0 = pdata, π ̃N = pprior and KL(π ̃|π0) < +∞. Then the IPF sequence is well-defined.
+Proof. We prove the existence of the IPF sequence by recursion. First, note that π1 is well-defined since π ̃ ∈ PN+1 with π ̃N = pprior and KL(π ̃|π0) < +∞. Second, assume that the sequence is well-defined up to n with n ∈ N. Using (Csiszár, 1975, Theorem 2.2) we have
+KL(π ̃|π0) = KL(π ̃|πn) + ∑n−1
+j=0 KL(πj+1|πj ).
+Hence KL(π ̃|πn) < +∞. Using that π ̃0 = pdata if n is odd and that π ̃N = pprior if n is even, we get that πn+1 is well-defined, which concludes the proof.
+We now introduce the IPF using potentials. This construction is not new and can be found in Bernton et al. (2019); Chen et al. (2016, 2021b); Pavon et al. (2021); Peyré and Cuturi (2019) for instance (in continuous state spaces). In discrete settings the recursion can be found in the following earlier works Kruithof (1937); Deming and Stephan (1940); Fortet (1940); Sinkhorn and Knopp (1967); Kullback (1968); Ruschendorf et al. (1995). The IPF is defined by the following recursion π0 = p given in (1) and for n ≥ 0
+π2n+1 = arg min {KL(π|π2n) : π ∈ PN+1, πN = pprior
+},
+π2n+2 = arg min {KL(π|π2n+1) : π ∈ PN+1, π0 = pdata
+}.
+33
+
+
+In the classical IPF presentation we obtain under mild assumptions that π2n+1 admits a density qn w.r.t the Lebesgue measure and that π2n admits a density pn w.r.t the Lebesgue measure, given by the following expressions
+qn(x0:N ) = pn
+data(x0) ∏N−1
+k=0 pn+1
+k+1|k(xk+1|xk), (57)
+pn+1(x0:N ) = pdata(x0) ∏N−1
+k=0 pn+1
+k+1|k (xk+1 |xk ),
+where (pn
+data(x0))n∈N and (pn
+k+1|k(xk+1|xk))n∈N are densities which are iteratively computed, with p0
+k+1|k = pk+1|k.
+In the context of generative modelling the derivation (57) is not useful because it does not provide a generative model, i.e. a probabilistic transition from pprior to pdata but instead defines a transition from pdata to pprior. Therefore, in this section only, we reverse the roles of pprior and pdata and consider a reference density p ̄ such that for any x0:N ∈ X we have
+p ̄(x0:N ) = pprior(x0) ∏N−1
+k=0 p ̄k+1|k(xk+1|xk). (58)
+Then, we consider the following recursion π0 = p ̄ given in (58) and for n ∈ N π2n+1 = arg min {KL(π|π2n) : π ∈ PN+1, πN = pdata
+} , (59)
+π2n+2 = arg min {KL(π|π2n+1) : π ∈ PN+1, π0 = pprior
+}.
+Again, we emphasize that the roles of pprior and pdata are exchanged in this formulation. Using the classical IPF presentation we obtain the following expressions under mild assumptions
+q ̄n(x0:N ) = pn
+prior(x0) ∏N−1
+k=0 p ̄n+1(xk+1|xk), (60)
+p ̄n+1(x0:N ) = pprior(x0) ∏N−1
+k=0 p ̄n+1(xk+1|xk).
+In this case, we get that π2n+1 (approximately) defines a generative model for large values of n ∈ N since it provides a transition from to pprior to (approximately) pdata. In the following proposition we give the precise statement corresponding to (60). We assume that p ̄0 = p ̄.
+Proposition 26. Assume that KL(pprior ⊗ pdata|p ̄0,N ) < +∞. Then (πn)n∈N given by (59) is welldefined and for any n ∈ N we have that π2n+1 and π2n+2 admit a density w.r.t. the Lebesgue measures denoted q ̄n and p ̄n+1. In addition, we have for any n ∈ N and x0:N ∈ X
+q ̄n(x0:N ) = pn
+prior(x0) ∏N−1
+k=0 p ̄n+1(xk+1|xk),
+p ̄n+1(x0:N ) = pprior(x0) ∏N−1
+k=0 p ̄n+1(xk+1|xk),
+where for any n ∈ N we have for any x0:N ∈ X and k ∈ {0, . . . , N − 1}
+pn
+prior(x0) = ψn
+0 (x0)pprior(x0), p ̄n+1(xk+1|xk) = p ̄n(xk+1|xk)ψn
+k+1(xk+1)/ψn
+k (xk),
+with
+ψn
+N (xN ) = pdata(xN )/p ̄n
+N (xN ), ψn
+k (xk) = ∫
+Rd ψn
+k+1 (xk+1 )p ̄n (xk+1 |xk )dxk+1 .
+Proof. Let π ̃ = (pprior ⊗ pdata)p ̄|0,N . Using Proposition 24 we get that KL(π ̃|p ̄) = KL(pprior ⊗ pdata|p ̄0,N ) < +∞. Using Proposition 25 the IPF sequence is well-defined. In addition, using (Csiszár, 1975, Theorem 3.1) for any n ∈ N there exists ψn
+N : Rd → [0, +∞) such that for any
+x0:N ∈ A with π ̃(A) = 1 we have
+q ̄n(x0:N ) = p ̄n(x0:N )ψn
+N (xN ).
+Since π ̃ is equivalent to the Lebesgue measure we get that for any x0:N ∈ Rd q ̄n(x0:N ) = p ̄n(x0:N )ψn
+N (xN ).
+Let n ∈ N. We have for any xN ∈ Rd, pdata(xN ) = q ̄n(xN ) = p ̄n
+N (xN )ψn
+N (xN ). Hence, we get that
+for any N ∈ N, ψn
+N (xN ) = pdata(xN )/p ̄n
+N (xN ). For any x0:N ∈ X and k ∈ {0, . . . , N − 1} let ψn
+k (xk) = ∫
+Rd ψn
+k+1 (xk+1 )p ̄n (xk+1 |xk )dxk+1 .
+We obtain that for any x0:N ∈ X
+q ̄n(x0:N ) = pprior(x0)ψ0(x0) ∏N−1
+k=0 (p ̄n(xk+1|xk)ψk+1(xk+1)/ψk(xk)).
+Hence, we get that for any x0:N ∈ X , q ̄n(x0) = pn
+prior(x0) ∏N−1
+k=0 p ̄n+1(xk+1|xk). Using Propo
+sition 24 we get that for any x0:N ∈ X , p ̄n+1(x0) = pprior(x0) ∏N−1
+k=0 p ̄n+1(xk+1|xk), which concludes the proof.
+34
+
+
+The previous expression is not symmetric and the IPF iterations appear as a policy refinement of the original forward dynamic p ̄. In the next proposition we present another potential formulation of the IPF iterations which is symmetric.
+Proposition 27. Assume that KL(pprior ⊗ pdata|q0,N ) < +∞. Then (πn)n∈N given by (59) is welldefined and for any n ∈ N we have that π2n+1 and π2n+2 admit a density w.r.t. the Lebesgue measures denoted q ̄n and p ̄n+1. In addition, we have for any n ∈ N and x0:N ∈ X
+q ̄n(x0:N ) = φ0n(x0) ∏N−1
+k=0 p ̄(xk+1|xk)ψn
+N (xN ),
+p ̄n+1(x0:N ) = φn+1
+0 (x0) ∏N−1
+k=0 p ̄(xk+1|xk)ψn
+N (xN ),
+where for any n ∈ N we have for any x0:N ∈ X and k ∈ {0, . . . , N − 1}
+ψn
+N (xN ) = pdata(xN )/φn
+N (xN ), ψn
+k (xk) = ∫
+Rd ψn
+k+1 (xk+1 )p ̄(xk+1 |xk )dxk+1 , φn+1
+0 (x0) = pprior(x0)/ψn
+0 (x0), φn+1
+k+1 (xk+1) = ∫
+Rd φn+1
+k (xk)p ̄(xk+1|xk)dxk,
+and φ00 = pprior and ψ−1
+N = 1.
+Proof. Let π ̃ = (pprior ⊗ pdata)q|0,N . Using Proposition 24 we get that KL(π ̃|q) = KL(pprior ⊗ pdata|p0,N ) < +∞. Using Proposition 25 the IPF sequence is well-defined. In addition, using (Csiszár, 1975, Theorem 3.1) for any n ∈ N there exists ψn
+N : Rd → [0, +∞) such that for any
+x0:N ∈ A with π ̃(A) = 1 we have
+q ̄n(x0:N ) = p ̄n(x0:N )ψ ̃n
+N (xN ), p ̄n+1(x0:N ) = q ̄n(x0:N )φ ̃n
+0 (x0).
+Since π ̃ is equivalent to the Lebesgue measure we get that for any x0:N ∈ Rd
+q ̄n(x0:N ) = p ̄n(x0:N )ψ ̃n
+N (xN ), p ̄n+1(x0:N ) = q ̄n(x0:N )φ ̃n
+0 (x0).
+For any n ∈ N, let ψn
+N = ψn−1
+N ψ ̃n
+N and φn+1
+0 = φ0nφ ̃0n. By recursion, we get that for any n ∈ N and x0:N ∈ X
+q ̄n(x0:N ) = φ0n(x0) ∏N−1
+k=0 p ̄(xk+1|xk)ψn
+N (xN ),
+p ̄n+1(x0:N ) = φn+1
+0 (x0) ∏N−1
+k=0 p ̄(xk+1|xk)ψn
+N (xN ).
+Let n ∈ N. For any xN ∈ Rd we have
+q ̄n
+N (xN ) = pdata(xN ) = p ̄n
+N (xN )ψ ̃n
+N (xn). (61)
+In addition, for any k ∈ {0, . . . , N − 1} and x0:N ∈ X we define φn+1
+k+1 (xk+1) =
+∫
+Rd φn+1
+k (xk)p ̄(xk+1|xk)dxk. We have for any xN ∈ Rd, p ̄n
+N (xN ) = φn
+N (xN )ψn−1
+N (xn). Combining this result with (61) we get that for any xN ∈ Rd
+ψn
+N (xN ) = pdata(xN )/φn
+N (xN ).
+Similarly, we get that for any x0 ∈ Rd, φn+1
+0 (x0) = pprior(x0)/ψ0n(x0), which concludes the proof.
+D.3 Proof of Proposition 2
+Let π ̃ = (pprior ⊗ pdata)p|0,N . Using Proposition 24 we get that KL(π ̃|p) = KL(pprior ⊗ pdata|p0,N ) < +∞. Using Proposition 25 the IPF sequence is well-defined. Note that π0 admits a density w.r.t. the Lebesgue measure given by p > 0. Let n ∈ N and assume that pn > 0 is given for any x0:N ∈ X by
+pn(x0:N ) = pdata(x0) ∏N−1
+k=0 qn−1(xk+1|xk). (62)
+Using Proposition 24 we get that for any π ∈ PN+1 such that πN = pprior we have
+KL(π|π2n) = KL(pprior|π02n) + ∫
+Rd KL(π|N |π2n
+|N )pprior(xN )dxN .
+Hence, we have that π2n+1 = ppriorπ2n
+|N . Since pn > 0 we get that for any π2n
+|N satisfies for any
+A ∈ B(X ) and xN ∈ Rd
+π2n
+|N (A|xN ) = ∫
+A pn(x0:N )/pn(xN )dx0:N δxN (AN ).
+35
+
+
+Therefore, π2n+1 admits a density w.r.t. the Lebesgue measure denoted qn and given for any x0:N ∈ X by
+qn(x0:N ) = pn(x0:N )pprior(xN )/pn(xN )
+= pprior(xN ) ∏N−1
+k=0 pn(xk+1|xk)pn(xk)/pn(xk+1) = pprior(xN ) ∏N−1
+k=0 pn(xk|xk+1),
+where we have used (62). Note that qn > 0. Similarly, we get that for any x0:N ∈ X
+pn+1(x0:N ) = pdata(x0) ∏N−1
+k=0 qn(xk+1|xk).
+Note that again that pn+1 > 0. We conclude by recursion.
+D.4 Link with autoencoders
+Consider the maximum likelihood problem
+q? = arg max{Epdata [log q0(X0)] : q ∈ Pd(X ), qN = pprior},
+where Pd(X ) is the subset of the probability distribution over X which admit a density w.r.t. the Lebesgue measure. Using Jensen’s inequality we have for any q ∈ Pd(X )
+Epdata [log q0(X0)] = ∫
+Rd log(∫
+(Rd)N−1 q(x0:N )p(x1:N |x0)/p(x1:N |x0)dx1:N )p0(x0)dx0
+≥
+∫
+X log(q(x0:N )/p(x1:N |x0))p(x0:N )dx0:N ≥ − KL(p|q) − H(p0).
+This Evidence Lower Bound (ELBO) is similar to the one identified in Ho et al. (2020). Maximizing this ELBO is equivalent to solving the following problem
+q0 = arg min{KL(q|p) : q ∈ Pd(X ), qN = pprior},
+which is the first step of IPF. Hence subsequent steps can be obtained by maximizing ELBOs associated with the following maximum likelihood problems for any n ∈ N
+q? = arg max{Epdata [log q0(X0)] : q ∈ Pd(X ), qN = pprior},
+p? = arg max{Epprior [log pN (XN )] : p ∈ Pd(X ), p0 = pdata}.
+E Alternative variational formulations
+In this section, we draw links between IPF and score-matching techniques. We start by proving Proposition 3 in Appendix E.1. We then present alternative variational formulations in Appendix E.2.
+E.1 Proof of Proposition 3
+We only prove (12) since the proof (13) is similar. Let n ∈ N and k ∈ {0, . . . , N − 1}. For any xk+1 ∈ Rd we have
+pn
+k+1(xk+1) = (4πγk+1)−d/2 ∫
+Rd pn(xk) exp[−‖F n
+k (xk) − xk+1‖2/(4γk+1)]dxk,
+with F n
+k (xk) = xk + γk+1f n
+k (xk). Since pn
+k > 0 is bounded using the dominated convergence
+theorem we have for any xk+1 ∈ Rd
+∇ log pn
+k+1(xk+1) = ∫
+Rd (F n
+k (xk) − xk+1)/(2γk+1)pk|k+1(xk|xk+1)dxk.
+Therefore we get that for any xk+1 ∈ Rd
+bn
+k+1(xk+1) = ∫
+Rd (F n
+k (xk) − F n
+k (xk+1))/γk+1pk|k+1(xk|xk+1)dxk.
+This is equivalent to
+Bn
+k+1(xk+1) = E[Xk+1 + F n
+k (Xk) − F n
+k (Xk+1)|Xk+1 = xk+1],
+with (Xk, Xk+1) ∼ pk,k+1(xk, xk+1). Hence, we get that
+Bn
+k+1 = arg minB∈L2(Rd,Rd) Epn
+k,k+1 [‖B(Xk+1) − (Xk+1 + F n
+k (Xk) − F n
+k (Xk+1))‖2],
+which concludes the proof.
+36
+
+
+E.2 Variational formulas
+In Proposition 3 and Section 3.3 we present a variational formula for Bn
+k+1 and F n+1
+k for any n ∈ N and k ∈ {0, . . . , N − 1}, where we recall that for any x ∈ Rd we have
+Bn
+k+1(x) = x + γk+1bn
+k+1(x), F n+1
+k = x + γk+1f n+1
+k (x),
+where we have
+bn
+k+1(x) = −f n
+k (x) + 2∇ log pn
+k+1(x), f n+1
+k (x) = −bn
+k+1(x) + 2∇ log qn
+k (x). (63)
+In the rest of this section we assume that for any n ∈ N, k ∈ {0, . . . , N − 1} and x ∈ Rd we have
+qn
+k|k+1(xk|xk+1) = (4πγk+1)−d/2 exp[−‖xk − Bn
+k+1(xk+1)‖2/(4γk+1)],
+pn+1
+k+1|k(xk+1|xk) = (4πγk+1)−d/2 exp[−‖xk+1 − F n+1
+k (xk)‖2/(4γk+1)].
+We recall that in this case Proposition 3 ensures that for any n ∈ N and k ∈ {0, . . . , N − 1}
+Bn
+k+1 = arg minB∈L2(Rd,Rd) Epn
+k,k+1 [‖B(Xk+1) − (Xk+1 + F n
+k (Xk) − F n
+k (Xk+1))‖2],
+F n+1
+k = arg minF∈L2(Rd,Rd) Eqn
+k,k+1 [‖F(Xk) − (Xk + Bn
+k+1(Xk+1) − Bn
+k+1 (Xk ))‖2 ].
+In the rest of this section we derive other variational formulas and discuss their practical limitations/advantages.
+E.2.1 Score-matching formula and sum of networks
+First, using (63) we have for any n ∈ N, k ∈ {0, . . . , N − 1} and x ∈ Rd
+bn
+k+1(x) = αx + 2 ∑n
+j=0 ∇ log pj
+k+1(x) − 2 ∑n−1
+j=0 ∇ log qj
+k(x), (64)
+fn
+k (x) = −αx + 2 ∑n−1
+j=0 ∇ log qj
+k(x) − 2 ∑n−1
+j=0 ∇ log pj
+k+1(x). (65)
+In the following proposition we derive a variational formula for ∇ log pn
+k+1 and ∇ log qn
+k (x) for any n ∈ N and k ∈ {0, . . . , N − 1}.
+Proposition 28. For any n ∈ N and k ∈ {0, . . . , N − 1} we have
+∇ log pn
+k+1 = arg minu∈L2(Rd,Rd) Epn
+k,k+1 [‖u(Xk+1) − (F n
+k (Xk) − Xk+1)/(2γk+1)‖2], (66)
+∇ log qn
+k = arg minv∈L2(Rd,Rd) Eqn
+k,k+1 [‖v(Xk) − (Bn
+k+1(Xk+1) − Xk)/(2γk+1)‖2]. (67)
+Proof. The proof is similar to the one of Proposition 3 but is provided for completeness. We only prove (68) since the proof (69) is similar. Let n ∈ N and k ∈ {0, . . . , N − 1}. For any xk+1 ∈ Rd we have
+pn
+k+1(xk+1) = (4πγk+1)−d/2 ∫
+Rd pn(xk) exp[−‖F n
+k (xk) − xk+1‖2/(4γk+1)]dxk,
+with F n
+k (xk) = xk + γk+1f n
+k (xk). Since pn
+k > 0 is bounded using the dominated convergence
+theorem we have for any xk+1 ∈ Rd
+∇ log pn
+k+1(xk+1) = ∫
+Rd (F n
+k (xk) − xk+1)/(2γk+1)pk|k+1(xk|xk+1)dxk.
+This is equivalent to
+∇ log pn
+k+1(xk+1) = E[(F n
+k (Xk) − Xk+1)/(2γk+1)|Xk+1 = xk+1],
+with (Xk, Xk+1) ∼ pk,k+1(xk, xk+1). Hence, we get that
+∇ log pn
+k+1 = arg minu∈L2(Rd,Rd) Epn
+k,k+1 [‖u(Xk+1) − (F n
+k (Xk) − Xk+1)/(2γk+1)‖2],
+which concludes the proof.
+37
+
+
+Note that (68) and (69) can be simplified upon remarking that for any n ∈ N and k ∈ {0, . . . , N − 1}
+Xn
+k+1 = F n
+k (Xn
+k ) + √2γk+1Zn
+k+1, X ̃ n
+k = Fn
+k (X ̃ n
+k+1) + √2γk+1Z ̃n
+k+1,
+with {Xn
+k }N
+k=0 ∼ pn, {X ̃ n
+k }N
+k=0 ∼ qn and {(Zn
+k+1, Z ̃n
+k+1) : n ∈ N, k ∈ {0, . . . , N − 1}} a family of independent Gaussian random variables with zero mean an identity covariance matrix. Using this result we get that for any n ∈ N and k ∈ {0, . . . , N − 1}
+∇ log pn
+k+1 = arg minu∈L2(Rd,Rd) Epn
+k,k+1 [‖u(Xk+1) − Zn
+k+1/√2γk+1‖2], (68)
+∇ log qn
+k = arg minv∈L2(Rd,Rd) Eqn
+k,k+1 [‖v(Xk) − Z ̃n
+k+1/√2γk+1‖2]. (69)
+In practice, neural networks uαn (k, x) ≈ ∇ log pn
+k (x), and vβn (k, x) ≈ ∇ log qn
+k (x) are used.
+Hence, we sample approximately from qn and pn for any n ∈ N using the following recursion:
+X ̃ n
+k = τ ̃k+1X ̃ n
+k+1 + 2γk+1{∑n
+j=0 uαj (k + 1, X ̃ n
+k+1) − ∑n−1
+j=0 vβj (k, X ̃ n
+k+1)} + √2γk+1Z ̃n
+k+1, Xn
+k+1 = τk+1Xn
+k + 2γk+1{∑n
+j=0 uαj (k + 1, Xn
+k ) − ∑n
+j=0 vβj (k, Xn
+k )} + √2γk+1Zn
+k+1, (70)
+where τ ̃k+1 = 1 + αγk+1, τk+1 = 1 − αγk+1 and X0n ∼ pdata, X ̃ n
+N ∼ pprior.
+E.2.2 Drift-matching formula
+In Proposition 3 we have given a variational formula for Bn
+k+1 and F n+1
+k for any n ∈ N and
+k ∈ {0, . . . , N − 1}. In Proposition 28 we have given a variational formula for ∇ log pn
+k+1 and
+∇ log qn
+k for any n ∈ N and k ∈ {0, . . . , N − 1}. In the following proposition we give a variational formula for the drifts bn
+k+1 and f n+1
+k.
+Proposition 29. For any n ∈ N and k ∈ {0, . . . , N − 1} we have
+bn
+k+1 = arg minb∈L2(Rd,Rd) Epn
+k,k+1 [‖b(Xk+1) − (F n
+k (Xk) − F n
+k (Xk+1))/γk+1‖2] (71)
+f n+1
+k = arg minf ∈L2(Rd,Rd) Eqn
+k,k+1 [‖f (Xk) − (Bn
+k+1(Xk+1) − Bn
+k+1(Xk))/γk+1‖2] (72)
+Proof. The proof is similar to the one of Proposition 3 but is provided for completeness. We only prove (71) since the proof (72) is similar. Let n ∈ N and k ∈ {0, . . . , N − 1}. For any xk+1 ∈ Rd we have
+pn
+k+1(xk+1) = (4πγk+1)−d/2 ∫
+Rd pn(xk) exp[−‖F n
+k (xk) − xk+1‖2/(4γk+1)]dxk,
+with F n
+k (xk) = xk + γk+1f n
+k (xk). Since pn
+k > 0 is bounded using the dominated convergence
+theorem we have for any xk+1 ∈ Rd
+∇ log pn
+k+1(xk+1) = ∫
+Rd (F n
+k (xk) − xk+1)/(2γk+1)pk|k+1(xk|xk+1)dxk.
+Therefore we get that for any xk+1 ∈ Rd
+bn
+k+1(xk+1) = ∫
+Rd (F n
+k (xk) − F n
+k (xk+1))/γk+1pk|k+1(xk|xk+1)dxk.
+This is equivalent to
+bn
+k+1(xk+1) = E[(F n
+k (Xk) − F n
+k (Xk+1))/γk+1|Xk+1 = xk+1],
+with (Xk, Xk+1) ∼ p(xk, xk+1). Hence, we get that
+bn
+k+1 = arg minb∈L2(Rd,Rd) Epn
+k,k+1 [‖b(Xk+1) − (F n
+k (Xk) − F n
+k (Xk+1))/γk+1‖2],
+which concludes the proof.
+In practice, neural networks bβn (k, x) ≈ bn
+k (x), and fαn (k, x) ≈ f n
+k (x) are used. Hence, we sample
+approximately from qn and pn for any n ∈ N using the following recursion:
+X ̃ n
+k = X ̃ n
+k+1 + γk+1bβn (k + 1, X ̃ n
+k+1) + √2γk+1Z ̃n
+k+1, Xn
+k+1 = Xn
+k + γk+1fαn (k, Xn
+k ) + √2γk+1Zn
+k+1,
+with X0n ∼ pdata, X ̃ n
+N ∼ pprior.
+38
+
+
+E.2.3 Discussion
+We identify three variational formulas associated with Proposition 3, Proposition 28 and Proposition 29. In practice we discard the approach of Appendix E.2.1 because it requires storing 2n neural networks to sample from pn, see (70). Hence the algorithm requires more memory as n increases and the sampling procedure requires O(nN ) passes through a neural network. The approaches described in Proposition 3 and Proposition 29 yield sampling procedures which only require O(N ) passes through a neural network and have fixed memory cost for any n ∈ N. In practice we observed that the approach of Proposition 3 yields better results. We conjecture that this favorable behavior is mainly due to the architecture of the neural networks used to approximate Bn
+k+1 and F n+1
+k which have residual connections and therefore are better suited at representing functions of the x 7→ x + Φ(x) where Φ is a perturbation.
+F Theoretical study of Schrödinger bridges and the IPF
+In this section, we explore some of the theoretical properties of Schrödinger bridges and the IPF procedure. Proposition 4 and Proposition 5 are proved in Appendix F.1 and Appendix F.2 respectively.
+F.1 Proof of Proposition 4
+In this section, we prove Proposition 4. First we gather novel monotonicity results for the IPF in Proposition 31, see Appendix F.1.1. Then we prove our quantitative convergence bounds in Theorem 36, see Appendix F.1.2.
+F.1.1 Monotonicity results
+We consider the static IPF recursion: π0 = μ ∈ P2 and
+π2n+1 = arg min {KL(π|π2n) : π ∈ P2, π1 = ν1
+},
+π2n+2 = arg min {KL(π|π2n+1) : π ∈ P2, π0 = ν0
+},
+where ν0, ν1 ∈ P(Rd). We also consider the following assumption.
+B1. μ is absolutely continuous w.r.t. μ0 ⊗ μ1 and KL(ν0 ⊗ ν1|μ) < +∞. In addition, νi and μi are equivalent for i ∈ {0, 1}.
+First we draw links between A1 and B1.
+Proposition 30. A1 implies B1 with μ = p0,N .
+Proof. Since pN > 0 we get that pN and pprior are equivalent. Hence μ1 and ν1 are equivalent and μ0 = ν0. Let us show that μ is absolutely continuous w.r.t. μ0 ⊗ μ1, i.e. that p0,N is absolutely continuous w.r.t. pdata ⊗ pN . Since pN > 0 we get that p0,N is absolutely continuous w.r.t. pdata ⊗ pN with density pN|0/pN . Finally we have
+∫
+(Rd)2 log(pdata(x0)pprior(xN )/(pdata(x0)pN|0(xN |x0)))pdata(x0)pprior(xN )dx0dxN
+=
+∫
+(Rd)2 log(pprior(xN )/pN|0(xN |x0))pdata(x0)pprior(xN )dx0dxN
+≤ |H(pprior)| + ∫
+Rd | log pN|0(xN |x0)|pdata(x0)pprior(xN )dx0dxN < +∞
+which concludes the proof.
+In this section we prove the following proposition.
+Proposition 31. Assume B1. Then, the IPF sequence is well-defined and for any n ∈ N with n ≥ 1 we have
+KL(πn+1|πn) ≤ KL(πn−1|πn), KL(πn|πn+1) ≤ KL(πn|πn−1). (73)
+In addition, the following results hold:
+(a) (‖πn+1 − πn‖TV)n∈N and (J(πn+1, πn))n∈N are non-increasing.
+(b) (KL(π2n+1|π2n))n∈N and (KL(π2n+2|π2n+1))n∈N are non-increasing.
+39
+
+
+(c) (KL(π2n+1
+1 |ν1))n∈N and (KL(π02n|ν0))n∈N are non-increasing.
+(d) (‖π2n+1
+1 − ν1‖TV)n∈N and (‖π02n − ν0‖TV)n∈N are non-increasing.
+First, we show that under B1, the IPF sequence is well-defined and is associated with a sequence of potentials.
+Proposition 32. Assume B1. Then, the IPF sequence is well-defined and there exist (an)n∈N and (bn)n∈N such that for any n ∈ N, an, bn : Rd → (0, +∞) and for any x, y ∈ Rd
+(dπ2n+1/d(μ0 ⊗ μ1))(x, y) = an(x)h(x, y)bn(y) (74)
+(dπ2n+2/d(μ0 ⊗ μ1))(x, y) = an+1(x)h(x, y)bn(y),
+and
+v0(x) = an+1(x) ∫
+Rd h(x, y)bn(y)dμ1(y), v1(y) = bn(y) ∫
+Rd h(x, y)an(x)dμ0(x), (75)
+where vi = dνi/dμi for i ∈ {0, 1}.
+Proof. First, we show that the IPF sequence is well-defined. Note that π1 is well-defined since KL(ν0 ⊗ ν1|μ) < +∞. Assume that {π`}n
+`=1 is well-defined. Using (Csiszár, 1975, Theorem 2.2) we have
+KL(ν0 ⊗ ν1|μ) = KL(ν0 ⊗ ν1|πn) + ∑n−1
+`=0 KL(π`+1|π`).
+In particular, KL(ν0 ⊗ ν1|πn) < +∞ and πn+1 is well-defined. We conclude by recursion.
+Using (Csiszár, 1975, Theorem 3.1) and B1, there exists ( ̃bn)n∈N such that for any n ∈ N,  ̃bn : Rd → [0, +∞) and for any x, y ∈ An, (dπ2n+1/dπ2n)(x, y) =  ̃bn(y) with An ∈ B(Rd), π ̃(An) = 0 for
+any π ̃ such that π ̃1 = ν1 and KL(π ̃|π2n) < +∞. In particular we have (ν0⊗ν1)(An) = 0. Since νi is equivalent to μi for any i ∈ {0, 1} we have (μ0 ⊗ μ1)(An) = 0. Similarly, there exists ( ̃an)n∈N such that for any n ∈ N, a ̃n : Rd → [0, +∞) and for any x, y ∈ Bn, (dπ2n+2/dπ2n+1)(x, y) = a ̃n+1(x) with Bn ∈ B(Rd) and (μ0 ⊗ μ1)(Bn) = 0. As a result, there exist (an)n∈N and (bn)n∈N with an : Rd → [0, +∞) and bn : Rd → [0, +∞) such that for any n ∈ N and x, y ∈ Rd
+(dπ2n+1/d(μ0 ⊗ μ1))(x, y) = an(x)h(x, y)bn(y)
+(dπ2n+2/d(μ0 ⊗ μ1))(x, y) = an+1(x)h(x, y)bn(y),
+where h = dμ/d(μ0 ⊗ μ1) and a0 = 1. In addition, setting b−1 = 1, we have for any x, y ∈ Rd,
+(dπ0/d(μ0 ⊗ μ1))(x, y) = a0(x)h(x, y)b−1(y).
+Using that νi is absolutely continuous w.r.t. μi for i ∈ {0, 1} with density vi : Rd → (0, +∞) we get that for any x, y ∈ Rd and n ∈ N
+v0(x) = an+1(x) ∫
+Rd h(x, y)bn(y)dμ1(y), v1(y) = bn(y) ∫
+Rd h(x, y)an(x)dμ0(x).
+Since v0, v1 > 0 for any n ∈ N, an, bn > 0.
+Note that the system of equations (75) corresponds to iteratively solving the Schrödinger system, see Léonard (2014b) for a survey. In addition, (75) has connections with Fortet’s mapping (Léonard, 2019; Fortet, 1940).
+In the rest of the section we detail the proof of Proposition 4. We start by deriving identities between the marginals of the IPF and its joint distribution both w.r.t. the Kullback-Leibler divergence and the total variation norm in Lemma 33. Second, we establish that (‖πn+1 − πn‖TV)n∈N is non-increasing in Lemma 34. Then, we prove (73) in Lemma 35. We conclude with the proof of Proposition 31.
+Lemma 33. Assume B1. Then, for any n ∈ N we have
+‖π2n+1 − π2n‖TV = ‖π2n
+1 − ν1‖TV, ‖π2n+2 − π2n+1‖TV = ‖π2n+1
+0 − ν0‖TV. (76)
+In addition, we have
+KL(π2n|π2n+1) = KL(π2n
+1 |ν1), KL(π2n+1|π2n+2) = KL(π2n+1
+0 |ν0). (77)
+Proof. We divide the proof into two parts. First, we prove (76). Second, we show that (77) holds.
+40
+
+
+(a) We only show that for any n ∈ N we have ‖π2n+1 − π2n‖TV = ‖π12n − ν1‖TV. The proof that
+for any n ∈ N, ‖π2n+2 − π2n+1‖TV = ‖π2n+1
+0 − ν0‖TV is similar. Let n ∈ N. Using (74) and (75) we have
+‖π2n+1 − π2n‖TV = ∫
+(Rd)2 |bn(y) − bn−1(y)| an(x)h(x, y)dμ0(x)dμ1(y) (78)
+=
+∫
+Rd |1 − bn−1(x)/bn(x)| dν1(y).
+In addition, we have that for any A ∈ B(Rd)
+π12n(A) = ∫
+Rd×A an(x)bn−1(y)h(x, y)dμ0(x)dμ1(y) = ∫
+A(bn−1/bn)(y)dν1(y).
+We get that for any y ∈ Rd, (dπ12n/dν1)(y) = (bn−1/bn)(y). Hence, using (78) we get that
+‖π12n − ν1‖TV = ∫
+Rd |1 − an(x)/an+1(x)| dν0(x) = ‖π2n+1 − π2n‖TV.
+(b) We only show that for any n ∈ N we have KL(π2n|π2n+1) = KL(π12n|ν1). The proof that for
+any n ∈ N, KL(π2n+1|π2n+2) = KL(π2n+1
+0 |ν0) is similar. Let n ∈ N. Using that for any x, y ∈ Rd,
+(dπ12n/dν1)(y) = bn−1(y)/bn(y) and that (dπ2n+1/dπ2n)(x, y) = bn(y)/bn−1(y) we have
+KL(π2n|π2n+1) = −∫
+Rd log(bn(y)/bn−1(y))dπ12n(y) = KL(π12n|ν1).
+This concludes the proof.
+Lemma 34. Assume B1. Then (‖πn+1 − πn‖TV)n∈N is non-increasing.
+Proof. We only prove that for any n ∈ N with n ≥ 1, ‖π2n+1 − π2n‖TV ≤ ‖π2n − π2n−1‖TV. The
+proof that for any n ∈ N, ‖π2n+2 − π2n+1‖TV ≤ ‖π2n+1 − π2n‖TV is similar. Let n ∈ N with n ≥ 1. Similarly to the proof of Lemma 33 we have that
+‖π2n+1 − π2n‖TV = ∫
+Rd |1 − bn−1(y)/bn(y)| dν1(y) = ∫
+Rd
+∣
+∣bn−1(y) − b−1
+n−1(y)∣
+∣ bn−1(y)dν1(y). (79) In addition, we have that for any y ∈ Rd
+∣
+∣b−1
+n−1(y) − bn−1(y)∣
+∣ ≤ v−1
+1 (y) ∫
+Rd h(x, y) |an−1(x) − an(x)| dμ0(x).
+Combining this result and (79) we get that
+‖π2n+1 − π2n‖TV ≤ ∫
+Rd
+∣
+∣b−1
+n−1(y) − bn−1(y)∣
+∣ bn−1(y)dν1(y)
+≤
+∫
+(Rd)2 |an(x) − an−1(x)| h(x, y)bn−1(y)dμ0(x)dμ1(y)
+≤
+∫
+Rd |1 − an−1(x)/an(x)| dν0(x) ≤ ‖π2n − π2n−1‖TV,
+which concludes the proof.
+Lemma 35. Assume B1. Then for any n ∈ N with n ≥ 1 we have
+KL(πn+1|πn) ≤ KL(πn−1|πn), KL(πn|πn+1) ≤ KL(πn|πn−1).
+Proof. Using Lemma 33 and the data processing theorem (Ambrosio et al., 2008, Lemma 9.4.5) we get that for any n ∈ N
+KL(π2n|π2n+1) = KL(π2n
+1 |ν1) ≤ KL(π2n|π2n+1).
+Similarly, we get that for any n ∈ N, KL(π2n+1|π2n+2) ≤ KL(π2n+1|π2n). Hence, we get that for any n ∈ N, KL(πn|πn+1) ≤ KL(πn|πn−1).
+In addition, using that for any n ∈ N with n ≥ 1 and x, y ∈ Rd, we have that π2n+1
+1 = ν1 and
+(dπ2n+1/dπ2n)(x, y) = bn(y)/bn−1(y) we get for any n ∈ N with n ≥ 1
+KL(π2n+1|π2n) = − ∫
+Rd log(bn−1(y)/bn(y))dν1(y). (80)
+Using Jensen’s inequality we have for any n ∈ N
+− log(bn−1(y)/bn(y)) ≤ − log ( ∫
+Rd h(x, y)an(x)dμ0(x)/∫
+Rd h(x, y)an−1(x)dμ0(x) )
+41
+
+
+≤ − log ( ∫
+Rd (an(x)/an−1(x))h(x, y)an−1(x)dμ0(y)/∫
+Rd h(x, y)an−1(x)dμ0(x) )
+≤ −∫
+Rd log(an(x)/an−1(x))bn−1(y)h(x, y)an−1(x)/v1(y)dμ0(x).
+Combining this result, (80), Fubini’s theorem and that for any n ∈ N with n ≥ 1 and x ∈ Rd,
+(dπ2n−1
+0 /dν0)(x) = an−1(x)/an(x) we get that for any n ∈ N with n ≥ 1
+KL(π2n+1|π2n)≤ ∫
+(Rd)2 log(an−1(x)/an(x))an−1(x)h(x, y)bn−1(y)dμ1(y)dμ0(x)
+≤
+∫
+(Rd)2 log(an−1(x)/an(x))(an−1(x)/an(x))dν0(x) ≤ KL(π2n−1
+0 |ν0).
+Using Lemma 33 (or the data processing theorem) we get that for any n ∈ N with n ≥ 1, KL(π2n+1|π2n) ≤ KL(π2n−1|π2n). Similarly, we get that for any n ∈ N, KL(π2n+2|π2n+1) ≤ KL(π2n|π2n+1), which concludes the proof.
+We now turn to the proof of Proposition 31
+Proof. First, (73) is a direct consequence of Lemma 35. Using Lemma 34 we get that (‖πn+1 − πn‖TV)n∈N is non-increasing. Since for any η0, η1 ∈ P(Rd) we have J(η0, η1) = (1/2){KL(η0|η1) + KL(η0|η1)} and using (73), we get that (J(πn+1, πn))n∈N is non-increasing which proves Proposition 31-(a). Proposition 31-(b) is a straightforward consequence of (73). Proposition 31-(c) is a consequence of Lemma 33 and Proposition 31-(a). Finally, Proposition 31-(c) is a consequence of Lemma 33 and (73).
+Note that we also have that for any n ∈ N, (KL(π2n|π2n+1))n∈N and (KL(π2n+1|π2n+2))n∈N are non-increasing.
+F.1.2 Quantitative convergence bounds
+In this section we prove the following theorem.
+Theorem 36. Assume B1. Then, the IPF sequence (πn)n∈N is well-defined and there exists a
+probability measure π∞ such that limn→+∞ ‖πn − π∞‖TV = 0 and the following hold:
+(a) limn→+∞ n1/2 {‖π0n − ν0‖TV + ‖π1n − ν1‖TV} = 0.
+(b) limn→+∞ n {KL(π0n|ν0) + KL(π1n|ν1)} = 0.
+We begin with Lemma 37 which is an adaption of (Ruschendorf et al., 1995, Proposition 2.1). Then we state and prove Lemma 38 which is a classical lemma from real analysis. Combining these two lemmas and the monotonicity results from Proposition 31 conclude the proof.
+Lemma 37. Assume B1. Then, (πn)n∈N is well-defined and we have ∑
+n∈N KL(πn+1|πn) < +∞.
+Proof. The sequence is well-defined using Proposition 32. In addition, using (Csiszár, 1975, Theorem 2.2) we have for any n ∈ N
+KL(μ?|π0) = KL(π?|πn) + ∑n−1
+k=0 KL(πk+1|πk),
+which concludes the proof.
+Lemma 38. Let (cn)n∈N ∈ [0, +∞)N a non-increasing sequence such that ∑
+n∈N cn < +∞. Then
+limn→+∞ cnn = 0.
+Proof. Let ε > 0 and n0 ∈ N such that for any n ≥ n0, ∑+∞
+k=n ck ≤ ε. Let n ∈ N with n ≥ 2n0.
+Note that n − n0 ≥ n/2 ≥ n0. Therefore we have ε ≥ (n − n0)cn ≥ (n/2)cn. Hence, for any n ∈ N with n ≥ 2n0, cnn ≤ 2ε, which concludes the proof.
+We now conclude with the proof of Theorem 36.
+42
+
+
+Proof. Using Lemma 37 and Pinsker’s inequality (Bakry et al., 2014, Equation 5.2.2) we have
+∑
+n∈N ‖πn+1 − πn‖TV < +∞. For any N ∈ N, let SN = ∑N
+n=0 πn+1 − πn = πN+1 − μ. Since the space of finite signed measures endowed with ‖ · ‖TV is a Banach space (Douc et al., 2019,
+Theorem D.2.7) we have that (SN )N∈N converges. Hence there exists a finite signed measure π∞
+such that limn→+∞ ‖πn − π∞‖TV = 0. π∞ is a probability measure since for any n ∈ N, πn is a probability measure.
+In addition, since (KL(π2n+1|π2n))n∈N and (KL(π2n+2|π2n+1))n∈N are non-increasing by Proposition 31, using Lemma 38, we get that
+lim
+n→+∞ n {KL(πn
+0 |ν0) + KL(πn
+1 |ν1)} = 0.
+We conclude upon using Pinsker’s inequality (Bakry et al., 2014, Equation 5.2.2).
+F.2 Proof of Proposition 5
+Similarly to Appendix F.1, we consider the static IPF recursion: π0 = μ ∈ P2 and
+π2n+1 = arg min {KL(π|π2n) : π ∈ P2, π1 = ν1
+},
+π2n+2 = arg min {KL(π|π2n+1) : π ∈ P2, π0 = ν0
+},
+where ν0, ν1 ∈ P(Rd). We recall that in this context that if the Schrödinger bridge π? exists it is given by
+π? = arg min{KL(π|μ) : π ∈ P2, π0 = ν0, π1 = ν1}.
+In this section, we prove the following proposition which directly implies Proposition 5.
+Proposition 39. Assume B1 and denote h = dμ/(dμ0 ⊗ μ1). Assume that h ∈ C(Rd × Rd, (0, +∞]) and that there exist Φ0, Φ1 ∈ C(Rd, (0, +∞)) such that for any x, y ∈ Rd
+h(x, y) ≤ Φ0(x)Φ1(y), and
+∫
+Rd×Rd (|log h(x0, x1)| + |log Φ0(x0)| + |log Φ1(x1)|)dμ0(x0)dμ1(x1) < +∞. (81)
+Then there exists a solution π? to the Schrödinger bridge and the IPF sequence satisfies limn→+∞ ‖πn − π∞‖TV = 0 with π∞ ∈ P2. If μ is absolutely continuous w.r.t. π∞ then
+π∞ = π?.
+We begin with an adaptation of (Rüschendorf and Thomsen, 1993, Proposition 2).
+Proposition 40. Let μ ∈ P2 and assume that μ is absolutely continuous w.r.t. μ0 ⊗ μ1. Let (an)n∈N and (bn)n∈N such that for any n ∈ N, an : Rd → (0, +∞) and bn : Rd → (0, +∞). Assume that there exists Φ : (Rd)2 → [0, +∞) and A ∈ B(Rd) ⊗ B(Rd) with μ(A) = 1 such that for any (x, y) ∈ A
+lim
+n→+∞ an(x)bn(y) = Φ(x, y).
+Then, there exist a : Rd → [0, +∞), b : Rd → [0, +∞) and B ∈ B(Rd) ⊗ B(Rd) with μ(B) = 1 such that for any x, y ∈ B
+Φ(x, y) = a(x)b(y), or Φ(x, y) = 0.
+Proof. Let A ̃ = {(x, y) ∈ (Rd)2 : Φ(x, y) = 0} and Aa =  ̃A ∩ A and Ab =  ̃Ac ∩ A. If Ab = ∅, we conclude the proof. Otherwise, let (x0, y0) ∈ Ab. Let C0, C1 ∈ B(Rd) ⊗ B(Rd) be given by
+C0
+0 = {x ∈ Rd : lim
+n→+∞ a0
+n(x) = a0(x) exists and a0(x) > 0}, (82)
+C0
+1 = {y ∈ Rd : lim
+n→+∞ b0
+n(y) = b0(y) exists and b0(y) > 0},
+where for any n ∈ N and x, y ∈ Rd, a0n(x) = an(x)/an(x0) and b0n(y) = bn(y)an(x0), which is
+well-defined since for any n ∈ N, an(x0) > 0. Note that x0 ∈ C00 and that y0 ∈ C01. If Ab ⊂ C00 × C01,
+we conclude the proof. Otherwise, let (x1, y1) ∈ Ab ∩ (C00 × C01)c and define
+C1
+0 = {x ∈ Rd : lim
+n→+∞ a1
+n(x) = a1(x) exists and a1(x) > 0},
+43
+
+
+C1
+1 = {y ∈ Rd : lim
+n→+∞ b1
+n(y) = b1(y) exists and b1(y) > 0},
+where for any n ∈ N and x, y ∈ Rd, a1n(x) = an(x)/an(x1) and b1n(y) = bn(y)an(x1),
+which is well-defined since for any n ∈ N, an(x1) > 0. Note that C00 ∩ C10 = ∅ and
+C01 ∩ C11 = ∅. Indeed, if there exists x ∈ C00 ∩ C10, then a0(x) = limn→+∞ an(x)/an(x0) > 0 and
+a1(x) = limn→+∞ an(x)/an(x1) > 0 exists. Therefore limn→+∞ an(x1)/an(x0) > 0 exists and
+limn→+∞ bn(y1)an(x0) > 0 exists. Hence (x1, y1) ∈ C00 × C01 which is absurd. Similarly, if there
+exists y ∈ C01 ∩ C11 then (x1, y1) ∈ C00 × C01 which is absurd. Hence, we consider T : Ab → 2(Rd)2 such that for any (x, y) ∈ Ab, T (x, y) = C(x,y)
+0 × C(x,y)
+1 , where C(x,y)
+0 × C(x,y)
+1 is constructed as in (82) replacing (x0, y0) by (x, y).
+Consider a well order on (Ab, ≤), which is possible by the well-ordering principle (Enderton, 1977,
+p. 196). For any (x, y) ∈ Rd, let A(x,y)
+b = {(x′, y′) ∈ (Rd)2 : (x′, y′) < (x, y)}. Using the
+transfinite recursion theorem (Enderton, 1977, p. 175) there exists f : Ab → {0, 1} such that for any (x, y) ∈ Ab if there exists (x′, y′) ∈ (Rd)2 such that (x′, y′) < (x, y), f (x′, y′) = 1
+and (x, y) ∈ T (x′, y′) then f (x, y) = 0 and f (x, y) = 1 otherwise. Let I = f −1({1}). Let (x, y), (x′, y) ∈ I with (x, y) 6= (x′, y′) then for (x, y) < (x′, y′) for instance. Since f (x, y) =
+f (x′, y′) = 1 we have that (C(x,y)
+0 × C(x,y)
+1 ) ∩ (C(x′,y′)
+0 × C(x′,y′)
+1 ) = ∅. Let (x, y) ∈ Ab. If
+f (x, y) = 1 then (x, y) ∈ C(x,y)
+0 × C(x,y)
+1 . If f (x, y) = 0 then there exists (x′, y′) < (x, y) such that
+(x, y) ∈ C(x′,y′)
+0 × C(x′,y′)
+1 . Therefore, we get that {C(x,y) = (C(x,y)
+0 × C(x,y)
+1 ) ∩ Ab : (x, y) ∈ I}
+is a partition of Ab.
+Since μ(Ab) ≤ 1, and {C(x,y) = (C(x,y)
+0 × C(x,y)
+1 ) ∩ Ab : (x, y) ∈ I} is a partition of Ab, we get that
+J = {C(x,y) : (x, y) ∈ I, μ0(C(x,y)
+0 )μ1(C(x,y)
+1 ) > 0} is countable. Denote Ac = ∪(x,y)∈J C(x,y). Let us show that μ(Acc ∩ Ab) = μ(∪(x,y)∈I∩Jc C(x,y)) = 0. Let x ∈ Rd and define Dx = {y ∈ Rd :
+(x, y) ∈ Ab ∩ Acc}. If Dx is not empty, then there exists (x′, y′) ∈ I such that x ∈ C(x′,y′)
+0 . Then, for
+any y ∈ Dx, y ∈ C(x′,y′)
+1 . Hence, (x′, y′) ∈ I ∩ Jc by definition of Dx and μ1(Dx) = 0. We get that
+μ(Ab ∩ Acc) = ∫
+Rd
+( ∫
+Dx h(x, y)dμ1(y)
+)
+dμ0(x) = 0,
+where h is the density of μ w.r.t. μ0 ⊗ μ1. Note that this is the only instance in the proof, where we use that μ is absolutely continuous w.r.t. μ0 ⊗ μ1. For any (x, y) ∈ Ac define for any n ∈ N
+ˆan(x) = ∑
+(x′,y′)∈J 1C(x′,y′)
+0
+(x)a(x′,y′)
+n (x), ˆbn(y) = ∑
+(x′,y′)∈J 1C(x′,y′)
+1
+(x)b(x′,y′)
+n (y).
+There exist ˆa, ˆb : Rd → (0, +∞) such that for any (x, y) ∈ Ac, limn→+∞ aˆn(x) = ˆa(x) and limn→+∞ ˆbn(y) = bˆ(y). In addition, for any (x, y) ∈ Ac, an(x)bn(y) = aˆn(x)ˆbn(y). Hence, for any (x, y) ∈ Ac, Φ(x, y) = aˆ(x)ˆb(y). Since Aa ∩ Ac = ∅ and μ(Ac) = μ(Ab), we have
+μ(Aa) + μ(Ac) = μ(Aa) + μ(Ab) = μ(A) = 1.
+We conclude the proof upon remarking that for any (x, y) ∈ Aa, Φ(x, y) = 0 and for any (x, y) ∈ Ac, Φ(x) = aˆ(x)bˆ(y).
+In what follows we prove Proposition 39.
+Proof. Since limn→+∞ ‖πn − π∞‖TV = 0 by Theorem 36 and KL(π∞|μ) < +∞, there exist A with μ(A) = 1 and Φ : (Rd)2 → [0, +∞) such that, up to extraction, for any x, y ∈ A
+lim
+n→+∞ an(x)bn(y) = Φ(x, y),
+and (dπ∞/dμ) = Φ. Using Proposition 40, there exist a, b : Rd → [0, +∞) and B with π∞(B) = 1 such that for any x, y ∈ B, (dπ∞/dμ)(x, y) = a(x)b(y). Since μ is absolutely continuous w.r.t. π∞, we get that for any x, y ∈ Rd, (dπ∞/d(μ0 ⊗ μ1))(x, y) = a(x)b(y)h(x, y). In addition, the Schrödinger bridge π? ∈ P((Rd)2) exists, see (Rüschendorf and Thomsen, 1993, Theorem 3), and there exist a′, b′ : Rd → [0, +∞) and B′ with μ(B′) = 1 such that for any x, y ∈ B′
+(dπ?/d(μ0 ⊗ μ1))(x, y) = a′(x)b′(y)h(x, y).
+44
+
+
+Let M+,× be the space of non-negative product measures over B(Rd) ⊗ B(Rd). Let Ψ ̄h : M+,× → M+,× be given for any λ = λ0 ⊗ λ1 ∈ M+,× by Ψ ̄h(λ) = Ψλ
+h where for any A, B ∈ B(Rd)
+Ψλ
+h(A × B) = (∫
+A×Rd  ̄h(x, y)dλ0(x)dλ1(x))(∫
+Rd×B  ̄h(x, y)dλ0(x)dλ1(y))
+where for any x, y ∈ Rd,  ̄h(x, y) = h(x, y)Φ−1
+0 (x)Φ−1
+1 (y). Note that  ̄h ∈ C(Rd × Rd, [0, +∞)) and is bounded. Hence, using (Beurling, 1960, Theorem 2) and (81) we get that Ψ ̄h is a bijection.
+Let λ = (aΦ0μ0, bΦ1μ1) and λ′ = (a′Φ0μ0, b′Φ1μ1). Then, since π?
+i = π∞
+i = νi for i ∈ {0, 1} we
+get that Ψh(λ) = Ψh(λ′). Hence λ = λ′ and π∞ = π? which concludes the proof.
+In Proposition 42 we derive an alternative proposition to Proposition 39. We start with the following lemma.
+Lemma 41. Let π? ∈ P2 with π?
+i = νi for i ∈ {0, 1}. Assume that KL(π?|μ) < +∞ and that
+L1(ν0) ⊕ L1(ν1) is closed in L1(π?). In addition, assume that there exist a, b : Rd → [0, +∞) and
+A with π?(A) = 1 such that for any (x, y) ∈ A,
+(dπ?/dμ)(x, y) = a(x)b(y).
+Then π? is the Schrödinger bridge.
+Proof. Since KL(π?|μ) < +∞ we have that
+∫
+(Rd)2 |log(a(x)b(y))| dπ?(x, y) < +∞.
+Using (Kober, 1939, Theorem 1) and that π?
+i = νi for i ∈ {0, 1}, we get that
+∫
+Rd |log a(x)| dν0(x) + ∫
+Rd |log b(y)| dν1(y) < +∞. (83)
+Let π ∈ P2 such that πi = νi for i ∈ {1, 2} and KL(π|μ) < +∞. Using (83), we have that
+∫
+(Rd)2 |log((dπ?/dμ)(x, y))| dπ(x, y) < +∞. Hence, (dπ?/dμ) > 0, π-almost surely. Using this
+result we have for any A ∈ B(Rd)
+π[A] = ∫
+Rd 1A(x)(dπ?/dμ)(x)(dπ?/dμ)(x)−1dπ(x)
+=
+∫
+Rd 1A(x)(dπ?/dμ)(x)(dπ?/dμ)(x)−1(dπ/dμ)(x)dμ(x)
+=
+∫
+Rd 1A(x)(dπ?/dμ)(x)−1(dπ/dμ)(x)dπ?(x).
+Hence we get that dπ/dπ? = (dπ/dμ)(dπ?/dμ)−1. In addition, we have that
+KL(π?|μ) = ∫
+Rd log(a(x))dν0(x) + ∫
+Rd log(b(y))dν1(y) = ∫
+(Rd)2 log((dπ?/dμ)(x, y))dπ(x, y).
+We get that
+KL(π|π?) = ∫
+Rd log((dπ/dμ)(dπ?/dμ)(x, y)−1)dπ(x, y) = KL(π|μ) − KL(π?|μ).
+Hence, KL(π|μ) ≥ KL(π?|μ) with equality if and only if π? = π. Therefore, π? is the Schrödinger bridge.
+The following proposition is an alternative to Proposition 39.
+Proposition 42. Assume B1. Then there exists a solution π? to the Schrödinger bridge and the IPF sequence (πn)n∈N satisfies limn→+∞ ‖πn − π∞‖TV = 0 with π∞ ∈ P2. If KL(π∞|μ) < +∞
+and L1(ν0) ⊕ L1(ν1) is closed in L1(π∞) then π∞ = π?.
+Proof. Since limn→+∞ ‖πn − π∞‖TV = 0 by Theorem 36 and KL(π∞|μ) < +∞, there exist A with μ(A) = 1 and Φ : (Rd)2 → [0, +∞) such that, up to extraction, for any x, y ∈ A
+lim
+n→+∞ an(x)bn(y) = Φ(x, y),
+and (dπ∞/dμ) = Φ. Using Proposition 40, there exist a, b : Rd → [0, +∞) and B with π∞(B) = 1 such that for any x, y ∈ B, (dπ∞/dμ)(x, y) = a(x)b(y). We conclude upon using Lemma 41.
+45
+
+
+G Geometric convergence rates and convergence to ground-truth
+In this section, we derive geometric convergence rates in Appendix G.1 in a Gaussian setting. In particular, we provide an explicit upper-bound on the convergence rate that depends only on the covariance of the reference measure and the target. In Appendix G.2, we show that DSB (with Brownian reference measure) converges towards the Schrödinger bridge in a Gaussian setting where the ground-truth is available. In Section 4 we show that our implementation actually recovers the Schrödinger bridge in this setting.
+G.1 Geometric convergence rates
+In the following proposition we show that we recover a geometric convergence rate in a Gaussian setting and derive intuition from this case study. We set N = 1 and assume that for any x0, xN ∈ Rd we have
+p(x0, xN ) ∝ exp[− ‖x0‖2 + 2α〈x0, xN 〉 − ‖xN ‖2],
+with α ∈ [0, 1). In this case assume that there exists β > 0 such that the target marginals are given for any x0, xN ∈ Rd by
+pdata(x0) ∝ exp[−β ‖x0‖2], pprior(xN ) ∝ exp[−β ‖xN ‖2].
+Proposition 43. Let α ∈ (0, 1) and β > 0. Then the Schrödinger bridge π? exists and there exists C ≥ 0 (explicit in the proof) such that for any n ∈ N, KL(π?|πn) ≤ Cκ2n, with κ < 1 given by κ = ρ/(1 + ρ) and ρ = 2α/β2. In addition, π? admits a density w.r.t. the Lebesgue measure denoted p? and given for any x, y ∈ Rd by
+p?(x, y) = exp[−γ?‖x‖2 + 2α〈x, y〉 − γ?‖y‖2]/ ∫
+Rd exp[−γ?‖x‖2 + 2α〈x, y〉 − γ?‖y‖2]dxdy,
+with γ? = (β2/2)(1 + (1 + 4α2/β2)1/2).
+Remark that if β2 = 1 − α2 then γ? and p? = p, i.e. the IPF leaves μ invariant. Note that the performance of the IPF improves if κ is close to 0, i.e. if ρ = 2α/β2 is close to 0. This is the case if α ≈ 0 (the marginals are almost independent) or if β ≈ +∞ (the target distribution is close to δ0), see Figure 8. This behavior is in accordance with the limit case where the marginals are independent or one of the target distribution is a Dirac mass in which case the IPF converges in two iterations.
+Figure 8: Evolution of κ2 depending on α and β.
+Also, note that the convergence rate does not depend on the dimension but only on the constants of the problem. In what follows we first derive the IPF sequence for this Gaussian problem and establish that α controls the amount of information shared by the marginals. Then we prove Proposition 43. In the rest of this section, we let μ ∈ P2 with density p w.r.t. the Lebesgue measure such that for any
+x0, x1 ∈ Rd
+p(x0, x1) = exp[− ‖x0‖2 + 2α〈x0, x1〉 − ‖x1‖2]/ ∫
+Rd exp[− ‖x0‖2 + 2α〈x0, x1〉 − ‖x1‖2]dx0dx1.
+46
+
+
+We have that μ is the Gaussian distribution with zero mean and covariance matrix Σ such that
+Σ = (2(1 − α2))−1
+( Id α Id α Id Id
+)
+.
+We have that det(Σ) = 22d(1 − α2)−d using Schur complement (Petersen et al., 2008, Section 9.1.2). Hence we get that for any x0, x1 ∈ Rd
+p(x0, x1) = π−d(1 − α2)d/2 exp[− ‖x0‖2 + 2α〈x0, x1〉 − ‖x1‖2].
+In what follows, we denote C = πd(1 − α2)−d/2. Similarly, we get that μ0 = μ1 and that they admit the density p0 w.r.t. the Lebesgue measure given for any x ∈ Rd by
+p0(x) = π−d/2(1 − α2)d/2 exp[− ‖x‖2 (1 − α2)].
+In what follows, we denote C0 = πd/2(1 − α2)−d/2. In this case note that μ admits a density w.r.t. μ0 ⊗ μ1 given for any x0, x1 ∈ Rd by
+h(x0, x1) = (dμ/d(μ0 ⊗ μ1))(x0, x1) = (1 − α2)−d/2 exp[−α2 ‖x0‖2 − 2α〈x0, x1〉 − α2 ‖x1‖2].
+Remark that pprior = pdata = q with for any x ∈ Rd, q(x) = π−d/2βd/2 exp[−β ‖x‖2]. We have for any x1, x0 ∈ Rd
+p1|0(x1|x0) = p(x0, x1)/p0(x0) = π−d/2(1 − α2)d/2 exp[−α2 ‖x0‖2 + 2α〈x0, x1〉 − ‖x1‖2].
+Hence, we have that A1 holds and the IPF sequence is well-defined and converges using Proposition 5. In what follows we start to show that α controls the amount of information shared by the two marginals μ0 and μ1, i.e. the mutual information. More precisely we have the following result.
+Proposition 44. For any α ∈ (0, 1) we have KL(μ|μ0 ⊗ μ1) = −(d/2) log(1 − α2).
+Proof. For any x, y ∈ Rd we have
+(dμ/(dμ0 ⊗ dμ1))(x, y) = exp[−α2‖x‖2 + 2α〈x, y〉 − α2‖y‖2](1 − α2)−d/2.
+We have that
+∫
+Rd×Rd (−α2 ‖x‖2 − α2 ‖y‖2 + 2α〈x, y〉)dμ(x, y) = 0.
+Hence, KL(μ|μ0 ⊗ μ1) = −(d/2) log(1 − α2), which concludes the proof.
+In what follows, we denote by (πn)n∈N the IPFP sequence, defined for any n ∈ N we have for any x, y ∈ Rd
+(dπ2n/dμ)(x, y) = an(x)bn(y)h(x, y), (dπ2n+1/dμ)(x, y) = an+1(x)bn(y)h(x, y),
+where for any x, y ∈ Rd
+an+1(x) = (dν0/dμ0)(x) (∫
+Rd h(x, y)bn(y)dμ1(y))−1 ,
+bn+1(x) = (dν1/dμ1)(y) (∫
+Rd h(x, y)an+1(x)dμ0(x))−1 .
+We now turn to the proof of the Proposition 43.
+Proof. Let α ∈ (0, 1) and β > 1. We have for any x, y ∈ Rd
+(dν0/dμ0)(x) = exp[(1 − β2 − α2)‖x‖2]/C2, (dν1/dμ1)(y) = exp[(1 − β2 − α2)‖y‖2]/C2,
+with C2 = C1/C0 with C1 = πd/2βd/2. For any x ∈ Rd and γ ≥ 0 we have
+(dν0/dμ0)(x)
+( ∫
+Rd exp[−γ ‖y‖2]h(x, y)dμ1(y)
+)−1
+= (C0C2)−1C exp[(1 − β2 − α2) ‖x‖2]
+( ∫
+Rd exp[−γ ‖y‖2 − ‖y − αx‖2]dy
+)−1
+= (C0C2)−1C exp[(1 − β2 − α2) ‖x‖2]
+47
+
+
+×
+( ∫
+Rd exp[−(γ + 1) ‖y − α/(γ + 1)x‖2 − α2(1 − 1/(γ + 1)) ‖x‖2]dy
+)−1
+= (C0C2)−1C exp[(1 − β2 − α2 + α2γ/(γ + 1)) ‖x‖2]
+×
+( ∫
+Rd exp[−(γ + 1) ‖y − α/(γ + 1)x‖2]dy
+)−1
+= (C0C2C ̃γ)−1C exp[(1 − β2 − α2/(γ + 1)) ‖x‖2],
+with C ̃γ = πd/2(1 + γ)−d/2. Note that a0 = b0 = 1. Let n ∈ N and assume that for any y ∈ Rd bn(y) = exp[−γ2n ‖y‖2]/C2n with γ2n ≥ 0 and C2n > 0 then we have for any x ∈ Rd
+an+1(x) = (C0C2C ̃γ2n )−1CC2n exp[−(1−β2−α2/(γ2n+1)) ‖x‖2] = exp[−γ2n+1 ‖x‖2]/C2n+1,
+with
+γ2n+1 = β2 − 1 + α2/(γ2n + 1), (C0C2C ̃γ2n )/(CC2n) = C2n+1. (84)
+Similarly, if we assume that for any x ∈ Rd an+1(x) = exp[−γ2n+1 ‖x‖2]/C2n+1 with γ2n+1 ≥ 0 and C2n+1 > 0 then we have for any y ∈ Rd
+bn+1(y) = (C0C2C ̃γ2n+1 )−1(CC2n+1) exp[−(1 − β2 − α2/(γ2n+1 + 1)) ‖y‖2]
+= exp[−γ2n+2 ‖y‖2]/C2n+2,
+with
+γ2n+2 = β2 − 1 + α2/(γ2n+1 + 1), (C0C2C ̃γ2n+1 )/(CC2n+1) = C2n+2.
+Combining this result, (84) and using the recursion principle we get that for any n ∈ N
+an+1(x) = exp[−γ2n+1 ‖x‖2]/C2n+1, bn+1(y) = exp[−γ2n+2 ‖y‖2]/C2n+2.
+The recursion can be extended to a0 and b0 by setting γ−1 = γ0 = 0 and C−1 = C0 = 1. Therefore, for any n ∈ N we have
+γn+1 = β2 − 1 + α2/(γn + 1). (85)
+We now study the convergence of the sequence (γn)n∈N. By recursion, we have that for any k, ` ∈ N, if γk ≥ γ` then for any m ∈ N with m even we have γm+k ≥ γm+` and for any m ∈ N with m odd we have γm+k ≤ γm+`. We have γ0 = 0 and
+γ1 = β2 + α2 − 1, γ2 = β2 − 1 + α2/(β2 + α2). (86)
+We divide the rest of the proof into three parts.
+(a) First assume that β2 > 1 − α2. Using (86) we have that γ1 > γ0 and γ2 > γ0. Therefore, we obtain that (γ2n)n∈N is non-decreasing, that (γ2n+1)n∈N is non-increasing and that for any n ∈ N,
+0 ≤ γ2n ≤ γ2n+1 ≤ γ1. Therefore, (γn)n∈N converges and we denote γ? its limit. We have
+γ? = β2 − 1 + α2/(γ? + 1). Hence, γ? is a root of X2 + (2 − β2)X + 1 − α2 − β2. We get that γ? = γ0? or γ? = γ1? with
+γ?
+0 = β2/2 − 1 − (1/2)(β4 + 4α2)1/2, γ?
+1 = β2/2 − 1 + (1/2)(β4 + 4α2)1/2,
+γ0?, γ1? are non-decreasing function of β. We get that for any β ≥ 0 such that β2 ≥ 1 − α2, γ0? ≤ 0.
+In addition, we have γ1? = 0 for β2 = 1 − α2, hence for any β ≥ 0 such that β2 ≥ 1 − α2, γ1? ≥ 0.
+Since γ? ≥ 0 we have
+γ? = −1 + β2/2 + (1/2)(β4 + 4α2)1/2. (87)
+For any n ∈ N, denote ξn = γn − γ? and τ = γ? + 1. Let ε > 0. Since limn→+∞ ξn = 0, there exists n0 ∈ N such that |ξn| /τ ≤ ε. Using (85), we obtain that for any n ∈ N
+|ξn+1| = α2|1/(γn + 1) − τ −1| = (α2/τ )|1 − (ξn/τ + 1)−1| ≤ (α/τ )2|ξn|/(1 − ε).
+Hence, we get that for any ε ∈ (0, 1), there exists Cε > 0 such that for any n ∈ N
+|ξn| ≤ Cεκn, κ = (α/(τ (1 − ε)1/2))2.
+Note that τ > α using (87) and κ ∈ (0, 1) if ε < 1 − α/τ .
+48
+
+
+For any n ∈ N and x, y ∈ Rd we have
+Φn(x, y) = an+1(x)bn+1(y) = exp[−γ2n+1 ‖x‖2 − γ2n+2 ‖y‖2]/(C2n+1C2n+2)
+= exp[−γ2n+1 ‖x‖2 − γ2n+2 ‖y‖2]/(C ̃C ̃γ2n+1 ),
+with C ̃ = C0C2/C. Therefore we obtain that for any x, y ∈ Rd, Φ?(x, y) = limn→+∞ Φn(x, y) exists and we have
+Φ?(x, y) = exp[−γ? ‖x‖2 − γ? ‖y‖2]/(C ̃C ̃γ? ).
+Using this result we get that for any x, y ∈ Rd
+(dπ2n/dπ?)(x, y) = exp[−ξ2n+1 ‖x‖2 − ξ2n+2 ‖y‖2]Cγ? /Cγ2n+1
+= exp[−ξ2n+1 ‖x‖2 − ξ2n+2 ‖y‖2] {(1 + γ2n+1)/(1 + γ?)}−d/2
+= exp[−ξ2n+1 ‖x‖2 − ξ2n+2 ‖y‖2] {1 + ξ2n+1/(1 + γ?)}−d/2 .
+Therefore we have for any x, y ∈ Rd
+log ((dπ2n/dπ?)(x, y)) ≤ |ξ2n+1| ‖x‖2 + |ξ2n+2| ‖y‖2 + (d/2) |log (1 + ξ2n+1/(1 + γ?))|
+≤ |ξ2n+1| ‖x‖2 + |ξ2n+2| ‖y‖2 + (d/2) |ξ2n+1| .
+Therefore we obtain that for any n ∈ N
+KL(π?|πn) ≤ (d/2)(β−2 |ξ2n+1| + β−2 |ξ2n+2| + |ξ2n+1|).
+A similar inequality holds for KL(π?|πn). Therefore we get that for any ε ∈ (0, 1 − α/τ ) there exists Cε ≥ 0 such that for any n ∈ N we have
+KL(π?|πn) ≤ Cεκ2n
+ε,
+with
+κε = α/(τ (1 − ε)1/2) = (2α)/((β2 + (β4 + 4α2)1/2)(1 − ε)1/2)
+≤ ρ/((1 + (1 + ρ2)1/2)(1 − ε)1/2).
+Let ε < 1 − (1 + ρ)/(1 + (1 + ρ2)1/2). Then we get that κε ≤ κ which concludes the first part of the proof.
+(b) If β2 = 1 − α2 then the IPF is stationary since the IPF leaves μ invariant.
+(c) Finally we assume that β2 < 1 − α2. Using (86) we have that γ1 < γ0 and γ2 < γ0 since β2 <
+1 − α2. Therefore, we obtain that (γ2n)n∈N is non-increasing, that (γ2n+1)n∈N is non-decreasing
+and that for any n ∈ N, 0 ≥ γ2n ≥ γ2n+1 ≥ γ1. Therefore, (γn)n∈N converges and we denote γ? its
+limit. We have γ? = β2 − 1 + α2/(γ? + 1). Hence, γ? is a root of X2 + (2 − β2)X + 1 − α2 − β2. We recall that the two roots of this polynomial are given by
+γ?
+0 = β2/2 − 1 − (1/2)(β4 + 4α2)1/2, γ?
+1 = β2/2 − 1 + (1/2)(β4 + 4α2)1/2.
+We have
+γ1 − γ?
+0 = β2 + α2 − 1 − β2/2 + 1 − (1/2)(β4 + 4α2)1/2
+= (1/2)(β2 + 2α2 − (β4 + 4α2)1/2) ≥ 0.
+Since γ3 > γ1 we get that for any n ∈ N with n ≥ 3, γn ≥ γ3 > γ0?. Therefore γ? > γ0? and then
+γ? = γ1?. The rest of the proof is similar to the case where β2 > 1 − α2.
+49
+
+
+G.2 Convergence to ground-truth
+In this section, we provide an analytic form for the Schrödinger bridge in a Gaussian context. Let ν0 be the d dimensional Gaussian distribution with mean −a (with a ∈ Rd) and covariance matrix
+I ∈ Rd×d. Similarly, let ν1 be the one-dimensional Gaussian distribution with mean a and covariance
+matrix I. We consider the reference distribution π0 such that π00 = ν0 and for any x, y ∈ Rd
+(dπ0
+1|0/dλ)(x, y) = (2π)−d/2 exp[−‖x − y‖2/2],
+where λ denotes the Lebesgue measure on R. Note that π0
+1|0 can be obtained by running a ddimensional Brownian motion up to time 1. We consider the following Schrödinger bridge problem
+π? = arg min{KL(π|π0) : π ∈ P(R2d), π0 = ν0, π1 = ν1}. (88)
+Before giving the analytic solution of the SB problem we consider the following algebraic lemma.
+Lemma 45. Let A ∈ Rd×d and
+M=
+(I A A> I
+)
+, MS =
+( I (A + A>)/2 (A + A>)/2 I
+)
+,
+such that M is symmetric and positive semi-definite. Then det(M ) ≤ det(M S).
+Proof. Let M up = M and M down =
+( I A> AI
+)
+. Since M up is symmetric and real-valued, M up is
+diagonalizable. Let x, y ∈ Rd and θ ≥ 0 such that M upX = θX with X = (x, y). Let Y = (y, x). We have M downY = θY . Hence M down is symmetric, positive semi-definite and det(M up) = det(M down). Hence using that M 7→ log(det(M )) is concave on the space of symmetric positive semi-definite matrices we get that det(M up) ≤ det((M up + M down)/2) = det(M S), which concludes the proof.
+Proposition 46. The solution to (88) exists and π? is a Gaussian distribution with mean m ∈ R2d and covariance matrix Σ ∈ R2d×2d where
+m = (−a, a), Σ =
+( I βI βI I
+)
+,
+where β = (−1 + √5)/2 and I is the d-dimensional identity matrix.
+Proof. The fact that π? exists and is Gaussian is similar to Proposition 43. π? has mean m since π?
+i = νi for i ∈ {0, 1}. Similarly, we have that Σ00 = Σ11 = I since π?
+i = νi for i ∈ {0, 1}. We
+have that π0 admits a density p0 with respect to the Lebesgue measure such that for any x, y ∈ R we have
+p0(x, y) ∝ exp[−(1/2){2 ‖x‖2 + ‖y‖2 + 2〈a, x〉 − 2〈x, y〉 + ‖a‖2}].
+Hence π0 is a Gaussian distribution with mean m0 and covariance matrix Σ0 where
+m0 = (−a, −a), Σ0 =
+(I I I 2I
+)
+.
+The Kullback–Leibler divergence between a Gaussian distribution π, with mean m ̃ and covariance matrix Σ ̃ , and π0, with mean m0 and covariance Σ0 is given by
+KL(π|π0) = (1/2){log(det(Σ0)/ det(Σ ̃ )) − d + Tr((Σ0)−1 Σ ̃ ) + (  ̃m − m0)> (Σ0)−1 (m ̃ − m0)}.
+Assume that m ̃ = (−a, a) and Σ ̃ =
+(I S S> I
+)
+with S ∈ Rd×d such that Σ ̃ is positive semi-definite .
+Then we have
+KL(π|π0) = (1/2){− log(det(  ̃Σ)) − 2 Tr(S) + C},
+where C ≥ 0 is a constant which does not depend on Σ. In what follows, let Σ ̃′ = ( I (S + S>)/2 (S + S>)/2 I
+)
+and denote π the distribution with mean m ̃ and covariance matrix Σ ̃ ′.
+Using Lemma 45 we have
+KL(π′|π0) = (1/2){− log(det(Σ ̃ ′)) − 2 Tr(S) + C}
+50
+
+
+≤ (1/2){− log(det(Σ ̃ )) − 2 Tr(S) + C} = KL(π|π0).
+Hence, we can assume that S = S> and therefore (since S is real-valued), S is diagonalizable. Let {λi}d
+i=1 the eigenvalues of S. Using Schur complements (Petersen et al., 2008, Section 9.1.2) we have
+det(Σ ̃ ) = det(I − S2) = det(I − S) det(I + S) = ∏d
+i=1(1 − λ2
+i ).
+Therefore we have that for any λ ∈ (0, 1)
+KL(π|π0) = (1/2) ∑d
+i=1 f (βi) + C, f (λ) = − log(1 − λ2) − 2λ.
+Hence we get that Σ0,1 = βI with β = arg minI f , where I = (−1, 0) ∪ (0, 1). We have that
+f ′(β) = 0 if and only if β = (−1 + √5)/2 or β = −(1 + √5)/2. We conclude the proof using that β ∈ I.
+H Continuous-time Schrödinger bridges
+In this section, we prove Proposition 6 in Appendix H.1 and draw a link between the potential approach to Schrödinger bridges and DSB in continuous time in Appendix H.2.
+H.1 Proof of Proposition 6
+We recall the continuous Schrödinger problem is given by
+Π? = arg min {KL(Π|P) : Π ∈ P(C), Π0 = pdata, ΠT = pprior} , T = ∑N−1
+k=0 γk+1. (89)
+In this section, we prove Proposition 6. We start with the following property which can be found in (Léonard, 2014b, Proposition 2.3, Proposition 2.10) and establishes basic properties of dynamic continuous Schrödinger bridges.
+Proposition 47. The solution to (89) exists if and only if the solution to the static Schrödinger bridge exists. In addition, if the solution exists and P is Markov then the Schrödinger bridge is Markov.
+We now turn to the proof of Proposition 6. First we highlight that (Πn)n∈N is well-defined since its static counterpart (πn)n∈N is well-defined using Proposition 32. We only prove that for any
+n ∈ N, (Π2n+1)R is the path measure associated with the process (Y2n+1
+t )t∈[0,T ] such that Y2n+1
+0
+has distribution pprior and satisfies
+dY2n+1
+t = bn
+T −t(X2n+1
+t )dt + √2dBt.
+The proof for Π2n+2 is similar. Let n ∈ N and assume that Π2n is the path measure associated with the process (Xt2n)t∈[0,T ] such that X02n has distribution pdata and satisfies
+dXt2n = ftn(Xt2n)dt + √2dBt.
+We have that
+Π2n+1 = arg min {KL(Π|Π2n) : Π ∈ P(C), ΠT = pprior
+}.
+Let φ = projT such that for any ω ∈ C, projT (ω) = ωT . Using Proposition 24 we get that for any Π ∈ P(C) we have
+KL(Π|Π2n) = KL(ΠT |Π2n
+T )+∫
+Rd KL(K(x, ·)|K2n(x, ·))dΠT (x),
+where K and K2n are the disintegrations of Π and Π2n with respect to φ. Therefore, we get that Π2n+1 = ppriorK2n. Since KL(Π2n|Q) < +∞ and Π2n is Markov, Using (Cattiaux et al., 2021, Theorem 4.9) we get that (Π2n)R = ΠT K2n satisfies the martingale problem associated with the diffusion
+dYt2n = {−f n
+T −t(Yt2n) + 2∇ log pn
+T −t(Yt2n)} dt + √2dBt. (90)
+Since Π2n+1 = ppriorK2n we get that Π2n+1 also satisfies the martingale problem associated with (90) and is Markov which concludes the proof by recursion.
+51
+
+
+H.2 IPF in continuous time and potentials
+First, we recall that the IPF (Πn)n∈N with Π0 = P associated with (6) and for any n ∈ N
+Π2n+1 = arg min {KL(Π|Π2n) : Π ∈ P(C), ΠT = pprior
+},
+Π2n+2 = arg min {KL(Π|Π2n+1) : Π ∈ P(C), Π0 = pdata
+}.
+In this section, we draw a link between our time-reversal approach and the potential approach in continuous time. More precisely, we explicit an identity between the two in Proposition 48.
+Proposition 48. Assume A1 and that there exist M ∈ P(C), U ∈ C1(Rd, R), C ≥ 0 such that for any n ∈ N, x ∈ Rd, KL(Πn|M) < +∞, 〈x, ∇U (x)〉 ≥ −C(1 + ‖x‖2) and M is associated with
+dXt = −∇U (Xt)dt + √2dBt,
+with X0 distributed according to the invariant distribution of (15). For any n ∈ N, let
+{φn,?
+t , φn,◦
+t }tT=0 such that for any t ∈ [0, T ], φn,?
+T : Rd → R, φn,◦
+0 : Rd → R, for any x0, xT ∈ Rd
+φ?,n
+T (xT ) = pprior(xT )/pn
+T (xT ), φ◦,n
+0 (x0) = pdata(x0)/pn+1
+0 (x0),
+and for any t ∈ (0, T ) and xt ∈ Rd
+φ?,n
+t (xt) = ∫ φ?,n
+T (xT )pn
+T |t(xT |xt)dxT , φ◦,n+1
+t (x) = ∫ φ◦,n+1
+0 (x0)qn
+0|t(x0|xt)dx0.
+We have for any n ∈ N, t ∈ [0, T ] and xt ∈ Rd
+qn
+t (xt) = pn
+t (xt)φ?,n
+t (xt), pn+1
+t (xt) = qn
+t (xt)φ◦,n
+t (xt). (91)
+In particular, for any n ∈ N we have
+(a) (Π2n+1)R is associated with dY2n+1
+t = bn
+T −t(Y2n+1
+t )dt + √2dBt with Y2n+1
+0 ∼ pprior;
+(b) Π2n+2 is associated with dX2n+2
+t = f n+1
+t (X2n+2
+t )dt + √2dBt with X2n+2
+0 ∼ pdata;
+with for any x ∈ Rd and t ∈ (0, T )
+ftn(x) = f (x) + 2 ∑n
+k=1 ∇ log φ?,n
+t (x), btn(x) = −f (x) + ∇ log pt0(x) + 2 ∑n
+k=1 ∇ log φ◦,n
+t (x). (92)
+Proof. We only prove that (91) holds. Then (92) is a direct consequence of (91) and Proposition 6.
+Let n ∈ N. Similarly to the proof of Proposition 26, there exists φ?,n
+T : Rd → R+ such that for any
+{ωt}tT=0 ∈ C we have
+(dΠ2n+1/dΠ2n)({ωt}T
+t=0) = φ?,n
+T (ωT ). (93)
+Note that as in Proposition 6, that for any s, t ∈ [0, T ], Π2n+1
+s,t admits a positive density w.r.t the Lebesgue measure denoted qsn,t and Πs2,nt admits a positive density w.r.t the Lebesgue measure denoted psn,t. Combining this result and (93), we get that for any t ∈ [0, T ] and xt, xT ∈ Rd we have
+qn
+t,T (xt, xT ) = pn
+t,T (xt, xT )φ?,n
+T (xT ).
+We have that for any t ∈ [0, T ]
+qt(xt) = ptn(xt) ∫ φ?,n
+T (xT )pn
+T |t(xT |xt)dxT = ptn(xt)φ?,n
+t (xt).
+The proof for that for any n ∈ N, t ∈ [0, T ] and xt ∈ Rd, pn+1
+t (xt) = qtn(xt)φ◦,n
+t (xt), is similar.
+The link between the two formulations is explicit in (91). Then, (92) is a straightforward consequence of (91) and should be compared with Appendix H.1. Another proof of Proposition 48 make use of a generalization of (91) to joint densities and use the fact that for any n ∈ N, Πn+1 is a Doob h-transform of Πn (see (Rogers and Williams, 2000, Paragraph 39.1) for a definition). Note that this relationship between the potential and the density of the half-bridge is not new. In particular, a similar version of this equation can be found in Bernton et al. (2019). In Finlay et al. (2020), the authors establish a similar relationship in the case of the full Schrödinger bridge.
+52
+
+
+H.3 Likelihood computation for Schrödinger bridges
+We provide here details on the likelihood computation of generative models obtained with Schrödinger bridges. Under the conditions of (Léonard, 2011, Theorem 4.12), we define (Xt?)t∈[0,T ] the diffusion
+associated with Π?, see (89) as well as its time reversal, (Yt?)t∈[0,T ]. There exist f ?, b? : [0, T ] × Rd → Rd such that (Xt?)t∈[0,T ] and (Yt?)t∈[0,T ] are weak solutions to the following SDEs
+dX?
+t = f?
+t (X?
+t )dt + √2dBt, dY?
+t = b?
+T −t(Y?
+t )dt + √2dBt.
+We assume that for any t ∈ [0, T ] there exists pt? : Rd → R+ such that for any x ∈ Rd,
+(dΠt?/dλ)(x) = pt?(x). In addition, we assume that p? ∈ C∞([0, T ] × Rd, R+). In this case,
+we have that Π? is also associated with the process (X ̃ t?)t∈[0,T ] associated with the ODE
+d  ̃X?
+t = {f ?
+t (  ̃X?
+t ) − ∇ log p?
+t (  ̃X?
+t )}dt,
+and X ̃ ?
+T has distribution pprior; see e.g. (Song et al., 2021, Section A). Since (Yt?)t∈[0,T ] is the time-reversal of (Xt?)t∈[0,T ] we have that for any t ∈ [0, T ] and x ∈ Rd
+b?
+t (x) = −f ?
+t (x) + 2∇ log p?
+t (x).
+Therefore, we get that (X ̃ t?)t∈[0,T ] is associated with the ODE
+dX ̃ ?
+t=1
+2
+(
+f?
+t (  ̃X?
+t ) − b?
+t (  ̃X?
+t)
+)
+dt. (94)
+Using this result we can compute the log-likelihood of the model using the instantaneous change of variable formula (Chen et al., 2018), see also (Song et al., 2021, Appendix D.2)
+log pdata(  ̃X0?) = log pprior(  ̃X?
+T)+ 1
+2
+∫T
+0 div(ft? − bt?)(X ̃ t?)dt . (95)
+As in Song et al. (2021), we can use the Skilling–Hutchinson trace estimator to compute the divergence operator (Skilling, 1989; Hutchinson, 1989). In practice, we discretize the dynamics of (  ̃Xt?)t∈[0,T ] and use the network Bβn obtained with the last iterate of Algorithm 1 and solve the ODE backward in time, recalling that  ̃X?
+T has distribution pprior. Similarly, we can define
+dY ̃ t = {b?
+T −t(Y ̃ ?
+t ) − ∇ log p?
+T −t(Y ̃ ?
+t )}dt,
+and Y0? has distribution pprior. Similarly to (94), we get that (Y ̃ t?)t∈[0,T ] is associated with the ODE
+dY ̃ t = 1
+2
+(
+b?
+T −t(Y ̃ ?
+t) − f?
+T −t(Y ̃ ?
+t)
+)
+dt.
+Similarly to (96), we have
+log pdata(Y ̃ ?
+T ) = log pprior(Y ̃ 0?) + 1
+2
+∫T
+0 div(b?
+T −t − f ?
+T −t)(Y ̃ t?)dt . (96)
+In practice, we discretize the dynamics of (Y ̃ t?)t∈[0,T ] and use the networks Fαn , Bβn obtained with
+the last iterate of Algorithm 1 and solve the ODE forward in time, recalling that Y ̃ 0? has distribution pprior. Note that in this case, we solve the ODE forward in time contrary to Durkan and Song (2021).
+I Training Techniques
+In this section we present some practical guidelines for the implementation of DSB, based on Algorithm 1. We emphasize that, contrarily to previous approaches Song et al. (2021); Song and Ermon (2020); Ho et al. (2020); Dhariwal and Nichol (2021), we do not weight the loss functions as we do not notice any improvement. Let I ⊂ {0, N − 1} × {1, M }. We define the generalized losses `ˆb
+n,I and `ˆf
+n,I given by
+`ˆb
+n,I (β) = M −1 ∑
+(k,j)∈I ‖Bβ (k + 1, Xj
+k+1) − (Xj
+k+1 + F n
+k (Xj
+k+1) − F n
+k (Xj
+k))‖2, (97)
+`ˆf
+n+1,I (α) = M −1 ∑
+(k,j)∈I ‖Fα(k, Xj
+k) − (Xj
+k + Bn
+k+1 (X j
+k+1) − Bn
+k+1 (X j
+k))‖2. (98)
+We first describe three techniques to compute these losses, then further methods to improve performance.
+53
+
+
+Technique 1. Simulated Trajectory
+The losses (97) and (98) may be computed by simulating diffusion trajectories as described in Algorithm 1. For each sample j ∈ {1, . . . , M } the skeleton of points in the sampled trajectory, {X j
+k}k, will be correlated hence only a single uniformly sampled time-step per sample is used to compute the loss per gradient step. In addition, after the initial DSB iteration, simulating the diffusion trajectory involves computationally heavy neural network operations per diffusion step.
+Technique 2. Closed Form Sampling
+Since fα0(x) = −αx, with fixed α, it is not necessary to compute full trajectories for the first IPF iteration and one may sample points along the trajectory in closed-form by sampling from a Gaussian distribution with appropriate mean and covariance. This technique also improves the computational speed of the first DSB iteration.
+Technique 3. Cached Trajectory
+After the initial DSB iterations it is not possible perform closed form sampling as per Technique 2. Simulating the full diffusion trajectory is both wasteful and expensive as described in Technique 1. In order to obtain a speed-up we consider a cached-version of Algorithm 1 given by Algorithm 3 which entails storing and then resampling diffusion trajectories. Resampled trajectories are then used to compute losses (97) and (98). The cache may be refreshed at a certain frequency by once again simulating the diffusion. One may tune the cache-size and refresh frequency to available memory. This modification allows for significant speed-up as the trajectories are not simulated at each training iteration.
+Algorithm 3 Cached Diffusion Schrödinger Bridge
+1: for n ∈ {0, . . . , L} do
+2: while not converged do 3: Sample and store {Xj
+k }N,M
+k,j=0 where Xj
+0 ∼ pdata and Xj
+k+1 = Xj
+k + γk+1fαn (k, Xj
+k) + √2γk+1Zj
+k+1
+4: while not refreshed do 5: Sample I (uniform in {0, N − 1} × {1, M }) 6: Compute `ˆb
+n,I (βn) using (97)
+7: βn = Gradient Step(`ˆb
+n,I (βn)) 8: end while 9: end while
+10: while not converged do 11: Sample {Xj
+k }N,M
+k,j=0, where Xj
+N ∼ pprior, and Xj
+k = Xj
+k+1 + γkbβn (k, Xj
+k) + √2γk+1Zj
+k
+12: while not refreshed do 13: Sample I (uniform in {0, N − 1} × {1, M }) 14: Compute `ˆf
+n+1,I (αn+1) using (98)
+15: αn+1 = Gradient Step(`ˆf
+n+1,I (αn+1)) 16: end while 17: end while 18: end for 19: Output: (αL+1, βL)
+Technique 4. Tune Gaussian Prior mean/ variance
+The convergence of the IPF is affected by the mean and covariance matrix of the target Gaussian. In Appendix J.1 we investigate possible choices for these values. In practice we recommend to choose the variance of the Gaussian prior pprior to be slightly larger than the one of the target dataset and to choose the mean of pprior to be equal to the one of the target dataset. This remark is in accordance with (Song and Ermon, 2020, Technique 1).
+54
+
+
+Technique 5. Network Refinement / Fine Tuning
+Training large networks from scratch, per DSB iteration, is very expensive. However, from (64)-(65),
+bn
+k+1(x) = bn−1
+k+1 (x) + 2∇ log pn
+k+1(x) − 2∇ log qn−1
+k (x),
+fn
+k (x) = f n−1
+k (x) + 2∇ log qn−1
+k (x) − 2∇ log pn−1
+k+1 (x).
+One may therefore initialize networks at DBS iteration n from n − 1 in order to reduce training time. In future work, we plan to investigate more sophisticated warm-start approaches through meta-learning.
+Technique 6. Exponential Moving Average
+Similar to (Song and Ermon, 2020, Technique 5), we found taking the exponential moving average of network parameters across training iterations, with rate 0.999, improved performance.
+J Additional Experimental Results and Details
+We provide additional examples for the two-dimensional setting in Appendix J.1. We then turn to higher dimensional generative modeling in Appendix J.2. Finally, we detail our dataset interpolation experiments in Appendix J.3. Code is available here: https://github.com/JTT94/diffusion_schrodinger_bridge.
+J.1 Two-dimensional experiments
+In the case of two-dimensional distributions we use a simple architecture for the networks fα and bβ, see Figure 9. We use the variational formulation Appendix E.2.2 because our network architecture does not have a residual structure. To optimize our networks we use ADAM Kingma and Ba (2014) with momentum 0.9 and learning rate 10−4.
+Output
+MLPBlock (2)
+Concatenate
+MLPBlock (1a)
+MLPBlock (1b)
+PositionalEncoding
+x
+k
+Figure 9: Architecture of the networks used in the two-dimensional setting. Each MLP Block is a Multilayer perceptron network. The “PositionalEncoding” block applies the sine transform described in Vaswani et al. (2017). MLPBlock (1a) has shape (2, 16, 32), MLPBlock (1b) has shape (1, 16, 32) and MLPBlock has shape (64, 128, 128, 2). The total number of parameters is 26498.
+In all two-dimensional experiments we fix γk = 10−2 and use a batch size of 512. The mean and
+variance of pprior are matched to those of pdata. The cache contains 104 samples and is refreshed every 103 iterations. We train each DSB step for 104 iterations. All two-dimensional experiments are run on Intel(R) Core(TM) i7-10850H CPU @ 2.70GHz CPUs.
+In Figure 10 we present additional two-dimensional experiments.
+We found that the variance of pprior has an impact on the convergence speed of DSB, see Figure 11 for an illustration. This remark is in accordance with (Song and Ermon, 2020, Technique 1). In practice we recommend to set the variance to be larger than the variance of the target dataset, see Technique 4 in Appendix I.
+Finally, since DSB does not require the number of Langevin iterations N to be large, one may question why not use N = 1 in order to derive a feed-forward generative model. In practice this choice of N is not desirable for two reasons. (a) Firstly, since pN is not a good approximation of pprior, theoretical results such as (Léger, 2020, Corollary 1) indicates that more IPF iterations are needed. (b) Second, in our experiments we observe that in order to obtain similar results to N = 10 with N = 1 we need to substantially increase the size of the networks, even for a large number of IPF iterations, see Figure 12.
+55
+
+
+Figure 10: The first row corresponds to iteration 1 of DSB, the second to iteration 3 of DSB, the third to iteration 5 of DSB and the last to iteration 20 of DSB.
+(a) pprior (b) DSB iteration 5 (c) pprior (d) DSB iteration 5
+Figure 11: Effect of the variance of pprior on the convergence of DSB. If pprior has a small variance σ2 (here σ2 = 5 in (a) and (b)) then DSB converges more slowly. If σ2 ≈ σ2
+data, where σ2
+data is the
+variance of pdata then we observe more diversity in the samples obtained using DSB even for few iterations.
+J.2 Generative Modeling
+Implementation details We use a reduced version of the U-net architecture from Nichol and Dhariwal (2021) for Fα and Bβ, where we set the number of channels to 64 rather than 128 for computational resource purposes. We tried the architecture of Song and Ermon (2020), however we observed worse results in our framework. Although we observed improvement using the corrector scheme of Song et al. (2021), this improvement was similar to augmenting the number of steps in the Langevin scheme. We therefore chose to avoid using such techniques altogether because of the increase in computing time when sampling, often by doubling the number of passes through the network.
+We chose the sequence {γk}N
+k=0 to be invariant by time reversal, i.e. for any k ∈ {0, . . . , N },
+γk = γN−k. In practice, we assume that N is even and let γk = γ0 + (2k/N )(γ ̄ − γ0) for
+k ∈ {0, . . . , N/2} with γ0 = 10−5 and γ ̄ = 10−1. The rest of the sequence is obtained by symmetry.
+In the case of the MNIST dataset (dimension d = 28 × 28 = 784) we set the batch size to 128, the number of samples in the cache to 5 × 104 with 10 time-points sampled from each trajectory for each sample of pdata. We end up with an effective cache of size 5 × 105. The cache is refreshed each 103
+iterations and the networks are trained for 5 × 103 iterations. Again we use the ADAM optimizer with momentum 0.9 and learning rate 10−4. pprior is a Gaussian density with zero mean and identity covariance matrix. We have presented results for varying number of diffusion steps, N .
+In the case of the CelebA dataset (dimension d = 32 × 32 × 3 = 3072) we set the batch size to 256, number of steps N = 50, the number of samples in the cache to 250 with 1 time-point sampled from each trajectory for each sample of pdata. The cache is refreshed each 102 iterations and the
+56
+
+
+Figure 12: Failure of DSB for low N . DSB iteration 3 with N = 2 and 30, 000 training steps per DSB iteration. The results deteriorate significantly after 5 iterations of the algorithm.
+networks are trained for 5 × 103 iterations. Again we use the ADAM optimizer with momentum 0.9 and learning rate 10−4. pprior is a Gaussian density with zero mean and identity covariance matrix.
+Our results on MNIST and CelebA are computed using up to 4 NVIDIA Tesla V100 from the Google Cloud Platform.
+Additional examples In this section we present additional examples for our high-dimensional generative modeling experiments. In Figure 13 we perform interpolation in the latent space. More precisely we let X0
+N and X1
+N be two samples from pprior. We then compute Xλ
+N = (1−λ)X0
+N + λX1
+N
+for different values of λ ∈ [0, 1]. For each value of λ ∈ [0, 1] we associate X0λ which corresponds to
+the output sample obtained using the generative model given by DSB with final condition Xλ
+N . Note that in order to obtain a deterministic embedding we fix the Gaussian random variables used in the sampling. One could also have used the deterministic embedding used by Song et al. (2021), i.e. a neural ordinary differential equation that admits the same marginals as the diffusion thus enabling exact likelihood computation, see Appendix H.3 for details.
+Figure 13: Interpolation in the latent space for MNIST.
+In Figure 14 we present high quality samples for MNIST. In order to obtain these high quality samples we consider our baseline MNIST configuration but instead of choosing N = 10 time steps we consider N = 30. In addition, we train the networks for 15 × 103 iterations instead of 5 × 103. The number of samples in the cache is M = 500
+In Figure 15 we present a temperature scaling exploration of the embedding obtained for CelebA. Similarly to the interpolation experiment we fix the Gaussian random variables in order to obtain a deterministic mapping from the latent space to the image space.
+In Figure 16 we explore the latent space of our embedding of CelebA. To do so, we obtain samples using a Ornstein-Ulhenbeck process targeting pprior. We refer to our project page project webpage for an animated version of this latent space exploration.
+57
+
+
+Figure 14: MNIST samples: original dataset (left) and generated MNIST samples (right) after 12 DSB iterations
+Figure 15: Temperature scaling in the latent space.
+Figure 16: Exploration of the latent space. Samples are generated using a Ornstein-Ulhenbeck process targeting pprior to obtain the initial condition then using the generative model given by DSB. From left to right to right: samples at time t = 0, 1.3, 3.6, 8.6.
+58
+
+
+J.3 Dataset interpolation
+For the dataset interpolation task we keep the same parameters and architecture as before except that the number of Langevin steps is increased to 50 steps in the two-dimensional examples and to 30 steps in the EMNIST/MNIST interpolation task. We also change the reference dynamics which is chosen to be the one obtained with the DSB where pprior is a Gaussian. This choice allows us to speed up the training of DSB in this setting. Animated plots are available at project webpage.
+EMNIST/MNIST In order to perform translation between the dataset of handwritten letters (EMNIST) and handwritten digits (MNIST) we reduce EMNIST to 5 letters so that it contains as many classes as MNIST (we distinguish upper-case and lower-case letters), see Cohen et al. (2017) for the original dataset.
+Figure 17: Iteration 10 of the IPF with T = 1.5 (30 diffusions steps). From left to right: t = 0, 0.4, 1.25, 1.5.
+Two dimensional examples We present dataset interpolation for a number of classical twodimensional datasets.
+Figure 18: Dataset interpolation (DSB iteration 9). From left to right: t = 0, 0.15, 0.30, 0.5.
+59

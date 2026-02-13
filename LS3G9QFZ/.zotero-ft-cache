@@ -1,0 +1,1059 @@
+Reward-Directed Score-Based Diffusion Models via q-Learning
+Xuefeng Gao∗ Jiale Zha† Xun Yu Zhou‡
+August 12, 2025
+Abstract
+We propose a new reinforcement learning (RL) formulation for training continuous-time score-based diffusion models for generative AI to generate samples that maximize reward functions while keeping the generated distributions close to the unknown target data distributions. Different from most existing studies, ours does not involve any pretrained model for the unknown score functions of the noise-perturbed data distributions, nor does it attempt to learn the score functions. Instead, we formulate the problem as entropy-regularized continuous-time RL and show that the optimal stochastic policy has a Gaussian distribution with a known covariance matrix. Based on this result, we parameterize the mean of Gaussian policies and develop an actor–critic type (little) q-learning algorithm to solve the RL problem. A key ingredient in our algorithm design is to obtain noisy observations from the unknown score function via a ratio estimator. Our formulation can also be adapted to solve pure score-matching and fine-tuning pretrained models. Numerically, we show the effectiveness of our approach by comparing its performance with two state-of-the-art RL methods that fine-tune pretrained models on several generative tasks including high-dimensional image generations. Finally, we discuss extensions of our RL formulation to probability flow ODE implementation of diffusion models and to conditional diffusion models.
+1 Introduction
+Diffusion models form a powerful family of probabilistic generative AI models that can capture complex high-dimensional data distributions (Sohl-Dickstein et al., 2015a; Song and Ermon, 2019; Ho et al., 2020; Song et al., 2021). The basic idea is to use a forward process to gradually turn the (unknown) target data distribution to a simple noise distribution, and then reverse this process to generate new samples. A key technical barrier is that the time-reversed backward process involves a so-called score function that depends on the unknown data distribution; thus learning the score functions (called “score matching”) becomes the main objective of these models. Diffusion models have achieved state-of-the-art performances in various applications such as image and audio generations (Rombach et al., 2022; Ramesh et al., 2022) and molecule generation (Hoogeboom et al., 2022; Wu et al., 2022). See, e.g., Yang et al. (2023) for a survey on diffusion models.
+∗Department of Systems Engineering and Engineering Management, The Chinese University of Hong Kong, Hong Kong, China. E-mail: xfgao@se.cuhk.edu.hk †Department of Systems Engineering and Engineering Management, The Chinese University of Hong Kong, Hong Kong, China. E-mail: jialezha@link.cuhk.edu.hk ‡Department of Industrial Engineering and Operations Research and The Data Science Institute, Columbia University, New York, NY 10027, USA. Email: xz2574@columbia.edu
+1
+arXiv:2409.04832v2 [cs.LG] 10 Aug 2025
+
+
+In standard diffusion models, the goal is typically to generate new samples whose distribution closely resembles the target data distribution (e.g. “generate more cat pictures”, or “write a Shakespearean play”). Standard score-based diffusion models are trained (i.e. estimating score functions using neural nets) by minimizing weighted combination of score matching losses (Hyv ̈arinen and Dayan, 2005; Vincent, 2011; Song et al., 2020). However, in many applications, we often have preferences about the generated samples from diffusion models (e.g. “generate prettier cat pictures”, or “write a Shakespearean thriller that happened in New York”). A common way to capture this is to use a reward function, either handcrafted (e.g. a utility function) or learned (through human feedbacks), to evaluate the quality of generated samples related to the preferences. This has led to an interesting recent line of research on how to adapt standard diffusion models to optimizing reward functions. Several approaches have been proposed, including discrete-time reinforcement learning (RL) (Black et al., 2024; Fan et al., 2023), continuous-time stochastic control/RL (Uehara et al., 2024; Zhao et al., 2024), backpropagation of reward function gradient through sampling (Clark et al., 2024), supervised learning (Lee et al., 2023), and guidance (Dhariwal and Nichol, 2021). These studies, however, focus on fine-tuning certain pretrained diffusion models, whose score functions have already be learned, to maximize the values of additional reward functions. In this paper, we put forward a significantly different approach where we directly train a diffusion model from scratch for reward optimization using RL, without involving any pretrained model. There are two motivations behind this approach. One is practical: in many applications, especially for new or special-purpose tasks, a pretrained model may not even exist or existing pretrained models may not be easily adapted and fine-tuned. The other is (more importantly) conceptual: fine-tuning a pretrained model is essentially a model-driven approach for dealing with the unknown score function (i.e. first estimate the score function and then optimize), which is prone to model misspecification and misleading risks.1 By contrast, our approach is model-free and data-driven, not relying on a good pretrained model. More on this later. We consider continuous-time score-based diffusion models in Song et al. (2021), which utilize stochastic differential equations (SDEs) for noise blurring and sample generations. The denoising/reverse process also follows an SDE whose drift includes the unknown score function (the gradient of the log probability density of the noise-perturbed data distribution). We take the continuous-time framework because a) the SDE-based formulation is general and unifies several celebrated diffusion models, including the score matching with Langevin dynamics (SMLD) (Song and Ermon, 2019) and the denoising diffusion probabilistic modeling (DDPM) (Ho et al., 2020); b) it leads to not only the SDE-based implementation of score diffusions, but also the probability flow ordinary difference equation (ODE) implementation (Song et al., 2021); and c) there are more analytical tools available for the continuous setting that enable a rigorous and thorough analysis leading to interpretable (instead of black-box) and general (instead of ad hoc) algorithms. Due to the need of optimizing rewards of the generated samples, we propose a continuous-time RL formulation for adapting diffusion models to reward functions. In this formulation, because the score function in the drift of the denoising process is unknown, we take it as the control (action) variable. This idea of regarding scores as actions, first put forth in Uehara et al. (2024); Zhao et al. (2024), is quite natural because the problem now has two somewhat competing criteria: score matching (i.e. the generated samples should be close to the true distribution) and terminal
+1We stress the word “model” here specifically refers to the score function, and “model misspefication” refers to poor estimations of the score. Existing works on reward maximization and fine-tuning pretrained models may still use a data-driven RL approach to deal with an unknown reward function.
+2
+
+
+reward (i.e. the samples should align with the preferences); so an adjustable control can be used to achieve the best trade-off between the two. Specifically, we introduce an objective function that is a weighted combination of two parts: a running reward that penalizes (regularizes) the KullbackLeibler (KL) divergence of the denoising process from the true score function, and a terminal reward of the generated samples based on the preference. This naturally leads to an RL problem with continuous state and action spaces in which the system dynamics are known but the running reward function is unknown (because it involves the true yet unknown score function) and the terminal reward is possibly unknown. We can therefore adapt and apply the theory and algorithms developed recently for general continuous-time RL with controlled diffusions (Wang et al., 2020; Jia and Zhou, 2022a,b, 2023). However, there is a critical issue one needs to address in this formulation. While the general theory in (Wang et al., 2020; Jia and Zhou, 2022a,b, 2023) allows unknown reward functions, it requires access to a (if noisy) observation (a “reinforcement signal”) of the reward every time a state is visited. It is natural to assume that we have such signals from the terminal reward (e.g. human rating of aesthetic quality of a generated image). However, obtaining signals from the running reward in our RL problem is subtle, because the KL divergence term in the objective involves the unknown score function. To overcome this difficulty, we express the true score function as the ratio of two expectations with respect to the data distribution. Because we have access to i.i.d. samples from the unknown data distribution, we derive a simple ratio estimator as a noisy observation from the true score value, allowing us to obtain a reinforcement signal from the running reward whenever an action is applied. This procedure is computationally very cheap – indeed, we will show that a mere single sample for computing the ratio estimator already achieves satisfactory performance in an image generation task. To solve the resulting RL problem for continuous-time diffusion models, we adapt the approach in Jia and Zhou (2023) to develop theory and algorithms for our RL problem. Specifically, we take the entropy-regularized, exploratory framework of Wang et al. (2020) and optimize over stochastic policies. We show that the optimal stochastic policy for our problem is Gaussian with a known covariance matrix and an unknown mean function. This key theoretical result suggests that we need to consider Gaussian policies only and parameterize their mean functions when designing RL algorithms. This insight inspires us to develop an actor–critic type algorithm based on the (little) q-learning theory established in Jia and Zhou (2023) to solve our RL problem. We also present a convergence analysis of our algorithm. Furthermore, we implement the q-learning algorithm and evaluate its performances through a series of experiments on three diverse datasets: synthetic data from a one-dimensional Gaussian mixture distribution, a two-dimensional Swiss rolls dataset (SohlDickstein et al., 2015b; Lai et al., 2023), and the CIFAR-10 image dataset (Krizhevsky, 2009). The results demonstrate that our algorithm achieves strong performance in adapting diffusion models to optimize various reward functions. Thanks to the continuous-time setting, we can extend our RL formulation to ODE-based models in a straightforward manner. The probability flow ODE implementation of diffusion models is another mainstream approach for sample generation, in addition to the SDE-based one; see, e.g., Song et al. (2020), Song et al. (2021); Karras et al. (2022); Lu et al. (2022). Compared with SDE-based samplers, ODE-based deterministic samplers often converge to the data distribution much faster with fewer sampling steps, at the cost of slightly inferior sample quality. We adapt our continuous-time RL formulation to ODE-based models, where the system dynamics are now described by controlled ODEs. We show that the optimal stochastic policy is still Gaussian, and
+3
+
+
+the algorithm designed for the SDE-based formulation still applies after one replaces the SDEbased sampler with ODE counterparts. We implement the resulting algorithm for two ODE-based samplers: ODE-Euler, which is based on Euler discretization of the probability flow ODE, and DDIM of Song et al. (2020). We find that the algorithm performs well and indeed accelerates the training process compared with the SDE-based formulation. On the other hand, while we mainly focus on unconditional diffusion models, our RL formulation can be readily extended to conditional diffusion models which are used for conditional data generation, such as in text-to-image models. We now explain the key differences between our work and several closely related ones. Black et al. (2024) propose to fine-tune discrete-time diffusion models using RL and directly optimize the reward function (without KL regularization). The denoising process is formulated as a multi-step Markov decision process and the action at each step corresponds to the next denoising state. They then present a policy gradient algorithm, referred to as DDPO, to solve their RL problem. Fan et al. (2023) have a similar discrete-time RL formulation, but add the KL divergence between the fine-tuned model and the pretrained model to the objective to prevent overfitting the reward. They also use a policy gradient method called DPOK to solve the problem. Our paper differs from these two in a few important aspects. First, we consider a continuous-time RL formulation for continuoustime diffusion models, where the action is a substitute for the unknown score controlling the drift of the reverse-time SDE. Therefore, our framework and the resulting theory and algorithm are fundamentally different from theirs. Second, compared with Black et al. (2024); Fan et al. (2023) that focus on the DDPM based denoising process with stochastic transitions, our approach not only applies to SDE-based implementation of diffusion models, but also can be readily extended to probability flow ODE implementation. Last but most importantly, in dealing with the unknown score function, the pretrained approach is essentially model-driven, whose performance crucially depends on the availability of a good pretrained model, whereas our approach is driven by data – noisy signals from the score. To wit, we penalize the deviation from the (unknown) true score model in our RL objective, rather than from a (known) pretrained model as in Fan et al. (2023). As a consequence, our formulation encourages the generated samples to stay close to the true data distribution while maximizing the reward, whereas theirs is to incentivize the samples to stay close to the pretrained data distribution, which is not necessarily always of high quality. To compare our approach with the fine-tuning approach in Black et al. (2024) and Fan et al. (2023), we conduct experiments on the 2-dimensional Swiss Roll data. Although DDPO and DPOK were originally developed for conditional generations, they can be easily adapted to unconditional data generations. We find that DDPO of Black et al. (2024) suffers from the issue of reward overoptimization, where the generated distribution diverges too far from the original data distribution. On the other hand, DPOK of Fan et al. (2023) has a similar performance as our q-learning algorithm, provided that the pretrained model is of good quality. However, if the pretrained model is not good enough in the sense that the pretrained distribution is not close to the data distribution, our qlearning algorithm outperforms DPOK significantly. Notably, this observation holds true for the CIFAR-10 image dataset as well, where our q-learning approach exhibits superior performance compared to DPOK. We also mention two contemporary studies (Uehara et al., 2024; Zhao et al., 2024) that consider fine-tuning pretrained continuous-time diffusion models using entropy regularized control/RL. The key difference in the problem formulations is again that they penalize the deviation from a known pretrained score/diffusion model, while we penalize the deviation from the unknown true score model. In addition, our objective involves an unknown running reward, making ours a genuine
+4
+
+
+RL problem instead of a stochastic control one as in Uehara et al. (2024). Therefore, our theory and algorithms are conceptually different from these two papers. On the other hand, recent works on GFlowNets (Generative Flow Networks) employ a discrete-time RL formulation to sample from distributions with given unnormalized probability mass/density functions; see e.g. Bengio et al. (2023); Lahlou et al. (2023); Zhang et al. (2022). Moreover, a concurrent work Zhang et al. (2024) studies fine-tuning discrete-time diffusion models using GFlowNets, with the goal of generating high-reward images with relatively high probability. Our study is entirely different from this line of work too in that we focus on the generative diffusion setting combined with optimizing reward functions via continuous-time RL. Finally, it is important to note that our approach and results can be easily modified to cover pretrained and fine-tuning formulation as a special case. Indeed, if a score has been trained and given, then we can generate the reinforcement signals by simply computing the trained score function values instead of using the ratio estimator, and the rest is entirely the same. The remainder of the paper is organized as follows. In Section 2, we briefly review continuoustime score-based diffusion models. In Section 3, we discuss the continuous-time RL formulation for reward maximizations in diffusion models. Section 4 presents our main theoretical result, based on which we design an actor–critic type q-learning algorithm in Section 6. In Section 7, we present the results of the numerical experiments for two toy examples, whereas in Section 8, we test our algorithm on a reward-directed image generation task. Section 9 highlights extensions to ODE models and conditional diffusion models. Finally, Section 10 concludes.
+2 Quick Review on Continuous-Time Score-Based Diffusion Models
+For reader’s convenience we briefly recall the continuous-time score-based diffusion models with SDEs (Song et al., 2021). Denote by p0 ∈ P(Rd) the unknown continuous data distribution, where P(Rd) is the space of all probability measures on Rd. Given i.i.d samples from p0, standard diffusion models aim to generate new samples whose distribution closely resembles the data distribution. In this classical setting, one does not consider the preference/reward of the generated samples.
+• Forward process and reverse process.
+Fix T > 0. We consider a d−dimensional forward process (xt)t∈[0,T ], which is a OrnsteinUhlenbeck (OU) process satisfying the following SDE
+dxt = −f (t)xtdt + g(t)dBt, (1)
+where x0 is a random variable following the (unknown target) distribution p0, (Bt) is a standard d-dimensional Brownian motion which is independent of x0, and both f (t) ≥ 0 and g(t) ≥ 0 are (prescribed and known) scalar-valued continuous functions of time t. The solution to (1) is
+xt = e− R t
+0 f (s)dsx0 +
+Zt
+0
+e− R t
+s f(v)dvg(s)dBs, t ∈ [0, T ]. (2)
+Note that the forward model (1) is fairly general and it includes variance exploding SDEs, variance preserving SDEs, and sub variance preserving SDEs that are commonly used in the literature; see Song et al. (2021) for details.
+5
+
+
+Denote by pt(·) the probability density function of xt, and pt|0(·|x0) the density function of xt given x0 for t ∈ [0, T ]. By (2), pt|0(·|x0) is Gaussian which has an analytical form.
+Now consider the reverse (in time) process ( ̃xt)t∈[0,T ], where
+ ̃xt := xT −t, t ∈ [0, T ]. (3)
+Under mild assumptions, the reverse process still satisfies an SDE (Anderson, 1982; Haussmann and Pardoux, 1986; Cattiaux et al., 2023):
+d ̃xt = [f (T − t) ̃xt + (g(T − t))2∇ log pT −t(x ̃t)]dt + g(T − t)dWt, t ∈ [0, T ], (4)
+where (Wt) is a standard Brownian motion in Rd, and the term ∇x log pt(·) in (4) is called the score function. By (3), the reverse process starts from a random location  ̃x0 ∼ pT , where pT is the probability density/distribution of xT (here and henceforth, probability distribution and probability density function are used interchangeably). Thus, at time T , we have x ̃T ∼ p0, where p0 is the target distribution we want to generate samples from. However, the distribution pT is unknown because it depends on the unknown target distribution p0. Because the aim of generative diffusion models is to convert random noises into random samples from p0, by (2) we can choose a random (Gaussian) noise ν, with
+ν := N 0,
+ZT
+0
+e−2 R T
+t f(s)ds(g(t))2dt · Id , (5)
+as a proxy to pT , where Id is the d−dimensional identity matrix; see Song et al. (2021); Lee
+et al. (2022). Note that ν is the distribution of the random variable R t
+0 e− R t
+s f(v)dvg(s)dBs in (2), which is easy to sample because it is Gaussian, and will be henceforth referred to as the prior distribution.2
+Remark 1 When considering variance preserving SDEs where f (t) = 1
+2 α(t) and g(t) =
+pα(t) for some nondecreasing positive function α, it is also common to use the stationary distribution of the forward SDE, which is N (0, Id), as the prior distribution. Taking α(t) ≡ 2 as an example, we deduce from (5) that ν = N 0, 1 − e−2T · Id , which converges to N (0, Id) as T becomes large.
+In view of (4), we now consider the SDE:
+dzt = f (T − t)zt + (g(T − t))2∇ log pT −t(zt) dt + g(T − t)dWt, z0 ∼ ν, (6)
+where ν is independent of the Brownian motion W . Because ν ≈ pT , one expects that the distribution of zT will be close to that of x ̃T which is p0.
+2Although one could take an empirical estimate of E[xT ] = e− R T
+0 f(s)dsE[x0] as the mean of the prior distribution ν, in practice ν is often chosen with mean zero because of two reasons: a) one can rescale the data to make them to have zero mean; see e.g. Ho et al. (2020); and b) the mean is close to zero when T is sufficiently large due to the exponential discounting (for variance preserving SDEs).
+6
+
+
+• Training diffusion models via score matching.
+The score function ∇x log pt(·) in (6) is unknown because the data distribution p0 is unknown. One can estimate it with a time–state score model sθ(·, ·), which is often a deep neural network parameterized by θ, by minimizing the score matching loss:
+mθin Et∼U[0,T ]
+h
+λ(t)Ext ∥sθ(t, xt) − ∇xt log pt(xt)∥2i
+. (7)
+Here, λ(·) : [0, T ] → R>0 is some positive weighting function (e.g. λ(t) = g(t)2), and U [0, T ] is the uniform distribution on [0, T ]. This objective is intractable because ∇x log pt(·) is unknown. Several approaches have been developed in literature to tackle this issue, including denoising score matching (Vincent, 2011; Song et al., 2021), sliced score matching (Song et al., 2020) and implicit score matching (Hyva ̈rinen and Dayan, 2005). Here, we take denoising score matching for illustration. One can show that (7) is equivalent to the following objective
+mθin Et∼U[0,T ]
+h
+λ(t)Ex0 Ext|x0 sθ(t, xt) − ∇xt log pt|0(xt|x0) 2i
+, (8)
+where x0 ∼ p0 is the data distribution, and pt|0(·|x0) is the density of xt given x0, which is Gaussian by (2). Because we have access to i.i.d. samples from p0 (i.e. training data), the objective in (8) can be approximated by Monte Carlo, and the resulting loss function can be then optimized using e.g. stochastic gradient descent.
+• Algorithms.
+After the score function is estimated, the true score function in (6) is replaced by the estimated score sθ, and the reverse SDE (6) is discretized to obtain an implementable algorithm. Alternatively, one can use the probability flow ODE based implementation; see Section 4 of Song et al. (2021) for details. The generated samples at time T are expected to follow approximately the data distribution, provided that the score is estimated accurately.
+3 Problem Formulation
+Standard training of diffusion models via score matching (8) – called pretrained models – does not consider preferences about the generated samples. A standard way to capture preferences is to add a reward function that evaluates the quality of generated samples related to the specified preferences. This is essentially a model-based approach – first learn a pre-trained model by estimating the score function and then optimize. This paper takes a conceptually different approach, one that is in the core spirit of RL, namely, to learn optimal policies directly without attempting to first learn a model. This leads naturally to a continuous-time RL formulation.
+3.1 Reward-directed diffusion models
+The key idea is that because the score term ∇ log pT −t(zt) in (6) is unknown, we regard it as a control. With a reward function, this leads to the following stochastic control problem:
+max
+a=(at:0≤t≤T )
+β · E[h(ya
+T )] − E
+ZT
+0
+(g(T − t))2 · |∇ log pT −t(ya
+t ) − at|2dt (9)
+7
+
+
+subject to
+dya
+t = f (T − t)ya
+t + (g(T − t))2at dt + g(T − t)dWt, y0 ∼ ν. (10)
+Here, at ∈ Rd denotes the control action at time t, (yta) is the controlled state process, h is the
+terminal reward function for the generated sample ya
+T , and β ≥ 0 is a weighting coefficient. The first term in the objective function (9) captures the preference on the generated samples. In this study, we do not require the reward/utility function h to be differentiable as in Clark et al. (2024), nor do we necessarily assume that its functional form is known. What we do assume is that given a generated sample ya
+T we can obtain a noisy observation (“a reward signal”) of the reward h evaluated at that sample (e.g. a human evaluation of the aesthetic quality of an image). The second term in the objective (9) has the following interpretation. Consider a deterministic feedback policy so that at = w(t, yt) for some deterministic function w. Let Pz and Pya be the induced distribution (i.e., path measures over C([0, T ], Rd)) by the SDEs (6) and (10), respectively. Then Girsanov’s theorem gives that under some regularity conditions (see, e.g. Uehara et al., 2024, Appendix C or Tang, 2024, Proposition 3.3)
+KL(Pya||Pz) = 1
+2E
+ZT
+0
+(g(T − t))2 · |∇ log pT −t(ya
+t ) − w(t, ya
+t )|2dt
+=1
+2E
+ZT
+0
+(g(T − t))2 · |∇ log pT −t(ya
+t ) − at|2dt , (11)
+where the expectation is taken with respect to (yta) where y0 ∼ ν. This justifies the second term of (9) in terms of KL-divergence.
+Remark 2 (Connections between (11) and score matching) It is worth noting that if we let y0 ∼ pT and z0 ∼ pT , then we can compute that
+KL(Pz||Pya) = 1
+2E
+ZT
+0
+(g(T − t))2 · |∇ log pT −t(zt) − w(t, zt)|2dt
+=1
+2E
+ZT
+0
+(g(t))2 · |∇ log pt(zT −t) − w(T − t, zT −t)|2dt
+=1
+2E
+ZT
+0
+(g(t))2 · |∇ log pt(xt) − w(T − t, xt)|2dt , (12)
+where the last equality follows from the time reversal of diffusion processes (see (4)), and the expectation there is taken with respect to the randomness in the forward process (xt) in (1). This is exactly the score matching loss in (7) with the likelihood weighting λ(t) = 1
+2 g(t)2; see Song et al.
+(2021) for details. In particular, it was shown in Song et al. (2021) that KL(Pz||Pya) ≥ KL(p0||ya
+T) when y0 ∼ pT and z0 ∼ pT , and (12) serves as an efficient proxy for maximum likelihood training of score-based generative models. Finally, the hyperparameter β in (9) represents the weights placed on score matching and human preferences. When β = 0, the problem (9) reduces to a score matching problem. Thus, our formulation can be used also for pure score matching.
+Denote
+r(t, y, a) := −(g(T − t))2 · |∇ log pT −t(y) − a|2, (13)
+8
+
+
+the running reward function (or instantaneous reward) at time t in the objective (9). Because the true score function ∇ log pT −t(·) is unknown, this running/instantaneous reward function is also unknown. Moreover, recall that the true terminal reward function h is also generally unknown. Hence, we need an RL formulation of the problem (9)–(10), where exploration is necessary due to these unknown rewards. This is discussed in the next subsection.
+3.2 Stochastic policies and exploratory formulation
+We now adapt the exploratory formulation for continuous-time RL in Wang et al. (2020); Jia and Zhou (2023) to our problem setting. A distinctive feature of our problem is that the RL agent knows the environment (the functions f, g are known in the SDE model (10)), but she does not know the instantaneous reward function r and the terminal reward function h. So she still needs to do “trial and error” – to try a strategically designed sequence of actions, observe the corresponding state process and a stream of running rewards and terminal reward samples/signals, and continuously update and improve her action plans based on these observations. For this purpose, the agent employs stochastic policies in our RL setting. Mathematically, let π : (t, y) ∈ [0, T ] × Rd → π(·|t, y) ∈ P(Rd) be a given stochastic feedback policy, where P(Rd) is a collection of probability density functions defined on Rd. For such a stochastic policy π, Wang et al. (2020); Jia and Zhou (2023) propose an “exploratory” formulation with the following “averaged” dynamic
+dy ̃π
+s = f (T − s)y ̃π
+s + g2(T − s)
+Z
+Rd
+aπ(a|s, y ̃π
+s )da ds + g(T − s)dWs, y ̃π
+0 ∼ ν. (14)
+In contrast to (10), here the action randomization has been averaged out in the drift term of (14). The associated entropy-regularized control objective is given by:
+J(t, y, π)
+=Et,y
+ZT
+t
+Z
+Rd
+r(s, y ̃π
+s , a) − θ log π(a|s, y ̃π
+s ) π(a|s, y ̃π
+s )dads + βh(y ̃π
+T ) , (15)
+where the reward has also been averaged over action randomization, and θ > 0 is the temperature parameter that controls the level of exploration.3 The function J(·, ·, π) in (15) is called the (exploratory) value function of the stochastic policy π. The goal of RL is to solve the following optimization problem:
+max
+π∈Π
+Z
+J(0, y, π)dν(y),
+where Π is the set of admissible stochastic policies to be specified in Definition 1 below. Define
+J∗(t, y) = max
+π∈Π J (t, y, π). (16)
+As the temperature parameter θ → 0, the function J∗ in (16) converges to the optimal value function of the original control problem (without entropy regularization) in (9) under some technical conditions (Tang et al., 2022). Hence, solving the exploratory RL problem (16) when θ is small provides an approximate solution to (9).
+3The entropy regularization is a commonly used technique to improve exploration in RL, originally introduced for MDPs; see e.g. Haarnoja et al. (2018).
+9
+
+
+Definition 1 A policy π = π(·|·, ·) is called admissible, if
+(i) π(·|t, y) ∈ P(Rd), supp π(·|t, y) = Rd for every (t, y) ∈ [0, T ] × Rd and π(a|t, y) : (t, y, a) ∈ [0, T ] × Rd × Rd → R is measurable;
+(ii) R
+Rd |π(a|t, y) − π(a|t′, y′)| da → 0 as (t′, y′) → (t, y). Moreover, there is a constant C > 0 independent of (t, a) such that
+Z
+Rd
+π(a|t, y) − π(a|t, y′) da ≤ C|y − y′|, ∀y, y′ ∈ Rd;
+(iii) ∀(t, y), R
+Rd | log π(a|t, y)|π(a|t, y)da ≤ C(1+|y|p) for some p ≥ 1 and C is a positive constant;
+for any k ≥ 1, R
+Rd |a|kπ(a|t, y)da ≤ Ck(1 + |y|k′) for some k′ ≥ 1 and Ck is a positive constant that can depend on k.
+4 Theory
+In this section, we present our main theoretical results, which provide the optimal stochastic policy to the RL problem in (16) with the system dynamic (10) and the running reward (13). Introduce the (generalized) Hamiltonian H : [0, T ] × Rd × Rd × Rd × Rd×d → R associated with the original problem (9)–(10) (see e.g. Yong and Zhou, 2012):
+H(t, y, a, p, q)
+= −(g(T − t))2|∇ log pT −t(y) − a|2 + [f (T − t)y + (g(T − t))2a] ◦ p + 1
+2 (g(T − t))2 ◦ q. (17)
+Equation (13) of Jia and Zhou (2023) yields that the optimal stochastic policy π∗(·|t, y) for the problem (16) is given by
+π∗(a|t, y) ∝ exp 1
+θ H(t, y, a, J∗
+y (t, y), J ∗
+yy(t, y)) ,
+where Jy∗ and Jy∗y are the first and second order partial derivatives of J∗ with respect to y, respectively. However, H in our case, (17), is quadratic in a, leading to the following result.
+Proposition 1 The optimal stochastic policy π∗(·|t, y) is a Gaussian distribution in Rd:
+π∗(·|t, y) ∼ N μ∗(t, y), θ
+2g2(T − t) · Id , (18)
+where
+μ∗(t, y) = ∇ log pT −t(y) + 1
+2 · J∗
+y (t, y). (19)
+This result provides several interesting insights. First, the mean μ∗(t, y) of the optimal stochastic policy consists of two parts: the score ∇ log pT −t(y) that we try to match in (9), and an additional term 1
+2 · Jy∗(t, y) that arises due to the consideration of maximizing the terminal reward h of the
+10
+
+
+generated samples. The optimal value function J∗(t, y) in (16) can be shown to satisfy the following so-called exploratory HJB equation, a nonlinear PDE (see Equation (14) of Jia and Zhou, 2023):
+∂J∗
+∂t (t, y) + θ log
+Z
+Rd
+exp 1
+θ H(t, y, a, J∗
+y , J∗
+yy) da = 0, (20)
+J∗(T, y) = β · h(y). (21)
+Note that we do not attempt to solve this PDE because the Hamiltonian H involves the unknown true score function (we never solve any HJB equations in the realm of RL). However, (20) illustrates the impacts of the terminal reward function h as well as the temperature parameter θ and the score ∇ log pT −t(y) on the mean of the optimal Gaussian policy (19). We also observe from (18) that the optimal Gaussian policy has a covariance matrix θ
+2g2(T −t) · Id, whose magnitude is, naturally,
+proportional to the temperature parameter θ > 0. Meanwhile, the exploration level is inversely proportional to g2(T − t). This is intuitive because g represents the strength of the noise we add to blur the original samples. The higher this noise the less additional noise we need for exploration. Inspired by Proposition 1, in our RL algorithm to be presented in Section 6, we only need to consider Gaussian policies in the following form:
+πψ(·|t, y) ∼ N μψ(t, y), θ
+2g2(T − t) · Id for all (t, y), (22)
+where the mean μψ(t, y) is parameterised by some vector ψ.
+5 Reward Signals
+Before presenting our algorithm, we introduce a new component essential to its design. In general RL problems, we either have access to the reward function or have its (noisy) observations for learning. A unique feature of the current problem is that the running/instantaneous reward function (13) involves the unknown true score ∇ log pT −t(·). To obtain signals from this unknown running reward (or score), we express a score function value as the ratio of two expectations with respect to the data distribution. Specifically, note that
+pt(x) =
+Z
+Rd
+pt|0(x|x0)p0(x0)dx0 = Ex0∼p0 [pt|0(x|x0)],
+where we recall that pt|0(·|x0) is the conditional density of xt given x0. By the forward process (2), we know that pt|0(·|x0) is Gaussian with
+pt|0(x|x0) = 1
+2π R t
+0 e−2 R t
+s f(v)dv(g(s))2ds
+d/2 exp − ∥x − e− R t
+0 f (s)dsx0∥2
+2
+Rt
+0 e−2 R t
+s f(v)dv(g(s))2ds
+!
+. (23)
+It follows that
+∇x log pt(x) = ∇xpt(x)
+pt(x) = Ex0∼p0 [∇xpt|0(x|x0)]
+Ex0∼p0 [pt|0(x|x0)]
+11
+
+
+=
+Ex0∼p0 pt|0(x|x0) · −(x−e− R0t f(s)dsx0)
+Rt
+0 e−2 Rst f (v)dv (g(s))2ds
+Ex0∼p0 [pt|0(x|x0)]
+=1
+Rt
+0 e−2 R t
+s f(v)dv(g(s))2ds
+· −x + Ex0∼p0 pt|0(x|x0) · x0
+Ex0∼p0 [pt|0(x|x0)] · e− R t
+0 f (s)ds
+!
+. (24)
+Therefore, given m i.i.d. samples (xi0) from the data distribution p0, a simple ratio estimator for the true score ∇x log pt(x) at given (t, x) is
+\
+∇x log pt(x) = 1
+Rt
+0 e−2 R t
+s f(v)dv(g(s))2ds
+· −x +
+Pm
+i=1 pt|0(x|xi0) · xi0
+max{Pm
+i=1[pt|0(x|xi0)], mε} · e− R t
+0 f (s)ds
+!
+, (25)
+where ε > 0 is some prespecified small constant. Note that we use max{Pm
+i=1[pt|0(x|xi0)], mε}
+instead of Pm
+i=1[pt|0(x|xi0)] in (25) to avoid division by extremely small numbers for numerical stability. In view of the running reward function r in (13), if we define
+rˆ(t, y, a) = −g2(T − t) · | \
+∇ log pT −t(y) − a|2, (26)
+then a noisy observation of the running reward at time t is
+rˆt = rˆ(t, yt, at). (27)
+For fixed (t, x), the simple ratio estimator in (25) provides a nonparametric approach to estimate the true score ∇x log pt(x). It is efficient to compute the estimator, because pt|0(x|x0) has an explicit form. In addition, while this ratio estimator is generally biased, it is asymptotically exact as the number of data samples m → ∞ by the strong law of large numbers. On the other hand, the true score function is a function of all (t, x). Thus, using this method to accurately estimate the score function for every (t, x) is simply impossible. In our study, the estimator (25) allows us to compute the reward signal (27) as we go, namely we compute it only when a state–action pair (yt, at) is visited at time t < T . On the other hand, it is even unnecessary to use up all the data samples from p0 each time in computing (25), though in theory a larger sample size will generally lead to a lower variance of the running reward signal (27). In the training process, suppose that we have M training samples in total, it is more practical to use m < M samples to estimate the score function value and compute the reward signal, so that the computational cost can be significantly reduced. Indeed, later in an image generation task we will show that even m = 1 suffices. Details will be discussed in the subsequent experiments.
+Remark 3 Given the estimator (25) of the score function value ∇x log pt(x), it seems tempting, at least for the pure score-matching problem (without preference), to consider directly running the reverse process (6) with the ratio estimator to generate new samples, i.e. to produce samples yT via simulating
+dyt =
+h
+f (T − t)yt + (g(T − t))2∇log p \T −t(yt)
+i
+dt + g(T − t)dWt, y0 ∼ ν. (28)
+However, this approach essentially replicates those training samples rather than generating new samples from the target distribution. Indeed, assuming we always use all the M training samples to
+12
+
+
+estimate the score function values \
+∇x log pt(x) in (25), according to the derivation in (24) we have
+\
+∇x log pt(x) = 1
+Rt
+0 e−2 R t
+s f(v)dv(g(s))2ds
+· −x + Ex0∼pˆ0 pt|0(x|x0) · x0
+Ex0∼pˆ0 [pt|0(x|x0)] · e− R t
+0 f (s)ds
+!
+= Ex0∼pˆ0 [∇xpt|0(x|x0)]
+Ex0∼pˆ0 [pt|0(x|x0)] = ∇x log pˆt(x)
+where pˆ0 is the empirical distribution of the samples x10, · · · x0M and pˆt is the time marginal distribution of the forward process (1) but starting from x0 ∼ pˆ0. Then running the reverse process (28) essentially generates samples from pˆ0, i.e. replicating samples in the training dataset. It is therefore not a truly generative model for it can not generate new and diverse samples that are different from the training data. In our continuous-time RL approach for training reward-directed diffusion models (which cover the pure score-matching as a special case), we use the ratio estimator only for generating running reward signals, and employ a neural network to parameterize the policy which is related to the true score; see (22) and (19).
+6 q-Learning Algorithm and Convergence
+In this section, we present an algorithm to solve the continuous-time RL problem (16) and discuss its convergence.
+6.1 q-Learning Algorithm
+Our algorithm is based on the general q-learning algorithms developed recently in Jia and Zhou (2023), which are of the actor–critic type. For the reader’s convenience, we first introduce some definitions and theoretical results in Jia and Zhou (2023) that are important for developing our algorithm. Following Jia and Zhou (2023), we define the so-called optimal q−function by
+q∗(t, y, a) = ∂J∗(t, y)
+∂t + H(t, y, a, J∗
+y (t, y), J ∗
+yy(t, y), J∗(t, y)), (t, y, a) ∈ [0, T ] × Rd × Rd,
+where J∗ is the optimal value function given in (16), and the Hamiltonian function H is defined in (17). One can readily infer from (20) that (see Proposition 8 in Jia and Zhou, 2023)
+Z
+Rd
+exp 1
+θ q∗(t, y, a) da = 1, for all (t, y) ∈ [0, T ] × Rd,
+and the optimal stochastic policy π∗(·|t, y) in Proposition 1 is simply
+π∗(a|t, y) = exp 1
+θ q∗(t, y, a) .
+Note that the exploratory (or “averaged”) dynamic in (14) is introduced mainly for the purpose of theoretical analysis. Its solutions are not observable (i.e. not data), and hence can not be used in the actual implementation of RL algorithms. We next introduce the discretely sampled state processes, which can be observed based on the agent interactions with the environment. Given an
+13
+
+
+admissible feedback policy π and (t, y) ∈ [0, T ) × Rd, consider a time grid S = {t = t0 < t1 < . . . < tK = T } of [t, T ]. In algorithmic implementations, we sample actions from π only at the grid points in S. The corresponding state process, which is referred to as the discretely sampled state process, satisfies the following SDE: for all i = 0, ..., K − 1 and all s ∈ [ti, ti+1),
+dysπ,S = [f (T − s)ysπ,S + (g(T − s))2aπ
+ti]ds + g(T − s)dWs, (29)
+where atπi = φ(ti, yπ,S
+ti , Ui+1). Here, the function φ : (t, y, u) ∈ [0, T ] × Rd × [0, 1]d → φ(t, y, u) ∈ Rd
+is given such that φ(t, y, U ) ∼ π(·|t, y) where U is a uniform random vector on [0, 1]d. The random vectors (Ui) are i.i.d d-dimensional uniform random vectors, and they are independent of the
+Brownian motion W . We also define the action process asπ,S = atπi for s ∈ [ti, ti+1). Hence, the
+action is a constant over each subinterval [ti, ti+1). Finally, we denote by F S the (right-continuous) filtration generated by the Brownian motion W and the random vectors (Ui). We next state the martingale condition that characterizes the optimal value function J∗ and the optimal q-function; see Theorem 9 in (Jia and Zhou, 2025). This result is essential because it provides the theoretical foundation for designing our q-learning algorithm.
+Proposition 2 Let a function Jˆ∗ ∈ C1,2([0, T ) × R+) ∩ C([0, T ] × R+) and a continuous function qˆ∗ : [0, T ] × Rd × Rd → R be given satisfying
+Jˆ∗(T, y) = h(y),
+Z
+Rd
+exp 1
+θ qˆ∗(t, y, a) da = 1, for all (t, y) ∈ [0, T ] × Rd. (30)
+Assume that Jˆ∗ and Jˆy∗ both have polynomial growth. Then
+(i) If Jˆ∗ and qˆ∗ are respectively the optimal value function and the optimal q-function, then for any π ∈ Π , for all (t, y) ∈ [0, T ] × Rd and any grid S of [t, T ], the following process
+Jˆ∗(s, ysπ,S) +
+Zs
+t
+[r(τ, yτπ,S, aτπ,S) − qˆ∗(τ, yτπ,S, aτπ,S)]dτ (31)
+is an F S-martingale, where yπ,S = {ysπ,S : t ≤ s ≤ T } satisfies (29) with yπ,S
+t = y.
+(ii) If there exists one π ∈ Π such that for all (t, y) and any grid S of [t, T ], the process (31) is an F S-martingale where yπ,S
+t = y, then Jˆ∗ and qˆ∗ are respectively the optimal value function and the optimal q-function.
+We are now ready to develop and state the algorithm to solve our continuous-time RL problem (16). Consider the parameterized Gaussian policies πψ(·|t, y) in (22). It is useful to note that
+πψ(a|t, y) = exp 1
+θ qψ(t, y, a) , (32)
+where
+qψ(t, y, a) = −g2(T − t) · |a − μψ(t, y)|2 − θd
+2 log πθ
+g2(T − t) . (33)
+14
+
+
+This function qψ is a resulting parameterization of the optimal q-function q∗ which satisfies the equation R
+Rd exp 1
+θ qψ(t, y, a) da = 1. We also choose the value function approximator JΘ parametrized
+by Θ for the optimal value function J∗. We aim to learn the optimal value function and q-function simultaneously by updating (Θ, ψ), based on the martingale characterization in Proposition 2. In particular, we follow Jia and Zhou (2023) and use the so-called martingale orthogonality conditions. These conditions state that a diffusion process M is a (square-integrable) martingale with
+respect to a filtration F if and only if E R T
+0 HtdMt = 0 for any process H (called a test function)
+on [0, T ] that is progressively measurable (with respect to F) with E[R T
+0 |Ht|2d⟨M ⟩t] < ∞, where ⟨M ⟩t denotes the quadratic variation of the martingale M . See (Jia and Zhou, 2022a, Section 4.2). Because the optimal value function J∗ and q-function q∗ are both infinite-dimensional, theoretically one should vary all possible test functions to obtain infinitely many equations from the martingale orthogonality conditions in order to determine (J∗, q∗). This is naturally infeasible for computer implementation. Numerically we need only to determine the parameters (Θ, ψ) ∈ Rk, for some k, of the function approximators (JΘ, qψ). This calls for k test functions. We choose the following test functions ξt and ζt for our problem:
+ξt = ∂J Θ
+∂Θ (t, yπψ
+t ), ζt = ∂qψ
+∂ψ (t, yπψ
+t , aπψ
+t )= ∂
+∂ψ log πψ(t, yπψ
+t , aπψ
+t ), (34)
+where we use the fact that qψ(t, y, a) = θ log πψ(a|t, y). The above choice of ξt is motivated by the TD(0) method in discrete-time RL (e.g. Bhandari et al., 2021; see Jia and Zhou, 2022a, Section 4.2 for a detailed discussion), whereas that of ζt is inspired by the policy gradient method (Schulman et al., 2015; Jia and Zhou, 2022b). In our implementation, we execute stochastic policies on a uniform time grid with step size ∆t; that is, the grid S = {0 = t0 < t1 < . . . < tK = T }, where ti+1 − ti = ∆t for all i. For notational
+simplicity, in (34) and the discussions below we denote the discretely sampled state process yπψ,S
+t
+by yπψ
+t . Likewise, the (piecewise constant) action process is denoted by aπψ
+t.
+The martingale characterization in Proposition 2 together with the martingale orthogonality conditions lead to the following system of equations in (Θ, ψ):
+E
+ZT
+0
+ξt dJ Θ(t, yπψ
+t ) + r(t, yπψ
+t , aπψ
+t )dt − qψ(t, yπψ
+t , aπψ
+t )dt = 0, (35)
+E
+ZT
+0
+ζt dJ Θ(t, yπψ
+t ) + r(t, yπψ
+t , aπψ
+t )dt − qψ(t, yπψ
+t , aπψ
+t )dt = 0. (36)
+Equations (35)-(36) have k equations used to determine (Θ, ψ) ∈ Rk. We solve these equations using stochastic approximation (SA) and replace the true (unknown) running reward function r by its noisy estimate rˆ in (26) to update (Θ, ψ):
+Θ ← Θ + αΘ
+ZT
+0
+ξt dJ Θ(t, yπψ
+t ) + rˆ(t, yπψ
+t , aπψ
+t )dt − qψ(t, yπψ
+t , aπψ
+t )dt , (37)
+ψ ← ψ + αψ
+ZT
+0
+ζt dJ Θ(t, yπψ
+t ) + rˆ(t, yπψ
+t , aπψ
+t )dt − qψ(t, yπψ
+t , aπψ
+t )dt . (38)
+The above updating rule leads to an actor–critic type algorithm based on the temporal difference dJ Θ(t, yπψ
+t ). Algorithm 1 gives the pseudocode. We also remark that it is possible to consider
+15
+
+
+Algorithm 1 q-Learning Algorithm (SDE-based unconditional generation)
+Inputs: M samples from data distribution, number of samples m that used to estimate the score function, horizon T , time step ∆t, number of episodes N , number of mesh grids K = T /∆t, initial learning rates αΘ, αψ and a learning rate schedule function l(·) (a function of the number of episodes), functional forms of parameterized value function JΘ(·, ·) and μψ(·, ·), temperature parameter θ, functions f, g in (1), and ε in (25). Required program: environment simulator (y′, rˆ) = Environment∆t(t, y, a, m) that takes current time–state pair (t, y) and action a as inputs and generates state y′ (by a numerical solver of SDE (29)) at time t + ∆t and sample instantaneous reward rˆ (by randomly selecting m samples from the dataset and implementing (27)) at time t as outputs. Policy πψ(·|t, y) in (22), and q-function qψ(t, y, a) in (33).
+Learning procedure:
+Initialize Θ, ψ. for episode j = 1 to N do Initialize k = 0. Sample initial state y0 ∼ ν and store ytk ← y0. while k < K do
+Generate action atk ∼ πψ(·|tk, ytk ). Apply atk to environment simulator (y, rˆ) = Environment∆t(tk, ytk , atk , m), and observe new state y and reward rˆ as outputs. Store ytk+1 ← y and rtk ← rˆ. Update k ← k + 1. end while
+For every i = 0, 1, · · · , K − 1, compute and store test functions
+ξti = ∂J Θ
+∂Θ (ti, yti ), ζti = ∂qψ
+∂ψ (ti, yti , ati ).
+Compute
+∆Θ =
+K −1
+X
+i=0
+ξti J Θ(ti+1, yti+1 ) − J Θ(ti, yti ) + rti ∆t − qψ(ti, yti , ati )∆t ,
+∆ψ =
+K −1
+X
+i=0
+ζti J Θ(ti+1, yti+1 ) − J Θ(ti, yti ) + rti ∆t − qψ(ti, yti , ati )∆t .
+Update Θ and ψ by
+Θ ← Θ + l(j)αΘ∆Θ, (39)
+ψ ← ψ + l(j)αψ∆ψ. (40)
+end for
+16
+
+
+other test functions in (35)–(36), which will lead to different algorithms; see Jia and Zhou (2022a, 2023) for further discussions.
+Remark 4 In Algorithm 1, the update rule for (Θ, ψ) in (39)-(40) is essentially the stochastic gradient descent (SGD) type method. To see this, define
+G(ti; Θ, ψ) := Jˆ(ti+1, yti+1 ) − J Θ(ti, yti ) + rti ∆t − qψ(ti, yti , ati )∆t,
+where Jˆ(ti+1, yti+1) := J Θ(ti+1, yti+1), i = 0, ..., K − 1, which however are treated as constants free of parameter Θ. Then
+∆Θ = − 1
+2
+K −1
+X
+i=0
+∂
+∂Θ [G(ti; Θ, ψ)]2 , ∆ψ = − 1
+2∆t
+K −1
+X
+i=0
+∂
+∂ψ [G(ti; Θ, ψ)]2 .
+Therefore, the update of (Θ, ψ) in (39)-(40) can be considered as a gradient descent method for minimizing the following mean-square loss function:
+L(Θ, ψ) :=
+K −1
+X
+i=0
+[G(ti; Θ, ψ)]2 . (41)
+As a result, instead of the SA in (39)-(40), we can also optimize the loss function (41) by applying other optimization methods such as the Adam optimizer (Kingma and Ba, 2015) to update these parameters. In our experiments, we use Adam because it converges much faster than SA/SGD. In addition, to further accelerate the training process, the above loss function could be estimated more accurately through the empirical mean of a batch of losses under the same (Θ, ψ). Specifically, we collect a batch of B trajectories simultaneously, calculate the above loss for each of the B sample paths, denoted by L(b)(Θ, ψ), b = 1, ..., B, and then use the following batch loss for optimization:
+Lbatch(Θ, ψ) := 1
+B
+B
+X
+b=1
+L(b)(Θ, ψ).
+Remark 5 In the classical setting of training diffusion models using score matching, the training data (i.e. samples from p0) are used in Monte Carlo approximation of the expectation in the (denoising) score matching objective (8). In our RL formulation, however, the training data are used for approximating the score values via the ratio estimators in (25) in order to obtain noisy samples of the running reward. This again highlights one of the key differences between the two approaches.
+6.2 Convergence
+In this section, we discuss the convergence of the q-Learning algorithm. We focus on the analysis of the SA scheme in (37)-(38) for updating (Θ, ψ). In particular, we do not consider errors of time discretization of the integrals in actual implementations of the q−learning algorithm, Algorithm 1, because including these errors would only complicate the analysis and cloud the key insights from q−learning. In implementation, such errors can be controlled by appropriately choosing the time steps; see a recent paper Jia et al. (2025) for a detailed study.
+17
+
+
+To analyze the scheme (37)-(38) for updating (Θ, ψ), we rewrite it as follows: for each episode n,
+(Θn+1, ψn+1) = (Θn, ψn) + (αΘ(n + 1), αψ(n + 1)) · H (Θn, ψn), (yπψn
+t , aπψn
+t )t∈[0,T ]
+| {z }
+Ξn+1
+, Z . (42)
+Here, we have
+H (Θ, ψ), Ξ, Z :=
+ZT
+0
+ξtdG(t; Θ, ψ),
+ZT
+0
+ζtdG(t; Θ, ψ) , (43)
+with ξt and ζt being the test functions in (34), Ξ = (yπψ
+t , aπψ
+t )t∈[0,T ],
+dG(t; Θ, ψ) := dJ Θ(t, yπψ
+t ) + rˆ(t, yπψ
+t , aπψ
+t )dt − qψ(t, yπψ
+t , aπψ
+t )dt,
+and Z = (Zt)t∈S where Zt is a mini batch of m data points independently sampled from the whole dataset (of size M ) at each grid point t in order to estimate the score function value there, and Z is independent of Ξn+1 for all n. Note that we allow time-varying learning rates (αΘ(n + 1), αψ(n + 1)), which helps in the convergence analysis of SA schemes (Kushner and Yin, 2003). The update scheme (42) is an instance of the Robbins–Monro algorithm (see e.g. p.343 of Benveniste et al., 2012). This is because in each episode n, the initial state y0 is sampled independently from a Gaussian distribution ν in (5), which implies that the conditional distribution of (Ξn+1, Z), knowing the past, depends only on ψn. Define
+e(Θ, ψ) := E H((Θ, ψ), Ξ, Z) Θ, ψ ,
+where the expectation is taken with respect to the distribution of Z = (Zt)t∈S and the path measure
+induced by Ξ = (yπψ
+t , aπψ
+t )t∈[0,T ] when Θ and ψ are given. We can now state a convergence result for (42), which follows from Chapter 5.3 in Part II of Benveniste et al. (2012).
+Proposition 3 Assume the following conditions hold:
+1. There exist a twice continuously differentiable Lyapunov function V with a uniformly bounded second derivative and (Θ∗, ψ∗) satisfying
+sup
+ε≤|(Θ−Θ∗,ψ−ψ∗)|≤1/ε
+∇V (Θ, ψ) · e(Θ, ψ) < 0, for all ε > 0.
+Moreover, E |H((Θ, ψ, ), Ξ, Z)|2 Θ, ψ ≤ C(1 + V (Θ, ψ)) for some C > 0.
+2. The learning rates satisfy P
+n αγ(n) = ∞ and P
+n αγ(n)2 < ∞ for γ = Θ, ψ.
+Then the sequence (Θn, ψn) in (42) converges to (Θ∗, ψ∗) almost surely.
+The second assumption in Proposition 3 is standard that guides the choices of learning rates. Verifying the first assumption, however, is nontrivial. The difficulty arises mainly from the fact that our setting involves continuous time and continuous state/action spaces, and the Lyapunov function depends on the specific choice of the function approximations (neural networks) of the value function and the q-function (i.e. JΘ and qψ). As such, a rigorous verification of this assumption (i.e. finding the desired Lyapunov function) is beyond the scope of this work and is left for future investigation.
+18
+
+
+7 Experiments for Two Toy Examples
+In this section, we implement Algorithm 1 and conduct “proof-of-concept” experiments for two toy examples with synthetic training data, one involving a one-dimensional (1D) Gaussian mixture distribution and the other a two-dimensional (2D) Swiss rolls dataset. We further show the effectiveness of our RL approach by comparing its performance against that of two state-of-the-art RL fine-tuning methods.
+7.1 General setup
+We first provide some details on the implementation, including the environment (i.e. SDE model (29)) and its simulator, as well as the structure of the neural networks used for the parameterized actor πψ and critic JΘ.
+• SDE/Environment simulator.
+The implementation of Algorithm 1 requires an environment simulator describing the (controlled) denoising process. This corresponds to a numerical approximation of the controlled SDE (29).
+For (29), we take
+f (t) ≡ 1, g(t) ≡ √2, 0 ≤ t ≤ T, (44)
+for both the 1D and 2D examples, leading to the prior distribution ν in (5) as
+ν := N 0, 1 − e−2T · Id , d = 1, 2.
+Other forms of f and g can also be considered, but we choose (44) because it is simple and such a choice already yields satisfactory numerical results as we will see below. We numerically solve the controlled SDE (29) via the standard Euler–Maruyama discretization, i.e., for some small ∆t > 0 and t < T , yπ
+t+∆t − ytπ ≈ f (T − t)ytπ + (g(T − t))2atπ · ∆t + g(T − t)√∆t · ξ, where ξ ∼ N (0, Id). The SDE (or environment) simulator under a policy π is given by (with a slight abuse of notation for ytπ)
+yπ
+t+∆t − yπ
+t = [yπ
+t + 2aπ
+t ] ∆t +
+√
+2∆t · ξ, yπ
+0 ∼ ν. (45)
+• Neural network approximators.
+We use two neural networks (NNs) for the policy μψ (i.e., the mean of the Gaussian policy in (22)) and value function JΘ, respectively. Because we consider low-dimensional examples, the structure of those two NNs are similar, except that the output dimensions are different; see Table 1 below for details. As noted in Remark 4, we choose the Adam optimizer to optimize these two NNs, and we will specify the hyperparameters values for the training processes later.
+Layer ID Input Dimension Output Dimension Activation Function 1 (Input) d + 1 64 Tanh 2 (Hidden) 64 64 ReLU 3 (Output) 64 μψ : d, JΘ : 1
+Table 1: Neural networks setting
+19
+
+
+7.2 1D example - mixed Gaussian
+We first consider an example where the RL agent is provided with m = 300 samples drawn from a mixture of two 1D Gaussians:
+p0 = 1
+2 N (−3, 1) + 1
+2 N (3, 1).
+We consider a reward function
+h(y) = −(y − 6)2, (46)
+indicating the agent’s preference for the generated samples to be close to 6 (which is located at the right tail of p0). In our experiment, we consider different β’s and implement Algorithm 1 under hyperparameters shown in Table 2. For each trained model with a particular value of β, we generate 300 samples (i.e. 300 terminal states yT from the SDE simulator (45)). The resulting probability density functions (PDFs), computed via kernel density estimation using the Python seaborn library, are plotted in Figure 1.
+Figure 1: Learned probability densities of generated samples under different β’s in 1D example
+We have the following observations from Figure 1. First, when β = 0, our continuous-time RL formulation (9) essentially reduces to score matching, and our RL algorithm indeed generates samples with a PDF that matches closely with the empirical PDF pˆ0 that are computed using the 300 samples from the Gaussian mixture distribution. It is worthwhile to note that the empirical PDF still deviates away from the true density p0 due to the small number of samples (m = 300) taken, and the two densities will become closer with a larger sample size. Second, when β is 0.1, our RL algorithm generates more samples that are closer to the right mode of the Gaussian mixture distribution, due to the specific reward function (46). Finally, when β is large, say 1, the reward term β · h dominates the score matching term in (9). In this case, the algorithm generates samples that are closer to 6, and the generated distribution is significantly different from the original data distribution.
+20
+
+
+Inputs/Hyperparameters Setting Sample Size m 300 Terminal Time T 5 Time Step ∆t 0.25 Number of Episodes 50,000 Batch Size B 300 Learning Rate αψ 0.001 Learning Rate αΘ 0.001 Scheduler l(episode) 1 Temperature θ 5 Lower Bound ε 10−20
+Table 2: Hyperparameters Figure 2: 300 samples from Swiss roll data
+Before proceeding, we briefly discuss the choice of hyperparameters presented in Table 2. Key hyperparameters that impact the RL training process include T, ∆t, αψ, αΘ, and θ. We employ a grid search to determine the optimal combination of these hyperparameters. The search space included: T ∈ {0.1, 0.5, 1, 2, 5, 10}, ∆t ∈ {0.01, 0.025, 0.05, 0.1, 0.25, 0.5}, αψ = αΘ ∈ {10−1, 10−2, 10−3, 10−4, 10−5}, and θ ∈ {j × 10k : ∀j = 1, 5, k = −3, −2, −1, 0, 1}. By tuning these key hyperparameters, we aim to achieve a balance between sample quality and computational efficiency in our training process.
+7.3 2D example - Swiss roll
+We next consider 2D Swiss Rolls data, and plot all M = 300 training samples in the dataset in Figure 2.4 Consider a non-differentiable reward function
+h(y1, y2) = 1y1∈[−5,6], (y1, y2) ∈ R2.
+This reward function encourages generated samples to stay within the rectangular region [−5, 6]×R. We again consider different β’s and implement Algorithm 1 with hyperparameters shown in Table 2. The numerical results are visualized in Figure 3. Similar to the 1D example, when β = 0, our RL algorithm produces samples distributed close to the data distribution shown in Figure 2. As we increase the value of β, the generated samples become more concentrated on the rectangular region [−5, 6] × R. When β is large enough, say 30, all the generated samples tend to stay inside the region where y1 ∈ [−5, 6], visually resembling a French croissant. We now discuss the effect of the sample size m in the score estimator (25) on the performance of our q-Learning algorithm. As described in Algorithm 1, whenever the algorithm runs the environment simulator and generates the running reward signal rˆ, the simulator will first randomly select
+m samples from the dataset of M training samples, and then calculate \
+∇x log pt(x) and rˆ according to (25) and (27), respectively. To see the effect of sample size m on the performance of Algorithm 1, we conduct two different experiments. In the first one, we run Algorithm 1 without terminal reward, i.e. β = 0, using various sample sizes of m = 30, 60, 90, 120, 150 and 300, and then compute
+4We use the dataset provided by the sklearn package of Python in https://scikit-learn.org/stable/modules/ generated/sklearn.datasets.make_swiss_roll.html. This dataset is also used in other studies on diffusion models; see e.g. Sohl-Dickstein et al. (2015b) and Lai et al. (2023).
+21
+
+
+Figure 3: 300 samples generated from diffusion models trained under different terminal weights β for 2D Swiss rolls.
+Sample Size m β = 0 β > 0
+KL(p(yT )||p0) ↓ Reward E[h(yT )] KL(p(yT )||p0) ↓ 30 0.33 ± 0.017 0.80 ± 0.006 0.88 ± 0.026 60 0.32 ± 0.016 0.80 ± 0.004 0.51 ± 0.027 90 0.20 ± 0.019 0.80 ± 0.004 0.42 ± 0.025 120 0.17 ± 0.016 0.80 ± 0.004 0.40 ± 0.029 150 0.18 ± 0.016 0.80 ± 0.004 0.38 ± 0.025 300 0.17 ± 0.019 0.80 ± 0.003 0.39 ± 0.026
+Table 3: Effect of sample size m.
+the KL-divergences between the generated data and the Swiss roll training data. In the second experiment, we fix the expected terminal reward at 0.8 and compute the same KL-divergences with different sample sizes. This is achieved by choosing different values of the weight β for the reward in our RL formulation. The results are summarized in Table 3. To obtain the performance metrics in the table, we generate 100 batches of m samples (i.e. yT ), compute the KL divergence to the Swiss roll data p0 for each batch via the estimation method introduced in Wang et al. (2009), and compute the 95% confidence interval based on the 100 batches. Table 3 shows that with a larger sample size in the ratio estimator, the generated data are generally of a higher quality in the sense that they are more similar to the training data in terms of a smaller KL divergence for this example. On the other hand, a sample size of m = 120 or m = 150 is already enough to produce satisfactory performance of the q-Learning algorithm. In particular, it is not necessary to always use all the available samples to estimate the score function values in our algorithm. This can help us reduce the computational time and speed up the training process. While this point is less prominent for this two-dimensional example because training is fast anyway, it will become significant in high-dimensional applications as we will see in image generation tasks later. To further investigate how sample size m affects the quality of score estimation, we calculate the bias, variance, and mean-squared error (MSE) of the ratio estimators (25) for various m and time points t. To compute these metrics for each t, we randomly generate 10,000 states x ∈ R2, and for each x, we first use 500,000 samples from p0 to calculate the score estimator in (25) and
+regard it as the true score function value ∇ log pt(x). Then, we calculate the estimator \
+∇ log pt(x) by randomly drawing m samples and repeat this estimation process for 100 times. This allows
+22
+
+
+us to compute (approximately) for each state–time pair (x, t): (i) the MSE of \
+∇ log pt(x) in (25),
+and (ii) the bias and variance for each dimension of \
+∇ log pt(x). Since the score function value ∇ log pt(x) is a two-dimensional vector in this example, the bias of the estimator is a 2D vector and the corresponding covariance is a 2 × 2 matrix. To focus on key summary statistics, we compute the L1 norm of the bias vector, as well as the trace of the covariance matrix which is simply the sum of variances across the two dimensions of the score estimator (referred to as “variance” below). For each t, we average the bias, variance, and MSE over 10,000 states x. The resulting bias, variance, and MSE values for the ratio estimator (25) are summarized in Table 4. From Table 4, we observe that as the sample size m increases, the bias, variance, and MSE of the ratio estimator generally decrease. Moreover, the accuracy of the estimator depends on the time dimension of the true score function ∇ log pt(·), with smaller MSE values obtained for larger t. Intuitively, as t → T = 5, the distribution pT becomes approximately Gaussian, making the score easier to learn compared to the scenario where t → 0, which corresponds to the true unknown data distribution. The above analysis suggests that while using a larger sample size in the score estimator (25) in general and in theory increases accuracy, its benefit may not outweigh the resulting training cost as a smaller sample size may suffice to achieve satisfactory performance with a shorter training time.
+Sample Size m ∥Bias∥1 Variance MSE t=1
+30 6.178 × 10−2 5.036 × 10−2 5.348 × 10−2 90 3.346 × 10−2 1.515 × 10−2 1.938 × 10−2 300 2.151 × 10−2 4.458 × 10−3 8.682 × 10−3 t=2
+30 2.294 × 10−2 7.504 × 10−3 8.273 × 10−3 90 1.393 × 10−2 2.440 × 10−3 3.213 × 10−3 300 8.723 × 10−3 7.302 × 10−4 1.501 × 10−3 t=4
+30 3.069 × 10−3 1.015 × 10−3 1.112 × 10−3 90 2.524 × 10−3 3.386 × 10−4 4.504 × 10−4 300 1.457 × 10−3 1.024 × 10−4 3.209 × 10−4
+Table 4: The bias, variance, and mean-squared error of the ratio estimator (25) for the 2D Swiss roll example.
+7.4 Comparison with pretrain-then-fine-tune approach
+In this section, we compare our continuous-time RL approach with those developed for fine-tuning pretrained discrete-time diffusion models. Specifically, we consider two benchmark fine-tuning methods, DDPO and DPOK, proposed by Black et al. (2024) and Fan et al. (2023), respectively. Both DDPO and DPOK are online RL methods for fine-tuning a pretrained diffusion model to generate samples with higher terminal rewards. Note that the key difference between their formulations and ours is that the latter does not involve a pretrained model nor is it designed for fine-tuning. For reader’s convenience, we first briefly review their formulations.
+23
+
+
+Black et al. (2024) and Fan et al. (2023) formulate the denoising process of a discrete-time diffusion model, called the denoising diffusion probabilistic model (DDPM), as a Markov decision process (MDP). Specifically, denote by {ytk }K
+k=0 the denoising process (with a slight abuse of notations), where y0 is sampled from a normal distribution, and let the one-step transition probabilities {pφ(ytk |ytk−1 )}K
+k=1 (often modeled as Gaussian) be parameterized by φ. Given a pretrained diffusion model ppre = pφ0, DDPO and DPOK aim to fine-tune it to maximize the expected reward of generated samples by updating φ. They regard the transition pφ(ytk+1|ytk ) as a stochastic policy and apply the policy gradient algorithm. To do so, they formulate a finite-horizon MDP with state s, action a, policy πφ, deterministic transition dynamics P and reward R as follows:
+stk := ytk , atk := ytk+1 , πφ(atk |stk ) := pφ(ytk+1 |ytk ), P (stk+1 |stk , atk ) := 1stk+1 =atk ,
+R(stk , atk ) = 0, ∀k = 0, ..., K − 2, R(stK−1 , atK−1 ) = h(atK−1 ) = h(ytK ).
+Denote by pφ(y0:K ) := p(y0) QK
+k=1 pφ(ytk |ytk−1) the joint distribution of the denoising trajectory
+{ytk }K
+k=0. The objective of DDPO and DPOK is given below, with γ = 0 for DDPO (i.e. purely reward-directed) and γ > 0 for DPOK:
+mφin Epφ(y0:K )
+"
+−β · h(ytK ) + γ ·
+K
+X
+k=1
+KL pφ(ytk |ytk−1 )||ppre(ytk |ytk−1 )
+#
+. (47)
+Here, ppre(ytk |ytk−1) is the one-step transition probability distribution under the pretrained diffusion model, KL(·||·) is the KL-divergence between distributions, and β, γ are weights balancing the trade-off between the terminal reward h and the deviation from the pretrained model. One can easily see that our RL formulation is significantly different from the ones in Black et al. (2024) and Fan et al. (2023) at least in two aspects: First, we penalize the deviation from the (unknown) true score model, rather than a (known) pretrained score or diffusion model. Second, the setting (i.e. continuous-time) and definitions of actions and policies in our formulation are entirely different from theirs. We now compare the performance of our algorithm with those of DDPO and DPOK. For illustrations, we focus on the 2D Swiss roll data discussed in Section 7.3 along with the reward function h(y1, y2) = 1y1∈[−5,6]. To adapt DDPO and DPOK to score-based diffusion models, we
+consider the discrete-time denoising process {ytk }K
+k=0 similar to (45):
+ytk+1 = ytk +
+h
+ytk + 2μψ(tk, ytk )
+i
+∆t +
+√
+2∆t · ξ, y0 ∼ ν
+where tk+1 = tk + ∆t, and μψ is the policy or score neural network discussed earlier (see (22)). Then, the one-step transition pψ(ytk |ytk−1) is Gaussian with mean effectively parameterized by μψ,
+and one can compute the KL-divergence in (47) explicitly. The pretrained score network μpre, as required by DDPO and DPOK, is obtained by applying our Algorithm 1 with hyperparameters shown in Table 2 and β = 0, although one can use other standard score matching methods. For our q-learning algorithm, the controlled state process yta is updated according to the dynamic (45).
+To make a fair comparison, the neural network μψ used in all the three algorithms share the same structure which is the one displayed in Table 1. Moreover, the pretrained network μpre is used as the initialization of μψ in our algorithm. Finally, for all the algorithms, we set T = 10, ∆t = 0.25 and K = T /∆t = 40.
+24
+
+
+Algorithm Reward (E[h(yT )]) ↑ KL(p(yT )||p0) ↓ Pretrained model A 0.52 ± 0.006 0.17 ± 0.019 DDPO 1.00 ± 0.001 2.97 ± 0.024
+DPOK 0.70 ± 0.004 0.21 ± 0.021 q-Learning 0.70 ± 0.005 0.29 ± 0.023 DPOK 0.80 ± 0.004 0.38 ± 0.023 q-Learning 0.80 ± 0.003 0.39 ± 0.026 DPOK 0.90 ± 0.003 0.69 ± 0.024 q-Learning 0.90 ± 0.003 0.66 ± 0.024
+Table 5: Empirical mean rewards and KL-divergences (with 95% confidence) based on (100 batches of) 300 samples generated by diffusion models fine-tuned/trained with different algorithms, when a good pretrained model is available.
+We first report the numerical results in Table 5 and Figure 4 for the scenario when a “good” pretrained model (referred to as Pretrained Model A) is given. Here, by “good” we mean that Model A generates samples whose distribution is very close to the true data distribution p0 as measured by the KL divergence, which is obtained by implementing Algorithm 1 with β = 0 and running the algorithm with 50,000 iterations. Given this pretrained model, DDPO fine-tunes it for pure reward maximization (without any KL regularization). Table 5 shows that DDPO generates samples achieving the maximal empirical mean reward, but with a large KL divergence from the true data distribution. On the other hand, both DPOK and our q-learning method trade off two criteria: reward and KL-divergence. For a fair comparison, we compare the KL-divergence values of the two algorithms under the same level of expected reward of the generated samples. This is achieved by choosing different values of the weight β for the reward in DPOK (while setting γ = 1 in its objective) and our model, because DPOK penalizes deviation from the pretrained model, while we penalize deviation from the true score model. Table 5 displays the empirical mean KL divergence to the data distribution p0 (and the corresponding 95% confidence interval) of 300 samples obtained by DPOK and our algorithm, when the terminal expected rewards are set to be 0.7, 0.8 and 0.9, respectively. We can observe that the performances of our q-learning algorithm and DPOK are similar (if the latter is slightly better) in the current scenario of a good pretrained model being available. For visualization, Figure 4 plots 300 samples generated by different algorithms with a fixed expected reward level 0.8. It is clear that samples generated from DDPO diverge from the data distribution significantly, while samples obtained from DPOK and our q-learning algorithm have similar distributions to the data distribution. While DPOK and q-Learning have similar performances in the above experiment, the two are based on very different optimization objectives. DPOK is a fine-tuning RL method, which requires the fine-tuned model to be close to the pretrained one. As a result, DPOK may not perform well, if the pretrained model is not sufficiently good. By contrast, our method does not rely on any pretrained model and is purely data driven, resulting in robust results. To illustrate, we repeat the above experiment but with a “bad” pretrained model. This is referred to as Pretrained Model B, which is obtained by implementing Algorithm 1 with β = 0 and running the algorithm with only 30,000 (instead of 50,000) iterations. In particular, the generated distribution from Model B has a much higher KL divergence (0.68 vs. 0.17 for Model A) with respect to the true data distribution;
+25
+
+
+Figure 4: 300 samples generated by diffusion models fine-tuned/trained by different algorithms. DPOK and q−Learning have a fixed expected reward of 0.80. The samples obtained from (good) Pretrained Model A are also plotted for reference.
+Algorithm Reward (E[h(yT )]) ↑ KL(p(yT )||p0) ↓ Pretrained model B 0.55 ± 0.005 0.68 ± 0.026
+DPOK 0.70 ± 0.004 0.90 ± 0.025 q-Learning 0.70 ± 0.004 0.30 ± 0.023 DPOK 0.80 ± 0.004 1.03 ± 0.027 q-Learning 0.80 ± 0.004 0.42 ± 0.023 DPOK 0.90 ± 0.003 1.21 ± 0.028 q-Learning 0.90 ± 0.003 0.64 ± 0.026
+Table 6: Empirical mean rewards and KL-divergences (with 95% confidence) based on (100 batches of) 300 samples generated by diffusion models fine-tuned/trained with different algorithms, when only a bad pretrained model is available.
+see also the first panel of Figure 5 for a visual. Table 6 reports the corresponding performances of DPOK and the q-learning algorithm. For a fixed target reward level, DPOK now performs much worse than our algorithm: the former generates samples with a distribution much further away from the true data distribution than the latter does. Interestingly, our algorithm can even improve the quality of a bad pretrained model in the sense of reducing the KL-divergence from the data distribution p0, while DPOK generates samples with an even bigger divergence when applied for reward maximization. For visualization, Figure 5 shows 300 samples generated by different algorithms with a fixed expected reward level 0.8. The outperformance of our algorithm is evident in the case when only a low-quality pretrained model is available. To summarize the findings, DDPO of Black et al. (2024) suffers from the issue of reward overoptimization, where the generated distributions diverge too far from the original data distribution. DPOK of Fan et al. (2023) has a similar performance as our q-learning algorithm, provided that the pretrained model is of good quality. However, if the pretrained model is not good enough, our q-learning algorithm outperforms DPOK significantly.
+26
+
+
+Figure 5: 300 samples generated by diffusion models fine-tuned/trained by different algorithms. DPOK and q−Learning have a fixed expected reward of 0.80. The samples obtained from (bad) Pretrained Model B are also plotted for reference.
+8 Image Generations
+In this section, we test Algorithm 1 on a reward-directed image generation task. The training samples are 50,000 RGB images of size 32×32 from the CIFAR-10 dataset (Krizhevsky, 2009), some of which are displayed in Figure 6(a). We consider a reward function from Black et al. (2024) based on imcompressibility, where the reward is the file size of generated images after JPEG compression. Note that the resolution of generated samples is fixed at 32×32 pixels, so the file size is determined solely by the compressibility of the images. In the following, we first describe the experimental settings (which are different from the settings for the two toy examples discussed earlier) and then report the numerical results.
+8.1 Experimental Settings
+• SDE/Environment simulator.
+In this experiment, we consider the following environment simulator inspired by the celebrated DDPM model (Ho et al., 2020) for image generations: for some small ∆t and t < T = 1,
+yπ
+t+∆t = 1
+p1 − β(1 − t) · ∆t (yπ
+t + β(1 − t) · ∆t · aπ
+t ) + pβ(1 − t) · ∆t · ξ, (48)
+where ξ ∼ N (0, Id), β(t) is a linear function of t, and y0π ∼ N (0, Id). The simulator (48)
+corresponds to an appropriate discretization of the controlled dynamic (29) where f (t) =
+1
+2 g(t)2 and f is linear in t, as well as to the VP-SDE model introduced in Song et al. (2021).
+To match the settings in Ho et al. (2020), we use the linear schedule β(t) such that β( 1
+1000 ) =
+10−1 · 1
+1000∆t and β(1) = 20 · 1
+1000∆t . In particular, if we use ∆t = 0.001 and simulate (48) in
+K= T
+∆t = 1000 steps, the simulator (with the action replaced by the trained score function obtained from denoising score matching) corresponds to the sampler used in the DDPM model in (Ho et al., 2020). In the implementation of our RL algorithm, we do not use K = 1000 because it is time-consuming to simulate 1000 steps in each episode. Instead, we consider
+27
+
+
+∆t = 0.05 so that we run (48) with K = 20 steps in each episode. In this case, the linear schedule we use becomes β(t) = 389
+999 t + 8
+4995 . We find that K = 20 sampling steps are enough to generate images of an acceptable quality. This is demonstrated in Figure 6(b), where we display image samples generated by running (48) with K = 20 steps, and replacing the action atπ by the score function approximator trained by DDPM.
+• Actor and Critic Networks
+For the actor network μψ(·, ·), we adopt U-Net (Ronneberger et al., 2015), which is a popular neural network for image generation tasks; see e.g. Ho et al. (2020); Song et al. (2021). We initialize the actor network with the pre-trained DDPM model in the implementation of our q-Learning algorithm, which speeds up the training process.
+The critic network JΘ(·, ·) consists of a U-Net that shares the same architecture with μψ which we denote by U Θ1, a convolution layer ConvΘ2 that has one output channel, and a multilayer perception denoted by MLPΘ3 for which we use a dropout function to deal with the output of each layer to prevent overfitting. Technically, we have
+J Θ(y, t) := MLPΘ3(ConvΘ2(U Θ1(y, t))),
+where Θ = (Θ1, Θ2, Θ3). Further details about these component networks are given in Table 7.
+(a) Original CIFAR-10 Samples (b) Samples from a Pre-trained Model
+Figure 6: Sample images from the CIFAR-10 dataset (left) and those generated by the pre-trained DDPM model (right) with 20 sampling steps.
+• Hyperparameters.
+We set the temperature parameter θ = 10−3, the learning rates αψ = 1 × 10−5 and αΘ = 2 × 10−5. These key hyperparamters are tuned via grid search over the space {j × 10−k : j, k = 1, 2, 3, 4, 5} to optimize the training process. We use a batch size of B = 32 in each episode. We also test B = 64 and B = 128, and the results are similar. Finally, we use a sample size of m = 1 to calculate the score estimator (25). This choice will be discussed in
+28
+
+
+Layer ID Input Dimension Output Dimension U-Net U Θ1 3 × 32 × 32 + 1 3 × 32 × 32 ConvΘ2 3 × 32 × 32 1 × 25 × 25 MLPΘ3: Input 25 × 25 256 MLPΘ3 - Hidden 1 256 64 MLPΘ3 - Hidden 2 64 16 MLPΘ3 - Output 16 1
+Table 7: Components of the critic network for the experiment on CIFAR-10
+details later in Section 8.3. Note that when m = 1, the lower bound parameter ε in (25) no longer matters, which will be dropped in implementing the q-Learning algorithm.
+8.2 Numerical results
+We now report the numerical results and compare the performance of our algorithm with that of DPOK in (47). We do not consider DDPO here because it is prone to reward over-optimization as we have already discussed in the 2D example in Section 7.3. For DPOK, we also consider K = 20 sampling steps in each episode and set αψ = 1×10−5 and B = 32 as with our q-Learning algorithm. Similar as in Section 7.4, we fix the same level of the expected reward (the incompressibility score) of the generated samples by choosing different value of the weight β for the terminal reward in the algorithms. We then compare the FID (Fr ́echet Inception Distance; Heusel et al., 2017) scores for the generated images under the two algorithms. We use FID instead of KL-divegence, because the former is a more widely-used performance metric that measures the similarity of generated images. The results of the q-Learning algorithm and DPOK are presented in Table 8, where each reward is the average incompressibility score of 20,000 images generated by the corresponding algorithm, and the FID score is calculated based on 20,000 generated images and 20,000 images from the CIFAR-10 dataset. Table 8 shows that, with a fixed (terminal) reward level, our q-Learning algorithm generates images with much lower FID scores (lower is better) than those from DPOK. For visualization, we also display some randomly selected samples of the generated images from our algorithm and DPOK in Figure 7, where the expected reward is fixed at 1.30 KB. We can see that the q-Learning images have more details in their background compared with those generated from the pre-trained model in Figure 6. On the other hand, DPOK produces images of notably lower quality (higher FID), with a sizable portion barely recognizable or even unidentifiable. Indeed, approximately 15% of the 20,000 images generated by DPOK exhibit a substantial amount of noise, as evident in Figure 7(b). This is primarily because DOPK penalizes deviations from the pre-trained model, yet the samples generated from the pre-trained model is not of high quality (Figure 6(b)). By contrast, our RL formulation penalizes deviations from the true data distribution. When the expected reward level is fixed at 1.20 KB, we observe from Table 8 that q-Learning even improves the pre-trained model by reducing the FID score while achieving actually a higher terminal reward (file size). We next briefly discuss the training processes, including the training times for q-learning and DPOK5. The last column of Table 8 indicates that q-Learning takes longer to converge than DPOK.
+5Our experiments are conducted on a 64-bit Linux operating system with 2 Intel Xeon Gold 5320 CPUs @ 2.20GHz and 4 A30 GPUs, each with 24GB of memory. Each algorithm in the experiments is trained on a single GPU, and
+29
+
+
+Algorithm Reward (KB) FID ↓ Training
+Time (hrs.) ↓ Pre-trained Model 1.10 29.90 q-Learning 1.20 26.64 ∼ 8
+DPOK 77.94 ∼ 4 q-Learning 1.30 50.58 ∼ 8
+DPOK 107.99 ∼ 6 q-Learning 1.40 89.79 ∼ 9
+DPOK 138.89 ∼ 7
+Table 8: Comparison between q-Learning algorithm and DPOK.
+(a) q-Learning: h = 1.30, FID=50.58 (b) DPOK: h = 1.30, FID=107.99
+Figure 7: Sample images generated by diffusion models trained by q-Learning algorithm (left) and DPOK (right). The average reward is fixed at 1.30 KB.
+Here, the training time of each algorithm is recorded when the performance metrics including the reward and FID curve converge or stabilize. The longer training time of the q-Learning algorithm is primarily due to the additional value/critic network involved. In particular, while DPOK only optimizes the policy/actor network, q-Learning has to update parameters of both the actor and critic networks at each episode, inevitably increasing its computational time. In our experiment, it takes around 2.55 and 2.02 seconds to run one episode for q-Learning and DPOK, respectively. Figure 8 further displays the training processes (learning curves) of the two methods in terms of reward and FID, where each reward and FID value is estimated based on 20,000 images generated by models saved during the training process. Figure 8 (a) shows a slower convergence of q-Learning to the desired incompressibility score of 1.20 KB (while the convergence speeds are similar for the score of 1.30 KB): DPOK only needs less than 7,000 episodes while q-Learning takes around 11,500 episodes to reach the target of 1.20 KB. Again, the reason is because optimizing the actor and critic networks simultaneously compels more episodes for q-Learning to converge. Despite the
+the corresponding training time is recorded.
+30
+
+
+(a) Reward Curve (b) FID (to CIFAR-10) Curve
+Figure 8: Training processes of q-Learning (solid lines) and DPOK (dashed lines). The blue and orange curves correspond to final average terminal reward at 1.20 KB and 1.30 KB, respectively.
+longer training time, however, Figure 8 (b) indicates that q-learning outperforms DPOK decisively and significantly in terms of keeping the generated images closer to the original CIFAR-10 dataset.
+8.3 Choice of sample size m in ratio estimator (25)
+In this subsection, we discuss the impact of the sample size m in the ratio estimator (25) on the performance of the q-Learning algorithm in image generations. For the results presented in Table 8 we use a sample size m = 1 in (25) for obtaining the running reward signal during training. In general, images are considered samples from a high-dimensional distribution; as such using a larger sample size m will significantly increase training time which may greatly outweigh the benefit of an increased quality of the trained model. To see this, we conduct an experiment where three diffusion models with m = 1, 10 and 100 are trained via q-Learning to reach a terminal incompressibility score of 1.30 KB by tuning the parameter β. The results, including performance metrics (FID) and training times, are summarized in Table 9. To generate this table, we calculate the FID score using 20,000 original and generated CIFAR-10 images, and the average time cost per episode is calculated by dividing the total computational time of the 10,000 episodes by 10,000. We also track the number of episodes and total training time required for each model to converge. Table 9 shows that diffusion models trained using q-Learning under different sample sizes m yield comparable FID scores for their generated images, indicating similar image qualities. (In fact, m = 1 even yields the smallest FID score!) However, increasing the sample size m significantly prolongs the time spent per episode, thereby substantially enlarging the total training time despite faster convergence (i.e. fewer episodes to converge). This experiment suggests that a sample size of m = 1 is sufficient for this image generation task, allowing us to train a high-quality diffusion model for achieving a target terminal reward level in the shortest amount of time. This seemingly surprising result can be explained from two perspectives, one at a general/conceptual level and the other at a specific/technical one. The conceptual one is due to the RL approach employed. Although at a given time the algorithm generates a reward signal (i.e. a ratio estimator) using only one sample at random, at the next time point it generates another signal using another sample. When the number of episodes is large and/or the time step is small, a large number of sam
+31
+
+
+Sample
+Size m FID ↓ Time per
+Episode (sec.) ↓ Number of
+Episodes ↓ Training
+Time (hrs.) ↓ 1 50.58 2.55 ∼ 11, 000 ∼ 8 10 52.72 3.74 ∼ 10, 000 ∼ 11 100 51.34 5.61 ∼ 9,000 ∼ 15
+Table 9: Impact of sample size m in the ratio estimator (25) on the performance of the q-Learning algorithm. The expected terminal reward level is fixed at 1.30 (KB).
+ples will actually be used to produce these signals during the entire learning process. Consequently, all the noises in the reward signals will be eventually averaged out. The RL agent can improve her policies by interacting with the environment and observing such reward (reinforcement) signals, and each of these signals does not need to be accurate and can be noisy. The technical reason is specific to the image generation task and the associated score estimator
+(25). Ignoring ε, we note that the score estimator \
+∇x log pt(x) in (25) is based on the weighted combination of m samples:
+m
+X
+i=1
+pt|0(x|xi0)
+Pm
+i=1 pt|0(x|xi0) · xi
+0. (49)
+By (23), the conditional density pt|0(x|xi0) ∝ exp −∥x − e− R t
+0 f(s)dsxi0∥2 . However, in a high
+dimensional setting such as CIFAR-10 images with dimension 3072 (3 × 32 × 32), the data points are typically sparse. Hence for a given x, pt|0(x|xi0) are typically very small and thus the weights
+pt|0 (x|xi
+0)
+Pm
+i=1 pt|0(x|xi
+0) close to zero, except for the data point, say xj
+0, that is closest to x · e
+Rt
+0 f (s)ds. To
+illustrate this, consider a concrete example where we have only m = 2 samples x10 and x20, i.e., 2 images sampled from the CIFAR-10 dataset, along with a specific initial state x sampled from the standard multivariate normal distribution. The specific values of x, x10 and x20 are not given
+explicitly here because they are all vectors in R3072. We find that p1|0(x|x10) = exp(−4200.7139),
+and p1|0(x|x20) = exp(−4229.2939). This yields a ratio p1|0(x|x10)/p1|0(x|x20) = exp(28.5799) ≈
+1012, indicating that the weighted combination in (49) is essentially determined by x10 only. This observation holds for t < T = 1 and m > 2 as well. This provides an intuition for why in our training process, a very small number of samples or indeed even one sample may be sufficient for computing the score estimator in (25) in high-dimensional spaces, when the number of episodes is large and/or the time step is small. The preceding argument also suggests that one might enhance the accuracy of the score estimator by using nearest-neighbor search to compute (49), i.e., finding the sample image xi0 closest to
+x·e
+Rt
+0 f(s)ds at (x, t). However, as expected this method is computationally costly. To demonstrate this, we conduct an experiment where we train our model using the q-Learning algorithm with a fixed expected terminal reward level of 1.30 KB, employing nearest-neighbor search to compute the score estimator. Although the resulting model achieves a slightly lower FID score of 47.17, the time per episode increases significantly to 15.05 seconds, and the entire training process takes approximately 20 hours to complete (in contrast to the results reported in Table 9). In comparison, our simplified approach of randomly selecting a data point (with m = 1) reduces computational
+32
+
+
+overhead substantially while keeping a good image quality because it still makes use of the valuable insights from our analysis.
+9 Extensions
+In this section, we discuss two extensions of our SDE-based formulation.
+9.1 ODE-based formulation
+In addition to the SDE-based implementation of diffusion models, another mainstream approach for sample generation is the probability flow ODE implementation (Song et al., 2021). In this subsection, we show that our SDE-based RL framework for reward maximization can be easily extended to the ODE-based formulation. Recall that the forward process (xt)t∈[0,T ] satisfies the following SDE:
+dxt = −f (t)xtdt + g(t)dBt, x0 ∼ p0, (50)
+and pt(·) denotes the probability density function of xt in (50). Song et al. (2021) show that there exists an ODE:
+dx ̄t
+dt = f (T − t)x ̄t + 1
+2 (g(T − t))2∇x log pT −t(x ̄t),  ̄x0 ∼ pT , (51)
+whose solution at time t ∈ [0, T ],  ̄xt, is distributed according to pT −t, i.e., the ODE (51) induces the same marginal probability density function as the SDE in (4). In particular,  ̄xT ∼ p0. The ODE (51) is called the probability flow ODE. Motivated by the SDE-based problem formulation (9), we now consider an ODE-based formulation (with a slight abuse of notation):
+max
+a=(at:0≤t≤T )
+β · E[h(ya
+T )] − E
+ZT
+0
+(g(T − t))2 · |∇ log pT −t(ya
+t ) − at|2dt (52)
+where
+dya
+t = f (T − t)ya
+t +1
+2 (g(T − t))2at dt, y0 ∼ ν. (53)
+Because the dynamics (yta) is described by a controlled ODE, the Hamiltonian for this problem becomes
+H(t, y, a, p) = −(g(T − t))2|∇ log pT −t(y) − a|2 + [f (T − t)y + 1
+2 (g(T − t))2a] ◦ p. (54)
+Remark 6 Because (53) is an ODE, instead of an SDE, the second term in the objective (52) can no longer be directly interpreted as the KL divegence between two path measures as in (11). However, we still keep this term in the objective as in the SDE-based formulation to encourage the action process not to deviate too much away from the true score function.
+33
+
+
+Similar to Section 3.2, we can write down the exploratory RL formulation of the above problem. With slight abuse of notations, the exploratory dynamic is given by the following ODE with random/normal initialization:
+dy ̃π
+s = f (T − s)y ̃π
+s +1
+2 g2(T − s)
+Z
+Rd
+aπ(a|s, y ̃π
+s )da ds, y ̃π
+0 ∼ ν. (55)
+The associated entropy-regularized control objective is given by:
+J(t, y, π)
+=Et,y
+ZT
+t
+Z
+Rd
+r(s, y ̃π
+s , a) − θ log π(a|s, y ̃π
+s ) π(a|s, y ̃π
+s )dads + βh(y ̃π
+T ) , (56)
+where r is given in (13). The goal of RL is to solve the following optimization problem:
+max
+π∈Π
+Z
+J(0, y, π)dν(y), (57)
+where Π stands for the set of admissible stochastic policies. As in (14), for actual execution of a stochastic policy π in the RL algorithm, we need the discretely sampled state process, which satisfies the following ODE: for all i = 0, ..., K − 1 and all s ∈ [ti, ti+1),
+dysπ,S = [f (T − s)ysπ,S + 1
+2 (g(T − t))2aπ
+ti]ds, (58)
+where S = (ti)i=0,...,K is a grid of [0, T ] and atπi ∼ π(·|ti, yπ,S
+ti ).
+It is easy to see that the theory and algorithm for the SDE-based formulation can be developed for the ODE-based formulation analogously. For instance, because the Hamiltonian in (54) is still a quadratic function of the action a, we deduce that the optimal stochastic policy for (57) is still a Gaussian distribution, which has the same form as (18). We can still apply Algorithm 1 to solve the RL problem (57), except one importance difference. In Algorithm 1, the environment simulator (i.e. the sampler) is based on the discretization (e.g. Euler–Maruyama) of the SDE in (29). For the ODE-based formulation, we instead use a numerical solver of the ODE (58) as the sampler. Many ODE solvers have been developed and employed in practice. For instance, one can use Euler (Song et al., 2021), DDIM (Song et al., 2020), Heun’s 2nd order method (Karras et al., 2022), DPM solver (Lu et al., 2022), exponential integrator (Zhang and Chen, 2023), among others. To test our method experimentally, we consider the Swiss roll dataset and implement Algorithm 1 for two ODE-based samplers/simulators: ODE-Euler of Song et al. (2021) and DDIM of
+Song et al. (2020). Following Song et al. (2020), we set f ≡ 0 and g ≡ √2 in our experiment. Then from (58) we can obtain that for a uniform grid with size ∆t, the update rule for the ODE-Euler simulator is given by (again with a slight abuse of notation and suppressing grid notation for clarity)
+yπ
+t+∆t = yπ
+t + aπ
+t · ∆t.
+Moreover, the DDIM simulator, which is simply Euler’s method applied to a reparameterization of
+the ODE (58) with f ≡ 0 and g ≡ √2, is given as follows (see Song et al., 2020)
+yπ
+t+∆t = yπ
+t+
+s
+1 − α(t)
+α(t) −
+s
+1 − α(t + ∆t)
+α(t + ∆t)
+!
+·
+p2(T − t)aπ
+t,
+34
+
+
+where α(t) = 1
+2(T −t)+1 and α(t) = 1 for all t ≥ T . The DDIM simulator behaves similarly as
+ODE-Euler when ∆t → 0, but differs from the latter when ∆t is not small (i.e. with fewer sampling steps). For comparison purposes, when implementing Algorithm 1, we also include the
+SDE simulator, which takes the following form when f ≡ 0 and g ≡ √2 (similar to (45)):
+yπ
+t+∆t = yπ
+t + 2aπ
+t · ∆t +
+√
+2∆t · ξ, ξ ∼ N (0, Id).
+All the three simulators share the same prior distribution ν := N (0, 2T · Id), which is obtained from (5). In our experiment, we fix T = 5 and vary ∆t (or equivalently the number of sampling steps K := T /∆t). The implementation of Algorithm 1 with three different simulators/samplers is still based on the settings described in Tables 1 and 2. We first consider β = 0, in which the algorithm aims to generate samples that are close to the original data without concerning the reward. Table 10 shows how the choice of a simulator affects the output quality of the diffusion model. When there are 50 sampling steps, the RL algorithms trained under either the ODE or SDE simulator all generate reasonably good samples, although the two ODE-based ones have slightly better performances. When the number of sampling steps is reduced, the quality of samples generated from all the simulators decrease, but the SDE-based one decreases more. Figure 9 displays visually the generated samples by different simulators.
+Simulator Sampling Steps (∆t) Reward (E[h(yT )]) ↑ KL(p(yT )||p0) ↓ DDIM 50 (0.1)
+0.44 ± 0.005 0.14 ± 0.018 ODE-Euler 0.44 ± 0.006 0.11 ± 0.016 SDE 0.45 ± 0.005 0.18 ± 0.020
+DDIM 10 (0.5)
+0.45 ± 0.005 0.15 ± 0.019 ODE-Euler 0.44 ± 0.006 0.23 ± 0.022 SDE 0.46 ± 0.006 0.35 ± 0.024
+DDIM 5 (1.0)
+0.46 ± 0.005 0.72 ± 0.022 ODE-Euler 0.44 ± 0.006 0.56 ± 0.024 SDE 0.46 ± 0.005 0.83 ± 0.026
+Table 10: Empirical mean rewards and KL-divergence (with 95% confidence) based on (100 batches of) 300 samples generated by our algorithm with ODE-based and SDE-based samplers with different sampling steps and β = 0.
+We next consider the reward-directed generative task with the same reward function h(y) = 1y1∈[−5,6] as before, and study the performance of Algorithm 1 with the three different simulators. Similar to Section 7.4, we train the diffusion model with a properly chosen reward weight β so that the samples generated from the different simulators will earn the same mean reward of 0.80. The numerical results are presented in Table 11. We can see that when there are 50 sampling steps, the SDE-based sampler performs the best with a significantly small KL divergence between the generated distribution and the data distribution. However, as we increase ∆t, the performance of the SDE-based sampler deteriorates and becomes inferior to the ODE-based samplers. Figure 10 displays the generated samples out of the three simulators with a fixed expected reward of 0.8 and ∆t = 0.5.
+35
+
+
+Figure 9: 300 samples generated by our algorithm for three simulators when β = 0 and ∆t = 0.5.
+To conclude this subsection, the ODE simulators prove to be effective when employed in conjunction with our RL formulation and q-Learning algorithm for reward-directed diffusion models. With a smaller number of sampling steps, the ODE simulators significantly reduce the sample generation time while maintaining an acceptable level of sample quality and reward. In our Algorithm 1, running the SDE-based simulator consumes a significant proportion of the total training time. Therefore, the ODE formulation is a competitive contender for our reward-directed RL diffusion model.
+Simulator Sampling Steps (∆t) Reward (E[h(yT )]) ↑ KL(p(yT )||p0) ↓ DDIM 50 (0.1)
+0.80 ± 0.004 0.50 ± 0.027 ODE-Euler 0.80 ± 0.005 0.62 ± 0.022 SDE 0.80 ± 0.005 0.24 ± 0.024
+DDIM 10 (0.5)
+0.80 ± 0.004 0.61 ± 0.025 ODE-Euler 0.80 ± 0.004 0.72 ± 0.024 SDE 0.80 ± 0.004 0.77 ± 0.024
+DDIM 5 (1.0)
+0.80 ± 0.004 1.22 ± 0.028 ODE-Euler 0.80 ± 0.005 1.07 ± 0.025 SDE 0.80 ± 0.004 1.29 ± 0.027
+Table 11: Empirical mean rewards and KL-divergence (with 95% confidence) based on (100 batches of) 300 samples generated by our algorithm with ODE-based and SDE-based samplers with different sampling steps when the (fixed) expected reward is 0.8.
+9.2 Conditional diffusion models
+Diffusion models are often used for conditional data generations, e.g., in text-to-image models. In this section, we briefly discuss the extension of our framework to conditional diffusion models. We take the SDE-based formulation as an illustration. We first introduce some notations. Let (x0, C) be a random vector in Rd × Rdc, where x0 represents the data (e.g. images) and C represents the condition/context (e.g. a text prompt or a
+36
+
+
+Figure 10: 300 samples generated by our algorithm for three simulators with a (fixed) expected of 0.80 and ∆t = 0.5.
+class label). Denote by PC the (marginal) distribution of C, which is assumed to be either known or accessible through i.i.d. samples. Denote p0(·|c) := P(x0 ∈ ·|C = c) the conditional distribution of x0. Given C = c, the standard conditional diffusion model aims to generate samples from the (unknown) conditional data distribution p0(·|c). For a conditional diffusion model, the forward process xt (with a slight abuse of notations) at time t is given by (see e.g. Section 2.2 of Chen et al., 2024):
+dxt = −f (t)xtdt + g(t)dBt, x0 ∼ p0(·|c), (59)
+where the noise is added to the data x0, but not to the context c. Denote by pt(·|c) the conditional density function of xt at time t given C = c. Then the reverse-time SDE (zt) satisfies
+dzt = f (T − t)zt + (g(T − t))2∇ log pT −t(zt|c) dt + g(T − t)dWt, z0 ∼ ν, (60)
+where the initialization distribution ν is still chosen to follow the normal distribution in (5), which is independent of C = c. In (60), the quantity ∇ log pT −t(·|c) is referred to as the conditional score function. In text-to-image models, classifier guidance (Dhariwal and Nichol, 2021) or classifierfree guidance methods (Ho and Salimans, 2022) are often used to estimate such conditional score functions. To adapt standard conditional diffusion models to reward maximization, we consider the following problem:
+max
+a=(at:0≤t≤T )
+β · E[h(ya
+T , C)] − E
+ZT
+0
+(g(T − t))2 · |∇ log pT −t(ya
+t |C) − at|2dt (61)
+where
+dya
+t = f (T − t)ya
+t + (g(T − t))2at dt + g(T − t)dWt, y0 ∼ ν, (62)
+and the expectation is taken with respect to the randomness in (yta) and C. In contrast to the unconditional diffusion model, here the reward function h now depends also on the condition C. Moreover, the state at time t can be viewed as (t, yt, C), and hence an optimal action process will also depend on the condition C. Define the running reward for this problem as follows:
+r(t, y, c, a) := −(g(T − t))2 · |∇ log pT −t(y|c) − a|2. (63)
+37
+
+
+The exploratory formulation can be defined similarly as in Section 3.2. We let π : (t, y, c) → π(·|t, y, c) ∈ P(Rd) be a given stochastic feedback policy, which now depends also on the condition c. The exploratory value function is defined by
+J(t, y, c, π)
+=Et,y,c
+ZT
+t
+Z
+Rd
+r(s, y ̃π
+s , c, a) − θ log π(a|s, y ̃π
+s , c) π(a|s, y ̃π
+s , c)dads + βh(y ̃π
+T , c) ,
+where {y ̃sπ : 0 ≤ s ≤ T } is the exploratory state process satisfying the SDE (14), and Et,y,c denotes
+the expectation conditioned on (t, ytπ, C) = (t, y, c). We aim to solve the following optimization problem:
+mπax
+ZZ
+J(0, y, c, π)dν(y)dPC(c).
+This problem can be solved similarly as in the unconditional setting. The running reward signal can be obtained in a similar manner as in the unconditional diffusion model discussed earlier. Specifically, given condition C = c, we have
+∇x log pt(x|c) = ∇xpt(x|c)
+pt(x|c) = Ex0∼p0(·|c)[∇xpt|0(x|x0)]
+Ex0∼p0(·|c)[pt|0(x|x0)]
+=
+Ex0∼p0(·|c) pt|0(x|x0) · −(x−e− R0t f(s)dsx0)
+Rt
+0 e−2 Rst f (v)dv (g(s))2ds
+Ex0∼p0(·|c)[pt|0(x|x0)]
+=1
+Rt
+0 e−2 R t
+s f(v)dv(g(s))2ds
+· −x + Ex0∼p0(·|c) pt|0(x|x0) · x0
+Ex0∼p0(·|c)[pt|0(x|x0)] · e− R t
+0 f (s)ds
+!
+.
+Therefore, given m i.i.d. samples (xi0) from the conditional data distribution p0(·|c), a simple ratio estimator for the true score ∇x log pt(x|c) at given t and x is given by
+\
+∇x log pt(x|c) = 1
+Rt
+0 e−2 R t
+s f(v)dv(g(s))2ds
+· −x +
+Pm
+i=1 pt|0(x|xi0) · xi0
+max{Pm
+i=1[pt|0(x|xi0)], mε} · e− R t
+0 f (s)ds
+!
+,
+where ε > 0 is some prespecified small value. It follow that we can obtain a noisy sample of the instantaneous reward (63) at time t given by
+rˆt = −g2(T − t) · | \
+∇ log pT −t(yt|c) − at|2. (64)
+From the problem (61), the Hamiltonian becomes
+H(t, y, c, a, p, q)
+= −(g(T − t))2|∇ log pT −t(y|c) − a|2 + [f (T − t)y + (g(T − t))2a] ◦ p + 1
+2 (g(T − t))2 ◦ q.
+This is still a quadratic function of a, and hence the optimal stochastic policy is still Gaussian as in Proposition 1. Hence, given the condition c, we can consider Gaussian policies in the RL algorithm design:
+πψ(·|t, y, c) ∼ N μψ(t, y, c), θ
+2g2(T − t) · Id for all (t, y, c). (65)
+38
+
+
+We also use qψ as the function approximator for the optimal q-function which is given below:
+qψ(t, y, c, a) = −g2(T − t) · |a − μψ(t, y, c)|2 − θd
+2 log πθ
+g2(T − t) . (66)
+Algorithm 2 summarizes the resulting algorithm for reward maximization in the conditional diffusion model.
+10 Conclusions
+In this paper, we provide a continuous-time RL framework for adapting score-based diffusion models to generate samples that maximize some reward function, without requiring the availability of a pretrained score function or attempting to learn the score function. The key idea is that of modelfree and data-driven: optimization is based on a stream of (possibly noisy) score signals, instead of on a trained score model obtained from score matching. Our framework is general and applicable to both SDE and probability flow ODE based implementations of diffusion models. It also can be adapted readily to cover both pure score matching and fine-tuning pretrained models as special cases. Numerically, the resulting RL algorithms are shown to perform well on both low-dimensional synthetic data sets and high-dimensional CIFAR-10 image datasets. Our approach is conceptually different from the hitherto mainstream method of pretraining score functions followed by finetuning, offering an overarching way of accomplishing generate AI tasks via diffusion models. There are a couple of notable limitations of the paper that beg for further investigations. As discussed in Section 8, while q-Learning does not need to learn the score function which is the most expensive part in diffusion models, its actor–critic structure requires substantial training time to achieve convergence at least for image generations. A promising future research direction lies in accelerating the training process, particularly when dealing with complex, high-dimensional datasets and diverse reward functions. On the other hand, the convergence analysis of the qLearning algorithm in Section 6.2 is very preliminary, with the result relying on certain assumptions, including the existence of Lyapunov functions, that are hard to verify. A specific interesting question is to identify structural properties of neural network approximations for actor/critic and of data distributions that would enable the validation of these assumptions. In general, convergence and regret analysis in continuous-time RL for diffusion processes is an uncharted territory where most exciting research awaits.
+39
+
+
+Algorithm 2 q-Learning Algorithm (SDE-based conditional generation)
+Inputs: condition/context distribution PC, horizon T , time step ∆t, number of episodes N , number of mesh grids K = T /∆t, initial learning rates αΘ, αψ and a learning rate schedule function l(·) (a function of the number of episodes), functional forms of parameterized value function JΘ(·, ·, ·) and μψ(·, ·, ·), temperature parameter θ, functions f, g in (1), and ε in (25). Required program: environment simulator (y′, rˆ) = Environment∆t(t, y, a) that takes current time–state pair (t, y) and action a as inputs and generates state y′ (by a numerical solver of SDE (62)) at time t + ∆t and sample instantaneous reward rˆ (see (64)) at time t as outputs. Policy πψ(·|t, y, c) in (65), and q-function qψ(t, y, c, a) in (66). Learning procedure:
+Initialize Θ, ψ. for episode j = 1 to N do Initialize k = 0. Sample c ∼ PC. Sample initial state y0 ∼ ν and store ytk ← y0. while k < K do
+Generate action atk ∼ πψ(·|tk, ytk , c). Apply atk to environment simulator (y, rˆ) = Environment∆t(tk, ytk , atk ), and observe new state y and reward rˆ as outputs. Store ytk+1 ← y and rtk ← rˆ. Update k ← k + 1. end while
+For every i = 0, 1, · · · , K − 1, compute and store test functions
+ξti = ∂J Θ
+∂Θ (ti, yti , c), ζti = ∂qψ
+∂ψ (ti, yti , c, ati ).
+Compute
+∆Θ =
+K −1
+X
+i=0
+ξti J Θ(ti+1, yti+1 , c) − J Θ(ti, yti , c) + rti ∆t − qψ(ti, yti , c, ati )∆t ,
+∆ψ =
+K −1
+X
+i=0
+ζti J Θ(ti+1, yti+1 , c) − J Θ(ti, yti , c) + rti ∆t − qψ(ti, yti , c, ati )∆t .
+Update Θ and ψ by
+Θ ← Θ + l(j)αΘ∆Θ,
+ψ ← ψ + l(j)αψ∆ψ.
+end for
+40
+
+
+References
+Anderson, B. D. O. (1982). Reverse-time diffusion equation models. Stochastic Processes and their Applications 12 (3), 313–326.
+Bengio, Y., S. Lahlou, T. Deleu, E. J. Hu, M. Tiwari, and E. Bengio (2023). Gflownet foundations. Journal of Machine Learning Research 24 (210), 1–55.
+Benveniste, A., M. Me ́tivier, and P. Priouret (2012). Adaptive algorithms and stochastic approximations, Volume 22. Springer Science & Business Media. Bhandari, J., D. Russo, and R. Singal (2021). A finite time analysis of temporal difference learning with linear function approximation. Operations Research 69 (3), 950–973. Black, K., M. Janner, Y. Du, I. Kostrikov, and S. Levine (2024). Training diffusion models with reinforcement learning. In The Twelfth International Conference on Learning Representations. Cattiaux, P., G. Conforti, I. Gentil, and C. L ́eonard (2023). Time reversal of diffusion processes under a finite entropy condition. Annales de l’Institut Henri Poincar ́e (B) Probabilit ́es et Statistiques 59 (4), 1844–1881. Chen, M., S. Mei, J. Fan, and M. Wang (2024). An overview of diffusion models: Applications, guided generation, statistical rates and optimization. arXiv preprint arXiv:2404.07771 . Clark, K., P. Vicol, K. Swersky, and D. J. Fleet (2024). Directly fine-tuning diffusion models on differentiable rewards. In The Twelfth International Conference on Learning Representations. Dhariwal, P. and A. Nichol (2021). Diffusion models beat GANs on image synthesis. Advances in Neural Information Processing Systems 34, 8780–8794.
+Fan, Y., O. Watkins, Y. Du, H. Liu, M. Ryu, C. Boutilier, P. Abbeel, M. Ghavamzadeh, K. Lee, and K. Lee (2023). Reinforcement learning for fine-tuning text-to-image diffusion models. Advances in Neural Information Processing Systems 36.
+Haarnoja, T., A. Zhou, P. Abbeel, and S. Levine (2018). Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor. In International Conference on Machine Learning, pp. 1861–1870. PMLR. Haussmann, U. G. and E. Pardoux (1986). Time reversal of diffusions. The Annals of Probability, 1188–1205. Heusel, M., H. Ramsauer, T. Unterthiner, B. Nessler, and S. Hochreiter (2017). GANs trained by a two time-scale update rule converge to a local Nash equilibrium. In Advances in Neural Information Processing Systems, Volume 30.
+Ho, J., A. Jain, and P. Abbeel (2020). Denoising diffusion probabilistic models. In Advances in Neural Information Processing Systems, Volume 33.
+Ho, J. and T. Salimans (2022). Classifier-free diffusion guidance. arXiv preprint arXiv:2207.12598 . Hoogeboom, E., V. G. Satorras, C. Vignac, and M. Welling (2022). Equivariant diffusion for molecule generation in 3d. In International conference on machine learning, pp. 8867–8887. PMLR. Hyv ̈arinen, A. and P. Dayan (2005). Estimation of non-normalized statistical models by score matching. Journal of Machine Learning Research 6 (4), 695–708.
+Jia, Y., D. Ouyang, and Y. Zhang (2025). Accuracy of discretely sampled stochastic policies in continuous-time reinforcement learning. arXiv preprint arXiv:2503.09981 . Jia, Y. and X. Y. Zhou (2022a). Policy evaluation and temporal-difference learning in continuous time and space: A martingale approach. Journal of Machine Learning Research 23, (154):1–55. Jia, Y. and X. Y. Zhou (2022b). Policy gradient and actor-critic learning in continuous time and
+41
+
+
+space: Theory and algorithms. Journal of Machine Learning Research 23, (275):1–50. Jia, Y. and X. Y. Zhou (2023). q-learning in continuous time. Journal of Machine Learning Research 24 (161), 1–61.
+Jia, Y. and X. Y. Zhou (2025). Erratum to “q-learning in continuous time”. Available at https: // www. columbia. edu/ ~ xz2574/ download/ err. pdf .
+Karras, T., M. Aittala, T. Aila, and S. Laine (2022). Elucidating the design space of diffusion-based generative models. In Advances in Neural Information Processing Systems, Volume 35.
+Kingma, D. P. and J. Ba (2015). Adam: A method for stochastic optimization. In 3rd International Conference on Learning Representations.
+Krizhevsky, A. (2009). Learning multiple layers of features from tiny images. Kushner, H. and G. Yin (2003). Stochastic approximation and recursive algorithms. In Stochastic Modelling and Applied Probability, Volume 35. Springer-Verlag NY.
+Lahlou, S., T. Deleu, P. Lemos, D. Zhang, A. Volokhova, A. Hern ́andez-Garcıa, L. N. Ezzine, Y. Bengio, and N. Malkin (2023). A theory of continuous generative flow networks. In International Conference on Machine Learning, pp. 18269–18300. PMLR.
+Lai, C.-H., Y. Takida, N. Murata, T. Uesaka, Y. Mitsufuji, and S. Ermon (2023). FP-Diffusion: Improving score-based diffusion models by enforcing the underlying score fokker-planck equation. In International Conference on Machine Learning, pp. 18365–18398. PMLR.
+Lee, H., J. Lu, and Y. Tan (2022). Convergence for score-based generative modeling with polynomial complexity. In Advances in Neural Information Processing Systems, Volume 35.
+Lee, K., H. Liu, M. Ryu, O. Watkins, Y. Du, C. Boutilier, P. Abbeel, M. Ghavamzadeh, and S. S. Gu (2023). Aligning text-to-image models using human feedback. arXiv preprint arXiv:2302.12192 . Lu, C., Y. Zhou, F. Bao, J. Chen, C. Li, and J. Zhu (2022). DPM-solver: A fast ODE solver for diffusion probabilistic model sampling in around 10 steps. In Advances in Neural Information Processing Systems, Volume 35, pp. 5775–5787. Ramesh, A., P. Dhariwal, A. Nichol, C. Chu, and M. Chen (2022). Hierarchical text-conditional image generation with CLIP latents. arXiv preprint arXiv:2204.06125 . Rombach, R., A. Blattmann, D. Lorenz, P. Esser, and B. Ommer (2022). High-resolution image synthesis with latent diffusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 10684–10695.
+Ronneberger, O., P. Fischer, and T. Brox (2015). U-net: Convolutional networks for biomedical image segmentation. In Medical image computing and computer-assisted intervention–MICCAI 2015: 18th international conference, Munich, Germany, October 5-9, 2015, proceedings, part III 18, pp. 234–241. Springer. Schulman, J., P. Moritz, S. Levine, M. Jordan, and P. Abbeel (2015). High-dimensional continuous control using generalized advantage estimation. arXiv preprint arXiv:1506.02438 . Sohl-Dickstein, J., E. Weiss, N. Maheswaranathan, and S. Ganguli (2015a). Deep unsupervised learning using nonequilibrium thermodynamics. In International Conference on Machine Learning, Volume 37, pp. 2256–2265. PMLR. Sohl-Dickstein, J., E. Weiss, N. Maheswaranathan, and S. Ganguli (2015b). Deep unsupervised learning using nonequilibrium thermodynamics. In International conference on machine learning, pp. 2256–2265. PMLR. Song, J., C. Meng, and S. Ermon (2020). Denoising diffusion implicit models. In International Conference on Learning Representations.
+Song, Y., C. Durkan, I. Murray, and S. Ermon (2021). Maximum likelihood training of score-based
+42
+
+
+diffusion models. Advances in Neural Information Processing Systems 34, 1415–1428.
+Song, Y. and S. Ermon (2019). Generative modeling by estimating gradients of the data distribution. In Advances in Neural Information Processing Systems, Volume 32.
+Song, Y., S. Garg, J. Shi, and S. Ermon (2020). Sliced score matching: A scalable approach to density and score estimation. In Uncertainty in Artificial Intelligence, pp. 574–584. PMLR. Song, Y., J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon, and B. Poole (2021). Score-based generative modeling through stochastic differential equations. In International Conference on Learning Representations.
+Tang, W. (2024). Fine-tuning of diffusion models via stochastic control: entropy regularization and beyond. arXiv preprint arXiv:2403.06279 .
+Tang, W., Y. P. Zhang, and X. Y. Zhou (2022). Exploratory hjb equations and their convergence. SIAM Journal on Control and Optimization 60 (6), 3191–3216.
+Uehara, M., Y. Zhao, K. Black, E. Hajiramezanali, G. Scalia, N. L. Diamant, A. M. Tseng, T. Biancalani, and S. Levine (2024). Fine-tuning of continuous-time diffusion models as entropyregularized control. arXiv preprint arXiv:2402.15194 .
+Vincent, P. (2011). A connection between score matching and denoising autoencoders. Neural Computation 23 (7), 1661–1674.
+Wang, H., T. Zariphopoulou, and X. Y. Zhou (2020). Reinforcement learning in continuous time and space: A stochastic control approach. Journal of Machine Learning Research 21, (198):1–34. Wang, Q., S. R. Kulkarni, and S. Verdu ́ (2009). Divergence estimation for multidimensional densities via k-nearest-neighbor distances. IEEE Transactions on Information Theory 55 (5), 2392–2405. Wu, L., C. Gong, X. Liu, M. Ye, and Q. Liu (2022). Diffusion-based molecule generation with informative prior bridges. Advances in Neural Information Processing Systems 35, 36533–36545. Yang, L., Z. Zhang, Y. Song, S. Hong, R. Xu, Y. Zhao, Y. Shao, W. Zhang, B. Cui, and M.-H. Yang (2023). Diffusion models: A comprehensive survey of methods and applications. ACM Copmuting Surveys 56 (4), 1–39. Yong, J. and X. Y. Zhou (2012). Stochastic controls: Hamiltonian systems and HJB equations, Volume 43. Springer Science & Business Media. Zhang, D., R. T. Chen, N. Malkin, and Y. Bengio (2022). Unifying generative models with gflownets and beyond. arXiv preprint arXiv:2209.02606 .
+Zhang, D., Y. Zhang, J. Gu, R. Zhang, J. Susskind, N. Jaitly, and S. Zhai (2024). Improving GFlowNets for text-to-image diffusion alignment. arXiv preprint arXiv:2406.00633 . Zhang, Q. and Y. Chen (2023). Fast sampling of diffusion models with exponential integrator. In International Conference on Learning Representations.
+Zhao, H., C. Haoxian, J. Zhang, D. Yao, and W. Tang (2024). Scores as actions: a framework of fine-tuning diffusion models by continuous-time reinforcement learning. arXiv preprint arXiv:2409.08400 .
+43

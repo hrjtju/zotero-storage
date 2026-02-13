@@ -1,0 +1,1670 @@
+MIT Class 6.S184: Generative AI With Stochastic Differential Equations, 2025
+An Introduction to Flow Matching and Diffusion Models
+Peter Holderrieth and Ezra Erives
+Website: https://diffusion.csail.mit.edu/
+1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2 1.1 Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 2 1.2 Course Structure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.3 Generative Modeling As Sampling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+2 Flow and Diffusion Models . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6 2.1 Flow Models . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6 2.2 Diffusion Models . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+3 Constructing the Training Target . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.1 Conditional and Marginal Probability Path . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+3.2 Conditional and Marginal Vector Fields . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+3.3 Conditional and Marginal Score Functions . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+4 Training the Generative Model . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 4.1 Flow Matching . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24 4.2 Score Matching . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+4.3 A Guide to the Diffusion Model Literature . . . . . . . . . . . . . . . . . . . . . . . . . . 32
+5 Building an Image Generator . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36 5.1 Guidance . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36 5.2 Neural network architectures . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 43
+5.3 A Survey of Large-Scale Image and Video Models . . . . . . . . . . . . . . . . . . . . . . 46
+6 Acknowledgements . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 49
+7 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 49
+A A Reminder on Probability Theory . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 52
+A.1 Random vectors . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 52
+A.2 Conditional densities and expectations . . . . . . . . . . . . . . . . . . . . . . . . . . . . 52
+B A Proof of the Fokker-Planck equation . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
+1
+arXiv:2506.02070v2 [cs.LG] 12 Jul 2025
+
+
+1 Introduction
+Creating noise from data is easy; creating data
+from noise is generative modeling.
+Song et al. [30]
+1.1 Overview
+In recent years, we all have witnessed a tremendous revolution in artificial intelligence (AI). Image generators like Stable Diffusion 3 can generate photorealistic and artistic images across a diverse range of styles, video models like Meta’s Movie Gen Video can generate highly realistic movie clips, and large language models like ChatGPT can generate seemingly human-level responses to text prompts. At the heart of this revolution lies a new ability of AI systems: the ability to generate objects. While previous generations of AI systems were mainly used for prediction, these new AI system are creative: they dream or come up with new objects based on user-specified input. Such generative AI systems are at the core of this recent AI revolution. The goal of this class is to teach you two of the most widely used generative AI algorithms: denoising diffusion models [32] and flow matching [14, 16, 1, 15]. These models are the backbone of the best image, audio, and video generation models (e.g., Stable Diffusion 3 and Movie Gen Video), and have most recently became the state-of-theart in scientific applications such as protein structures (e.g., AlphaFold3 is a diffusion model). Without a doubt, understanding these models is truly an extremely useful skill to have. All of these generative models generate objects by iteratively converting noise into data. This evolution from
+noise to data is facilitated by the simulation of ordinary or stochastic differential equations (ODEs/SDEs). Flow
+matching and denoising diffusion models are a family of techniques that allow us to construct, train, and simulate, such ODEs/SDEs at large scale with deep neural networks. While these models are rather simple to implement, the technical nature of SDEs can make these models difficult to understand. In this course, our goal is to provide a self-contained introduction to the necessary mathematical toolbox regarding differential equations to enable you to systematically understand these models. Beyond being widely applicable, we believe that the theory behind flow and diffusion models is elegant in its own right. Therefore, most importantly, we hope that this course will be a lot of fun to you.
+Remark 1 (Additional Resources)
+While these lecture notes are self-contained, there are two additional resources that we encourage you to use:
+1. Lecture recordings: These guide you through each section in a lecture format.
+2. Labs: These guide you in implementing your own diffusion model from scratch. We highly recommend that you “get your hands dirty” and code.
+You can find these on our course website: https://diffusion.csail.mit.edu/.
+2
+
+
+1.2 Course Structure
+1.2 Course Structure
+We give a brief overview over of this document.
+• Section 1, Generative Modeling as Sampling: We formalize what it means to “generate” an image, video, protein, etc. We will translate the problem of e.g., “how to generate an image of a dog?” into the more precise problem of sampling from a probability distribution.
+• Section 2, Flow and Diffusion Models: Next, we explain the machinery of generation. As you can guess by the name of this class, this machinery consists of simulating ordinary and stochastic differential equations. We provide an introduction to differential equations and explain how to construct them with neural networks.
+• Section 3, Constructing a Training Target: To train our generative model, we must first pin down precisely what it is that our model is supposed to approximate. In other words, what’s the ground truth? We will introduce the celebrated Fokker-Planck equation, which will allow us to formalize the notion of ground truth.
+• Section 4, Training: This section formulates a training objective, allowing us to approximate the training target, or ground truth, of the previous section. With this, we are ready to provide a minimal implementation of flow matching and denoising diffusion models.
+• Section 5, Conditional Image Generation: We learn how to build a conditional image generator. To do so, we formulate how to condition our samples on a prompt (e.g. “an image of a cat”). We then discuss common neural network architectures and survey state-of-the-art models for both image and video generation.
+Required background. Due to the technical nature of this subject, we recommend some base level of mathematical maturity, and in particular some familiarity with probability theory. For this reason, we included a brief reminder section on probability theory in appendix A. Don’t worry if some of the concepts there are unfamiliar to you.
+1.3 Generative Modeling As Sampling
+Let’s begin by thinking about various data types, or modalities, that we might encounter, and how we will go about representing them numerically:
+1. Image: Consider images with H × W pixels where H describes the height and W the width of the image, each with three color channels (RGB). For every pixel and every color channel, we are given an intensity value in R. Therefore, an image can be represented by an element z ∈ RH×W ×3.
+2. Video: A video is simply a series of images in time. If we have T time points or frames, a video would therefore be represented by an element z ∈ RT ×H×W ×3.
+3. Molecular structure: A naive way would be to represent the structure of a molecule by a matrix z = (z1, . . . , zN ) ∈ R3×N where N is the number of atoms in the molecule and each zi ∈ R3 describes the location of that atom. Of course, there are other, more sophisticated ways of representing such a molecule.
+In all of the above examples, the object that we want to generate can be mathematically represented as a vector (potentially after flattening). Therefore, throughout this document, we will have:
+3
+
+
+1.3 Generative Modeling As Sampling
+Key Idea 1 (Objects as Vectors)
+We identify the objects being generated as vectors z ∈ Rd.
+A notable exception to the above is text data, which is typically modeled as a discrete object via autoregressive language models (such as ChatGPT ). While flow and diffusion models for discrete data have been developed, this course focuses exclusively on applications to continuous data.
+Generation as Sampling. Let us define what it means to “generate” something. For example, let’s say we want to generate an image of a dog. Naturally, there are many possible images of dogs that we would be happy with. In particular, there is no one single “best” image of a dog. Rather, there is a spectrum of images that fit better or worse. In machine learning, it is common to think of this diversity of possible images as a probability distribution. We call it the data distribution and denote it as pdata. In the example of dog images, this distribution would therefore give higher likelihood to images that look more like a dog. Therefore, how "good" an image/video/molecule fits a rather subjective statement - is replaced by how "likely" it is under the data distribution pdata. With this, we can mathematically express the task of generation as sampling from the (unknown) distribution pdata:
+Key Idea 2 (Generation as Sampling)
+Generating an object z is modeled as sampling from the data distribution z ∼ pdata.
+A generative model is a machine learning model that allows us to generate samples from pdata. In machine learning, we require data to train models. In generative modeling, we usually assume access to a finite number of examples sampled independently from pdata, which together serve as a proxy for the true distribution.
+Key Idea 3 (Dataset)
+A dataset consists of a finite number of samples z1, . . . , zN ∼ pdata.
+For images, we might construct a dataset by compiling publicly available images from the internet. For videos, we might similarly use YouTube as a database. For protein structures, we can use experimental data bases from sources such as the Protein Data Bank (PDB) that collected scientific measurements over decades. As the size of our dataset grows very large, it becomes an increasingly better representation of the underlying distribution pdata.
+Conditional Generation. In many cases, we want to generate an object conditioned on some data y. For example, we might want to generate an image conditioned on y =“a dog running down a hill covered with snow with mountains in the background”. We can rephrase this as sampling from a conditional distribution:
+Key Idea 4 (Conditional Generation)
+Conditional generation involves sampling from z ∼ pdata(·|y), where y is a conditioning variable.
+We call pdata(·|y) the conditional data distribution. The conditional generative modeling task typically involves learning to condition on an arbitrary, rather than fixed, choice of y. Using our previous example, we might
+4
+
+
+1.3 Generative Modeling As Sampling
+alternatively want to condition on a different text prompt, such as y =“a photorealistic image of a cat blowing out birthday candles”. We therefore seek a single model which may be conditioned on any such choice of y. It turns out that techniques for unconditional generation are readily generalized to the conditional case. Therefore, for the first 3 sections, we will focus almost exclusively on the unconditional case (keeping in mind that conditional generation is what we’re building towards).
+From Noise to Data. So far, we have discussed the what of generative modeling: generating samples from pdata. Here, we will briefly discuss the how. For this, we assume that we have access to some initial distribution pinit that we can easily sample from, such as the Gaussian pinit = N (0, Id). The goal of generative modeling is then to transform samples from x ∼ pinit into samples from pdata. We note that pinit does not have to be so simple as a Gaussian. As we shall see, there are interesting use cases for leveraging this flexibility. Despite this, in the majority of applications we take it to be a simple Gaussian and it is important to keep that in mind.
+Summary We summarize our discussion so far as follows.
+Summary 2 (Generation as Sampling)
+We summarize the findings of this section:
+1. In this class, we consider the task of generating objects that are represented as vectors z ∈ Rd such as images, videos, or molecular structures.
+2. Generation is the task of generating samples from a probability distribution pdata having access to a dataset of samples z1, . . . , zN ∼ pdata during training.
+3. Conditional generation assumes that we condition the distribution on a label y and we want to sample from pdata(·|y) having access to data set of pairs (z1, y) . . . , (zN , y) during training.
+4. Our goal is to train a generative model to transform samples from a simple distribution pinit (e.g. a Gaussian) into samples from pdata.
+5
+
+
+2 Flow and Diffusion Models
+In the previous section, we formalized generative modeling as sampling from a data distribution pdata. Further, we saw that sampling could be achieved via the transformation of samples from a simple distribution pinit, such as the Gaussian N (0, Id), to samples from the target distribution pdata. In this section, we describe how the desired transformation can be obtained as the simulation of a suitably constructed differential equation. For example, flow matching and diffusion models involve simulating ordinary differential equations (ODEs) and stochastic differential equations (SDEs), respectively. The goal of this section is therefore to define and construct these generative models as they will be used throughout the remainder of the notes. Specifically, we first define ODEs and SDEs, and discuss their simulation. Second, we describe how to parameterize an ODE/SDE using a deep neural network. This leads to the definition of a flow and diffusion model and the fundamental algorithms to sample from such models. In later sections, we then explore how to train these models.
+2.1 Flow Models
+We start by defining ordinary differential equations (ODEs). A solution to an ODE is defined by a trajectory, i.e. a function of the form
+X : [0, 1] → Rd, t 7→ Xt,
+that maps from time t to some location in space Rd. Every ODE is defined by a vector field u, i.e. a function of the form
+u : Rd × [0, 1] → Rd, (x, t) 7→ ut(x),
+i.e. for every time t and location x we get a vector ut(x) ∈ Rd specifying a velocity in space (see fig. 1). An ODE imposes a condition on a trajectory: we want a trajectory X that “follows along the lines” of the vector field ut, starting at the point x0. We may formalize such a trajectory as being the solution to the equation:
+d
+dt Xt = ut(Xt) ▶ ODE (1a)
+X0 = x0 ▶ initial conditions (1b)
+Equation (1a) requires that the derivative of Xt is specified by the direction given by ut. Equation (1b) requires that we start at x0 at time t = 0. We may now ask: if we start at X0 = x0 at t = 0, where are we at time t (what is Xt)? This question is answered by a function called the flow, which is a solution to the ODE
+ψ : Rd × [0, 1] 7→Rd, (x0, t) 7→ ψt(x0) (2a)
+d
+dt ψt(x0) = ut(ψt(x0)) ▶ flow ODE (2b)
+ψ0(x0) = x0 ▶ flow initial conditions (2c)
+For a given initial condition X0 = x0, a trajectory of the ODE is recovered via Xt = ψt(X0). Therefore, vector fields, ODEs, and flows are, intuitively, three descriptions of the same object: vector fields define ODEs whose
+6
+
+
+2.1 Flow Models
+Figure 1: A flow ψt : Rd → Rd (red square grid) is defined by a velocity field ut : Rd → Rd (visualized with blue arrows) that prescribes its instantaneous movements at all locations (here, d = 2). We show three different times t. As one can see, a flow is a diffeomorphism that "warps" space. Figure from [15].
+solutions are flows. As with every equation, we should ask ourselves about an ODE: Does a solution exist and if so, is it unique? A fundamental result in mathematics is "yes!" to both, as long we impose weak assumptions on
+ut:
+Theorem 3 (Flow existence and uniqueness)
+If u : Rd ×[0, 1] → Rd is continuously differentiable with a bounded derivative, then the ODE in (2) has a unique solution given by a flow ψt. In this case, ψt is a diffeomorphism for all t, i.e. ψt is continuously differentiable with a continuously differentiable inverse ψ−1
+t.
+Note that the assumptions required for the existence and uniqueness of a flow are almost always fulfilled in machine learning, as we use neural networks to parameterize ut(x) and they always have bounded derivatives. Therefore, theorem 3 should not be a concern for you but rather good news: flows exist and are unique solutions to ODEs in our cases of interest. A proof can be found in [20, 4].
+Example 4 (Linear Vector Fields)
+Let us consider a simple example of a vector field ut(x) that is a simple linear function in x, i.e. ut(x) = −θx for θ > 0. Then the function
+ψt(x0) = exp (−θt) x0 (3)
+defines a flow ψ solving the ODE in eq. (2). You can check this yourself by checking that ψ0(x0) = x0 and computing
+d
+dt ψt(x0) (=3) d
+dt (exp (−θt) x0) (i=) −θ exp (−θt) x0
+(3=) −θψt(x0) = ut(ψt(x0)),
+where in (i) we used the chain rule. In fig. 3, we visualize a flow of this form converging to 0 exponentially.
+Simulating an ODE. In general, it is not possible to compute the flow ψt explicitly if ut is not as simple as a linear function. In these cases, one uses numerical methods to simulate ODEs. Fortunately, this is a classical and
+7
+
+
+2.1 Flow Models
+well researched topic in numerical analysis, and a myriad of powerful methods exist [11]. One of the simplest and most intuitive methods is the Euler method. In the Euler method, we initialize with X0 = x0 and update via
+Xt+h = Xt + hut(Xt) (t = 0, h, 2h, 3h, . . . , 1 − h) (4)
+where h = n−1 > 0 is a step size hyperparameter with n ∈ N. For this class, the Euler method will be good enough. To give you a taste of a more complex method, let us consider Heun’s method defined via the update rule
+X′
+t+h = Xt + hut(Xt) ▶ initial guess of new state
+Xt+h = Xt + h
+2 (ut(Xt) + ut+h(X′
+t+h)) ▶ update with average u at current and guessed state
+Intuitively, the Heun’s method is as follows: it takes a first guess X′
+t+h of what the next step could be but corrects the direction initially taken via an updated guess.
+Flow models. We can now construct a generative model via an ODE. Remember that our goal was to convert a simple distribution pinit into a complex distribution pdata. The simulation of an ODE is thus a natural choice for this transformation. A flow model is described by the ODE
+X0 ∼ pinit ▶ random initialization
+d
+dt Xt = uθ
+t (Xt) ▶ ODE
+where the vector field utθ is a neural network utθ with parameters θ. For now, we will speak of utθ as being a generic neural network; i.e. a continuous function utθ : Rd × [0, 1] → Rd with parameters θ. Later, we will discuss particular choices of neural network architectures. Our goal is to make the endpoint X1 of the trajectory have distribution
+pdata, i.e.
+X1 ∼ pdata ⇔ ψθ
+1 (X0) ∼ pdata
+where ψtθ describes the flow induced by utθ. Note however: although it is called flow model, the neural network parameterizes the vector field, not the flow. In order to compute the flow, we need to simulate the ODE. In algorithm 1, we summarize the procedure how to sample from a flow model.
+Algorithm 1 Sampling from a Flow Model with Euler method
+Require: Neural network vector field utθ, number of steps n 1: Set t = 0 2: Set step size h = 1
+n
+3: Draw a sample X0 ∼ pinit 4: for i = 1, . . . , n − 1 do 5: Xt+h = Xt + hutθ(Xt) 6: Update t ← t + h 7: end for 8: return X1
+8
+
+
+2.2 Diffusion Models
+2.2 Diffusion Models
+Stochastic differential equations (SDEs) extend the deterministic trajectories from ODEs with stochastic trajectories. A stochastic trajectory is commonly called a stochastic process (Xt)0≤t≤1 and is given by
+Xt is a random variable for every 0 ≤ t ≤ 1
+X : [0, 1] → Rd, t 7→ Xt is a random trajectory for every draw of X
+In particular, when we simulate the same stochastic process twice, we might get different outcomes because the dynamics are designed to be random.
+Brownian Motion. SDEs are constructed via a Brownian motion - a fundamental stochastic process that came out of the study physical diffusion processes. You can think of a Brownian motion as a continuous random walk.
+Figure 2: Sample trajectories of a Brownian motion Wt in dimension d = 1 simulated using eq. (5).
+Let us define it: A Brownian motion W = (Wt)0≤t≤1 is a stochastic process such that W0 = 0, the trajectories t 7→ Wt are continuous, and the following two conditions hold:
+1. Normal increments: Wt−Ws ∼ N (0, (t−s)Id) for all 0 ≤ s <
+t, i.e. increments have a Gaussian distribution with variance increasing linearly in time (Id is the identity matrix).
+2. Independent increments: For any 0 ≤ t0 < t1 < · · · < tn =
+1, the increments Wt1 −Wt0 , . . . , Wtn −Wtn−1 are independent random variables.
+Brownian motion is also called a Wiener process, which is why we denote it with a "W ".1 We can easily simulate a Brownian motion approximately with step size h > 0 by setting W0 = 0 and updating
+Wt+h =Wt +
+√
+hεt, εt ∼ N (0, Id) (t = 0, h, 2h, . . . , 1 − h) (5)
+In fig. 2, we plot a few example trajectories of a Brownian motion. Brownian motion is as central to the study of stochastic processes as the Gaussian distribution is to the study of probability distributions. From finance to statistical physics to epidemiology, the study of Brownian motion has far reaching applications beyond machine learning. In finance, for example, Brownian motion is used to model the price of complex financial instruments. Also just as a mathematical construction, Brownian motion is fascinating: For example, while the paths of a Brownian motion are continuous (so that you could draw it without ever lifting a pen), they are infinitely long (so that you would never stop drawing).
+From ODEs to SDEs. The idea of an SDE is to extend the deterministic dynamics of an ODE by adding stochastic dynamics driven by a Brownian motion. Because everything is stochastic, we may no longer take the derivative as
+1Nobert Wiener was a famous mathematician who taught at MIT. You can still see his portraits hanging at the MIT math department.
+9
+
+
+2.2 Diffusion Models
+Figure 3: Illustration of Ornstein-Uhlenbeck processes (eq. (8)) in dimension d = 1 for θ = 0.25 and various choices of σ (increasing from left to right). For σ = 0, we recover a flow (smooth, deterministic trajectories) that converges to the origin as t → ∞. For σ > 0 we have random paths which converge towards the Gaussian N (0, σ2
+2θ ) as t → ∞.
+in eq. (1a). Hence, we need to find an equivalent formulation of ODEs that does not use derivatives. For this,
+let us therefore rewrite trajectories (Xt)0≤t≤1 of an ODE as follows:
+d
+dt Xt = ut(Xt) ▶ expression via derivatives
+(⇔i) 1
+h (Xt+h − Xt) = ut(Xt) + Rt(h)
+⇔ Xt+h = Xt + hut(Xt) + hRt(h) ▶ expression via infinitesimal updates
+where Rt(h) describes a negligible function for small h, i.e. such that hli→m0 Rt(h) = 0, and in (i) we simply use the
+definition of derivatives. The derivation above simply restates what we already know: A trajectory (Xt)0≤t≤1 of an ODE takes, at every timestep, a small step in the direction ut(Xt). We may now amend the last equation to make it stochastic: A trajectory (Xt)0≤t≤1 of an SDE takes, at every timestep, a small step in the direction ut(Xt) plus some contribution from a Brownian motion:
+Xt+h = Xt + hut(Xt)
+| {z }
+deterministic
++σt (Wt+h − Wt)
+| {z }
+stochastic
++ hRt(h)
+| {z }
+error term
+(6)
+where σt ≥ 0 describes the diffusion coefficient and Rt(h) describes a stochastic error term such that the standard deviation E[∥Rt(h)∥2]1/2 → 0 goes to zero for h → 0. The above describes a stochastic differential equation
+(SDE). It is common to denote it in the following symbolic notation:
+dXt = ut(Xt)dt + σtdWt ▶ SDE (7a)
+X0 = x0 ▶ initial condition (7b)
+However, always keep in mind that the "dXt"-notation above is a purely informal notation of eq. (6). Unfortunately, SDEs do not have a flow map φt anymore. This is because the value Xt is not fully determined by X0 ∼ pinit anymore as the evolution itself is stochastic. Still, in the same way as for ODEs, we have:
+10
+
+
+2.2 Diffusion Models
+Theorem 5 (SDE Solution Existence and Uniqueness)
+If u : Rd × [0, 1] → Rd is continuously differentiable with a bounded derivative and σt is continuous, then the SDE in (7) has a solution given by the unique stochastic process (Xt)0≤t≤1 satisfying eq. (6).
+If this was a stochastic calculus class, we would spend several lectures proving this theorem and constructing SDEs with full mathematical rigor, i.e. constructing a Brownian motion from first principles and constructing the process Xt via stochastic integration. As we focus on machine learning in this class, we refer to [18] for a more technical treatment. Finally, note that every ODE is also an SDE - simply with a vanishing diffusion coefficient σt = 0.
+Therefore, for the remainder of this class, when we speak about SDEs, we consider ODEs as a special case.
+Example 6 (Ornstein-Uhlenbeck Process)
+Let us consider a constant diffusion coefficient σt = σ ≥ 0 and a constant linear drift ut(x) = −θx for θ > 0, yielding the SDE
+dXt = −θXtdt + σdWt. (8)
+A solution (Xt)0≤t≤1 to the above SDE is known as an Ornstein-Uhlenbeck (OU) process. We visualize it in fig. 3. The vector field −θx pushes the process back to its center 0 (as I always go the inverse direction of where I am), while the diffusion coefficient σ always adds more noise. This process converges towards a Gaussian distribution N (0, σ2) if we simulate it for t → ∞. Note that for σ = 0, we have a flow with linear vector field that we have studied in eq. (3).
+Simulating an SDE. If you struggle with the abstract definition of an SDE so far, then don’t worry about it. A more intuitive way of thinking about SDEs is given by answering the question: How might we simulate an SDE? The simplest such scheme is known as the Euler-Maruyama method, and is essentially to SDEs what the Euler method is to ODEs. Using the Euler-Maruyama method, we initialize X0 = x0 and update iteratively via
+Xt+h = Xt + hut(Xt) +
+√
+hσtεt, εt ∼ N (0, Id) (9)
+where h = n−1 > 0 is a step size hyperparameter for n ∈ N. In other words, to simulate using the Euler-Maruyama
+method, we take a small step in the direction of ut(Xt) as well as add a little bit of Gaussian noise scaled by √hσt. When simulating SDEs in this class (such as in the accompanying labs), we will usually stick to the Euler-Maruyama method.
+Diffusion Models. We can now construct a generative model via an SDE in the same way as we did for ODEs. Remember that our goal was to convert a simple distribution pinit into a complex distribution pdata. Like for ODEs, the simulation of an SDE randomly initialized with X0 ∼ pinit is a natural choice for this transformation. To parameterize this SDE, we can simply parameterize its central ingredient - the vector field ut - a neural network
+11
+
+
+2.2 Diffusion Models
+Algorithm 2 Sampling from a Diffusion Model (Euler-Maruyama method)
+Require: Neural network utθ, number of steps n, diffusion coefficient σt 1: Set t = 0 2: Set step size h = 1
+n
+3: Draw a sample X0 ∼ pinit 4: for i = 1, . . . , n − 1 do
+5: Draw a sample ε ∼ N (0, Id) 6: Xt+h = Xt + hutθ(Xt) + σt
+√hε 7: Update t ← t + h 8: end for 9: return X1
+utθ. A diffusion model is thus given by
+dXt = uθ
+t (Xt)dt + σtdWt ▶ SDE
+X0 ∼ pinit ▶ random initialization
+In algorithm 2, we describe the procedure by which to sample from a diffusion model with the Euler-Maruyama method. We summarize the results of this section as follows.
+Summary 7 (SDE generative model)
+Throughout this document, a diffusion model consists of a neural network utθ with parameters θ that parameterize a vector field and a fixed diffusion coefficient σt:
+Neural network: uθ : Rd × [0, 1] → Rd, (x, t) 7→ uθ
+t (x) with parameters θ
+Fixed: σt : [0, 1] → [0, ∞), t 7→ σt
+To obtain samples from our SDE model (i.e. generate objects), the procedure is as follows:
+Initialization: X0 ∼ pinit ▶ Initialize with simple distribution, e.g. a Gaussian
+Simulation: dXt = uθ
+t (Xt)dt + σtdWt ▶ Simulate SDE from 0 to 1
+Goal: X1 ∼ pdata ▶ Goal is to make X1 have distribution pdata
+A diffusion model with σt = 0 is a flow model.
+12
+
+
+3 Constructing the Training Target
+In the previous section, we constructed flow and diffusion models where we obtain trajectories (Xt)0≤t≤1 by simulating the ODE/SDE
+X0 ∼pinit, dXt = uθ
+t (Xt)dt (Flow model) (10)
+X0 ∼pinit, dXt = uθ
+t (Xt)dt + σtdWt (Diffusion model) (11)
+where utθ is a neural network and σt is a fixed diffusion coefficient. Naturally, if we just randomly initialize the parameters θ of our neural network utθ, simulating the ODE/SDE will just produce nonsense. As always in machine learning, we need to train the neural network. We accomplish this by minimizing a loss function L(θ), such as the
+mean-squared error
+L(θ) = ∥uθ
+t (x) − utarget
+t (x)
+| {z }
+training target
+∥2,
+where utarget
+t (x) is the training target that we would like to approximate. To derive a training algorithm, we proceed in two steps: In this chapter, our goal is to find an equation for the training target utarget
+t . In the next chapter, we will describe a training algorithm that approximates the training target utarget
+t . Naturally, like the neural network utθ, the training target should itself be a vector field utarget
+t : Rd × [0, 1] → Rd. Further, utarget
+t
+should do what we want utθ to do: convert noise into data. Therefore, the goal of this chapter is to derive a
+formula for the training target urtef such that the corresponding ODE/SDE converts pinit into pdata. Along the
+way we will encounter two fundamental results from physics and stochastic calculus: the continuity equation and the Fokker-Planck equation. As before, we will first describe the key ideas for ODEs before generalizing them to SDEs.
+Remark 8
+There are a number of different approaches to deriving a training target for flow and diffusion models. The approach we present here is both the most general and arguably most simple and is in line with recent stateof-the-art models. However, it might well differ from other, older presentations of diffusion models you have seen. Later, we will discuss alternative formulations.
+Figure 4: Gradual interpolation from noise to data via a Gaussian conditional probability path for a collection of images.
+13
+
+
+3.1 Conditional and Marginal Probability Path
+3.1 Conditional and Marginal Probability Path
+The first step of constructing the training target utarget
+t is by specifying a probability path. Intuitively, a probability path specifies a gradual interpolation between noise pinit and data pdata (see fig. 4). We explain the construction in this section. In the following, for a data point z ∈ Rd, we denote with δz the Dirac delta “distribution”. This is the simplest distribution that one can imagine: sampling from δz always returns z (i.e. it is deterministic). A
+conditional (interpolating) probability path is a set of distribution pt(x|z) over Rd such that:
+p0(·|z) = pinit, p1(·|z) = δz for all z ∈ Rd. (12)
+In other words, a conditional probability path gradually converts a single data point into the distribution pinit (see e.g. fig. 4). You can think of a probability path as a trajectory in the space of distributions. Every conditional probability path pt(x|z) induces a marginal probability path pt(x) defined as the distribution that we obtain by first sampling a data point z ∼ pdata from the data distribution and then sampling from pt(·|z):
+z ∼ pdata, x ∼ pt(·|z) ⇒ x ∼ pt ▶ sampling from marginal path (13)
+pt(x) =
+Z
+pt(x|z)pdata(z)dz ▶ density of marginal path (14)
+Note that we know how to sample from pt but we don’t know the density values pt(x) as the integral is intractable. Check for yourself that because of the conditions on pt(·|z) in eq. (12), the marginal probability path pt interpolates between pinit and pdata:
+p0 = pinit and p1 = pdata. ▶ noise-data interpolation (15)
+Example 9 (Gaussian Conditional Probability Path)
+One particularly popular probability path is the Gaussian probability path. This is the probability path used
+by denoising diffusion models. Let αt, βt be noise schedulers: two continuously differentiable, monotonic functions with α0 = β1 = 0 and α1 = β0 = 1. We then define the conditional probability path
+pt(·|z) = N (αtz, β2
+t Id) ▶ Gaussian conditional path (16)
+which, by the conditions we imposed on αt and βt, fulfills
+p0(·|z) = N (α0z, β2
+0 Id) = N (0, Id), and p1(·|z) = N (α1z, β2
+1 Id) = δz,
+where we have used the fact that a normal distribution with zero variance and mean z is just δz. Therefore, this choice of pt(x|z) fulfills eq. (12) for pinit = N (0, Id) and is therefore a valid conditional interpolating path. The Gaussian conditional probability path has several useful properties which makes it especially amenable to our goals, and because of this we will use it as our prototypical example of a conditional probability path for the rest of the section. In fig. 4, we illustrate its application to an image. We can express sampling from the
+14
+
+
+3.2 Conditional and Marginal Vector Fields
+Figure 5: Illustration of a conditional (top) and marginal (bottom) probability path. Here, we plot a Gaussian probability path with αt = t, βt = 1 − t. The conditional probability path interpolates a Gaussian pinit = N (0, Id) and pdata = δz for single data point z. The marginal probability path interpolates a Gaussian and a data distribution pdata (Here, pdata is a toy distribution in dimension d = 2 represented by a chess board pattern.)
+marginal path pt as:
+z ∼pdata, ε ∼ pinit = N (0, Id) ⇒ x = αtz + βtε ∼ pt ▶ sampling from marginal Gaussian path (17)
+Intuitively, the above procedure adds more noise for lower t until time t = 0, at which point there is only noise. In fig. 5, we plot an example of such an interpolating path between Gaussian noise and a simple data distribution.
+3.2 Conditional and Marginal Vector Fields
+We proceed now by constructing a training target utarget
+t for a flow model using the recently defined notion of a probability path pt. The idea is to construct utarget
+t from simple components that we can derive analytically by hand.
+Theorem 10 (Marginalization trick)
+For every data point z ∈ Rd, let utarget
+t (·|z) denote a conditional vector field, defined so that the corresponding ODE yields the conditional probability path pt(·|z), viz.,
+X0 ∼ pinit, d
+dt Xt = utarget
+t (Xt|z) ⇒ Xt ∼ pt(·|z) (0 ≤ t ≤ 1). (18)
+Then the marginal vector field utarget
+t (x), defined by
+utarget
+t (x) =
+Z
+utarget
+t (x|z) pt(x|z)pdata(z)
+pt(x) dz, (19)
+15
+
+
+3.2 Conditional and Marginal Vector Fields
+Figure 6: Illustration of theorem 10. Simulating a probability path with ODEs. Data distribution pdata in blue background. Gaussian pinit in red background. Top row: Conditional probability path. Left: Ground truth
+samples from conditional path pt(·|z). Middle: ODE samples over time. Right: Trajectories by simulating ODE
+with utarget
+t (x|z) in eq. (21). Bottom row: Simulating a marginal probability path. Left: Ground truth samples from pt. Middle: ODE samples over time. Right: Trajectories by simulating ODE with marginal vector field utflow(x). As one can see, the conditional vector field follows the conditional probability path and the marginal vector field follows the marginal probability path.
+follows the marginal probability path, i.e.
+X0 ∼ pinit, d
+dt Xt = utarget
+t (Xt) ⇒ Xt ∼ pt (0 ≤ t ≤ 1). (20)
+In particular, X1 ∼ pdata for this ODE, so that we might say "utarget
+t converts noise pinit into data pdata".
+See fig. 6 for an illustration. Before we prove the marginalization trick, let us first explain why it is useful: The marginalization trick from theorem 10 allows us to construct the marginal vector field from a conditional vector field. This simplifies the problem of finding a formula for a training target significantly as we can often find a conditional vector field utarget
+t (·|z) satisfying eq. (18) analytically by hand (i.e. by just doing some algebra ourselves). Let us illustrate this by deriving a conditional vector field ut(x|z) for our running example of a Gaussian probability path.
+16
+
+
+3.2 Conditional and Marginal Vector Fields
+Example 11 (Target ODE for Gaussian probability paths)
+As before, let pt(·|z) = N (αtz, βt2Id) for noise schedulers αt, βt (see eq. (16)). Let α ̇ t = ∂tαt and β ̇t = ∂tβt denote respective time derivatives of αt and βt. Here, we want to show that the conditional Gaussian vector field given by
+utarget
+t (x|z) = α ̇ t −
+β ̇t
+βt
+αt
+!
+z+
+β ̇t
+βt
+x (21)
+is a valid conditional vector field model in the sense of theorem 10: its ODE trajectories Xt satisfy Xt ∼ pt(·|z) = N (αtz, βt2Id) if X0 ∼ N (0, Id). In fig. 6, we confirm this visually by comparing samples from the conditional probability path (ground truth) to samples from simulated ODE trajectories of this flow. As you can see, the distribution match. We will now prove this.
+Proof. Let us construct a conditional flow model ψtarget
+t (x|z) first by defining
+ψtarget
+t (x|z) = αtz + βtx. (22)
+If Xt is the ODE trajectory of ψtarget
+t (·|z) with X0 ∼ pinit = N (0, Id), then by definition
+Xt = ψtarget
+t (X0|z) = αtz + βtX0 ∼ N (αtz, β2Id) = pt(·|z).
+We conclude that the trajectories are distributed like the conditional probability path (i.e, eq. (18) is fulfilled). It remains to extract the vector field utarget
+t (x|z) from ψtarget
+t (x|z). By the definition of a flow (eq. (2b)), it holds
+d
+dt ψtarget
+t (x|z) = utarget
+t (ψtarget
+t (x|z)|z) for all x, z ∈ Rd
+(⇔i) α ̇ tz + β ̇tx = utarget
+t (αtz + βtx|z) for all x, z ∈ Rd
+(i⇔i) α ̇ tz + β ̇t
+x − αtz
+βt
+= utarget
+t (x|z) for all x, z ∈ Rd
+(ii⇔i) α ̇ t −
+β ̇t
+βt
+αt
+!
+z+
+β ̇t
+βt
+x = utarget
+t (x|z) for all x, z ∈ Rd
+where in (i) we used the definition of ψtarget
+t (x|z) (eq. (22)), in (ii) we reparameterized x → (x − αtz)/βt, and in (iii) we just did some algebra. Note that the last equation is the conditional Gaussian vector field as we defined in eq. (21). This proves the statement.a
+aOne can also double check this by plugging it into the continuity equation introduced later in this section.
+The remainder of this section will now prove theorem 10 via the continuity equation, a fundamental result in mathematics and physics. To explain it, we will require the use of the divergence operator div, which we define as
+div(vt)(x) =
+d
+X
+i=1
+∂ ∂xi
+vt(x) (23)
+17
+
+
+3.3 Conditional and Marginal Score Functions
+Theorem 12 (Continuity Equation)
+Let us consider an flow model with vector field utarget
+t with X0 ∼ pinit. Then Xt ∼ pt for all 0 ≤ t ≤ 1 if and only if
+∂tpt(x) = −div(ptutarget
+t )(x) for all x ∈ Rd, 0 ≤ t ≤ 1, (24)
+where ∂tpt(x) = d
+dt pt(x) denotes the time-derivative of pt(x). Equation 24 is known as the continuity equation.
+For the mathematically-inclined reader, we present a self-contained proof of the Continuity Equation in appendix B. Before we move on, let us try and understand intuitively the continuity equation. The left-hand side ∂tpt(x) describes how much the probability pt(x) at x changes over time. Intuitively, the change should correspond to the net inflow of probability mass. For a flow model, a particle Xt follows along the vector field utarget
+t . As you might recall from physics, the divergence measures a sort of net outflow from the vector field. Therefore, the negative divergence measures the net inflow. Scaling this by the total probability mass currently residing at x, we get that the net −div(ptut) measures the total inflow of probability mass. Since probability mass is conserved, the left-hand and right-hand side of the equation should be the same! We now proceed with a proof of the marginalization trick from theorem 10.
+Proof. By theorem 12, we have to show that the marginal vector field utarget
+t , as defined as in eq. (19), satisfies the continuity equation. We can do this by direct calculation:
+∂tpt(x) (i=) ∂t
+Z
+pt(x|z)pdata(z)dz
+=
+Z
+∂tpt(x|z)pdata(z)dz
+(i=i)
+Z
+−div(pt(·|z)utarget
+t (·|z))(x)pdata(z)dz
+(ii=i) −div
+Z
+pt(x|z)utarget
+t (x|z)pdata(z)dz
+(i=v) −div pt(x)
+Z
+utarget
+t (x|z) pt(x|z)pdata(z)
+pt(x) dz (x)
+(v=) −div ptutarget
+t (x),
+where in (i) we used the definition of pt(x) in eq. (13), in (ii) we used the continuity equation for the conditional probability path pt(·|z), in (iii) we swapped the integral and divergence operator using eq. (23), in (iv) we multiplied and divided by pt(x), and in (v) we used eq. (19). The beginning and end of the above chain of equations show that the continuity equation is fulfilled for utarget
+t . By theorem 12, this is enough to imply eq. (20), and we are done.
+3.3 Conditional and Marginal Score Functions
+We just successfully constructed a training target for a flow model. We now extend this reasoning to SDEs. To do so, let us define the marginal score function of pt as ∇ log pt(x). We can use this to extend the ODE from the
+18
+
+
+3.3 Conditional and Marginal Score Functions
+Figure 7: Illustration of theorem 13. Simulating a probability path with SDEs. This repeats the plots from fig. 6 with SDE sampling using eq. (25). Data distribution pdata in blue background. Gaussian pinit in red background. Top row: Conditional path. Bottom row: Marginal probability path. As one can see, the SDE transports samples from pinit into samples from δz (for the conditional path) and to pdata (for the marginal path).
+previous section to an SDE, as the following result demonstrates.
+Theorem 13 (SDE extension trick)
+Define the conditional and marginal vector fields utarget
+t (x|z) and utarget
+t (x) as before. Then, for diffusion coefficient σt ≥ 0, we may construct an SDE which follows the same probability path:
+X0 ∼pinit, dXt = utarget
+t (Xt) + σt2
+2 ∇ log pt(Xt) dt + σtdWt (25)
+⇒ Xt ∼pt (0 ≤ t ≤ 1) (26)
+In particular, X1 ∼ pdata for this SDE. The same identity holds if we replace the marginal probability pt(x) and vector field utarget
+t (x) with the conditional probability path pt(x|z) and vector field utarget
+t (x|z).
+19
+
+
+3.3 Conditional and Marginal Score Functions
+We illustrate the theorem in fig. 7. The formula in theorem 13 is useful because, similar to before, we can express
+the marginal score function via the conditional score function ∇ log pt(x|z)
+∇ log pt(x) = ∇pt(x)
+pt(x) = ∇ R pt(x|z)pdata(z)dz
+pt(x) =
+R ∇pt(x|z)pdata(z)dz
+pt(x) =
+Z
+∇ log pt(x|z) pt(x|z)pdata(z)
+pt(x) dz (27)
+and the conditional score function ∇ log pt(x|z) is something we usually know analytically, as illustrated by the following example.
+Example 14 (Score Function for Gaussian Probability Paths.)
+For the Gaussian path pt(x|z) = N (x; αtz, βt2Id), we can use the form of the Gaussian probability density (see eq. (81)) to get
+∇ log pt(x|z) = ∇ log N (x; αtz, β2
+t Id) = − x − αtz
+βt2
+. (28)
+Note that the score is a linear function of x. This is a unique feature of Gaussian distributions.
+In the remainder of this section, we will prove theorem 13 via the Fokker-Planck equation, which extends the continuity equation from ODEs to SDEs. To do so, let us first define the Laplacian operator ∆ via
+∆wt(x) =
+d
+X
+i=1
+∂2
+∂2xi
+wt(x) = div(∇wt)(x). (29)
+Theorem 15 (Fokker-Planck Equation)
+Let pt be a probability path and let us consider the SDE
+X0 ∼ pinit, dXt = ut(Xt)dt + σtdWt.
+Then Xt has distribution pt for all 0 ≤ t ≤ 1 if and only if the Fokker-Planck equation holds:
+∂tpt(x) = −div(ptut)(x) + σt2
+2 ∆pt(x) for all x ∈ Rd, 0 ≤ t ≤ 1. (30)
+A self-contained proof of the Fokker-Planck equation can be found in appendix B. Note that the continuity equation is recovered from the Fokker-Planck equation when σt = 0. The additional Laplacian term ∆pt might be hard to rationalize at first. Those familiar with physics will note that the same term also appears in the heat equation (which is in fact a special case of the Fokker-Planck equation). Heat diffuses through a medium. We also add a diffusion process (not a physical but a mathematical one) and hence we add this additional Laplacian term. Let us now use the Fokker-Planck equation to help us prove theorem 13.
+Proof of Theorem 13. By theorem 15, we need to show that that the SDE defined in eq. (25) satisfies the Fokker
+20
+
+
+3.3 Conditional and Marginal Score Functions
+Figure 8: Top row: Particles evolving under the Langevin dynamics given by eq. (31), with p(x) taken to be a Gaussian mixture with 5 modes. Bottom row: A kernel density estimate of the same samples shown in the top row. As one can see, the distribution of samples converges to the equilibrium distribution p (blue background colour).
+Planck equation for pt. We can do this by direction calculation:
+∂tpt(x) (i=) − div(ptutarget
+t )(x)
+(i=i) − div(ptutarget
+t )(x) − σt2
+2 ∆pt(x) + σt2
+2 ∆pt(x)
+(ii=i) − div(ptutarget
+t )(x) − div( σt2
+2 ∇pt)(x) + σt2
+2 ∆pt(x)
+(i=v) − div(ptutarget
+t )(x) − div(pt
+σt2
+2 ∇ log pt )(x) + σt2
+2 ∆pt(x)
+(v=) − div pt utarget
+t + σt2
+2 ∇ log pt (x) + σt2
+2 ∆pt(x),
+where in (i) we used the Contuity Equation, in (ii) we added and subtracted the same term, in (iii) we used the definition of the Laplacian (eq. (29)), in (iv) we used that ∇ log pt = ∇pt
+pt , and in (v) we used the linearity of the divergence operator. The above derivation shows that the SDE defined in eq. (25) satisfies the Fokker-Planck equation for pt. By theorem 15, this implies Xt ∼ pt for 0 ≤ t ≤ 1, as desired.
+Remark 16 (Langevin dynamics.)
+The above construction has a famous special case when the probability path is static, i.e. pt = p for a fixed
+21
+
+
+3.3 Conditional and Marginal Score Functions
+distribution p. In this case, we set utarget
+t = 0 and obtain the SDE
+dXt = σt2
+2 ∇ log p(Xt)dt + σtdWt, (31)
+which is commonly known as Langevin dynamics. The fact that pt is static implies that ∂tpt(x) = 0. It follows immediately from theorem 13 that these dynamics satisfy the Fokker-Planck equation for the static path pt = p in theorem 13. Therefore, we may conclude that p is a stationary distribution of Langevin dynamics, so that
+X0 ∼ p ⇒ Xt ∼ p (t ≥ 0)
+As with many Markov chains, these dynamics converge to the stationary distribution p under rather general conditions (see section 3.3). That is, if we instead we take X0 ∼ p′ ̸= p, so that Xt ∼ p′t, then under mild conditions pt → p. This fact makes Langevin dynamics extremely useful, and it accordingly serves as the basis for e.g., molecular dynamics simulations, and many other Markov chain Monte Carlo (MCMC) methods across Bayesian statistics and the natural sciences.
+Let us summarize the results of this section.
+Summary 17 (Derivation of the Training Target)
+The flow training target is the marginal vector field utarget
+t . To construct it, we choose a conditional probability
+path pt(x|z) that fulfils p0(·|z) = pinit, p1(·|z) = δz. Next, we find a conditional vector field utflow(x|z) such
+that its corresponding flow ψtarget
+t (x|z) fulfills
+X0 ∼ pinit ⇒ Xt = ψtarget
+t (X0|z) ∼ pt(·|z),
+or, equivalently, that utarget
+t satisfies the continuity equation. Then the marginal vector field defined by
+utarget
+t (x) =
+Z
+utarget
+t (x|z) pt(x|z)pdata(z)
+pt(x) dz, (32)
+follows the marginal probability path, i.e.,
+X0 ∼ pinit, dXt = utarget
+t (Xt)dt ⇒ Xt ∼ pt (0 ≤ t ≤ 1). (33)
+In particular, X1 ∼ pdata for this ODE, so that utarget
+t "converts noise into data", as desired. Extending to SDEs. For a time-dependent diffusion coefficient σt ≥ 0, we can extend the above ODE to an SDE with the same marginal probability path:
+X0 ∼pinit, dXt = utarget
+t (Xt) + σt2
+2 ∇ log pt(Xt) dt + σtdWt (34)
+⇒ Xt ∼pt (0 ≤ t ≤ 1), (35)
+where ∇ log pt(x) is the marginal score function
+∇ log pt(x) =
+Z
+∇ log pt(x|z) pt(x|z)pdata(z)
+pt(x) dz. (36)
+22
+
+
+3.3 Conditional and Marginal Score Functions
+In particular, for the trajectories Xt of the above SDE, it holds that X1 ∼ pdata, so that the SDE "converts noise into data", as desired. An important example is the Gaussian probability path, yielding the formulae:
+pt(x|z) =N (x; αtz, β2
+t Id) (37)
+uflow
+t (x|z) = α ̇ t −
+β ̇t
+βt
+αt
+!
+z+
+β ̇t
+βt
+x (38)
+∇ log pt(x|z) = − x − αtz
+βt2
+, (39)
+for noise schedulers αt, βt ∈ R: continuously differentiable, monotonic functions such that α0 = β1 = 0
+α1 = β0 = 1.
+23
+
+
+4 Training the Generative Model
+In the last two sections, we showed how to construct a generative model with a vector field utθ given by a neural network, and we derived a formula for the training target utarget
+t . In this section, we will describe how to train the neural network utθ to approximate the training target utarget
+t . First, we restrict ourselves to ODEs again, in doing so recovering flow matching. Second, we explain how to extend the approach to SDEs via score matching. Finally, we consider the special case of Gaussian probability paths, in doing so recovering denoising diffusion models. With these tools, we will at last have an end-to-end procedure to train and sample from a generative model with ODEs and SDEs.
+4.1 Flow Matching
+As before, let us consider a flow model given by
+X0 ∼ pinit, dXt = uθ
+t (Xt) dt. ▶ flow model (40)
+As we learned, we want the neural network utθ to equal the marginal vector field utarget
+t . In other words, we would like to find parameters θ so that utθ ≈ utarget
+t . In the following, we denote by Unif = Unif[0,1] the uniform
+distribution on the interval [0, 1], and by E the expected value of a random variable. An intuitive way of obtaining
+utθ ≈ utarget
+t is to use a mean-squared error, i.e. to use the flow matching loss defined as
+LFM(θ) = Et∼Unif,x∼pt [∥uθ
+t (x) − utarget
+t (x)∥2] (41)
+(i=) Et∼Unif,z∼pdata,x∼pt(·|z)[∥uθ
+t (x) − utarget
+t (x)∥2], (42)
+where pt(x) = R pt(x|z)pdata(z)dz is the marginal probability path and in (i) we used the sampling procedure given by eq. (13). Intuitively, this loss says: First, draw a random time t ∈ [0, 1]. Second, draw a random point z from our data set, sample from pt(·|z) (e.g., by adding some noise), and compute utθ(x). Finally, compute the mean-squared error between the output of our neural network and the marginal vector field utarget
+t (x). Unfortunately, we are not done here. While we do know the formula for utarget
+t by theorem 10
+utarget
+t (x) =
+Z
+utarget
+t (x|z) pt(x|z)pdata(z)
+pt(x) dz, (43)
+we cannot compute it efficiently because the above integral is intractable. Instead, we will exploit the fact that the conditional velocity field utarget
+t (x|z) is tractable. To do so, let us define the conditional flow matching loss
+LCFM(θ) = Et∼Unif,z∼pdata,x∼pt(·|z)[∥uθ
+t (x) − utarget
+t (x|z)∥2]. (44)
+Note the difference to eq. (41): we use the conditional vector field utarget
+t (x|z) instead of the marginal vector
+utarget
+t (x). As we have an analytical formula for utarget
+t (x|z), we can minimize the above loss easily. But wait, what sense does it make to regress against the conditional vector field if it’s the marginal vector field we care about? As it turns out, by explicitly regressing against the tractable, conditional vector field, we are implicitly regressing against the intractable, marginal vector field. The next result makes this intuition precise.
+24
+
+
+4.1 Flow Matching
+Theorem 18
+The marginal flow matching loss equals the conditional flow matching loss up to a constant. That is,
+LFM(θ) = LCFM(θ) + C,
+where C is independent of θ. Therefore, their gradients coincide:
+∇θLFM(θ) = ∇θLCFM(θ).
+Hence, minimizing LCFM(θ) with e.g., stochastic gradient descent (SGD) is equivalent to minimizing LFM(θ) with in the same fashion. In particular, for the minimizer θ∗ of LCFM(θ), it will hold that uθ∗
+t = utarget
+t
+(assuming an infintely expressive parameterization).
+Proof. The proof works by expanding the mean-squared error into three components and removing constants:
+LFM(θ) (i=) Et∼Unif,x∼pt [∥uθ
+t (x) − utarget
+t (x)∥2]
+(i=i) Et∼Unif,x∼pt [∥uθ
+t (x)∥2 − 2uθ
+t (x)T utarget
+t (x) + ∥utarget
+t (x)∥2]
+(ii=i) Et∼Unif,x∼pt ∥uθ
+t (x)∥2 − 2Et∼Unif,x∼pt [uθ
+t (x)T utarget
+t (x)] + Et∼Unif[0,1],x∼pt [∥utarget
+t (x)∥2]
+| {z }
+=:C1
+(i=v) Et∼Unif,z∼pdata,x∼pt(·|z)[∥uθ
+t (x)∥2] − 2Et∼Unif,x∼pt [uθ
+t (x)T utarget
+t (x)] + C1
+where (i) holds by definition, in (ii) we used the formula ∥a − b∥2 = ∥a∥2 − 2aT b + ∥b∥2, in (iii) we define a constant C1 and in (iv) we used the sampling procedure of pt given by eq. (13). Let us reexpress the second summand:
+Et∼Unif,x∼pt [uθ
+t (x)T utarget
+t (x)] (i=)
+1
+Z
+0
+Z
+pt(x)uθ
+t (x)T utarget
+t (x) dx dt
+(i=i)
+1
+Z
+0
+Z
+pt(x)uθ
+t (x)T
+Z
+utarget
+t (x|z) pt(x|z)pdata(z)
+pt(x) dz dx dt
+(ii=i)
+1
+Z
+0
+ZZ
+uθ
+t (x)T utarget
+t (x|z)pt(x|z)pdata(z) dz dx dt
+(i=v) Et∼Unif,z∼pdata,x∼pt(·|z)[uθ
+t (x)T utarget
+t (x|z)]
+where in (i) we expressed the expected value as an integral, in (ii) we use eq. (43), in (iii) we use the fact that integrals are linear, in (iv) we express the integral as an expected value. Note that this was really the crucial step of the proof: The beginning of the equality used the marginal vector field utarget
+t (x), while the end uses the
+25
+
+
+4.1 Flow Matching
+conditional vector field utarget
+t (x|z). We plug is into the equation for LFM to get:
+LFM(θ) (i=) Et∼Unif,z∼pdata,x∼pt(·|z)[∥uθ
+t (x)∥2] − 2Et∼Unif,z∼pdata,x∼pt(·|z)[uθ
+t (x)T utarget
+t (x|z)] + C1
+(i=i) Et∼Unif,z∼pdata,x∼pt(·|z)[∥uθ
+t (x)∥2 − 2uθ
+t (x)T utarget
+t (x|z) + ∥utarget
+t (x|z)∥2 − ∥utarget
+t (x|z)∥2] + C1
+(ii=i) Et∼Unif,z∼pdata,x∼pt(·|z)[∥uθ
+t (x) − utarget
+t (x|z)∥2] + Et∼Unif,z∼pdata,x∼pt(·|z)[−∥utarget
+t (x|z)∥2]
+| {z }
+C2
++C1
+(i=v) LCFM(θ) + C2 + C1
+| {z }
+=:C
+where in (i) we plugged in the derived equation, in (ii) we added and subtracted the same value, in (iii) we used the formula ∥a − b∥2 = ∥a∥2 − 2aT b + ∥b∥2 again, and in (iv) we defined a constant in θ. This finishes the proof.
+Once utθ has been trained, we may simulate the flow model
+dXt = uθ
+t (Xt) dt, X0 ∼ pinit (45)
+via e.g., algorithm 1 to obtain samples X1 ∼ pdata. This whole pipeline is called flow matching in the literature [14, 16, 1, 15]. The training procedure is summarized in algorithm 5 and visualized in fig. 9. Let us now instantiate the conditional flow matching loss for the choice of Gaussian probability paths:
+Example 19 (Flow Matching for Gaussian Conditional Probability Paths)
+Let us return to the example of Gaussian probability paths pt(·|z) = N (αtz; βt2Id), where we may sample from the conditional path via
+ε ∼ N (0, Id) ⇒ xt = αtz + βtε ∼ N (αtz, β2
+t Id) = pt(·|z). (46)
+As we derived in eq. (21), the conditional vector field utarget
+t (x|z) is given by
+utarget
+t (x|z) = α ̇ t −
+β ̇t
+βt
+αt
+!
+z+
+β ̇t
+βt
+x, (47)
+where α ̇ t = ∂tαt and β ̇t = ∂tβt are the respective time derivatives. Plugging in this formula, the conditional flow matching loss reads
+LCFM(θ) = Et∼Unif,z∼pdata,x∼N (αtz,β2
+t Id)[∥uθ
+t (x) − α ̇ t −
+β ̇t
+βt
+αt
+!
+z−
+β ̇t
+βt
+x∥2]
+(i=) Et∼Unif,z∼pdata,ε∼N (0,Id)[∥uθ
+t (αtz + βtε) − (α ̇ tz + β ̇tε)∥2]
+where in (i) we plugged in eq. (46) and replaced x by αtz +βtε. Note the simplicity of LCFM : We sample a data point z, sample some noise ε and then we take a mean squared error. Let us make this even more concrete for the special case of αt = t, and βt = 1 − t. The corresponding probability pt(x|z) = N (tz, (1 − t)2) is sometimes
+26
+
+
+4.1 Flow Matching
+Figure 9: Illustration of theorem 18 with a Gaussian CondOT probability path: simulating an ODE from a trained flow matching model. The data distribution is the chess board pattern (top right). Top row: Histogram from ground truth marginal probability path pt(x). Bottom row: Histogram of samples from flow matching model. As one can see, the top row and bottom row match after training (up to training error). The model was trained using algorithm 5.
+referred to as the (Gaussian) CondOT probability path. Then we have α ̇ t = 1, β ̇t = −1, so that
+Lcfm(θ) =Et∼Unif,z∼pdata,ε∼N (0,Id)[∥uθ
+t (tz + (1 − t)ε) − (z − ε)∥2]
+Many famous state-of-the-art models have been trained using this simple yet effective procedure, e.g. Stable Diffusion 3, Meta’s Movie Gen Video, and probably many more proprietary models. In fig. 9, we visualize it in a simple example and in algorithm 5 we summarize the training procedure.
+Algorithm 3 Flow Matching Training Procedure (here for Gaussian CondOT path pt(x|z) = N (tz, (1 − t)2))
+Require: A dataset of samples z ∼ pdata, neural network utθ 1: for each mini-batch of data do 2: Sample a data example z from the dataset. 3: Sample a random time t ∼ Unif[0,1]. 4: Sample noise ε ∼ N (0, Id) 5: Set x = tz + (1 − t)ε (General case: x ∼ pt(·|z)) 6: Compute loss
+L(θ) =∥uθ
+t (x) − (z − ε)∥2 (General case: = ∥uθ
+t (x) − utarget
+t (x|z)∥2)
+7: Update the model parameters θ via gradient descent on L(θ). 8: end for
+27
+
+
+4.2 Score Matching
+4.2 Score Matching
+Let us extend the algorithm we just found from ODEs to SDEs. Remember we can extend the target ODE to an SDE with the same marginal distribution given by
+dXt = utarget
+t (Xt) + σt2
+2 ∇ log pt(Xt) dt + σtdWt (48)
+X0 ∼ pinit, (49)
+⇒ Xt ∼ pt (0 ≤ t ≤ 1) (50)
+where utarget
+t is the marginal vector field and ∇ log pt(x) is the marginal score function represented via the formula
+∇ log pt(x) =
+Z
+∇ log pt(x|z) pt(x|z)pdata(z)
+pt(x) dz. (51)
+To approximate the marginal score ∇ log pt, we can use a neural network that we call score network stθ : Rd×[0, 1] → Rd. In the same way as before, we can design a score matching loss and a conditional score matching loss:
+LSM(θ) = Et∼Unif,z∼pdata,x∼pt(·|z)[∥sθ
+t (x) − ∇ log pt(x)∥2] ▶ score matching loss
+LCSM(θ) = Et∼Unif,z∼pdata,x∼pt(·|z)[∥sθ
+t (x) − ∇ log pt(x|z)∥2] ▶ conditional score matching loss
+where again the difference is using the marginal score ∇ log pt(x) vs. using the conditional score ∇ log pt(x|z). As before, we ideally would want to minimize the score matching loss but can’t because we don’t know ∇ log pt(x). But similarly as before, the conditional score matching loss is a tractable alternative:
+Theorem 20
+The score matching loss equals the conditional score matching loss up to a constant:
+LSM(θ) = LCSM(θ) + C,
+where C is independent of parameters θ. Therefore, their gradients coincide:
+∇θLSM(θ) = ∇θLCSM(θ).
+In particular, for the minimizer θ∗, it will hold that sθ∗
+t = ∇ log pt.
+Proof. Note that the formula for ∇ log pt (eq. (51)) looks the same as the formula for utarget
+t (eq. (43)). Therefore, the proof is identical to the proof of theorem 18 replacing utarget
+t with ∇ log pt.
+The above procedure describes the vanilla procedure of training a diffusion model. After training, we can choose an arbitrary diffusion coefficient σt ≥ 0 and then simulate the SDE
+X0 ∼pinit, dXt = uθ
+t (Xt) + σt2
+2 sθ
+t (Xt) dt + σtdWt, (52)
+to generate samples X1 ∼ pdata. In theory, every σt should give samples X1 ∼ pdata at perfect training. In practice, we encounter two types of errors: (1) numerical errors by simulating the SDE imperfectly and (2) training errors
+28
+
+
+4.2 Score Matching
+(i.e., the model utθ is not exactly equal to utarget
+t ). Therefore, there is an optimal unknown noise level σt - this can be determined empirically by just testing our different values of empirically (see e.g. [1, 12, 17]). At first sight, it might seem to be a disadvantage that we have to learn both stθ and utθ if we wanted to use diffusion model now as opposed to a flow model. However, note we can often directly stθ and utθ in a single network with two outputs, so that the additional computational effort is usually minimal. Further, as we will see now for the special case of the Gaussian probability path, stθ and utθ may be converted into one another so that we don’t have to train them separately.
+Remark 21 (Denoising Diffusion Models)
+If you are familiar with diffusion models, you have probably encountered the term denoising diffusion model. This model has become so popular that most people nowadays drop the word "denoising" and simply use the term "diffusion model" to describe it. In the language of this document, these are simply diffusion models with Gaussian probability paths pt(·|z) = N (αtz; βt2Id). However, it is important to note that this might not be immediately obvious if you read some of the first diffusion model papers: they use a different time convention (time is inverted) - so you need apply an appropriate time re-scaling - and they construct their probability path via so-called forward processes (we will discuss this in section 4.3).
+Example 22 (Denoising Diffusion Models: Score Matching for Gaussian Probability Paths)
+First, let us instantiate the denoising score matching loss for the case of pt(x|z) = N (αtz, βt2Id). As we derived in eq. (28), the conditional score ∇ log pt(x|z) has the formula
+∇ log pt(x|z) = − x − αtz
+βt2
+. (53)
+Plugging in this formula, the conditional score matching loss becomes:
+LCSM(θ) = Et∼Unif,z∼pdata,x∼pt(·|z)[∥sθ
+t (x) + x − αtz
+βt2
+∥2]
+(i=) Et∼Unif,z∼pdata,ε∼N (0,Id)[∥sθ
+t (αtz + βtε) + ε
+βt
+∥2]
+= Et∼Unif,z∼pdata,ε∼N (0,Id)[ 1
+βt2
+∥βtsθ
+t (αtz + βtε) + ε∥2]
+where in (i) we plugged in eq. (46) and replaced x by αtz + βtε. Note that the network stθ essentially learns to predict the noise that was used to corrupt a data sample z. Therefore, the above training loss is also called denoising score matching and it was the one of the first procedures used to learn diffusion models. It was soon realized that the above loss is numerically unstable for βt ≈ 0 close to zero (i.e. denoising score matching only works if you add a sufficient amount of noise). In some of the first works on denoising diffusion models (see Denoising Diffusion Probabilitic Models, [9]) it was therefore proprosed to drop the constant 1
+β2
+t in the loss
+and reparameterize stθ into a noise predictor network εtθ : Rd × [0, 1] → Rd via:
+−βtsθ
+t (x) = εθ
+t (x) ⇒ LDDPM(θ) =Et∼Unif,z∼pdata,ε∼N (0,Id) ∥εθ
+t (αtz + βtε) − ε∥2
+29
+
+
+4.2 Score Matching
+As before, the network εtθ essentially learns to predict the noise that was used to corrupt a data sample z. In algorithm 4, we summarize the training procedure.
+Algorithm 4 Score Matching Training Procedure for Gaussian probability path
+Require: A dataset of samples z ∼ pdata, score network stθ or noise predictor εtθ 1: for each mini-batch of data do 2: Sample a data example z from the dataset. 3: Sample a random time t ∼ Unif[0,1]. 4: Sample noise ε ∼ N (0, Id) 5: Set xt = αtz + βtε (General case: xt ∼ pt(·|z)) 6: Compute loss
+L(θ) =∥sθ
+t (xt) + ε
+βt
+∥2 (General case: = ∥sθ
+t (xt) − ∇ log pt(xt|z)∥2)
+Alternatively: L(θ) =∥εθ
+t (xt) − ε∥2
+7: Update the model parameters θ via gradient descent on L(θ). 8: end for
+Beyond its simplicity, there is another useful property of the Gaussian probability path: By learning stθ or εtθ, we also learn utθ automatically and the other way around:
+Proposition 1 (Conversion formula for Gaussian probability path)
+For the Gaussian probability path pt(x|z) = N (αtz, βt2Id), it holds that that the conditional (resp. marginal) vector field can be converted into the conditional (resp. marginal) score:
+utarget
+t (x|z) = β2
+t
+α ̇ t
+αt
+− β ̇tβt ∇ log pt(x|z) + α ̇ t
+αt
+x
+utarget
+t (x) = β2
+t
+α ̇ t
+αt
+− β ̇tβt ∇ log pt(x) + α ̇ t
+αt
+x
+where the formula for the above marginal vector field utarget
+t is called probability flow ODE in the literature (more correctly, the corresponding ODE).
+Proof. For the conditional vector field and conditional score, we can derive:
+utarget
+t (x|z) = α ̇ t −
+β ̇t
+βt
+αt
+!
+z+
+β ̇t
+βt
+x (i=) β2
+t
+α ̇ t
+αt
+− β ̇tβt
+αtz − x βt2
++ α ̇ t
+αt
+x = β2
+t
+α ̇ t
+αt
+− β ̇tβt ∇ log pt(x|z) + α ̇ t
+αt
+x
+where in (i) we just did some algebra. By taking integrals, the same identity holds for the marginal flow vector field and the marginal score function:
+utarget(x) =
+Z
+utarget
+t (x|z) pt(x|z)pdata(z)
+pt(x) dz =
+Z
+β2
+t
+α ̇ t
+αt
+− β ̇tβt ∇ log pt(x|z) + α ̇ t
+αt
+x pt(x|z)pdata(z)
+pt(x) dz
+(i=) β2
+t
+α ̇ t
+αt
+− β ̇tβt ∇ log pt(x) + α ̇ t
+αt
+x
+30
+
+
+4.2 Score Matching
+where in (i) we used eq. (51).
+Figure 10: A comparison of the score, as obtained in two different ways. Top: A visualization of the score field stθ(x) learned independently with score matching (see algorithm 4). Bottom: A visualization of the score field s ̃tθ(x)
+parameterized using utθ(x) as in eq. (55).
+We can use the conversion formula to parameterize the score network stθ and the vector field network utθ into one another via
+uθ
+t = β2
+t
+α ̇ t
+αt
+− β ̇tβt sθ
+t (x) + α ̇ t
+αt
+x. (54)
+Similarly, so long as βt2α ̇ t − αtβ ̇tβt ̸= 0 (always true for t ∈ [0, 1)), it follows that
+sθ
+t (x) = αtutθ(x) − α ̇ tx
+βt2α ̇ t − αtβ ̇tβt
+. (55)
+Using this parameterization, it can be shown that the denoising score matching and the conditional flow matching losses are the same up to a constant. We conclude that for Gaussian probability paths there is no need to
+separately train both the marginal score and the marginal vector field, as knowledge of one is sufficient to
+compute the other. In particular, we can choose whether we want to use flow matching or score matching
+to train it. In fig. 10, we compare visually the score as approximated using score matching and the parameterized score using eq. (55). If we have trained a score network stθ, we know by eq. (52) that we can use arbitrary σt ≥ 0 to sample from the SDE
+X0 ∼pinit, dXt = β2
+t
+α ̇ t
+αt
+− β ̇tβt + σt2
+2 sθ
+t (x) + α ̇ t
+αt
+x dt + σtdWt (56)
+31
+
+
+4.3 A Guide to the Diffusion Model Literature
+to obtain samples X1 ∼ pdata (up to training and simulation error). This corresponds to stochastic sampling from
+a denoising diffusion model.
+4.3 A Guide to the Diffusion Model Literature
+There is a whole family of models around diffusion models and flow matching in the literature. When you read these papers, you will likely find a different (but equivalent) way of presenting the material from this class. This makes it sometimes a little confusing to read these papers. For this reason, we want to give a brief overview over various frameworks and their differences and put them also in their historical context. This is not necessary to understand the remainder of this document but rather intended to be a support for you in case you read the literature.
+Discrete time vs. continuous time. The first denoising diffusion model papers [28, 29, 9] did not use SDEs but constructed Markov chains in discrete time, i.e. with time steps t = 0, 1, 2, 3, . . . . To this date, you will find a lot of works in the literature working with this discrete-time formulation. While this construction is appealing due to its simplicity, the disadvantage of the time-discrete approach is that it forces you to choose a time discretization before training. Further, the loss function needs to be approximated via an evidence lower bound (ELBO) - which is, as the name suggests, only a lower bound to the loss we actually want to minimize. Later, Song et al. [32] showed that these constructions were essentially an approximation of a time-continuous SDEs. Further, the ELBO loss becomes tight (i.e. it is not a lower bound anymore) in the continuous time case (e.g. note that theorem 18 and theorem 20 are equalities and not lower bounds - this would be different in the discrete time case). This made the SDE construction popular because it was considered mathematically "cleaner" and that one could control the simulation error via ODE/SDE samplers post training. It is important to note however that both models employ the same loss and are not fundamentally different.
+"Forward process" vs probability paths. The first wave of denoising diffusion models [28, 29, 9, 32] did not use the term probability path but constructed a noising procedure of a data point z ∈ Rd via a so-called forward process. This is an SDE of the form
+X ̄0 = z, dX ̄t = uforw
+t (X ̄t)dt + σforw
+t dW ̄ t (57)
+The idea is that after drawing a data point z ∼ pdata one simulates the forward process and thereby corrupts or "noises" the data. The forward process is designed such that for t → ∞ its distribution converges to a Gaussian N (0, Id). In other words, for T ≫ 0 it holds that X ̄T ∼ N (0, Id) approximately. Note that this essentially corresponds to a probability path: the conditional distribution of X ̄t given X ̄0 = z is a conditional probability path p ̄t(·|z) and the distribution of X ̄t marginalized over z ∼ pdata corresponds to a marginal probability path p ̄t.2 However, note that with this construction, we need to know the distribution of Xt|X0 = z in closed form in order to train our models to avoid simulating the SDE. This essentially restrict the vector field uftorw to ones such that we know the distribution X ̄t|X ̄0 = z in closed form. Therefore, throughout the diffusion model literature, vector fields in forward processes are always of the affine form, i.e. uftorw(x) = atx for some continuous function at. For
+2Note however that they use an inverted time convention: p ̄0(·|z) = pdata here.
+32
+
+
+4.3 A Guide to the Diffusion Model Literature
+this choice, we can use known formulas of the conditional distribution [27, 31, 12]:
+X ̄t|X ̄0 = z ∼ N αtz, β2
+t I , αt = exp
+
+
+t
+Z
+0
+ar dr
+
+ , β2
+t = α2
+t
+t
+Z
+0
+(σfrorw)2
+αr2
+dr
+Note that these are simply Gaussian probability paths. Therefore, one can say that a forward process is a specific way of constructing a (Gaussian) probability path. The term probability path was introduced by flow matching [14] to both simplify the construction and make it more general at the same time: First, the "forward process" of diffusion models is never actually simulated (only samples from p ̄t(·|z) are drawn during training). Second, a forward process only converges for t → ∞ (i.e. we will never arrive at pinit in finite time). Therefore, we choose to use probability paths in this document.
+Time-Reversals vs Solving the Fokker-Planck equation. The original description of diffusion models did not
+construct the training target utarget
+t or ∇ log pt via the Fokker-Planck equation (or Continuity equation) but via a time-reversal of the forward process [2]. A time-reversal (Xt)0≤t≤T is an SDE with the same distribution over trajectories inverted in time, i.e.
+P[X ̄t1 ∈ A1, . . . , X ̄tn ∈ An] = P[XT −t1 ∈ A1, . . . , XT −tn ∈ An] (58)
+for all 0 ≤ t1, . . . , tn ≤ T, and A1, . . . , An ⊂ S (59)
+As shown in Anderson [2], one can obtain a time-reversal satisfying the above condition by the SDE:
+dXt = −ut(Xt) + σ2
+t ∇ log pt(Xt) dt + σtdWt, ut(x) = uforw
+T −t(x), σt = σ ̄T −t
+As ut(Xt) = atXt, the above corresponds to a specific instance of training target we derived in proposition 1 (this is not immediately trivial as different time conventions are used. See e.g. [15] for a derivation). However, for the purposes of generative modeling, we often only use the final point X1 of the Markov process (e.g., as a generated image) and discard earlier time points. Therefore, whether a Markov process is a “true” time-reversal or follows along a probability path does not matter for many applications. Therefore, using a time-reversal is not necessary and often leads to suboptimal results, e.g. the probability flow ODE is often better [12, 17]. All ways of sampling from a diffusion models that are different from the time-reversal rely again on using the Fokker-Planck equation. We hope that this illustrates why nowadays many people construct the training targets directly via the Fokker-Planck equation - as pioneered by [14, 16, 1] and done in this class.
+Flow Matching [14] and Stochastic Interpolants [1]. The framework that we present is most closely related to the frameworks of flow matching and stochastic interpolants (SIs). As we learnt, flow matching restricts itself to flows. In fact, one of the key innovations of flow matching was to show that one does not need a construction via a forward process and SDEs but flow models alone can be trained in a scalable manner. Due to this restriction, you should keep in mind that sampling from a flow matching model will be deterministic (only the initial X0 ∼ pinit will be random). Stochastic interpolants included both the pure flow and the SDE extension via "Langevin dynamics" that we use here (see theorem 13). Stochastic interpolants get their name from a interpolant function I(t, x, z) intended to interpolate between two distributions. In the terminology we use here, this corresponds to a different
+33
+
+
+4.3 A Guide to the Diffusion Model Literature
+yet (mainly) equivalent way of constructing a conditional and marginal probability path. The advantage of flow matching and stochastic interpolants over diffusion models is both their simplicity and their generality: their training framework is very simple but at the same time they allow you to go from an arbitrary distribution pinit to an arbitrary distribution pdata - while denoising diffusion models only work for Gaussian initial distributions and Gaussian probability path. This opens up new possibilities for generative modeling that we will touch upon briefly later in this class. Let us summarize the results of this section:
+Summary 23 (Training the Generative Model)
+Flow matching consists of training a neural network utθ via minimizing the conditional flow matching loss
+LCFM(θ) = Ez∼pdata,t∼Unif, x∼pt(·|z)[∥uθ
+t (x) − utarget
+t (x|z)∥2] (conditional flow matching loss) (60)
+where utarget
+t (x|z) is the conditional vector field (see algorithm 5). After training, one generates samples by simulating the corresponding ODE (see algorithm 1). To extend this to a diffusion model, we can use a score
+network stθ and train it via conditional score matching
+LCSM(θ) = Ez∼pdata, t∼Unif, x∼pt(·|z)[∥sθ
+t (x) − ∇ log pt(x|z)∥2] (denoising score matching loss) (61)
+For every diffusion coefficient σt ≥ 0, simulating the SDE (e.g. via algorithm 2)
+X0 ∼pinit, dXt = uθ
+t (Xt) + σt2
+2 sθ
+t (Xt) dt + σtdWt (62)
+will result in generating approximate samples from pdata. One can empirically find the optimal σt ≥ 0.
+Gaussian probability paths. For the special case of a Gaussian probability path pt(x|z) = N (x; αtz, βt2Id), the conditional score matching is also called denoising score matching. This loss and conditional flow matching loss are then given by:
+LCFM(θ) =Et∼Unif,z∼pdata,ε∼N (0,Id)[∥uθ
+t (αtz + βtε) − (α ̇ tz + β ̇tε)∥2]
+LCSM(θ) =Et∼Unif,z∼pdata,ε∼N (0,Id)[∥sθ
+t (αtz + βtε) + ε
+βt
+∥2]
+In this case, there is no need to train stθ and utθ separately as we can convert them post training via the formula:
+uθ
+t (x) = β2
+t
+α ̇ t
+αt
+− β ̇tβt sθ
+t (x) + α ̇ t
+αt
+x
+Also here, after training we can simulate the SDE in eq. (62) via algorithm 2 to obtain samples X1.
+Denoising diffusion models. Denoising diffusion models are diffusion models with Gaussian probability paths. For this reason, it is sufficient for them to learn either utθ or stθ as they can be converted into one another.
+34
+
+
+4.3 A Guide to the Diffusion Model Literature
+While flow matching only allows for a simulation procedure that is deterministic via ODE, they allow for a simulation that is deterministic (probability flow ODE) or stochastic (SDE sampling). However, unlike flow matching or stochastic interpolants that allow to convert arbitrary distributions pinit into arbitrary distributions pdata via arbitrary probability paths pt, denoising diffusion models only works for Gaussian initial distributions pinit = N (0, Id) and a Gaussian probability path.
+Literature Alternative formulations for diffusion models that are popular in the literature are: Discrete-time: Approximations of SDEs via discrete-time Markov chains are often used.
+21.. Inverted time convention: It is popular to use an inverted time convention where t = 0 corresponds to pdata (as opposed to here where t = 0 corresponds to pinit).
+3. Forward process: Forward processes (or noising processes) are ways of constructing (Gaussian) probability paths.
+4. Training target via time-reversal: A training target can also be constructed via the time-reversal of SDEs. This is a specific instance of the construction presented here (with an inverted time convention).
+35
+
+
+5 Building an Image Generator
+In the previous sections, we learned how to train a flow matching or diffusion model to sample from a distribution pdata(x). This recipe is general and can be applied to a variety of different data types and applications. In this section, we learn how to apply this framework to build an image or video generator, such as e.g., Stable Diffusion 3 and Meta Movie Gen Video. To build such a model, there are two main ingredients that we are missing: First, we will need to formulate conditional generation (guidance), e.g. how do we generate an image that fits a specific text prompt, and how our existing objectives may be suitably adapted to this end. We will also learn about classifier-free guidance, a popular technique used to enhance the quality of conditional generation. Second, we will discuss common neural network architectures, again focusing on those designed for images and videos. Finally, we will examine in depth the two state-of-the-art image and video models mentioned above - Stable Diffusion and Meta MovieGen - to give you a taste of how things are done at scale.
+5.1 Guidance
+So far, the generative models we considered were unconditional, e.g. an image model would simply generate some image. However, the task is not merely to generate an arbitrary object, but to generate an object conditioned on some additional information. For example, one might imagine a generative model for images which takes in a text prompt y, and then generates an image x conditioned on y. For fixed prompt y, we would thus like to sample from pdata(x|y), that is, the data distribution conditioned on y. Formally, we think of y to live in a space Y. When y corresponds to a text-prompt, for example, Y would likely be some continuous space like Rdy . When y corresponds to some discrete class label, Y would be discrete. In the lab, we will work with the MNIST dataset, in which case we will take Y = {0, 1, . . . , 9} to correspond to the identities of handwritten digits.
+To avoid a notation and terminology clash with the use of the word "conditional" to refer to conditioning on z ∼ pdata (conditional probability path/vector field), we will make use of the term guided to refer specifically to conditioning on y.
+Remark 24 (Guided vs. Conditional Terminology)
+In these notes, we opt to use the term guided in place of conditional to refer to the act of conditioning on y. Here, we will refer to e.g., a guided vector field utarget
+t (x|y) and a conditional vector field utarget
+t (x|z). This terminology is consistent with other works such as [15].
+The goal of guided generative modeling is thus to be able to sample from pdata(x|y) for any such y. In the language of flow and score matching, and in which our generative models correspond to the simulation of ordinary and stochastic differential equations, this can be phrased as follows.
+Key Idea 5 (Guided Generative Model)
+We define a guided diffusion model to consist of a guided vector field utθ(·|y), parameterized by some neural
+36
+
+
+5.1 Guidance
+network, and a time-dependent diffusion coefficient σt, together given by
+Neural network: uθ : Rd × Y × [0, 1] → Rd, (x, y, t) 7→ uθ
+t (x|y)
+Fixed: σt : [0, 1] → [0, ∞), t 7→ σt
+Notice the difference from summary 7: we are additionally guiding utθ with the input y ∈ Y. For any such y ∈ Rdy , samples may then be generated from such a model as follows:
+Initialization: X0 ∼ pinit ▶ Initialize with simple distribution (such as a Gaussian)
+Simulation: dXt = uθ
+t (Xt|y)dt + σtdWt ▶ Simulate SDE from t = 0 to t = 1.
+Goal: X1 ∼ pdata(·|y) ▶ Goal is for X1 to be distributed like pdata(·|y).
+When σt = 0, we say that such a model is a guided flow model.
+5.1.1 Guidance for Flow Models
+If we imagine fixing our choice of y, and take our data distribution as pdata(x|y), then we have recovered the unguided generative problem, and can accordingly construct a generative model using the conditional flow matching objective, viz.,
+Ez ∼pdata (·|y ),x∼pt (·|z ) ∥uθ
+t (x|y) − utarget
+t (x|z)∥2. (63)
+Note that the label y does not affect the conditional probability path pt(·|z) or the conditional vector field utarget
+t (x|z)
+(although in principle, we could make it dependent). Expanding the expectation over all such choices of y, and
+over all times t ∈ Unif[0, 1), we thus obtain a guided conditional flow matching objective
+Lguided
+CFM (θ) = E(z,y)∼pdata(z,y), t∼Unif[0,1), x∼pt(·|z)∥uθ
+t (x|y) − utarget
+t (x|z)∥2. (64)
+One of the main differences between the guided objective in eq. (64) and the unguided objective from eq. (44) is that here we are sampling (z, y) ∼ pdata rather than just z ∼ pdata. The reason is that our data distribution is now, in principle, a joint distribution over e.g., both images z and text prompts y. In practice, this means that a PyTorch implementation of eq. (64) would involve a dataloader which returned batches of both z and y. The above procedure leads to a faithful generation procedure of pdata(·|y).
+Classifier-Free Guidance. While the above conditional training procedure is theoretically valid, it was soon empirically realized that images samples with this procedure did not fit well enough to the desired label y. It was discovered that perceptual quality is increased when the effect of the guidance variable y is artificially reinforced. This insight was distilled into a technique known as classifier-free guidance that is widely used in the context of state-of-the-art diffusion models, and which we discuss next. For simplicity, we will focus here on the case of Gaussian probability paths. Recall from eq. (16) that a Gaussian conditional probability path is given by
+pt(·|z) = N (αtz, β2
+t Id)
+37
+
+
+5.1 Guidance
+where the noise schedulers αt and βt are continuously differentiable, monotonic, and satisfy α0 = β1 = 0 and
+α1 = β0 = 1. To gain intuition for classifier-free guidance, we can use proposition 1 to rewrite the guided vector
+field utarget
+t (x|y) in the following form using the guided score function ∇ log pt(x|y)
+utarget
+t (x|y) = atx + bt∇ log pt(x|y), (65)
+where
+(at, bt) = α ̇ t
+αt
+, α ̇ tβt2 − β ̇tβtαt
+αt
+!
+. (66)
+However, notice that by Bayes’ rule, we can rewrite the guided score as
+∇ log pt(x|y) = ∇ log pt(x)pt(y|x)
+pt(y) = ∇ log pt(x) + ∇ log pt(y|x), (67)
+where we used that the gradient ∇ is taken with respect to the variable x, so that ∇ log pt(y) = 0. We may thus rewrite
+utarget
+t (x|y) = atx + bt(∇ log pt(x) + ∇ log pt(y|x)) = utarget
+t (x) + bt∇ log pt(x|y).
+Notice the shape of the above equation: The guided vector field utarget
+t (x|y) is a sum of the unguided vector field plus a guided score ∇ log pt(x|y). As people observed that their image x did not fit their prompt y well enough, it was a natural idea to scale up the contribution of the ∇ log pt(y|x) term, yielding
+u ̃t(x|y) = utarget
+t (x) + wbt∇ log pt(y|x),
+where w > 1 is known as the guidance scale. Note that this is a heuristic: for w ̸= 1, it holds that u ̃t(x|y) ̸=
+utarget
+t (x|y), i.e. therefore not the true, guided vector field. However, empirical results have shown to yield preferable results (when w > 1).
+Remark 25 (Where is the classifier?)
+The term log pt(y|x) can be considered as a sort of classifier of noised data (i.e. it gives the likelihoods of y given x). In fact, early works in diffusion trained actual classifiers and used them to the guide via the above procedure. This leads to classifier guidance [5, 30]. As it has been largely superseded by classifier-free guidance, we do not consider it here.
+We may again apply the equality
+∇ log pt(x|y) = ∇ log pt(x) + ∇ log pt(y|x)
+38
+
+
+5.1 Guidance
+to obtain
+u ̃t(x|y) = utarget
+t (x) + wbt∇ log pt(y|x)
+= utarget
+t (x) + wbt(∇ log pt(x|y) − ∇ log pt(x))
+= utarget
+t (x) − (watx + wbt∇ log pt(x)) + (watx + wbt∇ log pt(x|y))
+= (1 − w)utarget
+t (x) + wutarget
+t (x|y).
+We may therefore express the scaled guided vector field u ̃t(x|y) as the linear combination of the unguided vector
+field utarget
+t (x) with the guided vector field utarget
+t (x|y). The idea might then to to train both an unguided utarget
+t (x)
+(using e.g., eq. (44)) as well as a guided utarget
+t (x|y) (using e.g., eq. (64)), and then combine them at inference time to obtain u ̃t(x|y). "But wait!", you might ask, "wouldn’t we need to train two models then !?". It turns out we do can train both in model: we may thus augment our label set with a new, additional ∅ label that denotes
+the absence of conditioning. We can then treat utarget
+t (x) = utarget
+t (x|∅). With that, we do not need to train a separate model to reinforce the effect of a hypothetical classifier. This approach of training a conditional and unconditional model in one (and subsequently reinforcing the conditioning) is known as classifier-free guidance (CFG) [10].
+Remark 26 (Derivation for general probability paths)
+Note that the construction
+u ̃t(x|y) = (1 − w)utarget
+t (x) + wutarget
+t (x|y),
+is equally valid for any choice probability path, not just a Gaussian one. When w = 1, it is straightforward to verify that u ̃t(x|y) = utarget
+t (x|y). Our derivation using Gaussian paths was simply to illustrate the intuition behind the construction, and in particular of amplifying the contribution of a “classifier” ∇ log pt(y|x).
+Training and Context-Free Guidance. We must now amend the guided conditional flow matching objective from eq. (64) to account for the possibility of y = ∅. The challenge is that when sampling (z, y) ∼ pdata, we will never obtain y = ∅. It follows that we must introduce the possibility of y = ∅ artificially. To do so, we will define some hyperparameter η to be the probability that we discard the original label y, and replace it with ∅. We thus arrive
+at our CFG conditional flow matching training objective
+LCFG
+CFM(θ) = E□∥uθ
+t (x|y) − utarget
+t (x|z)∥2 (68)
+□ = (z, y) ∼ pdata(z, y), t ∼ Unif[0, 1), x ∼ pt(·|z), replace y = ∅ with prob. η (69)
+We summarize our findings below.
+Summary 27 (Classifier-Free Guidance for Flow Models)
+Given the unguided marginal vector field utarget
+t (x|∅), the guided marginal vector field utarget
+t (x|y), and a
+guidance scale w > 1, we define the classifier-free guided vector field u ̃t(x|y) by
+u ̃t(x|y) = (1 − w)utarget
+t (x|∅) + wutarget
+t (x|y). (70)
+39
+
+
+5.1 Guidance
+Figure 11: The effect of classifier guidance. The prompt here is the "class" chosen to be "Corgi" (a specific type of dog). Left: samples generated with no guidance (i.e., w = 1). Right: samples generated with classifier guidance and w = 4. As shown, classifier-free guidance improves the similarity to the prompt. Figure taken from [10].
+By approximating utarget
+t (x|∅) and utarget
+t (x|y) using the same neural network, we may leverage the following classifier-free guidance CFM (CFG-CFM) objective, given by
+LCFG
+CFM(θ) = E□∥uθ
+t (x|y) − utarget
+t (x|z)∥2 (71)
+□ = (z, y) ∼ pdata(z, y), t ∼ Unif[0, 1), x ∼ pt(·|z), replace y = ∅ with prob. η (72)
+In plain English, LCFG
+CFM might be approximated by
+(z, y) ∼ pdata(z, y) ▶ Sample (z, y) from data distribution.
+t ∼ Unif[0, 1) ▶ Sample t uniformly on [0, 1).
+x ∼ pt(x|z) ▶ Sample x from the conditional probability path pt(x|z).
+with prob. η, y ← ∅ ▶ Replace y with ∅ with probability η.
+LCF \ G
+CFM(θ) = ∥uθ
+t (x|y) − utarget
+t (x|z)∥2 ▶ Regress model against conditional vector field.
+Above, we made use multiple times of the fact that utarget
+t (x|z) = utarget
+t (x|z, y). At inference time, for a fixed choice of y, we may sample via
+Initialization: X0 ∼ pinit(x) ▶ Initialize with simple distribution (such as a Gaussian)
+Simulation: dXt = u ̃θ
+t (Xt|y)dt ▶ Simulate ODE from t = 0 to t = 1.
+Samples: X1 ▶ Goal is for X1 to adhere to the guiding variable y.
+Note that the distribution of X1 is not necessarily aligned with X1 ∼ pdata(·|y) anymore if we use a weight w > 1. However, empirically, this shows better alignment with conditioning. In fig. 11, we illustrate class-based classifierfree guidance on 128x128 ImageNet, as in [10]. Similarly, in fig. 12, we visualize the affect of various guidance scales w when applying classifier-free guidance to sampling from the MNIST dataset of handwritten digits.
+40
+
+
+5.1 Guidance
+Figure 12: The effect of classifier-free guidance applied at various guidance scales for the MNIST dataset of handwritten digits. Left: Guidance scale set to w = 1.0. Middle: Guidance scale set to w = 2.0. Right: Guidance scale set to w = 4.0. You will generate a similar image yourself in the lab three!
+Algorithm 5 Classifier-free guidance training for Gaussian probability path pt(x|z) = N (x; αtz, βt2Id)
+Require: Paired dataset (z, y) ∼ pdata, neural network utθ 1: for each mini-batch of data do 2: Sample a data example (z, y) from the dataset. 3: Sample a random time t ∼ Unif[0,1]. 4: Sample noise ε ∼ N (0, Id) 5: Set x = αtz + βtε
+6: With probability p drop label: y ← ∅ 7: Compute loss
+L(θ) =∥uθ
+t (x|y) − (α ̇ tε + β ̇tz)∥2
+8: Update the model parameters θ via gradient descent on L(θ). 9: end for
+5.1.2 Guidance for Diffusion Models
+In this section we extend the reasoning of the previous section to diffusion models. First, in the same way that we obtained eq. (64), we may generalize the conditional score matching loss eq. (61) to obtain the guided conditional
+score matching objective
+Lguided
+CSM (θ) = E□[∥sθ
+t (x|y) − ∇ log pt(x|z)∥2] (73)
+□ = (z, y) ∼ pdata(z, y), t ∼ Unif, x ∼ pt(·|z). (74)
+A guided score network stθ(x|y) trained with eq. (73) might then be combined with the guided vector field utθ(x|y) to simulate the SDE
+X0 ∼ pinit, dXt = uθ
+t (Xt|y) + σt2
+2 sθ
+t (Xt|y) dt + σtdWt.
+41
+
+
+5.1 Guidance
+Classifier-Free Guidance. We now extend the classifier-free guidance construction to the diffusion setting. By Bayes’ rule (see eq. (67)),
+∇ log pt(x|y) = ∇ log pt(x) + ∇ log pt(y|x),
+so that for guidance scale w > 1 we may define
+s ̃t(x|y) = ∇ log pt(x) + w∇ log pt(y|x)
+= ∇ log pt(x) + w(∇ log pt(x|y) − ∇ log pt(x))
+= (1 − w)∇ log pt(x) + w∇ log pt(x|y)
+= (1 − w)∇ log pt(x|∅) + w∇ log pt(x|y)
+We thus arrive at the CFG-compatible (that is, accounting for the possibility of ∅) objective
+LCFG
+DSM(θ) = E□∥sθ
+t (x|y) − ∇ log pt(x|z)∥2 (75)
+□ = (z, y) ∼ pdata(z, y), t ∼ Unif[0, 1), x ∼ pt(·|z), replace y = ∅ with prob. η, (76)
+where η is a hyperparameter (the probability of replacing y with ∅). We will refer LCFG
+CSM(θ) as the guided conditional
+score matching objective. We recap as follows
+Summary 28 (Classifier-Free Guidance for Diffusions)
+Given the unguided marginal score ∇ log pt(x|∅), the guided marginal score field ∇ log pt(x|y), and a guidance
+scale w > 1, we define the classifier-free guided score s ̃t(x|y) by
+s ̃t(x|y) = (1 − w)∇ log pt(x|∅) + w∇ log pt(x|y). (77)
+By approximating ∇ log pt(x|∅) and ∇ log pt(x|y) using the same neural network stθ(x|y), we may leverage the following classifier-free guidance CSM (CFG-CSM) objective, given by
+LCFG
+CSM(θ) = E□∥sθ
+t (x|(1 − ξ)y + ξ∅) − ∇ log pt(x|z)∥2 (78)
+□ = (z, y) ∼ pdata(z, y), t ∼ Unif[0, 1), x ∼ pt(·|z), replace y = ∅ with prob. η (79)
+In plain English, LCFG
+DSM might be approximated by
+(z, y) ∼ pdata(z, y) ▶ Sample (z, y) from data distribution.
+t ∼ Unif[0, 1) ▶ Sample t uniformly on [0, 1).
+x ∼ pt(x|z, y) ▶ Sample x from cond. path pt(x|z).
+with prob. η, y ← ∅ ▶ Replace y with ∅ with probability η.
+LC \ FG
+DSM(θ) = ∥sθ
+t (x|y) − ∇ log pt(x|z)∥2 ▶ Regress model against conditional score.
+At inference time, for a fixed choice of w > 1, we may combine stθ(x|y) with a guided vector field utθ(x|y) and
+42
+
+
+5.2 Neural network architectures
+define
+s ̃θ
+t (x|y) = (1 − w)sθ
+t (x|∅) + wsθ
+t (x|y),
+u ̃θ
+t (x|y) = (1 − w)uθ
+t (x|∅) + wuθ
+t (x|y).
+Then we may sample via
+Initialization: X0 ∼ pinit(x) ▶ Initialize with simple distribution (such as a Gaussian)
+Simulation: dXt = u ̃θ
+t (Xt|y) + σt2
+2 s ̃θ
+t (Xt|y) dt + σtdWt ▶ Simulate SDE from t = 0 to t = 1.
+Samples: X1 ▶ Goal is for X1 to adhere to the guiding variable y.
+5.2 Neural network architectures
+We next discuss the design of neural networks for flow and diffusion models. Specifically, we answer the question of how to construct a neural network architecture that represents the (guided) vector field utθ(x|y) with parameters θ. Note that the neural network must have 3 inputs - a vector x ∈ Rd, a conditioning variable y ∈ Y, and a time value t ∈ [0, 1] - and one output - a vector utθ(x|y) ∈ Rd. For low-dimensional distributions (e.g. the toy distributions we have seen in previous sections), it is sufficient to parameterize utθ(x|y) as a multi-layer perceptron (MLP), otherwise known as a fully connected neural network. That is, in this simple setting, a forward pass through utθ(x|y) would involve concatenating our input x, y, and t, and passing them through an MLP. However, for complex, high-dimensional distributions, such as those over images, videos, and proteins, an MLP is rarely sufficient, and it is common to use special, application-specific architectures. For the remainder of this section, we will consider the case of images (and by extension, videos), and discuss two common architectures: the U-Net [25], and the
+diffusion transformer (DiT).
+5.2.1 U-Nets and Diffusion Transformers
+Before we dive into the specifics of these architectures, let us recall from the introduction that an image is simply a vector x ∈ RCimage×H×W . Here Cimage denotes the number of channels (an RGB image typically would have Cinput = 3 color channels), H denotes the height of the image in pixels, and W denotes the width of the image in pictures.
+U-Nets. The U-Net architecture [25] is a specific type of convolutional neural network. Originally designed for image segmentation, its crucial feature is that both its input and its output have the shape of images (possibly with a different number of channels). This makes it ideal to parameterize a vector field x 7→ utθ(x|y) as for fixed y, t its input has the shape of an image and its output does, too. Therefore, U-Net were widely used in the development of diffusion models. A U-Net consists of a series of encoders Ei, and a corresponding sequence of decoders Di, along with a latent processing block in between, which we shall refer to as a midcoder (midcoder is a term is not used in the literature usually). For sake of example, let us walk through the path taken by an image xt ∈ R3×256×256 (we
+43
+
+
+5.2 Neural network architectures
+Figure 13: The simplified U-Net architecture used in lab three.
+have taken (Cinput, H, W ) = (3, 256, 256)) as it is processed by the U-Net:
+xinput
+t ∈ R3×256×256 ▶ Input to the U-Net.
+xlatent
+t = E (xinput
+t ) ∈ R512×32×32 ▶ Pass through encoders to obtain latent.
+xlatent
+t = M(xlatent
+t ) ∈ R512×32×32 ▶ Pass latent through midcoder.
+xoutput
+t = D(xlatent
+t ) ∈ R3×256×256 ▶ Pass through decoders to obtain output.
+Notice that as the input passes through the encoders, the number of channels in its representation increases, while the height and width of the images are decreased. Both the encoder and the decoder usually consist of a series of convolutional layers (with activation functions, pooling operations, etc. in between). Not shown above are two points: First, the input xinput
+t ∈ R3×256×256 is often fed into an initial pre-encoding block to increase the number of channels before being fed into the first encoder block. Second, the encoders and decoders are often connected by residual connections. The complete picture is shown in fig. 13. At a high level, most U-Nets involve some variant of what is described above. However, certain of the design choices described above may well differ from various implementations in practice. In particular, we opt above for a purely-convolutional architecture whereas it is common to include attention layers as well throughout the encoders and decoders. The U-Net derives its name from the “U”-like shape formed by its encoders and decoders (see fig. 13).
+Diffusion Transformers. One alternative to U-Nets are diffusion transformers (DiTs), which dispense with convolutions and purely use attention [35, 19]. Diffusion transformers are based on vision transformers (ViTs), in which the big idea is essentially to divide up an image into patches, embed each of these patches, and then attend between the patches [6]. Stable Diffusion 3, trained with conditional flow matching, parameterizes the velocity field
+44
+
+
+5.2 Neural network architectures
+utθ(x) as a modified DiT, as we discuss later in section 5.3 [7].
+Remark 29 (Working in Latent Space)
+A common problem for large-scale applications is that the data is so high-dimensional that it consumes too much memory. For example, we might want to generate a high resolution image of 1000 × 10000 pixels leading to 1 million (!) dimensions. To reduce memory usage, a common design pattern is to work in a latent space that can be considered a compressed version of our data at lower resolution. Specifically, the usual approach is to combine a flow or diffusion model with a (variational) autoencoder [24]. In this case, one first encodes the training dataset in the latent space via an autoencoder, and then training the flow or diffusion model in the latent space. Sampling is performed by first sampling in the latent space using the trained flow or diffusion model, and then decoding of the output via the decoder. Intuitively, a well-trained autoencoder can be thought of as filtering out semantically meaningless details, allowing the generative model to “focus” on important, perceptually relevant features [24]. By now, nearly all state-of-the-art approaches to image and video generation involve training a flow or diffusion model in the latent space of an autoencoder - so called latent diffusion models [24, 34]. However, it is important to note: one also needs to train the autoencoder before training the diffusion models. Crucially, performance now depends also on how good the autoencoder compresses images into latent space and recovers aesthetically pleasing images.
+5.2.2 Encoding the Guiding Variable.
+Up until this point, we have glossed over how exactly the guiding (conditioning) variable y is fed into the neural network utθ(x|y). Broadly, this process can be decomposed into two steps: embedding the raw input yraw (e.g., the text prompt “a cat playing a trumpet, photorealistic”) into some vector-valued input y, and feeding the resulting y into the actual model. We now proceed to describe each step in greater detail.
+Embedding Raw Input. Here, we’ll consider two cases: (1) where yraw is a discrete class-label, and (2) where yraw is a text-prompt. When yraw ∈ Y ≜ {0, . . . , N } is just a class label, then it is often easiest to simply learn a separate embedding vector for each of the N + 1 possible values of yraw, and set y to this embedding vector. One would consider the parameters of these embeddings to be included in the parameters of utθ(x|y), and would therefore learn these during training. When yraw is a text-prompt, the situation is more complex, and approaches largely rely on frozen, pre-trained models. Such models are trained to embed a discrete text input into a continuous vector that captures the relevant information. One such model is known as CLIP (Contrastive Language-Image Pretraining). CLIP is trained to learn a shared embedding space for both images and text-prompts, using a training loss designed to encourage image embeddings to be close to their corresponding prompts, while being farther from the embeddings of other images and prompts [22]. We might therefore take y = CLIP(yraw) ∈ RdCLIP to be the embedding produced by a frozen, pre-trained CLIP model. In certain cases, it may be undesirable to compress the entire sequence into a single representation. In this case, one might additionally consider embedding the prompt using a pre-trained transformer so as to obtain a sequence of embeddings. It is also common to combine multiple such pretrained embeddings when conditioning so as to simultaneously reap the benefits of each model [7, 21].
+45
+
+
+5.3 A Survey of Large-Scale Image and Video Models
+Figure 14: Left: An overview of the diffusion transformer architecture, taken from [19]. Right: A schematic of the contrastive CLIP loss, in which a shared image-text embedding space is learned, taken from [22].
+Feeding in the Embedding. Suppose now that we have obtained our embedding vector y ∈ Rdy . Now what? The answer varies, but usually it is some variant of the following: feed it individually into every sub-component of the architecture for images. Let us briefly describe how this is accomplished in the U-Net implementation used in lab three, as depicted in fig. 13. At some intermediate point within the network, we would like to inject information from y ∈ Rdy into the current activation xintermediate
+t ∈ RC×H×W . We might do so using the procedure below, given in PyTorch-esque pseudocode.
+y = MLP(y) ∈ RC ▶ Map y from Rdy to RC .
+y = reshape(y) ∈ RC×1×1 ▶ Reshape y to “look” like an image.
+xintermediate
+t = broadcast_add(xintermediate
+t , y) ∈ RC×H×W ▶ Add y to xintermediate
+t pointwise.
+One exception to this simple-pointwise conditioning scheme is when we have a sequence of embeddings as produced by some pretrained language model. In this case, we might consider using some sort of cross-attention scheme between our image (suitably patchified) and the tokens of the embedded sequence. We will see multiple examples of this in section 5.3.
+5.3 A Survey of Large-Scale Image and Video Models
+We conclude this section by briefly examining two large-scale generative models: Stable Diffusion 3 for image generation and Meta’s Movie Gen Video for video generation [7, 21]. As you will see, these models use the techniques we have described in this work along with additional architectural enhancements to both scale and accommodate richly structured conditioning modalities, such as text-based input.
+46
+
+
+5.3 A Survey of Large-Scale Image and Video Models
+5.3.1 Stable Diffusion 3
+Stable Diffusion is a series of state-of-the-art image generation models. These models were among the first to use large-scale latent diffusion models for image generation. If you have not done so, we highly recommend testing it for yourself online (https://stability.ai/news/stable-diffusion-3).
+Stable Diffusion 3 uses the same conditional flow matching objective that we study in this work (see algorithm 5).3 As outlined in their paper, they extensively tested various flow and diffusion alternatives and found flow matching to perform best. For training, it uses classifier-free guidance training (with dropping class labels) as outlined above. Further, Stable Diffusion 3 follows the approach outlined in section 5.2 by training within the latent space of a pre-trained autoencoder. Training a good autoencoder was a big contribution of the first stable diffusion papers.
+To enhance text conditioning, Stable Diffusion 3 makes use of both 3 different types of text embeddings (including CLIP embeddings as well as the sequential outputs produced by a pretrained instance of the encoder of Google’s T5-XXL [23], and similar to approaches taken in [3, 26]). Whereas CLIP embeddings provide a coarse, overarching embedding of the input text, the T5 embeddings provide a more granular level of context, allowing for the possibility of the model attending to particular elements of the conditioning text. To accommodate these sequential context embeddings, the authors then propose to extend the diffusion transformer to attend not just to patches of the image, but to the text embeddings as well, thereby extending the conditioning capacity from the class-based scheme originally proposed for DiT to sequential context embeddings. This proposed modified DiT is referred to as a multi-modal DiT (MM-DiT), and is depicted in fig. 15. Their final, largest model has 8 billion parameters. For sampling, they use 50 steps (i.e. they have to evaluate the network 50 times) using a Euler simulation scheme and a classifier-free guidance weight between 2.0-5.0.
+5.3.2 Meta Movie Gen Video
+Next, we discuss Meta’s video generator, Movie Gen Video (https://ai.meta.com/research/movie-gen/). As the data are not images but videos, the data x lie in the space RT ×C×H×W where T represents the new temporal dimension (i.e. the number of frames). As we shall see, many of the design choices made in this video setting can be seen as adapting existing techniques (e.g., autoencoders, diffusion transformers, etc.) from the image setting to handle this extra temporal dimension.
+Movie Gen Video utilizes the conditional flow matching objective with the same CondOT path (see algorithm 5). Like Stable Diffusion 3, Movie Gen Video also operates in the latent space of frozen, pretrained autoencoder. Note that the autoencoder to reduce memory consumption is even more important for videos than for images - which is why most video generators right now are pretty limited in the length of the video they generate. Specifically, the authors propose to handle the added time dimension by introducing a temporal autoencoder (TAE) which maps a raw video x′t ∈ RT ′×3×H×W to a latent xt ∈ RT ×C×H×W , with T ′
+T = H′
+H = W′
+W = 8 [21]. To accomodate long videos, a temporal tiling procedure is proposed by which the video is chopped up into pieces, each piece is encoder separately, and the latents are sticthed together [21]. The model itself - that is, utθ(xt) - is given by a
+3In their work, they use a different convention to condition on the noise. But this is only notation and the algorithm is the same.
+47
+
+
+5.3 A Survey of Large-Scale Image and Video Models
+Figure 15: The architecture of the multi-modal diffusion transformer (MM-DiT) proposed in [7]. Figure also taken from [7].
+DiT-like backbone in which xt is patchified along the time and space dimensions. The image patches are then passed through a transformer employing both self-attention among the image patches, and cross-attention with language model embeddings, similar to the MM-DiT employed by Stable Diffusion 3. For text conditioning, Movie Gen Video employs three types of text embeddings: UL2 embeddings, for granular, text-based reasoning [33], ByT5 embeddings, for attending to character-level details (for e.g., prompts explicitly requesting specific text to be present) [36], and MetaCLIP embeddings, trained in a shared text-image embedding space [13, 21]. Their final, largest model has 30 billion parameters. For a significantly more detailed and expansive treatment, we encourage the reader to check out the Movie Gen technical report itself [21].
+48
+
+
+6 Acknowledgements
+This course would not have been possible without the generous support of many others. We would like to thank Tommi Jaakkola for serving as the advisor and faculty sponsor for this course, and for thoughtful feedback throughout the process. We would like to thank Christian Fiedler, Tim Griesbach, Benedikt Geiger, and Albrecht Holderrieth for value feedback on the lecture notes. Further, we thank Elaine Mello from MIT Open Learning for support with lecture recordings and Ashay Athalye from Students for Open and Universal Learning for helping to cut and process the videos. We would additionally like to thank Cameron Diao, Tally Portnoi, Andi Qu, Roger Trullo, Ádám Burián, Zewen Yang, and many others for their invaluable contributions to the labs. We would also like to thank Lisa Bella, Ellen Reid, and everyone else at MIT EECS for their generous support. Finally, we would like to thank all participants in the original course offering (MIT 6.S184/6.S975, taught over IAP 2025), as well as readers like you for your interest in this class. Thanks!
+7 References
+[1] Michael S Albergo, Nicholas M Boffi, and Eric Vanden-Eijnden. “Stochastic interpolants: A unifying framework for flows and diffusions”. In: arXiv preprint arXiv:2303.08797 (2023).
+[2] Brian DO Anderson. “Reverse-time diffusion equation models”. In: Stochastic Processes and their Applications 12.3 (1982), pp. 313–326.
+[3] Yogesh Balaji et al. eDiff-I: Text-to-Image Diffusion Models with an Ensemble of Expert Denoisers. 2023.
+arXiv: 2211.01324 [cs.CV]. url: https://arxiv.org/abs/2211.01324.
+[4] Earl A Coddington, Norman Levinson, and T Teichmann. Theory of ordinary differential equations. 1956.
+[5] Prafulla Dhariwal and Alex Nichol. Diffusion Models Beat GANs on Image Synthesis. 2021. arXiv: 2105.05233 [cs.LG]. url: https://arxiv.org/abs/2105.05233.
+[6] Alexey Dosovitskiy et al. An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale.
+2021. arXiv: 2010.11929 [cs.CV]. url: https://arxiv.org/abs/2010.11929.
+[7] Patrick Esser et al. Scaling Rectified Flow Transformers for High-Resolution Image Synthesis. 2024. arXiv:
+2403.03206 [cs.CV]. url: https://arxiv.org/abs/2403.03206.
+[8] Lawrence C Evans. Partial differential equations. Vol. 19. American Mathematical Society, 2022.
+[9] Jonathan Ho, Ajay Jain, and Pieter Abbeel. “Denoising diffusion probabilistic models”. In: Advances in neural
+information processing systems 33 (2020), pp. 6840–6851.
+[10] Jonathan Ho and Tim Salimans. Classifier-Free Diffusion Guidance. 2022. arXiv: 2207.12598 [cs.LG]. url: https://arxiv.org/abs/2207.12598.
+[11] Arieh Iserles. A first course in the numerical analysis of differential equations. Cambridge university press,
+2009.
+[12] Tero Karras et al. “Elucidating the design space of diffusion-based generative models”. In: Advances in Neural
+Information Processing Systems 35 (2022), pp. 26565–26577.
+49
+
+
+[13] Samuel Lavoie et al. Modeling Caption Diversity in Contrastive Vision-Language Pretraining. 2024. arXiv:
+2405.00740 [cs.CV]. url: https://arxiv.org/abs/2405.00740.
+[14] Yaron Lipman et al. “Flow matching for generative modeling”. In: arXiv preprint arXiv:2210.02747 (2022).
+[15] Yaron Lipman et al. “Flow Matching Guide and Code”. In: arXiv preprint arXiv:2412.06264 (2024).
+[16] Xingchao Liu, Chengyue Gong, and Qiang Liu. “Flow straight and fast: Learning to generate and transfer data with rectified flow”. In: arXiv preprint arXiv:2209.03003 (2022).
+[17] Nanye Ma et al. “Sit: Exploring flow and diffusion-based generative models with scalable interpolant trans
+formers”. In: arXiv preprint arXiv:2401.08740 (2024).
+[18] Xuerong Mao. Stochastic differential equations and applications. Elsevier, 2007.
+[19] William Peebles and Saining Xie. Scalable Diffusion Models with Transformers. 2023. arXiv: 2212 . 09748 [cs.CV]. url: https://arxiv.org/abs/2212.09748.
+[20] Lawrence Perko. Differential equations and dynamical systems. Vol. 7. Springer Science & Business Media, 2013.
+[21] Adam Polyak et al. Movie Gen: A Cast of Media Foundation Models. 2024. arXiv: 2410.13720 [cs.CV]. url: https://arxiv.org/abs/2410.13720.
+[22] Alec Radford et al. Learning Transferable Visual Models From Natural Language Supervision. 2021. arXiv:
+2103.00020 [cs.CV]. url: https://arxiv.org/abs/2103.00020.
+[23] Colin Raffel et al. Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer. 2023.
+arXiv: 1910.10683 [cs.LG]. url: https://arxiv.org/abs/1910.10683.
+[24] Robin Rombach et al. High-Resolution Image Synthesis with Latent Diffusion Models. 2022. arXiv: 2112.10752
+[cs.CV]. url: https://arxiv.org/abs/2112.10752.
+[25] Olaf Ronneberger, Philipp Fischer, and Thomas Brox. “U-net: Convolutional networks for biomedical image
+segmentation”. In: Medical image computing and computer-assisted intervention–MICCAI 2015: 18th inter
+national conference, Munich, Germany, October 5-9, 2015, proceedings, part III 18. Springer. 2015, pp. 234
+241.
+[26] Chitwan Saharia et al. Photorealistic Text-to-Image Diffusion Models with Deep Language Understanding.
+2022. arXiv: 2205.11487 [cs.CV]. url: https://arxiv.org/abs/2205.11487.
+[27] Simo Särkkä and Arno Solin. Applied stochastic differential equations. Vol. 10. Cambridge University Press, 2019.
+[28] Jascha Sohl-Dickstein et al. “Deep unsupervised learning using nonequilibrium thermodynamics”. In: Inter
+national conference on machine learning. PMLR. 2015, pp. 2256–2265.
+[29] Yang Song and Stefano Ermon. “Generative modeling by estimating gradients of the data distribution”. In:
+Advances in neural information processing systems 32 (2019).
+[30] Yang Song et al. Score-Based Generative Modeling through Stochastic Differential Equations. 2021. arXiv:
+2011.13456 [cs.LG]. url: https://arxiv.org/abs/2011.13456.
+50
+
+
+[31] Yang Song et al. “Score-Based Generative Modeling through Stochastic Differential Equations”. In: Interna
+tional Conference on Learning Representations (ICLR). 2021.
+[32] Yang Song et al. “Score-based generative modeling through stochastic differential equations”. In: arXiv
+preprint arXiv:2011.13456 (2020).
+[33] Yi Tay et al. UL2: Unifying Language Learning Paradigms. 2023. arXiv: 2205.05131 [cs.CL]. url: https: //arxiv.org/abs/2205.05131.
+[34] Arash Vahdat, Karsten Kreis, and Jan Kautz. “Score-based generative modeling in latent space”. In: Advances
+in neural information processing systems 34 (2021), pp. 11287–11302.
+[35] Ashish Vaswani et al. Attention Is All You Need. 2023. arXiv: 1706.03762 [cs.CL]. url: https://arxiv.org/ abs/1706.03762.
+[36] Linting Xue et al. ByT5: Towards a token-free future with pre-trained byte-to-byte models. 2022. arXiv: 2105.
+13626 [cs.CL]. url: https://arxiv.org/abs/2105.13626.
+51
+
+
+A A Reminder on Probability Theory
+We present a brief overview of basic concepts from probability theory. This section was partially taken from [15].
+A.1 Random vectors
+Consider data in the d-dimensional Euclidean space x = (x1, . . . , xd) ∈ Rd with the standard Euclidean inner product ⟨x, y⟩ = Pd
+i=1 xiyi and norm ∥x∥ = p⟨x, x⟩. We will consider random variables (RVs) X ∈ Rd with continuous probability density function (PDF), defined as a continuous function pX : Rd → R≥0 providing event A with probability
+P(X ∈ A) =
+Z
+A
+pX (x)dx, (80)
+where R pX (x)dx = 1. By convention, we omit the integration interval when integrating over the whole space (
+R ≡R
+Rd ). To keep notation concise, we will refer to the PDF pXt of RV Xt as simply pt. We will use the notation X ∼ p or X ∼ p(X) to indicate that X is distributed according to p. One common PDF in generative modeling is the d-dimensional isotropic Gaussian:
+N (x; μ, σ2I) = (2πσ2)− d
+2 exp − ∥x − μ∥2
+2
+2σ2
+!
+, (81)
+where μ ∈ Rd and σ ∈ R>0 stand for the mean and the standard deviation of the distribution, respectively. The expectation of a RV is the constant vector closest to X in the least-squares sense:
+E [X] = arg min
+z∈Rd
+Z
+∥x − z∥2 pX (x)dx =
+Z
+xpX (x)dx. (82)
+One useful tool to compute the expectation of functions of RVs is the law of the unconscious statistician:
+E [f (X)] =
+Z
+f (x)pX (x)dx. (83)
+When necessary, we will indicate the random variables under expectation as EX f (X).
+A.2 Conditional densities and expectations
+Figure 16: Joint PDF pX,Y (in shades) and its marginals pX and pY (in black lines). Figure from [15] .
+Given two random variables X, Y ∈ Rd, their joint PDF pX,Y (x, y) has marginals
+Z
+pX,Y (x, y)dy = pX (x) and
+Z
+pX,Y (x, y)dx = pY (y). (84)
+See fig. 16 for an illustration of the joint PDF of two RVs in R (d = 1). The conditional PDF pX|Y describes the PDF of the random variable X when conditioned on an event Y = y with density pY (y) > 0:
+pX|Y (x|y) := pX,Y (x, y)
+pY (y) , (85)
+52
+
+
+A.2 Conditional densities and expectations
+and similarly for the conditional PDF pY |X . Bayes’ rule expresses the conditional PDF pY |X with pX|Y by
+pY |X (y|x) = pX|Y (x|y)pY (y)
+pX (x) , (86)
+for pX (x) > 0.
+The conditional expectation E [X|Y ] is the best approximating function g⋆(Y ) to X in the least-squares sense:
+g⋆ := arg min
+g :Rd →Rd
+E
+h
+∥X − g(Y )∥2i
+= arg min
+g :Rd →Rd
+Z
+∥x − g(y)∥2 pX,Y (x, y)dxdy
+= arg min
+g :Rd →Rd
+ZZ
+∥x − g(y)∥2 pX|Y (x|y)dx pY (y)dy. (87)
+For y ∈ Rd such that pY (y) > 0 the conditional expectation function is therefore
+E [X|Y = y] := g⋆(y) =
+Z
+xpX|Y (x|y)dx, (88)
+where the second equality follows from taking the minimizer of the inner brackets in eq. (87) for Y = y, similarly to eq. (82). Composing g⋆ with the random variable Y , we get
+E [X|Y ] := g⋆(Y ), (89)
+which is a random variable in Rd. Rather confusingly, both E [X|Y = y] and E [X|Y ] are often called conditional expectation, but these are different objects. In particular, E [X|Y = y] is a function Rd → Rd, while E [X|Y ] is a random variable assuming values in Rd. To disambiguate these two terms, our discussions will employ the notations introduced here. The tower property is an useful property that helps simplify derivations involving conditional expectations of two RVs X and Y :
+E [E [X|Y ]] = E [X] (90)
+Because E [X|Y ] is a RV, itself a function of the RV Y , the outer expectation computes the expectation of E [X|Y ]. The tower property can be verified by using some of the definitions above:
+E [E [X|Y ]] =
+ZZ
+xpX|Y (x|y)dx pY (y)dy
+(8=5)
+ZZ
+xpX,Y (x, y)dxdy
+(8=4)
+Z
+xpX (x)dx
+= E [X] .
+Finally, consider a helpful property involving two RVs f (X, Y ) and Y , where X and Y are two arbitrary RVs. Then, by using the Law of the Unconscious Statistician with (88), we obtain the identity
+E [f (X, Y )|Y = y] =
+Z
+f (x, y)pX|Y (x|y)dx. (91)
+53
+
+
+B A Proof of the Fokker-Planck equation
+In this section, we give here a self-contained proof of the Fokker-Planck equation (theorem 15) which includes the continuity equation as a special case (theorem 12). We stress that this section is not necessary to understand the remainder of this document and is mathematically more advanced. If you desire to understand where the Fokker-Planck equation comes from, then this section is for you.
+We start by showing that the Fokker-Planck is a necessary condition, i.e. if Xt ∼ pt, then the Fokker-Planck equation is fulfilled. The trick for the proof is to use test functions f , i.e. functions f : Rd → R that are infinitely differentiable ("smooth") and are only non-zero within a bounded domain (compact support). We use the fact that for arbitrary integrable functions g1, g2 : Rd → R it holds that
+g1(x) = g2(x) for all x ∈ Rd ⇔
+Z
+f (x)g1(x)dx =
+Z
+f (x)g2(x)dx for all test functions f (92)
+In other words, we can express the pointwise equality as equality of taking integrals. The useful thing about test functions is that they are smooth, i.e. we can take gradients and higher-order derivatives. In particular, we can use integration by parts for arbitrary test functions f1, f2:
+Z
+f1(x) ∂
+∂xi
+f2(x)dx = −
+Z
+f2(x) ∂
+∂xi
+f1(x)dx (93)
+By using this together with the definition of the divergence and Laplacian (see eq. (23)), we get the identities:
+Z
+∇f T
+1 (x)f2(x)dx = −
+Z
+f1(x)div(f2)(x)dx (f1 : Rd → R, f2 : Rd → Rd) (94)
+Z
+f1(x)∆f2(x)dx =
+Z
+f2(x)∆f1(x)dx (f1 : Rd → R, f2 : Rd → R) (95)
+Now let’s proceed to the proof. We use the stochastic update of SDE trajectories as in eq. (6):
+Xt+h =Xt + hut(Xt) + σt(Wt+h − Wt) + hRt(h) (96)
+≈Xt + hut(Xt) + σt(Wt+h − Wt) (97)
+where for now we simply ignore the error term Rt(h) for readability as we will take h → 0 anyway. We can then make the following calculation:
+f (Xt+h) − f (Xt)
+(9=7)f (Xt + hut(Xt) + σt(Wt+h − Wt)) − f (Xt)
+(i=)∇f (Xt)T (hut(Xt) + σt(Wt+h − Wt)))
++1
+2 (hut(Xt) + σt(Wt+h − Wt)))T ∇2f (Xt) (hut(Xt) + σt(Wt+h − Wt)))
+(i=i)h∇f (Xt)T ut(Xt) + σt∇f (Xt)T (Wt+h − Wt)
++1
+2 h2ut(Xt)T ∇2f (Xt)ut(Xt) + hσtut(Xt)T ∇2f (Xt)(Wt+h − Wt) + 1
+2 σ2
+t (Wt+h − Wt)T ∇2f (Xt)(Wt+h − Wt)
+54
+
+
+where in (i) we used a 2nd Taylor approximation of f around Xt and in (ii) we used the fact that the Hessian ∇2f is a symmetric matrix. Note that E[Wt+h − Wt|Xt] = 0 and Wt+h − Wt|Xt ∼ N (0, hId). Therefore
+E[f (Xt+h) − f (Xt)|Xt]
+=h∇f (Xt)T ut(Xt) + 1
+2 h2ut(Xt)T ∇2f (Xt)ut(Xt) + h
+2 σ2
+t Eεt∼N (0,Id)[εT
+t ∇2f (Xt)εt]
+(i=)h∇f (Xt)T ut(Xt) + 1
+2 h2ut(Xt)T ∇2f (Xt)ut(Xt) + h
+2 σ2
+t trace(∇2f (Xt))
+(i=i)h∇f (Xt)T ut(Xt) + 1
+2 h2ut(Xt)T ∇2f (Xt)ut(Xt) + h
+2 σ2
+t ∆f (Xt)
+where in (i) we used the fact that Eεt∼N (0,Id)[εtT Aεt] = trace(A) and in (ii) we used the definition of the Laplacian and the Hessian matrix. With this, we get that
+∂tE[f (Xt)]
+= hli→m0
+1
+h E[f (Xt+h) − f (Xt)]
+= hli→m0
+1
+h E[E[f (Xt+h) − f (Xt)|Xt]]
+=E[hli→m0
+1
+h h∇f (Xt)T ut(Xt) + 1
+2 h2ut(Xt)T ∇2f (Xt)ut(Xt) + h
+2 σ2
+t ∆f (Xt) ]
+=E[∇f (Xt)T ut(Xt) + 1
+2 σ2
+t ∆f (Xt)]
+(i=)
+Z
+∇f (x)T ut(x)pt(x)dx +
+Z1
+2 σ2
+t ∆f (x)pt(x)dx
+(i=i) −
+Z
+f (x)div(utpt)(x)dx +
+Z1
+2 σ2
+t f (x)∆pt(x)dx
+=
+Z
+f (x) −div(utpt)(x) + 1
+2 σ2
+t ∆pt(x) dx
+where in (i) we used the assumption that pt as the distribution of Xt and in (ii) we used eq. (94) and eq. (95). Therefore, it holds that
+∂tE[f (Xt)] =
+Z
+f (x) −div(ptut)(x) + σt2
+2 ∆pt(x) dx (for all f and 0 ≤ t ≤ 1) (98)
+(⇔i) ∂t
+Z
+f (x)pt(x)dx =
+Z
+f (x) −div(ptut)(x) + σt2
+2 ∆pt(x) dx (for all f and 0 ≤ t ≤ 1) (99)
+(i⇔i)
+Z
+f (x)∂tpt(x)dx =
+Z
+f (x) −div(ptut)(x) + σt2
+2 ∆pt(x) dx (for all f and 0 ≤ t ≤ 1) (100)
+(ii⇔i) ∂tpt(x) = − div(ptut)(x) + σt2
+2 ∆pt(x) (for all x ∈ Rd, 0 ≤ t ≤ 1) (101)
+where in (i) we used the assumption that Xt ∼ pt, in (ii) we swapped the derivative with the integral and (iii) we used eq. (92) . This completes the proof that the Fokker-Planck equation is a necessary condition.
+Finally, we explain why it is also a sufficient condition. The Fokker-Planck equation is a partial differential equation (PDE). More specifically, it is a so-called parabolic partial differential equation. Similar to theorem 3,
+55
+
+
+such differential equations have a unique solution given fixed initial conditions (see e.g. [8, Chapter 7]). Now, if eq. (30) holds for pt, we just shown above that it must also hold for true distribution qt of Xt (i.e. Xt ∼ qt) - in other words, both pt and qt are solutions to the parabolic PDE. Further, we know that the initial conditions are the same, i.e. p0 = q0 = pinit by construction of an interpolating probability path (see ??). Hence, by uniqueness of the solution of the differential equation, we know that pt = qt for all 0 ≤ t ≤ 1 - which means Xt ∼ qt = pt and which is what we wanted to show.
+56

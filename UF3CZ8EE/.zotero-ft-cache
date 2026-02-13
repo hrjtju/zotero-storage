@@ -1,0 +1,956 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 1
+Hyperbolic Deep Neural Networks: A Survey
+Wei Peng, Tuomas Varanka, Abdelrahman Mostafa, Henglin Shi, Guoying Zhao* Senior Member, IEEE
+Abstract—Recently, there has been a rising surge of momentum for deep representation learning in hyperbolic spaces due to their high capacity of modeling data, like knowledge graphs or synonym hierarchies, possessing hierarchical structure. We refer to the model as hyperbolic deep neural network in this paper. Such a hyperbolic neural architecture can potentially lead to drastically more compact models with much more physical interpretability than its counterpart in the Euclidean space. To stimulate future research, this paper presents a coherent and a comprehensive review of the literature around the neural components in the construction of hyperbolic deep neural networks, as well as the generalization of the leading deep approaches to the hyperbolic space. It also presents current applications around various machine learning tasks on several publicly available datasets, together with insightful observations and identifying open questions and promising future directions.
+Index Terms—Deep Neural Networks, Hyperbolic Geometry, Neural Networks on Riemannian Manifold, Hyperbolic Neural Networks, Poincar  ́e Model, Lorentz Model, Negative Curvature Geometry.
+F
+1 INTRODUCTION
+L
+Earning semantically rich representations of data such as text or images is a central point of interest in current machine learning. Recently, deep neural networks [1] have showcased a great capability in extracting feature representations and have dominated many research fields, such as image classification [2], [3], machine translation tasks [4], and playing video games [5]. Theoretically, deep neural networks with millions of parameters have great potential to fit any complex functions, especially when they are equipped with many advanced optimization libraries [6], [7], [8]. At the core of deep neural networks lies the expectation to find the optimal representations (task-related), of which the underlying manifold assumption is that the intrinsic dimensionality of the input data is much lower compared to the input feature space dimension. In most of the current deep learning applications, the representation learning is conducted in the Euclidean space, which is reasonable since the Euclidean space is the natural generalization of our intuition-friendly, visual three-dimensional space. However, recent research has shown that many types of complex data exhibit a highly non-Euclidean latent anatomy [9]. Besides, it appears in several applications that the dissimilarity measures constructed by experts tend to have non-Euclidean behavior [10]. In such cases, the Euclidean space does not provide the most powerful or meaningful geometrical representations. Works like [11] even suggest that data representations in most machine learning applications lie on a smooth manifold, and the smooth manifold is Riemannian, which is equipped with a positive definite metric on each tangent space, i.e., every non-vanishing tangent vector has a positive squared norm. Due to the positive definiteness of the metric, the negative of the (Riemannian) gradient is a descent direction that can be exploited to iteratively minimize some objective functions. Therefore current research is increasingly attracted by the idea of building neural networks in a Riemannian space, such as the hyperbolic space [12], [13], which is a Riemannian manifold with constant negative (sectional)
+W. Peng, T. Varanka, A. Mostafa, H. Shi, and G. Zhao are with the Center for Machine Vision and Signal Analysis, University of Oulu, Oulu, Finland. E-mail: firstname.lastname@oulu.fi
+Manuscript received April 19, 2020; revised August 26, 2020.
+curvature, and it is analogous to a high-dimensional sphere with constant positive curvature. In many domains, data is with a tree-like structure or can be represented hierarchically [14]. For instance, social networks, human skeletons, sentences in natural language, and evolutionary relationships between biological entities in phylogenetics. As also mentioned by [15], a wide variety of real-world data encompasses some types of latent hierarchical structures [16], [17], [18]. Besides, from the perspective of cognitive science, it is widely accepted that human beings use hierarchy to organise object categories [19], [20], [21]. As a result, there is always a passion to model the data hierarchically. Explicitly incorporating hierarchical structure in probabilistic models has unsurprisingly been a long-running research topic. Earlier work in this direction tended towards using trees as data structures to represent hierarchies. Recently, hyperbolic spaces have been proposed as an alternative continuous approach to learn hierarchical representations from textual and graph-structured data. The negative-curvature of the hyperbolic space results in very different geometric properties, which makes it widely employed in many settings. In the hyperbolic space, circle circumference (2 sinh r) and disc area (2π1 cosh r 1o) grow exponentially with radius r, as opposed to the Euclidean space where they only grow linearly and quadratically. The exponential growth of the Poincar ́e surface area with respect to its radius is analogous to the exponential growth of the number of leaves in a tree with respect to its depth, rather than polynomially as in the Euclidean case [22], [23]. On the contrary, Euclidean space, as shown in Bourgain’s theorem [24], is unable to obtain comparably low distortion for tree data, even when using an unbounded number of dimensions. Furthermore, the hyperbolic spaces are smooth, enabling the use of deep learning approaches which rely on differentiability. Therefore, hyperbolic spaces have recently gained momentum in the context of deep neural networks to model embedded data into the space that exhibits certain desirable geometric characteristics. To summarize, there are several potential advantages of utilizing hyperbolic deep neural networks to represent data:
+A better generalization capability of the model, with less overfitting, computational complexity, and requirement of
+arXiv:2101.04562v3 [cs.LG] 17 Feb 2021
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 2
+training data. Reduction in the number of model parameters and embedding dimensions. A low distortion embedding, which preserves the local and geometric information. A better model understanding and interpretation.
+Hyperbolic deep neural networks have a great potential in both academia and industry. For instance, in academia, the negatively curved spaces have already gained much attention for embedding and representing relationships between objects that are organized hierarchically [23], [25]. In industry, there are already recommender systems based on hyperbolic models, which are scaled to millions of users [26]. Also, we can find work for learning drug hierarchy [27]. Although constructing neural networks on hyperbolic space gained great attention, as far as we know, there is currently no survey paper in this field. This article makes the first attempt and aims to provide a comprehensive review of the literature around hyperbolic deep neural networks for machine learning tasks. Our goals are to 1) provide concise context and explanation to enable the reader to become familiar with the basics of hyperbolic geometry, 2) review the current literature related to algorithms and applications, and 3) identify open questions and promising future directions. We hope this article could be a tutorial for this topic, as well as a formal theoretical support for future research. The article is organized as follows. In Section 2, we introduce the fundamental concepts about hyperbolic geometry, making the paper self-contained. Section 3 introduces the generalization of important neural network components from the Euclidean space to the hyperbolic space. We then review the constructions for hyperbolic deep neural networks, including building networks on two commonly used hyperbolic models, Lorentz Model and Poincar ́e Model in Section 4. In Section 5, we describe applications for testing hyperbolic deep neural networks and discuss the performance of different approaches under different settings. Finally, in Section 6 we identify open problems and possible future research directions.
+2 HYPERBOLIC GEOMETRY
+In this section, we briefly introduce the background of hyperbolic geometry. Then, we discuss the mathematical preliminaries and notations of hyperbolic geometry. Finally, we go through the commonly used isometric models in the hyperbolic space.
+2.1 Background
+Hyperbolic Geometry is a non-Euclidean geometry, also called the Lobachevsky-Bolyai-Gauss geometry, having constant sectional curvature of 1 1. This geometry satisfies all of Euclid’s Postulates except the parallel postulate. Non-Euclidean geometry arises by either relaxing the metric requirement or by replacing the parallel postulate with an alternative. Before we go any further, we will talk about the postulates first. In fact, the Euclidean space is also constructed upon some postulates, which are the well-known Euclid’s postulates. Postulates in geometry are very similar to axioms, self-evident truths, and beliefs in logic, political philosophy and personal decision-making. The five postulates of
+1. Note that, for a clear description, we fix the curvature of models to 1. This can be easily generalized to a hyperbolic space with other (negative) curvature.
+Euclidean Geometry define the basic rules governing the creation and extension of geometric figures with a ruler and compass. They are as follows:
+A straight line segment can be drawn joining any two points. Any straight line segment may be extended to any finite length. A circle may be described with any given point as its center and any distance as its radius. All right angles are congruent. If two lines are drawn which intersect a third in such a way that the sum of the inner angles on one side is less than two right angles, then the two lines inevitably must intersect each other on that side if extended far enough. This postulate is equivalent to what is known as the parallel postulate.
+To better help understand the last postulate Fig 1 shows equivalent statements pictorially. Here we take a look at the parallel postulate, which is shown in Fig. 1 (b) and its definition is that given any straight line and a point not on it, “there exists one and only one straight line which passes through that point and never intersects the first line, no matter how far they are extended”. This statement is equivalent to the fifth postulate and it was the source of much annoyance, and for at least a thousand years, geometers were troubled by the disparate complexity of the fifth postulate. As a result, many mathematicians over the centuries have tried to prove the results of the Elements without using the Parallel Postulate, but to no avail. However, in the past two centuries, assorted non-Euclidean geometries have been derived based on using the first four Euclidean postulates together with various negations of the fifth. To obtain a non-Euclidean geometry, the parallel postulate (or its equivalent) is replaced by its negation. As stated above, the parallel postulate describes the type of geometry now known as parabolic geometry. If, however, the phrase “exists one and only one straight line which passes” is replaced by “exists no line which passes,” or “exists at least two lines which pass,” the postulate describes equally valid (though less intuitive) types of geometries known as elliptic and hyperbolic geometries, respectively. The model for hyperbolic geometry was answered by Eugenio Beltrami, in 1868, who first showed that a surface called the pseudo-sphere has the appropriate curvature to model a portion of the hyperbolic space and in a second paper in the same year, defined the Klein model, which models the entirety of hyperbolic space, and used this to show that Euclidean geometry and hyperbolic geometry are equiconsistent (as consistent as each other) so that hyperbolic geometry is logically consistent if and only if Euclidean geometry is [13].
+2.2 Mathematical preliminaries
+Here, we provide preliminaries notations to keep this paper selfcontained. Manifold: A manifold M of dimension n is a topological space of which each point’s neighborhood can be locally approximated by the Euclidean space Rn. For instance, the earth can be modeled by a sphere, while its local place looks like a flat area which can be approximated by R2. The notion of manifold is a generalization of the notion of surface. Tangent space: For each point x 2 M, the tangent space T
+xM of M at x is defined as a n-dimensional vector-space
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 3
+Fig. 1. The equivalent statements for the fifth postulate.(a) If a straight line intersects one of the two parallels, it will intersect the other also. (b) There is one and only one line that passes through any given point and is parallel to the given line. (c) There is a triangle in which the sum of the three angles is 180o. (d) Given any figure, there exists a figure, of any size.
+approximating M around x at a first order. It is isomorphic to R
+n. It can be defined as the set of vectors v that can be obtained as v := c0 10o, where c : 1 ε εo ! M is a smooth path in M such that c10o = x. Riemannian metric: The metric tensor gives a local notion of angle, length of curves, surface area, and volume. For a manifold M, a Riemannian metric g1xo is a smooth collection of inner products on the associated tangent space: ¡x: TxM TxM. Riemannian manifold: A Riemannian manifold [28] is then defined as a manifold equipped with a group of Riemannian metrics g, which is formulated as a tuple 1M, go [29]. Geodesics: Geodesics is the the generalization of a straight line in the Euclidean space. It is the constant speed curve giving the shortest (straightest) path between pairs of points. Isomorphism: An isomorphism is a structure-preserving mapping between two structures of the same type that can be reversed by an inverse mapping. Homeomorphism: A homeomorphism is a continuous oneto-one and onto mapping that preserves topological properties. Homeomorphisms are isomorphisms of topological spaces. Conformality: Conformality is one important property of the Riemannian geometry. A metric ˆg on a manifold M is conformal to the g if it defines the same angles. This is equivalent to the existence of a smooth function λ : M ! 10 1o such that ˆgx =
+λ2
+xgx. Formally, 8x 2 M and u v 2 TxMnf0g:
+ˆgx 1u vo
+√︁ ˆgx 1u uo√︁ vˆ x 1v vo
+= gx 1u vo
+√︁ gx 1u uo√︁ gx 1v vo (1)
+Exponential map: The exponential map takes a vector v 2 T
+xM of a point x 2 M to a point on the manifold M, i.e., Expx : T
+xM ! M by moving a unit length along the geodesic uniquely defined by γ10o = x with direction γ
+0 10o = v. Different manifolds have their own way to define the exponential maps. Generally, this is very useful when computing the gradient, which provides update that the parameter moves along the geodesic emanating from the current parameter position. Logarithmic map: As the inverse of the aforementioned exponential map, the logarithmic map projects a point z 2 M on the manifold back to the tangent space of another point x 2 M, which is Logx : M ! TxM. Like the exponential map, there are also different logarithmic maps for different manifolds. Parallel Transport: Parallel Transport defines a way of transporting the local geometry along smooth curves that preserves the metric tensors. In particular, the parallel transport PT u!v from vector u 2 M to v 2 M is defined as a map from tangent space of u, TuM to Tv M that carries a vector in TuM along the geodesic from u to v. Curvature: There are multiple notions of curvature, including scalar curvature, sectional curvature, and Ricci curvature, with varying granularity. Note that curvature is inherently a notion
+of two-dimensional surfaces, while the sectional curvature fully captures the most general notion of curvature (the Riemannian curvature tensor). And The Ricci curvature of a tangent vector is the average of the sectional curvature over all planes U containing v. Scalar curvature is a single value associated with a point p 2 M and intuitively relates to the area of geodesic balls. Negative curvature means that volumes grow faster than in the Euclidean space, and the positive curvature is the opposite of volumes growing slower. The sectional curvature varies over all “sheets” passing through p and intuitively, it measures how far apart two geodesics emanating from p diverge. In positively curved spaces like the sphere, they diverge more slowly than in flat Euclidean space. The Ricci curvature, geometrically measures how much the volume of a small cone. Positive curvature implies smaller volume, and negative implies larger. Gromov δ-hyperbolicity: Gromov δ-hyperbolicity [30] is used to evaluate the hyperbolicity of a dataset/space. Normally, it is defined under four-point condition, say points a b c v. A metric space 1X do is δ-hyperbolic if there exists a δ ¡ 0 such that these four points in X: a b ¡v minf a c ¡v b c ¡v g δ, where the ¡v with respect to a third point v is the Gromov
+product [12] of points a b and it is defined as a b ¡v =
+1
+2 1d 1a vo  ̧ d 1b vo d 1a boo. For instance, Euclidean space Rn
+is not δ-hyperbolic, Poincar ́e disc (B2) is (log3)-hyperbolic. Average Distortion: is a standard measurement of various fidelity measures. It is commonly used in feature embedding. Let U V be two metric spaces equipped with distances dU and dV , and the embedding is the function f : U ! V. Then the distortion
+D is defined as D = jdU 1a bo dV 1 f 1ao f 1boo j
+dU 1a bo , for a pair of points a b on the space of U.
+2.3 Five Isometric Models in the Hyperbolic Space
+Hyperbolic space is a homogeneous space with a constant negative curvature. It is a smooth Riemannian manifold and as such locally Euclidean space. The hyperbolic space can be modelled using five isometric models [31], [32], which are the Lorentz (hyperboloid) model, the Poincare ́ ball model, Poincar ́e half space model, the Klein model, and the hemishpere model. They are embedded submanifolds of ambient real vector spaces. In the following parts, we will detail these models one-by-one. Note that we describe the model by fixing the radius of the model to 1 for clarity, without loss of generality.
+2.3.1 Lorentz Model
+The Lorentz model Ln of an n dimensional hyperbolic space is a manifold embedded in the n  ̧ 1 dimensional Minkowski space. The Lorentz model is defined as the upper sheet of a two-sheeted n-dimensional hyperbola with the metric gL, which is
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 4
+Fig. 2. Illustration of Poincar  ́e Disk (2D Poincar  ́e model), Leftmost: the ’straight lines’ in Poincar  ́e model. Going through a point c outside of line AB, there are more than one lines paralleling to line AB. Middle: the distances comparison between Euclidean space (in black) and hyperbolic space (in blue). Rightmost: an example of modeling a tree using hyperbolic model.
+L
+n = fx = 1x0 xno 2 Rn ̧1 : x x ¡L= 1 x0 ¡ 0g (2)
+where the ¡L represents the Lorentzian inner product, which is defined as
+x y ¡L= xT gL y = x0y0  ̧
+n ∑︁
+i=1
+xi yi x and y 2 Rn ̧1 (3)
+where gL is a diagonal matrix with entries of 1s, except for the
+first element being -1. For any x 2 Ln, we can get that x0 =
+√︃
+1  ̧ Ín ̧1
+i=1 x2
+i . The distance in the Lorentz Model is defined as
+d 1x yo = arcosh 1 x y ¡Lo (4)
+The main advantage of this parameterization model is that it provides an efficient space for Riemannian optimization. An additional advantage is that its distance function avoids numerical instability, when compared to Poincar ́e model, in which the instability arises from the fraction.
+2.3.2 Poincare ́ Model
+The Poincar ́e model is given by projecting each point of Ln onto the hyperplane x0 = 0, using the rays emanating from (-1, 0,..., 0). The Poincar ́e model B is a manifold equipped with a Riemannian metric gB. This metric is conformal to the Euclidean metric gE with the conformal factor λx = 2
+1 j jx j j2 , and gB = λ2
+xgE . Formally, an n dimensional Poincar ́e unit ball (manifold) is defined as
+B
+n = fx 2 Rn : jjxjj 1g (5)
+where jj jj denotes the Euclidean norm. Formally, the distance between x y 2 M is defined as:
+d 1x yo = arcosh 1  ̧ 2 jjx yjj2
+11 jjxjj2o 11 jjyjj2o (6)
+As illustrated in Fig. 2, we demonstrate the geometry of this manifold in the two-dimensional model, Poincar ́e disk. The leftmost shows how to generalize a straight line in this model. The middle compares the hyperbolic distance between two points (curves in blue) to that in the Euclidean space(lines in black). Like in the left line group, given a constant hyperbolic distance 0.7, the corresponding Euclidean distances decrease dramatically when the points are closed to the unit boundary. This exponentially growing distance fit very well with the depth increasing in a tree, as such the Poincare ́ disk is very suitable for modeling a tree, as shown in the rightmost of Fig. 2.
+2.3.3 Poincare ́ half plane Model
+The closely related Poincar ́e half-plane model in hyperbolic space is a Riemannian manifold 1Hn gH o, where
+H
+n = fx 2 Rn : xn ¡ 0g (7)
+is the upper half space of an n-dimensional Euclidean space. And the metric gH is given by scaling the euclidean metric gH = gE
+x2
+n
+. The model Hn can be obtained by taking the inverse of Poincar ́e model, Bn, with respect to a circle that has a radius twice that of B
+n. The distance is
+d 1x yo = arcosh 1  ̧ jjx yjj2
+2xn yn
+(8)
+2.3.4 Klein Model
+Klein model is also known as the Beltrami–Klein model, named after the Italian mathematician Eugenio Beltrami and German mathematician Felix Klein. The Klein model of hyperbolic space is a subset of Rn. It can also be treated as an projection of Lorentz model. Instead of projecting onto the hyperplane x0 = 0, the Klein ball can be obtained by mapping x 2 Ln ̧1 to the hyperplane x0 = 1, using rays emanating from the origin. Formally, the Klein model is defined as
+K
+n = fx 2 Rn : jjxjj 1g (9)
+The distance is
+d 1x yo = arcosh 11  ̧ 1y0 x0o2  ̧ 1y1 x1o2
+2x1 y1
+o (10)
+2.3.5 Hemisphere model
+The hemisphere model is also called Jemisphere model, which is not as common as the previous four models. Instead, this model is employed as a useful tool for visualising transformations between other models. Hemisphere model is defined as
+J
+n = fx = 1x0 xno 2 Rn ̧1 : jjxjj = 1 x0 ¡ 0g (11)
+2.3.6 Isometrically Equivalent Models
+In fact, these five models are equivalent models of the hyperbolic space. There are closed-form expressions for mapping between these hyperbolic models. As illustrated in Fig. 3, we display their model in a 2-dimensional space and demonstrate their relationship.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 5
+Fig. 3. Illustration of the relationship in the five hyperbolic models. Here, the five models are represneted in a two dimensional space. The points h 2 H, b 2 B, j 2 J, k 2 K, and l 2 L can be thought of as the same point in the hyperbolic space.
+Here, we describe the isometries among them. Lorentz model can be transferred to Poincar ́e model by this mapping function:
+x = 1x0 xno 2 Ln , x1
+1  ̧ x0
+xn
+1  ̧ x0
+2 Bn (12)
+Likewise, we can further construct a mapping from Poincar ́e model to Poincare ́ half plane Model by inversion on a circle centered at 11 0 0o, the resulting correspondence between Bn and Hn is given by
+x = 1x0 xn 1o 2 Bn , 1 jjxjj2 2x1 2xn 1
+1  ̧ 2x0  ̧ jjxjj2 2 Hn
+(13) As mentioned before, Klein model is also a projection of Lorentz model, the transform relationship is
+x = 1x0 xno 2 Ln , x1
+x0
+xn
+x0
+2 Kn (14)
+As mentioned in [32], the points on the hemisphere model can be projected to
+x = 1x0 xno 2 Ln , x0
+xn ̧1
+xn
+xn ̧1
+1
+xn ̧1
+2 Jn ̧1 (15)
+3 GENERALIZING EUCLIDEAN OPERATIONS TO
+THE HYPERBOLIC SPACE
+The hyperbolic space is endowed with various geometric properties [23], [25], such that it has the potential to alleviate some of the current machine learning problems for certain types of data. Furthermore, currently, optimization methods essential for any machine learning pipeline have recently made great advances. Therefore, generalizing fundamental operations from Euclidean space to hyperbolic space is one well-motivated approach to designing better machine learning architectures. Although the use of hyperbolic embeddings (first proposed by Kleinberg et al. [33]) in machine learning was introduced already early in 2007, only recently have the methods been extended to deep neural networks. Constructing deep neural networks in the hyperbolic space is not
+as easy as it is on the Euclidean space. One of the most crucial reasons that hampers the development of hyperbolic counterparts of deep neural architectures is the difficulty of developing operations in the hyperbolic space required for neural networks. To summarize, there are several challenges making this a nontrivial issue:
+Implementations of modeling, learning, and optimization on Riemannian manifolds are not as efficient as they are in the Euclidean space. It is challenging to obtain closed form expressions of the most relevant Riemannian geometric tools, such as geodesics, exponential maps, or distance functions, since these geometric elements can easily lose their appealing closed form expressions. The adoption of neural networks and deep learning in these non-Euclidean settings has been rather limited until very recently.
+One of the main reasons is that it is being the nontrivial or impossible principled generalizations of basic operations, e.g., vector addition, matrix-vector multiplication. Work [23] provided a pioneer study of how classical Euclidean deep learning tools can be generalized in a principled manner to hyperbolic space. Fueled by this, many current works generalize various deep learning operations as it is the key step towards to hyperbolic deep neural networks. In this section, we will review the research literature which is trying to generalize operations, e.g., basic addition, mean and neural network layers, to the hyperbolic space. One easy and straightforward way to generalize all these neural operations is transferring data in the hyperbolic space to a tangent space, where we build all operations just like we do in the Euclidean space, as tangent space keeps local Euclidean properties. However, as noticed in some works [34], [35], the approximation in the tangent space can have a negative impact on the learning process. Thus, more advanced approaches, like directly building neural operations using hyperbolic geometry, are very much expected. We will detail these methods in the corresponding sections.
+3.1 Basic Arithmetic Operations
+Basic mathematical operations, like addition and multiplication, are fundamental components of neural networks. They are everywhere in the neural network components, like convolutional filters, fully connected layers, and activation functions. As mentioned before, one simple way to perform these computations is to approximate them by employing the tangent space. Another good choice is the Gyrovector space [36], which is a generalization of Euclidean vector spaces to models of hyperbolic space based on M ̈obius transformations. Specifically, for a model B := fx 2 Rn jjxjj 1g, the gyrovector space provides a nonassociatitative algebraic formulation for studying hyperbolic geometry, in analogy to the way vector spaces are used in Euclidean geometry. In the Gyrovector space, the M ̈obius addition for x and y in model B is defined as
+x y = 11  ̧ 2 hx yi  ̧ jjyjj2ox  ̧ 11 jjxjj2oy
+1  ̧ 2 hx yi  ̧ jjxjj2jjyjj2 (16)
+This is a generalization of the addition in Euclidean space. And x y will recover to x  ̧ y when the curvature goes to zero.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 6
+In addition, the Mo ̈bius subtraction is simply defined as: x y = x 1 yo.
+Then the M ̈obius scalar multiplication is defined as
+r x = tanh 1r artanh 1jjxjjo x
+j jx j j x 2 Bn
+0 x = 0 (17)
+where r is a scalar factor. In fact, all above-mentioned operations can also be conducted in the tangent space by using the exponential and logarithmic maps. As provided by [37], the M ̈obius scalar multiplication can be obtained by projecting x in the tangent space at 0, multiplying this projection by the scalar r in the tangent space. Then projecting it back on the manifold with the exponential map, which means
+r x = Exp0 1rLog0 1xoo (18)
+With the similar method, the authors derived the M ̈obius vector multiplication M 1xo between the matrix M and input x, which is defined as
+M 1xo = tanh jjMxjj
+jjxjj actanh 1jjxjjo Mx
+jjMxjj (19)
+Based on the M ̈obius tranformations, the authors [23] also derived a closed from expression of M ̈obius exponential and logarithmic maps for Pincar ́e model. For a vector v 2 TxM in the tangent space, the exponential map is defined as
+Expx 1vo = x 1 tanh 1 λx jjvjj
+2 ov
+jjvjj o (20)
+and as the inverse operation of the exponential map, for a point y 2 B on the manifold, the logarithmic map is defined as
+Logx 1yo = 2
+λx
+artanh 1jj x yjjo x y
+jj x yjj (21)
+In which the λx is the conformal factor, as mentioned in Sec. 2.3.2.
+3.2 Mean in the Hyperbolic Space
+The simple but valuable mean computation is one of the most fundamental operation in machine learning approaches. For instance, the average pooling in deep learning, the statistics of a data (feature) distribution, and information aggregation in graph convolutional networks. However, unlike in the Euclidean space, the mean computation cannot be conducted simply by averaging the inputs, which may lead to a result out of the manifold. Basically, the primary baselines to generalize the mean to hyperbolic space are tangent space aggregation [35], Einstain midpoint method [37], and the Fre ́chet mean method [34]. We will detail these methods in the following part. Tangential aggregations is one of the most straightforward ways to compute the mean in hyperbolic space. It was proposed by work [35], in which this mean computation method is introduced to perform information aggregation for hyperbolic graph covolutional network (GCN). Generally, the mean aggregation in Euclidean GCN is defined as a weighted average μ on the involved neighbor nodes, N 1io, of node i, which is
+μ=
+∑︁
+j 2N1io
+w j x j (22)
+However, directly computing the weighted average in the hyperbolic space is not able to ensure the resulting average would still
+Fig. 4. Illustration of the M  ̈obius gyromidpoint. Here we show it in the Poincar  ́e model, which is defined by work [38].
+be on the manifold. Thus, work [35] turns to the tangent space by using projection functions, and an attention based aggregation is proposed to compute the aggregated information. Specifically, given the corresponding hyperbolic feature representation, one can compute the attention weights wi j first, then the mean (aggregated information) μ is
+μ = Expx 1
+∑︁
+j 2N1io
+wi j Logx 1x j oo (23)
+Instead of approximating the mean in tangent space, work [37] proposes to compute it with Einstein midpoint. Einstein midpoint is an extension of the mean operation to hyperbolic spaces, which has the most concise form with the Klein coordinates. The Einstein midpoint is defined as
+μ=
+ÍN
+i=1 γi x 1io
+ÍN
+i=1 γi
+(24)
+in which the x 1io is the i-th sample represented with coordinates in Klein model. The γi = 1
+j jx1io j j2 are the Lorentz factors. One can easily execute midpoint computations by simply projecting to and from the Klein model to various models of hyperbolic space since all of them are isomorphic. In fact, there is also a closed form expression for Poincar ́e model to compute the average (midpoint) in the gyrovector spaces. Work [38] defines a gyromidpoint, as illustrated in Fig. 4. The definition is
+m 1x 11o x 1N o ; αo = 1
+2
+N ∑︁
+i=1
+αi γi
+ÍN
+j=1 α j 1γ j 1o
+x 1io
+!
+(25)
+with α = 1α1 αN o as the weights for each sample x 1io and
+γi = 2
+j jx1io j j2 .
+Work [37] developed a new method to perform the information aggregation in the hyperbolic space based on the Einstein midpoint. Fre ́chet mean Recently, Luo et al. proposed a new method to compute the mean on the hyperbolic space, which derives a closed-form gradient expressions for the Fr ́echet mean [39]
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 7
+on Riemannian manifolds [34]. Based on this, they presented two neural operations in hyperbolic space and achieved superior performance under the given settings. Firstly, they provided a new way to conduct the information aggregation for graph convolutional network in the hyperbolic space. Secondly, they generalized the standard Euclidean batch normalization. We will detail them in corresponding sections. Here, we introduce how they provided a differentiable Fre ́chet mean. In fact, there are considerable years for generalizing Euclidean mean in non-Euclidean geometries [40], using Fr ́echet mean. However, the Fr ́echet mean does not have a closed-form solution, and its computation involves an argmin operation that cannot be easily differentiated. Besides, as mentioned by work [34], computing the Fr ́echet mean relies on some iterative solver [34], which is computationally inefficient, numerical instability and thus not friendly to deep neural networks. Thus, the authors derived a optimization objective for mean (and variance) computation in hyperbolic space, which is
+μ f r = argmin
+μ2M
+1
+t
+t ∑︁
+l=1
+d 1x 1lo μo2 (26)
+δ2
+f r = min
+μ2M
+1
+t
+t ∑︁
+l=1
+d 1x 1lo μo2 (27)
+This is a generalization of the Euclidean mean since when M = Rn, the optimization problem in Eq.(26) is
+1
+t
+t ∑︁
+l=1
+d1x1lo μo2 = 1
+t
+t ∑︁
+l=1
+jjμ x1lo jj2
+2= 1
+t
+t ∑︁
+l=1
+n ∑︁
+i=1
+1μi x 1lo
+i o2
+=
+n ∑︁
+i=1
+μi
+1
+t
+t ∑︁
+l=1
+x 1lo i
+!2
+ ̧
+n ∑︁
+i=1
+©
+«
+1
+t
+t ∑︁
+l=1
+1x 1lo
+i o2 1
+t
+t ∑︁
+l=1
+x 1lo i
+!2
+a ®
+¬ (28)
+Minimizing the above problem is the definition of the mean and variance in Euclidean space. Thus, this is a natural generalization of the mean to the non-Euclidean space. However, the general formulation of Fr ́echet mean requires an argmin operation and offers no closed form solution, thus both computation and differentiation are problematic. Inspired by work [41], they provided its generalization which allows to differentiate the argmin operation on the manifold. Therefore, they provided their closed form of the Fre ́chet mean. This can be applied to both Lorentz model and Poincar ́e models and as illustrated in the experimental part [34], this method is much more efficient than the previous Riemannian Gradient Descent (RGD) approach [42] and against the Karcher Flow algorithm [43].
+3.3 Concatenation and Split Operations
+Concatenation and split are commonly used in current deep neural networks. They are crucial for feature fusion in multimodal learning, operations like GCN filters and even for computing the correlation in attention mechanism [4]. As previously described operations, the concatenation and split can also be easily obtained by using the tangent space. Specifically, for an n-dimensional feature embedding x 2 Bn in
+the hyperbolic space, it can be split into N feature representations V,
+V = fv1 2 Rn1 v N 2 RnN g = Log0 1xo (29)
+subject to ÍN
+i=1 ni = n. Then, the tangent vector can be mapped to the hyperbolic space using the exponential map. Likewise, for N parts feature representation V in the hyperbolic space, the tangent space can also be used to perform concatenation, which is
+x = Exp0 1Log0 1v1ojLog0 1v2o jLog0 1v N oo (30)
+where the j denotes the concatenation operation in the tangent space and here vi represents one feature in the hyperbolic space. Therefore, concatenation is the inverse function of split. However, as pointed out by work [15], merely splitting the coordinates will lower the norm of the output gyrovectors, which will limit the representational power. Therefore, work [15] proposed a β-split and β-concatenation, as an analogy to the generalization criterion in Euclidean neural networks [44]. The β-split and β-concatenation provided by [15] introduce a scalar coefficient βn = B1 n
+2
+1
+n o, where B is the Beta distribution. With this scalar coefficient, the tangent vectors are scaled before being projected back to the hyperbolic space. Therefore β-split is
+V = fExp0 1 βn1 β 1
+n v1o Exp0 1 βnN
+β1
+n v N og (31)
+Therefore, for the β-concatenation,
+x = Exp0 1 βn β 1
+n1 v1 j βn β 1
+n2 v1 j βn β 1
+nN
+vN o (32)
+Work [23] presented another way to perform vector concatenation in the hyperbolic space, which introduces linear projection functions based on Mo ̈bius transformations. Specifically, for a set of hyperbolic representations fv1 2 Bn1 v N 2 BnN g, a group of projection function fM1 2 Bn n1 MN 2 Bn nN g is introduced. Then the concatenated result is :
+x = M1 v1 MN v N (33)
+However, compared to the previous β methods, this one applies the M ̈obius transformations (addition and multiplication) many times, as mentioned by [15], which incurs a heavy computational cost and an unbalanced priority in each input sub-gyrovector.
+3.4 Convolutional Neural Network Operations
+The operations of Convolutional Neural Network (CNN) are fundamental elements for various machine learning tasks, especially for computer vision applications. Many neural network operations have been generalized to hyperbolic spaces, but there is limited research about convolutional layers in this space. Hyperbolic image embedding [45] proposed to address the common computer vision tasks, e.g., image classification and person re-identification, using hyperbolic geometry. However, the feature representations are still learnt by Euclidean encoder, only the decision hyperplanes are established in the hyperbolic space. Thus, the authors did not generalize CNN to hyperbolic space. Basically, the generalization of CNN can also be simply conducted by using the tangent space. However, whether this approximation works or not is hard to tell. Besides, as pointed out by [46], stacking multiple CNNs in the tangent space may collapse to a vanilla Euclidean CNN. In addition, the advantages of hyperbolic geometry may not be well adapted if only using the tangent space. Work [15] provided a novel method to bridge this gap. By using the β-concatenation and the Poincar ́e Fully
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 8
+connected (FC) layer, the authors presented a method to build the convolutional layer. In particular, given a C-channel input tensor x 2 BC W H on the Poincar ́e ball, for each of the W H feature pixels, the representations in the reception field of a convolutional filter with size K are concatenated into a single vector x 2 BnK , using the β-concatenation. Then naturally, a Poincar ́e FC layer, which will be detailed in Sec. 3.9, can be employed to transfer the feature on the manifold. Let C
+0 be the output channels of the CNN layer, then there will be C
+0 groups of such transformations. As mentioned before, there is limited research about CNN in the hyperbolic space. The only version provided by work [15] can also be further improved in terms of convolutional strategy and computational efficiency.
+3.5 Recurrent Neural Network Operations
+Recurrent neural networks (RNNs) [47], [48] are one important category of deep neural networks, which allow previous outputs to be used as inputs, thus providing the ability to exhibit temporal behavior. RNNs are commonly utilized in sequence learning tasks. Formally, a RNN can be defined by
+ht ̧1 = δ1W ht  ̧ Uxt  ̧ bo (34)
+where ht ̧1 is the hidden state of next step, which is updated using current hidden state ht and input xt . δ is a non-linear function. The W and U are learnable parameters, and b is the corresponding bias. Work [23] generalizes the RNN to the hyperbolic space, leveraging the M ̈obius operations in Gyrovector space. The RNN in hyperbolic space can be defined by
+ht ̧1 = δ 1W ht  ̧ U xt bo (35)
+where and are the generalization of original  ̧ and in gyrovector space, as defined in Section 2. The authors also extended the same idea into the Gated recurrent unit (GRU) architecture [49], with the same strategy. Existing works are limited to the Poincare ́ model with the corresponding operations defined in the Gyrovector space. However, these kinds of operations are always costly when compared to the Euclidean counterpart. Future works can explore more efficient ways and also extend to other hyperbolic models, like Lorentz model.
+3.6 Activation function
+Activation function is one of the most important components for deep leaning, which provides a non-linear projection of the feedin features such that more valuable semantic representation can be learnt. As conducted in works [46], [50], one can directly apply the manifold preserving non-linearity on a manifold, which means it is applied after the exponential map if there is one. However, manifold preserving activation functions are different for different manifolds. As mentioned by [46], activation functions like ReLU [51] and leaky ReLU work as a norm decreasing function in the Poincar ́e model while this is not true for Lorentz model, since the origin in Poincar ́e model is the pole vector in Lorentz model. Thus, to use these activation functions in Lorentz model, one has to map between these two hyperbolic models. Ganea et al. proposed a Mo ̈bius version of projection function [23], which can also be employed to activation functions. In particular, for a function f : Rn ! Rm, its M ̈obius version f is defined as f 1xo = Exp0 1 f 1Log0 1xooo (36)
+The authors utilized the tangent space of the origin to perform the function f . This function f can also be the activation function, in which case, the input dimension n is equal to the output dimension m. Following the same idea, work [35] provided a similar activation function for graph convolutional networks. The only difference is that they consider the curvatures of different layers. Thus, the logarithmic map and exponential map are defined at the point origins in the manifold with different curvatures. There is also work [15] that removes the activation functions, since the authors thought that the operation on the manifold itself is a non-linear operation, which obviates the need for activation functions.
+3.7 Batch Normalization
+Batch Normalization (BN) [52] limits the internal covariate shift by normalizing the activations of each layer. Thus it is commonly used to speed up the training procedure of neural networks, as well as to make the training process more stable. The basic idea behind batch normalization is normalizing of the feature representations by re-centering and re-scaling. Specifically, given a batch of m datapoints, The BN algorithm will first compute the mean μ of this batch. Based on μ, the mini-batch variance σ is also computed. Then, two learnable parameters are introduced, which are the scale parameter γ and the shift parameter β. The input activation x is then re-centered and re-scaled, which is y = γx  ̧ β. Therefore, theoretically, this BN operation can be easily generalized to the manifold via transferring to the tangent space. Work [34] provided an alternative based on Fr ́echet mean [39]. In particular, the authors formulated the Riemannian extension of the standard Euclidean Batch Normalization by a differentiable Fre ́chet mean, as described in Sec. 3.2. As far as we know, this is the only work for hyperbolic batch normalization. Works for another normalization layers, e.g., Group normalization [53] and instance normalization [54], have not appeared yet. Work [15] pointed out in their hyperbolic neural networks, they removed the activation functions since the operation on the manifold itself has non-linearity. However, whether a hyperbolic generalization of the normalization methods is needed for the bounded manifold (like Poincar ́e model) or not is not clear yet.
+3.8 Classifiers and Multiclass Logistic Regression
+In the context of deep learning, Multiclass logistic regression (MLR) or softmax regression is commonly used to perform multiclass classification in Euclidean space. Formally, given K classes, MLR is an operation used to predict the probabilities of each class k 2 f1 2 3 K g based on the input representation x, which is
+p1y = k xo / exp 1 ak x ¡ bo (37)
+where ak 2 Rn denotes the normal vector and b 2 R is the scalar shift. Then, the decision hyperplane determined by a 2 Rnf0g and b is defined by Ha b = fx 2 Rn : a x ¡ b = 0g. Note that exp is the exponential function, not the manifold map function Exp . According to [55], the MLR can be reformulated as
+p1y = k xo / exp 1sign1 ak x ¡ bojjak jjd 1x Hak bk oo (38)
+where d 1x Hak bk o is the Euclidean distance of x from the hyperplane Hak bk o. To further generalize it to the hyperbolic space, work [23] re-parameterized the scalar term b 2 R with a new set of
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 9
+parameters pk 2 Rn, by which they reformulated the hyperplane: Hˆ a p = fx 2 Rn : a x p ¡= 0g, and Hˆ a p = Hˆ a a p¡. In this way, the MLR is rewritten as
+p1y = k xo / exp 1sign1 ak x pk ¡ojjak jjd 1x Hˆ ak pk oo
+(39) Then, the definition of the hyperbolic setting is simply achieved by replacing the addition  ̧ with M ̈obius addition . However, this causes an undesirable increase in the parameters from n  ̧ 1 to 2n in each class k. As pointed out by [15], there is no need to introduce countless choices of pk to determine the same discriminative hyperplane. Instead, they introduced another scalar parameter rk 2 R such that the bias vector qak rk = rk
+ak
+j jak j j
+parallels to the normal vector ak . That is
+Hˆ ak rk = fx 2 Rn j ak qak rk  ̧ x ¡= 0g = Hak rk j jak j jo (40)
+Based on this, the MLR is reformulated as
+p1y = k xo / ex p1sign1 ak qak rk  ̧ x ¡ojjak jjd 1x Hˆ ak rk oo
+(41) In addition to the MLRs in hyperbolic space, there are also works constructing classifiers in this space. Work [56] introduced a hyperbolic formulation of support vector machine classifier (HSVM). In particular, the Euclidean SVM is trying to optimize a hinge loss function such that the geometric margin can be maximized. Further, for linear SVM classifiers, the maximummargin problem can be optimized by
+W = argmin
+w
+1
+2 jjwjj2
+subject to y1wT xo 1
+(42)
+where 1x yo is the training pair, and w is the linear model. Analogous to the Euclidean SVM, they considered a set of decision functions (linear separators) that lead to geodesic decision boundaries in the hyperbolic space (Lorentz model), which is H = fhw : w 2 Rn ̧1 w w ¡L 0g, where hw 1xo = 1 if w x ¡L¡ 0, otherwise hw 1xo = 1. Here, w w ¡L 0 ensures that the intersection of the decision hyperplane hw and the manifold Ld is not empty. The corresponding decision boundaries are the n-dimensional hyperplanes which are given by w x ¡L= 0. They further derived the closed-form of the minimum hyperbolic distance from a data point x to the decision boundaries, which is
+dH 1xo = arsinh
+w x ¡L
+p
+w w ¡L
+(43)
+With this distance, they provided the maximum-margin problem in hyperbolic space, which is
+argmax min yhw 1xoinfdH 1xo
+= argmax min inf arsinh
+y w x ¡L
+p
+w w ¡L
+(44)
+Since this distance is scale-invariant, we have y w x ¡L 1. Therefore, the optimization problem now simply maximizes arsinh 1
+p
+w w¡L , which is also equivalent to minimizing
+1
+2 w w ¡L subject to the above constraint. Therefore, the linear SVM in the hyperbolic space can be obtained by optimizing
+W = argmin
+w
+1 2
+w w ¡L
+subject to y w x ¡L 1 w w ¡L 0
+(45)
+The authors also generalized this to a nonlinear case. by extending Euclidean kernel SVM to hyperbolic space. Sharing the similar idea, work [57] provided theoretical guarantees for learning a SVM in hyperbolic space. Besides, an efficient strategy is introduced to learn a large-margin hyperplane, by the injection of adversarial examples. Specifically, this hyperbolic SVM is also constructed in the Lorentz model. The author mentioned that minimizing this empirical risk via gradient descent requires a large number of iterations, which is not efficient. They alleviated this problem by enriching the training set with adversarial examples. In this way, an optimization function with robust loss is introduced, which is
+L
+rob 1w; x yo = E lrob 1x y; wo
+lrob 1x y; wo = max
+z 2L:dL 1z xo α
+l 1z y; wo (46)
+where they introduced the adversarial examples to train the SVM model, by perturbing a given input feature x on the hyperbolic manifold. Here, the adversarial example xˆ of input sample x is defined as, within a budget α, an example that leads to misclassification. Formally,
+xˆ = argmin
+dL 1z xo α
+y w z ¡L (47)
+Then the SVM is updated with the gradient-based method on both the original dataset and the corresponding adversarial examples.
+3.9 Fully-Connected Layers
+Fully-Connected layer (FC), or linear transform layer, defined as Y = Ax  ̧ b, is also one important component of deep neural networks, in which all inputs from one layer are connected to every activation unit of the next layer. With analogy to Euclidean FC layers, works [15], [37] generalized it to the hyperbolic space. In work [37], fully-connected layers [15] are constructed by Matrixvector multiplication
+Y = A x b = Exp0 1 ALog0 1xoo b (48)
+Here, the bias translations can be further conducted by M ̈obius translation, which first map the bias to the tangent space of origin and then parallel transport it to the tangent space of the addend, finally map back the result to the manifold. Formally, it is defined as
+x b = Exp0 1PT 0!x 1Log0 1booo = Expx 1 λ0
+λx
+Log0 1boo (49)
+However, work [15] pointed out that with the M ̈obius translation, such a surface is no longer a hyperbolic hyperplane. Besides, the basic shape of the contour surfaces is determined since the norm of each row vector ak and bias b contribute to the total scale and shift. To deal with this problem, work [15] provided a new Poincar ́e FC layer based on the linear transformation v1xo mentioned in MLR. They argue that the circular reference between ak and qak rk can be unraveled by considering the tangent vector at the origin, zk 2 T0Bn, from which ak is parallel transported. In this way, they derived a new formulation of the linear transformation, which is
+v
+k 1xo = 2jjzk jj arsinh 1λx x
+zk
+jjzk jj ¡ cosh 12rk o 1λx 1o sinh 12rk oo
+(50)
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 10
+Based on this, they provided their FC layer, which is
+Y= w
+1  ̧ √︁ 1  ̧ jjwjj2 (51)
+where w = 1 sinh 1vk 1xooo and the zk is the generalization of the parameter ak in A.
+3.10 Optimization
+Stochastic gradient-based (SGD) optimization algorithms are of major importance for the optimization of deep neural networks. Currently, well-developed first order methods include Adagrad [58], Adadelta [59], Adam [60] or its recent updated one AMSGrad [61]. However, all of these algorithms are designed to optimize parameters living in Euclidean space and none of them allows the optimization for non-Euclidean geometries, e.g., hyperbolic space. Consider performing an SGD update of the form
+Wt ̧1 = Wt αgt (52)
+where gt denotes the gradient of a smooth objective and α ¡ 0 is the step-size. Adagrad [58] improves the performance by accumulating the historical gradients,
+Wi
+t ̧1 = W i
+t
+αgi
+t
+√︃
+Ít
+k=1 1gi
+ko2
+(53)
+Note that this is coordinate-wise updating. Accumulation of historical gradients can be particularly helpful when the gradients are sparse, but updating with historical gradients is computational inefficient. To deal with this issue, the well-known Adam optimizer further modified it by adding a momentum term mt = β1mt 1 ̧11 β1ogt and an adaptive term vi
+t = β2vi
+t 1 ̧11 β2o1gi
+t o2. Therefore, the Adam update is given by
+Wi
+t ̧1 = W i
+t
+αmi
+t √︃
+vi
+t
+(54)
+In terms of the optimizer on Riemannian manifolds, one pioneer work for stochastic optimization on the Riemannian manifold should be the Riemannian stochastic gradient descent (RSGD), provided by Bonnabel et al. [62]. They pointed out that for the standard stochastic gradient in Rn, seeking the matrix with certain rank, which best approximates the updated matrix, can be numerically costly, especially for very large parameter matrix. To enforce the rank constraint, a more natural way is to endow the parameter space with a Riemannian metric and perform a gradient step within the manifold of fixed-rank matrices. To address this issue, they proposed to replace the usual update in SGD using an exponential map (Exp) with the following update
+Wt ̧1 = ExpWt 1 αgt o (55)
+where gt 2 TWt M denotes the Riemannian gradient of the objective at point Wt . The provided algorithm is completely intrinsic, which does not depend on a specific embedding of the manifold or on the choice of local coordinates. For manifolds where Exp is not known in closed-form, it is also common to replace it with a first order approximation. The following work from [63] provided a global complexity analysis for first-order algorithms for general g-convex optimization, under geodesic convexity.
+On the top of RSGD, Work [25] derived the gradient for Poincar ́e model. They utilized the retraction operation Rw 1vo = w  ̧ v as the approximation of the exponential map,Exp. Furthermore, a projection, which just normalizes the embeddings with a norm bigger than one, is utilized to ensure the embeddings remain within the Poincar ́e model. Specifically,
+Wt ̧1 = pro j Wt η
+11 jjWt jj2o2
+4 OE (56)
+where OE is the Euclidean gradient, and η is the learning rate. The normalization function is pro j 1xo = x jjxjj if jjxjj 1, otherwise pro j 1xo = x. Work [26] shares the same idea and extends it to the Lorentz model. In particular, there are three steps: firstly, the Euclidean gradients of the objective are re-scaled by the inverse Minkowski metric. Then, the gradient is projected from the ambient space to the tangent space. Finally, the points on the manifold are updated through the exponential map with learning rate. One of the current challenges of generalizing the adaptivity of these optimization methods to non-Euclidean space is that Riemannian manifold does not provide an intrinsic coordinate system, which leads to the meaningless of sparsity and coordinate update of the gradient. Riemannian manifold only allows to work in certain local coordinate systems, which is called charts. Since several different charts can be defined around each point x 2 M, it is hard to say that all the optimizers above can be extended to R in an intrinsic manner (coordinate-free). Work [64] addressed this problem using the cartesian product manifold, as well, provided a generalization of the well-known optimizers, e.g., Adagrad and Adam, with corresponding convergence proofs. As pointed out by [64], one solution can be fixing a canonical coordinate system in the tangent space and then parallel transporting it along the optimization trajectory. However, general Riemannian manifold depends on both the chosen path and the curvature, which will give to the parallel transport a rotational component (holonomy). This will break the gradient sparsity and thus hence the benefit of adaptivity. As provided by work [64], an n-dimensional manifold M can be represented by a Cartesian product of n manifolds, which means M = M1 Mn . Based on this, the authors provided the Riemannian Adagrad, which is defined by Wt ̧1 = ExpWt 1 αgt o (57)
+Wi
+t ̧1 = ExpW i
+t
+©
+«
+αgi
+t
+√︃ Ít
+k=1 jjgi
+k jj2
+xi k
+a ® ®
+¬
+(58)
+where the jjgi
+k jj2
+xi k
+= g1gi
+k
+gi
+k o is Riemannian norm. They further
+extended to Riemannian Adam by introducing the momentum term and an adaptive term. Another work worth paying attention to is the Geoopt [65], which provided a Riemannian Optimization in PyTorch [8]. Geoopt provides a standard Manifold interface for Riemannian Optimization. It does not only support basic Riemannian SGD, but advanced adaptive optimization algorithms as well.
+4 NEURAL NETWORKS IN HYPERBOLIC SPACE
+In this section, we will describe the generalization of neural networks into hyperbolic space. We try our best to collect and summarize all the advanced hyperbolic machine learning methods, as illustrated in Table 2.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 11
+TABLE 1 Summary of the commonly used Poincare ́ model and Lorentz model in hyperbolic spaces.Here, we constrain the model to the unit space (Curvature is fixed to one), one can also extend it to other negative curvature
+Poincar ́e Ball Lorentz Model Manifold (B, gB
+x ) (L, gL
+x)
+Metric gB
+x=1 2
+1 jjxjj2 o2gE gL
+x = I except that I00 = 1
+Distance d 1 x yo = arcosh 11  ̧ 2 jjx yjj2
+11 jjxjj2o 11 jjyjj2o o d 1 x yo = arcosh 1 x y ¡Lo
+Parallel Transport PT0!x 1 vo = Logx 1 x Exp0 1 voo = λ0
+λx
+v PT0!x 1 vo = v Log0 1xo v¡L
+dL 10 xo2 1Log0 1 xo Logx 10oo
+Exponential map Expx 1 vo = x 1 tanh 1 λx jjvjj
+2 ov
+jjvjj o Expx 1 vo = cosh 1 j jv j jLo  ̧ sinh 1 j jv j jLo v
+jj v jjL
+Logarithmic map Logx 1 yo = 2
+λx artanh 1 j j x y j jo x y
+jj x yjj Logx 1 yo = dL 1 x yo y ̧ x y¡L x
+jjy ̧ x y¡L xjjL
+One can find that most of the works are from the prominent machine learning conferences like, NeurIPS, ICML, and ICLR. And more and more institutions are getting into this potential research field. From the method perspective, the Poincar ́e model and Lorentz model are most-welcomed hyperbolic models for generalizing neural networks. At the same time, the former one (Poincar ́e model) is dominated in the hyperbolic deep neural networks. The corresponding important components of these two models are summarized in Table 1. In the following part, we detail different kinds of hyperbolic architectures, including hyperbolic embedding, hyperbolic clustering, hyperbolic attention networks, hyperbolic graph neural networks, hyperbolic normalizing flow, hyperbolic variational auto-encoder, and hyperbolic neural networks with mixed geometries.
+4.1 Hyperbolic Embeddings
+As far as we know, work [25] is the first to propose to learn an embedding using Poincar ́e model, while considering the latent hierarchical structures. They also proved that Poincar ́e embeddings can outperform Euclidean embeddings significantly on data with latent hierarchies, both in terms of representation capacity and in terms of generalization ability. Specifically, the Poincar ́e embedding is trying to find embeddings Θ = fθi gn
+i=1 θ 2 Bd jjθi jj 1 in the unit d-dimensional Poincar ́e ball for a set of symbols with size of n. Therefore, the optimization problem can be framed as Θ = argminΘ L 1Θo, where L 1 o is a task-related loss function. For instance, in the hierarchy embedding task, the loss function over the entire dataset D can be represented as
+L 1Θo =
+∑︁
+1u vo 2D
+log
+e dB 1u vo
+Í
+v0 2N 1uo e dB 1u v0 o (59)
+where N 1uo denotes a set of negative examples for u. This loss function encourages related objects to be closer to each other than objects without an obvious relationship. They further optimized the embedding utilizing the RSGD with the exponential map, which is a scaled version of the Euclidean gradient, as describe in Sec. 3.10. Based on [25], work [66] also proposed text and sentences embedding with Poincar ́e model. However, to benefit from the advanced optimization techniques like Adam, the authors proposed to re-parametrize the Poincar ́e embeddings such that the projection step is not required. On top of existing encoder architectures, e.g., LSTMs or feed-forward networks, a reparameterization technique is introduced to map the output of the encoder to the Poincare ́ ball. Specifically, the re-parameterized embedding is defined as
+Θ = δ1φnorm 1hoo φdir 1ho
+jjφdir 1hojj (60)
+where h represents the hidden representation of encoder, and δ denotes the sigmoid function. The function φdir is used to compute a direction vector φdir : Rd ! Rd. Function φnorm is a norm function φnorm : Rd ! R. In this way, the authors mapped the encoder embeddings to the Poincare ́ ball and the Adam is introduced to optimize the parameters of the encoder. Work [23] also contributes to improve the Poincare ́ embeddings from work [25], in the task of entailment analysis. The authors pointed out that most of the embedding points with the method [25] collapse on the boundary of Poincar ́e ball. Besides, there is also no advantage for the method to deal with more complicated connections like asymmetric relations in directed acyclic graphs. To address these issues, the authors presented hyperbolic entailment cones for learning hierarchical embeddings. In fact, with the same motivation, the order embeddings method [67] explicitly models the partial order induced by entailment relations between embedded objects, in the Euclidean space. However, the linearly growing of this method will unavoidably lead to heavy intersections, causing most points to end up undesirably close to each other. Generalizing and improving over the idea of order embeddings, this work [23] viewed hierarchical relations as partial orders defined using a family of nested geodesically convex cones, in the hyperbolic space. Specifically, in a vector space, a convex cone S is a set that is closed under non-negative linear combinations, which is for vectors v1 v2 2 S, then αv1  ̧ βv2 2 S 8α β ¡ 0. Since the cones are defined in the vector space, the authors proposed to build the hyperbolic cones using the exponential map, which leads to the definition of S-cone at point x
+S
+x = Expx 1So S 2 TxM (61)
+To avoid heavy cone intersections and scale exponentially with the space dimension, the authors further constructed the angular cones in the Poincar ́e ball. To achieve this, they introduced the so-called cone aperture functions φ1xo such that the angular cones S
+φ1xo
+x follow four intuitive properties, including axial symmetry, rotation invariant, continuous of cone aperture function, and the transitivity of nested angular cones. With all of this the authors provided a closed form of the angular cones, which are
+S
+φ1xo
+x = 1π ∠Oxyo arsin 1K
+1 jjxjj2
+jjxjj o (62)
+where O in angle ∠Oxy is origin. K is a constant. Since they also provided a closed form expression for the exponential function exp, they optimize the objective using fully Riemannian optimization, instead of using the first-order approximation as work [25] did.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 12
+Work [68] presented a combinatorial construction approach to embed trees into hyperbolic spaces without performing optimization. The resulting mechanism is analyzed to obtain dimensionality-precision trade-offs. Based on [69] and [70], they first produced an embedding of a graph into a weighted tree, and then embedded that tree into the hyperbolic disk. In particular, Sarkar’s construction can be summarized like this. Consider two nodes a and b in a tree where node b is the parent of a. With the embedding function f , they are embedded as f 1ao and f 1bo. And the children of a, c1 c2 cn, are to be placed. Then, reflect f 1ao and f 1bo across a geodesic such that they are mapped to the origin and a new point z, respectively. Then, the children are placed at points around a circle and at the same time maximally separated from z. Formally, let θ be the angle of z from x-axis in the plane. For the i-th child ci, the projected place yi is
+yi = er 1
+er  ̧ 1 cos 1θ  ̧ 2πi
+n
+o er 1
+er  ̧ 1 sin 1θ  ̧ 2πi
+n
+o (63)
+where er 1
+er  ̧1 works as the radius and r is a scaling factor. After getting all places of the children nodes, the points are reflected back across the geodesic so that all children are at a distance r from the parent f 1ao. To embed the entire tree, one can place the root at the origin and its children in a circle around it, and recursively place their children until all nodes have been placed. For high-dimensional spaces, the points are embedded into hyperspheres [71], instead of circles. Next, they extended to the more general case in the hyperbolic space by the Euclidean multidimensional scaling [72]. To answer the question that given the pairwise distances arising from a set of points in hyperbolic space, how to recover the original points, a hyperbolic generalization of the multidimensional scaling (h-MDS) is proposed, deriving a perturbation analysis of this algorithm following Sibson et al. [73]. Work [74] adapted the Glove [75] algorithm, which is an Euclidean unsupervised method for learning word representations from statistics of word co-occurrences and wanting to geometrically capture the meaning and relations of a word, to learn unsupervised word embeddings in this type of Riemannian manifolds. To this end, they proposed to embed words in a Cartesian product of hyperbolic spaces which they theoretically connected to the Gaussian word embeddings and their Fisher geometry. Note that, in work [74], Poincar ́e Glove absorbs squared norms into biases and replaces the Euclidean with the Poincar ́e distance to obtain the hyperbolic version of Glove. While most of the works concentrated on providing new embedding methods in hyperbolic space, very limited ones noticed the numerical instability of the networks. As pointed out by work [76], the difficulty is caused by floating-point computation and amplified by the ill-conditioned Riemannian metrics. As points move far away from the origin, the error caused by using floating-point numbers to represent them will be unbounded. Specifically, the Poincar ́e model and Lorentz model are the most commonly used ones when building neural networks in hyperbolic space. However, for the Poincar ́e model, the distance changes rapidly when the points are close to the ball boundary such that it is not well conditioned. While for Lorentz model, it is not bounded such that it will experience large numerical error when the points are far away from the origin. Therefore, for the representation in the hyperbolic space, it is desirable to find a method that can represent any point with small fixed bounded error in an efficient way. To address this issue, work [76] presented a method that
+using the integer-lattice square tiling (or tessellation) [77] in the hyperbolic space to construct a constant-error representation. In this way, a tiling-based model for hyperbolic space is provided. We prove that the representation error, the error of computing distances, and the error of computing gradients is bounded by a fixed value that is independent of how far the points are from the origin. Specifically, the model from [76] is constructed on top of Lorentz model. Then the Fuchsian groups [78] G and the fundamental domain [78], [79] F were introduced to build the tiling model. In the 2-dimensional Lorentz model, the isometries can be represented as matrices A 2 R3 3 operating on R3 that preserve the Lorentzian scalar product, which is AT gL A = gL. As mentioned by [80], [81], any tiling is associated with a discrete group G of orientation preserving isometries of Lorentz plane L2 that preserve the tiling. Then, the Fuchsian groups [78] are employed which are the discrete subgroups of isometries L2. Based on G and F, the tiling model is defined as the Riemannian manifold 1T n
+l gLo, where
+T
+n
+l = f1g xo 2 G F : x x ¡= 1g
+dlt 11gx xo 1gy yoo = arcosh 1 xT gT
+x gLgy yo (64)
+where 1g xo is the ordered pair with g 2 G,x 2 F, and 1g xo represents the point gx. They further constructed a special kind of Fuchsian groups G with integers such that it can be computed exactly and efficiently. The group is defined as
+G = L ga gb jg6
+a = g6
+b = 1gagbo3 = 1 ¡ L 1, where
+ga =
+2 6 6 6 6 4
+21 0 00 1 32 0
+3 7 7 7 7 5
+gb =
+2 6 6 6 6 4
+2 10 00 1 32 0
+3 7 7 7 7 5
+and L =
+2 6 6 6 6 4
+p
+300 0 10 0 01
+3 7 7 7 7
+(655) It is easy to verify that the group in G is an isometry since 1Lga L 1oT gL 1Lga L 1o = gL, likewise 1Lgb L 1oT gL 1Lgb L 1o = gL. By this way, they can perform integer arithmetic which is much more efficient. The authors also extended this 2-dimensional model to higher dimensional spaces by either taking the Cartesian product of multiple copies of the tiling model, or constructing honeycombs and tiling from a set of isometries that is not a group.
+4.2 Hyperbolic Cluster Learning
+Hierarchical Clustering (HC) [82] is a recursive partitioning of a dataset into clusters at an increasingly finer granularity, which is a fundamental problem in data analysis, visualization, and mining the underlying relationships. In hierarchical clustering, constructing a hierarchy over clusters is in the form of a multilayered tree whose leaves correspond to samples (datapoints of a dataset) and internal nodes correspond to clusters. Bottom-up linkage methods, like Single Linkage, Complete Linkage, and Average Linkage [83], are one of the first suite of algorithms to address the HC problem, which recursively merge similar data-points to form some small clusters and then gradually larger and larger clusters emerge. However, these methods are optimized using heuristic strategies over discrete trees, of which the discreteness restricts them from the benefits of advanced and scalable stochastic optimization. Recently, cost function based methods have increasingly gained attention. The recent article of Dasgupta [84] served as the starting point of this topic. Dasgupta framed similarity-based hierarchical clustering as a combinatorial
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 13
+optimization problem, where a “good” hierarchical clustering is one that minimizes a particular cost function, which is
+L1T ; wo =
+∑︁
+ij
+wi j jlvs1T 1i _ jooj (66)
+where T is a tree-structured hierarchical clustering. wi j denotes the similarity, i _ j represents Lowest Common Ancestor (LCA) of node i and j, T 1i _ jo is a subtree rooted at the LCA i _ j. The lvs1LC Ao gets the leaves of the LCA node. Therefore, Eq. (66) encourages similar nodes to be nearby in the same tree structure, which is based on the motivation that a good tree should cluster the data such that similar data-points have LCAs much further from the root than that of the dissimilar data-points. Nevertheless, as pointed out by [85], due to its discrete nature, this objective is not amenable for stochastic gradient methods. To deal with this issue, recently they proposed a related cost function over triples of data points, based on a ranking of candidate configurations of the tree. The basic idea is if all of the three points i j k have the same LCA, the cost is the sum of all pairwise similarities between the three points. Otherwise, if two points have a LCA that is deeper in the tree than the LCA of all three, then the cost is the sum of all pairwise similarities between the three points except that of the pair with the deeper LCA. Formally, it is
+L1T ; wo =
+∑︁
+i jk
+»wi j  ̧ wi j  ̧ wi j wor d 1T ; wo1⁄4  ̧ 2
+∑︁
+ij
+wi j (67)
+where the wor d 1T ; wo = wi j 1»fi j jk g1⁄4  ̧ wik 1»fi k j j g1⁄4  ̧ w jk 1»f j k jig1⁄4, is defined through the notion of LCA. The 1»1⁄4 is the indicator function which is one if condition satisfied and zero otherwise. It will be zero if the three points have the same LCA. Here, The relation fi j jk g holds if i _ j is a descent of
+i _ j _ k.
+However, this cost function is computationally expensive, especially for large-scaled applications. To deal with this issue, gradient-based hyperbolic hierarchical clustering, gHHC [85], a geometric heuristic to provide an approximate distribution over LCA, is proposed over continuous representations of tree in the hyperbolic space (Poincar ́e model), based on the observation that Child-parent relationships can be modelled by the distances and norms of the embedded node representations. The authors used the norm of vectors to model depth in the tree, requiring child nodes to have a larger norm than their parents. The root is near the origin of the space and leaves near the edge of the ball. Formally, let Z = fz1 z2 zk g zi 2 Bd represent the node representation in the d-dimensional Poincar ́e ball. Then a child-parent dissimilarity function is used to encourage the children have a smaller norm than the parent, which is
+dc p 1Tc Tpo = dB 1zc z po 11  ̧ max 1jjz p jj jjzc jj 0oo (68)
+where zc z p are the hyperbolic embedding of nodes Tc Tp. If the norm of the parent node is smaller than the child, then the dissimilarity will just be the distance in hyperbolic space. Otherwise, this dissimilarity will be bigger than the distance. Then this dissimilarity function is used to model a distribution over the tree structure to encode the uncertainty, which is Ppar 1Tp jTc Zo / ex p1 dc p 1Tc Tpoo, thus the tree distribution over embedding will be
+Ppar 1T jZo /
+Ö
+T
+p
+Ö
+T
+c 2childr en1 Tp o
+Ppar 1Tp jTc Zo (69)
+4.3 Hyperbolic Attention Network
+Attention mechanism [4] is one of the currently most attractive research topics. The well-known architectures like the neural Transformer [4], BERT [86], hyperbolic attention network [37]and even the graph attention networks [87], [88], [89], [90]. While attention mechanisms have become the de-facto standard for NLP tasks, their momentum has continuously been extended to computer vision applications [91]. At its core lies the strategy of focusing on the most relevant parts of the input to make decisions. When an attention mechanism is used to compute a representation of a single sequence, it is commonly referred to as self-attention or intra-attention. For each of the input vectors (embeddings), the attention will first create a Query vector, a Key vector, and a Value vector. These three vectors are simply constructed by multiplying the embedding by three learnable projection matrices. The core computation of the attention is the attentive read operation, which calculates a normalized weighted value for each query with corresponding multiple locations (keys). The attentive read is formed as
+r1qi fk jg jo = 1
+Z
+∑︁
+j
+α1qi k j ovi j (70)
+where Z is a normalization factor and qi k j and vi j are the query, key and value, respectively. The function α1 o is used to compute the match score. According to work [37], this can be broken down into two parts, e.g., first score matching and then information aggregation. In the transformer model [4], the
+matching function is α1qi k j o = ex p p1
+d
+qi k j ¡ , the value
+vij = v j, Z = Í
+j α1qi k j o. In the graph attention network [87], the score matching function computes the score between different graph nodes activations hi and h j , which is
+αi j = f 1W hi W h j o (71)
+The authors provided a normalized version using a single layer feed-forward network, which is
+αi j = exp 1LeakyReLU1aT »W hi jjW h j 1⁄4oo
+Í
+k 2Ni exp 1LeakyReLU1aT »W hi jjW hk 1⁄4oo (72)
+where jj denotes the concatenation operation, aT and W are linear transformations. k 2 Ni represents the neighbors of node i. Then the information is aggregated around the neighbors. Based on the above mentioned attention mechanism, work [37] extended it into the hyperbolic space (Lorentz model). Specifically, the Lorentzian distance and the Einstein midpoint method are introduced to conduct the score matching and aggregation while building the hyperbolic space. First, the data representation is organized by a pseudo-polar coordinate, in which an activation x 2 Rn ̧1 = 1d ro is constructed by a n dimensional normalized angle d,jjdjj = 1 and a scalar radius r. Then, a well-developed map function is introduced to project the activation to the hyperbolic space, which is π11d roo = 1 sinh 1rod cosh 1roo. It is easy to see that the projected point lies in the Lorentz model. Then for hyperbolic matching, the authors took α1qi k j o = f 1 βdL 1qi kjo co, in which the negative Lorentzian distance (scaled by β and shifted by c) is utilized to measure the correlation. Since there is no natural definition of mean on the manifold, they turn to Einstein midpoint to conduct hyperbolic aggregation. Specifically, the agregated message mi can be represented as
+mi 1fαi j g j fvi j g j o =
+∑︁
+j
+αi j γ 1vi j o
+Í
+l αil γ 1vilo vi j (73)
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 14
+where γ1vi jo is the Lorentz factor. However, one thing to be noted is that the Einstein midpoint is defined on the Klein model. Since these hyperbolic models are isomorphic, it is very easy to map between them, as described in Sec. 2.3.6. On the top of the proposed hyperbolic attention network, the authors further formulated the Hyperbolic Transformer model, which is proved to have the superiority when compared to the Euclidean Transformer. Based on the Euclidean graph attention network (GAT) [87], work [88] generalizes it to a hyperbolic GAT. The idea is very simple, just replacing the Euclidean operation with Mo ̈bius operations. In particular, the Eq. (71) changes to
+αi j = f 1W hi W h j o (74)
+They further defined the f function based on the hyperbolic distance. Just as work [37], the negative of the distance between nodes is utilized as the matching score. The scores are finally normalized using softmax function, otherwise all the score are negative. The hyperbolic aggregation is simply conducted on the tangent space, as it is done in Euclidean space. Currently, many works have made an attempt to generalize centroid [15], [92] operations to hyperbolic space, since it has been utilized in many recent attention-based architectures. Work [15] proved that three different kinds of hyperbolic centroids, including the M ̈obius gyromidpoint [38], Einstein midpoint [38] and the centroid of the squared Lorentzian distance [92], are the same midpoint operations projected on each manifold and exactly matches each other. Based on this observation, they explored on M ̈obius gyromidpoint and generalized it by extending to the entire real value weights (previously, it is defined under the condition of nonnegative weights) by regarding a negative weight as an additive inverse operation. So the centroid with real weights fvi 2 RgN
+i=1 is
+μ = »xi vi1⁄4 = 1
+2
+ÍN
+i=1 viλxi
+ÍN
+i=1 jjvi jjλxi
+!
+(75)
+With the above weights, we can introduce how to compute the attention in hyperbolic space. Given the source and target as sequences of gyrovectors, firstly, the proposed Poincar ́e FC layers, as detailed in Sec. 3.9, are utilized to construct the queries, keys, and values. Then they are broken down into several parts, utilizing the Poincar ́e β-splits, in order to build the multi-head attention. Sharing the same idea, the negative distances are also employed to measure the matching scores. Finally, the message from multihead is aggregated using the proposed Poincar ́e weighted centroid. The authors also built a hyperbolic set Transformer model and compared to its Euclidean counterpart [93]. The result shows that the hyperbolic one can at least get equivalent performance, at the same time showing a remarkable stability and consistently converges.
+4.4 Hyperbolic Graph Neural Network
+Graph neural networks (GNNs) is a very hot research topic in the machine learning community, especially in the fields dealing with data processing non-Euclidean structures. Rencently, this is a growing passion of modeling graph in the hyperbolic space [46], [50], [90]. A core reason for that is learning hierarchical representations of graphs is easier in the hyperbolic space due to the curvature and the geometrical properties of the hyperbolic space. Such spaces were shown by Gromov to be well suited to represent tree-like structures [12] as objects requiring an exponential
+number of dimensions in Euclidean space can be represented in a polynomial number of dimensions in hyperbolic space. The success of conventional deep neural networks for regular grid data has inspired generalizations for analysing graphs with graph neural networks (GNN). Originally, GNN was proposed by [94], [95] as an approach for learning graph node representations via neural networks. This idea was extended to convolutional neural networks using spectral methods [96], [97] and spatial methods with iterative aggregation of neighbor representations [97], [98]. With the development of hyperbolic neural networks and hyperbolic attention networks provided by Ganea et al. [23] and Gulcehre et al. [37] to extend deep learning methods to hyperbolic space, interest has been rising lately towards building graph neural networks in hyperbolic spaces. Before we further introduce the graph neural networks in the hyperbolic space, let us briefly introduce the background of GNN. Graph neural networks can be interpreted as performing message passing between nodes. The information propagation on the graph can be defined as
+hk ̧1
+i =σ©
+«
+∑︁
+j 2N 1io
+Ai j W k hk
+i
+a ®
+¬
+(76)
+where hk ̧1
+i represents the hidden representation of the i-th node at the 1k  ̧ 1o-layer, Wk denotes the weight of the network at k layer. The Ai j is the entry of the normalized adjacency matrix A. Eq. (76) performs the information aggregation around the neighbor nodes N 1io of node i to update the representation of this node. Works [46], [90] provide a straightforward way to extend the graph neural network to hyperbolic space, using tangent space, since the tangent space of a point on Riemannian manifolds is always a subset of Euclidean space [46]. Work [46] utilized the logarithmic map Logx0 at a chosen point x0, such that the functions with trainable parameters are executed there. Therefore, we get the graph neural operations in a hyperbolic space, which is
+hk ̧1
+i = σ1Expx0 ©
+«
+∑︁
+j 2N 1io
+Ai j W k Logx0 1hk
+i oa
+®
+¬
+o (77)
+where an exponential mapExpx0 is also applied afterwards to map the learned feature back to the manifold. Further, the authors also moved the non-linear activation function to the tangent space, since they found that the hyperbolic operation will collapse to the vanilla Euclidean GCN as the exponential mapExpx0 will be canceled by the logarithmic map at next layer. Work [90] shares the same idea to construct spatial temporal graph convolutional networks [99] in hyperbolic space and applied this for dynamic graph sequences (human skeleton sequences in action recognition task). In addition, they further explored the projection dimension in the tangent space, instead of manually adjusting the projection dimension on the tangent spaces, they provided an efficient way to search the optimal dimension using neural architecture search [100]. Different from previous methods, hyperbolic graph convolutional network [35] decoupled the message passing procedure of GNN before they introduced their way to extend it to hyperbolic space. Specifically, the operation of GNN is divided into three parts, including feature transform, neighborhood aggregation, and
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 15
+activating by the activation function. Formally, the operation of GNN is defined as
+hk
+i = Wk hk
+i  ̧ bk
+hk
+i = hk
+i ̧
+∑︁
+j 2N 1io
+Ai j hk
+j
+hk ̧1
+i = σ1hk
+io
+(78)
+After this decoupling, the author provided operations for corresponding parts in the hyperbolic space, which are
+hk
+i = Wk hk
+i bk
+hk
+i = AGG1hk
+io
+hk ̧1
+i = Exp0 1σ1Log0 1hk
+i oo
+(79)
+where the Wk hk
+i can be further computed by the exp and log
+maps. Let the intermediate output be hˆk
+i , then hˆk
+i = Wk hk
+i=
+Exp0 1Wk Log0 1hk
+i oo Then the bias is also added by using the parallel transport, which is hk
+i = Exphˆk
+i
+1P T 0!hˆk
+i
+1bk oo. After this feature transformation, a neighborhood aggregation AGG on the Lorentz model is introduced, which is
+AGG1hk
+i o = Exphk
+j
+©
+«
+∑︁
+j 2N 1io
+wij hk
+j
+a ®
+¬
+(80)
+where the wi j = Softmax j 2N 1io 1M LP1Log0 1hk
+i jjhk
+j ooo works as the attention for the aggregation (Here, MLP is short for Euclidean Multi-layer Percerptron, and it is used to compute the attention based on the concatenated representation of the two nodes in the tangent space of point 0.) It is also worth mentioning that the information aggregation is performed at the tangent space of the center point of each neighbor set, which is different for different nodes and it is fair reasonable. Work [50] also presented a novel graph convolutional network in the Non-Euclidean space from the curvature perspective. The proposed network is mathematically grounded generalization of GCN to constant curvature spaces. Specifically, they extended the operations in gyrovector spaces to the space with constant positive curvature, which is the stereographic spherical projection models in their study. By this way, they provided a uniform GCN for spaces with different kinds of curvature ( 0, negative and positive), which is called the κ-GCN. Work [101] further improved this method by providing a more reasonable definition of the gradient of curvature at zero, since the original one is incomplete. We will detail these methods in Sec. 4.7.
+4.5 Hyperbolic Normalizing Flows
+Normalizing flows [102] involve learning a series of invertible transformations, which are used to transform a sample from a simple base distribution to a sample from a richer distribution. The models produce tractable distributions where both sampling and density evaluation can be efficient and exact. For more details please refer to this survey paper [103]. Mathematically, starting from a sample from a base distribution, z0 p1zo, an invertible and a smooth mapping fθ : Rn ! R
+n, the final sample from a flow is then given by a composition of functions, which is z j = f j ø f j 1ø ø f1 1z0o. The corresponding density can be determined simply by
+lnpθ 1 fθ 1z joo = ln1p1z0oo
+j ∑︁
+i=1
+ln detj ∂ fi ∂zj 1
+j (81)
+In practice computing the log determinant of the Jacobian is computationally expensive. Fortunately, appropriate choice of function f can bring down the computation cost significantly. In fact, normalizing flows have already been extended to Riemannian manifolds (spherical spaces) [104], [105]. Currently, we can also find normalizing flows being extended to Torus spaces [105]. In the work [106], they further extended it to a data manifold by proposing a new class of generative models, Mflows, which simultaneously learn the data manifold as well as a tractable probability density on that manifold. Intended to benefit from the superior capability of hyperbolic space of modeling data with an underlying hierarchical structure, work [107] presented a new normalizing flow in the hyperbolic space. They pointed out the problems of current Euclidean normalizing flows firstly, just like for other tasks, deep hierarchies in the data cannot be embedded in the Euclidean space without suffering from high distortion [69]. Secondly, sampling from densities defined on Euclidean space cannot make sure the generated points still lie on the underlying hyperbolic space. To address these issues, they proposed first elevated normalizing flows to hyperbolic space (leveraging Lorentz model) using coupling transforms defined on the tangent bundles. Then, they explicitly utilized the geometric structure of hyperbolic spaces and further introduced Wrapped Hyperboloid Coupling (WHC), which is a fully invertible and learnable transformation. Normally, defining a normalizing flow in hyperbolic space by employing the tangent space at the origin is the easiest way. Firstly, sample a point from a base distribution, which can be a Wrapped Normal [108]. Then transport the sample to the tangent space of the origin, using the logarithmic map. Next, apply any suitable Euclidean flows in the tangent space. Finally, project back the sample by using the exponential map. Based on this strategy, work [107] provided a method called Tangent Coupling, which builds upon the real-valued non-volume preserving transformations (RealNVP flow) [109] and introduces the efficient affine coupling layers. Specifically, this work follows normalizing flows designed with partially-ordered dependencies [109]. They defined a class of invertible parametric hyperbolic functions f T C
+i : Lk ! Lk . The coupling layer is implemented using a binary mask, and partitions the input x into two sets x1 = x1:d x2 = xd ̧1:n, For the first set x1, its elements are transformed elementwise independently of other dimensions, while the transform of second set x2 is based on the first one. Thus, the overall transformation of one layer is
+fˆT C 1xˆo = zˆ1 = xˆ1
+zˆ2 = xˆ2 δ1s1xˆ1oo  ̧ t 1xˆ1o
+f T C 1xo = Exp0 1 fˆT C 1Log0 1xoo (82)
+where and δ are pointwise multiplication and pointwise nonlinearity, e.g., the exponential function, respectively. s and t are map functions, which are implemented as linear neural layers and conduct the projection from ToLd ! ToLn d. So the transformed result will be zˆ, which is the concatenation of resulted and mapped zˆ1 and zˆ2 on the manifold. They also provided an efficient expression for the Jocobian determinant by using the chain rule and identity [107]. To make full use of the expression power of the manifold, they provided a new method, Wrapped Hyperboloid Coupling (WHC), which improves the performance by using parallel transport, in
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 16
+stead of only operating in the tangent space of origin. In particular, the WHC is defined as follows:
+fˆW HC 1xˆo =
+( zˆ1 = xˆ1
+zˆ2 = Log0 Expxˆ1 1PT 0!t 1xˆ1o 1voo
+v = xˆ2 δ1s1xˆ1oo
+f W HC 1xo = Exp0 1 fˆW HC 1Log0 1xoo (83)
+where s : ToLd ! ToLn d and t : ToLd ! ToLn are map functions and also implemented as neural networks. However, the role of the function t is changed. Here, since parallel transport is used in Eq. (83), t can learn an optimal point on the manifold such that the tangent space transports from origin to this point. Likewise, they provided an efficient expression for the Jocobian determinant. In this way, they built two different kinds of normalizing flows in the Lorentz model.
+4.6 Hyperbolic Variational Auto-Encoders
+Variational auto-encoders (VAEs) [110], [111] are a popular probabilistic generative model, composed of an auxiliary encoder that draws samples of latent code from the approximate posterior (conditional density), and a decoder generating observations x 2 X from latent variables z 2 Z. The objective of VAEs is to optimize the log-likelihood of the data, logPθ 1xo = log
+∫
+Pθ 1x zodz,
+where Pθ 1x zo denotes a parameterized model of the joint distribution. However, marginalizing over the latent variables is generally intractable. Basically, the VAE networks leverages the approximate posterior to derive an evidence lower bound (ELBO) to the (intractable) marginal log-likelihood, which is
+L1x; θ φo = Ez qφ 1z jxo »logPθ 1xjzo1⁄4 DK L 1qφ 1zjxojj p1zoo
+(84) where the first conditional likelihood and the second KL terms respectively characterize reconstruction and generalization capabilities. This ELBO can be further efficiently approximated by using the famous reparameterization trick [110], [111], which is done by expressing a sample of z q φ 1zjxo in Eq. (84) using a reparameterization transformation and some random noise variables independent to the model θ. In addition, VAEs in non-Euclidean latent space have been recently introduced. For instance, Davidson et al. made use of hyperspherical geometry [112] and Falorsi et al.endowing the latent space with a Lie group structure [113]. To this end, they proposed an efficient and reparametrizable sampling scheme, and calculated the probability density functions, for two canonical Gaussian generalisations defined on the Poincar ́e ball, namely the maximum-entropy and wrapped normal distributions. At the same time, they introduced a decoder architecture that explicitly takes into account the hyperbolic geometry. The Gaussian distribution is a common choice of prior for vanilla VAE style models. One of the main challenges is how to generalize the latent distribution learning in the Euclidean space to the hyperbolic space. As mentioned in [105], [114], there are mainly three ways to model the normal distributions in the hyperbolic space. Firstly, the Riemannian normal [115] with Fre ́chet mean method [39] μ and dispersion parameter σ. Sometimes, it is also referred as maximum entropy normal. In particular, the Riemannian normal distribution is defined as
+NM 1zjμ σ2o = 1
+Z 1σo exp 1 dM 1μ zo
+2σ2 o (85)
+where dM is the induced distance [114], [116] and Z 1σo is a normalization constant. Secondly, the Restricted Normal. Restricting the sampled points from the normal distribution to sub-manifolds. It has also been treated as the maximum entropy distribution with respect to the ambient euclidean metric [117]. For instance, in the work Hyperspherical variational auto-encoders [112], the authors presented a novel VAE model, called S-VAE, via von Mises-Fisher (vMF) distribution, in which the encoder is a homeomorphism and can provide an invertible and globally continuous mapping. In Fig. 5, one can also see the visualization of the S-VAE with this distribution compared to other autoencoder models. Thirdly, Wrapped Normal [108], [113], [114]. This distribution is constructed by utilizing the exponential map of a Gaussian distribution on the tangent space centered at the mean value. Specifically, there are four steps to get a wrapped normal distribution. Let the the Wrapped Normal be NM 1μ σo, which is constructed by First, sampling one point from the Euclidean normal distribution N 10 σo. Second, concatenate 0 as the zeroth coordinate of this point and transfer it to the tangent space of the origin. Third, parallel transports from the current tangent space to the tangent space at the point μ. Finally, mapping the point from the tangent space to the manifold using the exponential map. In this way, a latent sample on the manifold is obtained. As mentioned in [118], the Wrapped Normal has the following reparametrizable form
+z = Expμ 1PT 0!μ 1vooo v 2 N 10 σo (86)
+As mentioned in [119], a downside of vMF is that it has only a single scalar covariance parameter, while other approaches can parametrize the covariance in different dimensions separately. The Riemannian Normal distributions could be computationally expensive for sampling if it is based on rejection sampling. On the contrary, Wrapped Normal distributions are very computationally efficient to sample. In addition to the three methods mentioned above, there are also other ways to model the distribution in the manifold. For instance, the diffusion normal through the heat kernel [120], [121]. One can refer to work [114] or other related materials for more details. Based on the aforementioned generalization of the normal distribution in the non-Euclidean space, there are numerous works [108], [114], [118], [122], [123] constructing VAE in the hyperbolic space, aiming at imposing structure information on the latent space. Work [123] proposed a general framework for embedding data on constant curvature manifolds (CCM). To this end, a CCM latent space within an adversarial auto-encoder framework is introduced. In this work, a prior distribution is constructed by using the tangent space with local Euclidean property. However, as mentioned by work [114], the encoder and decoder are not designed to explicitly take into account the latent space geometry. Work [122] proposed to endow a VAE latent space with the ability to model underlying structure via the Poincar ́e ball model. The author mentioned that the vanilla VAE posterior is parameterized as a unimodal distribution such that it is not able to allow the structure assumption. To deal with this problem, they provided a closed form definition of Gaussian distribution in the hyperbolic space, as well as the sampling rules for the prior and posterior distribution. Specifically, based on the maximum entropy generalization of Guassian distribution [115] (also the
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 17
+Fig. 5. Plots of the original latent space (a) and learned latent space representations in different settings, where β is a re-scaling factor for weighting the KL divergence. N VAE represents vanilla VAE with Euclidean normal distribution. For more details please refer to [112].
+Riemannian normal mentioned above), they derived the normalization constant in Eq.( 85) by decomposing it into radial and angular components. Based on the Wasserstein Autoencoder [124] framework, which is introduced to circumvent the high variance associated with the Monte-Carlo approximation, they built each layer using the hyperbolic feedforward layer provided by [23]. They also provided a generalization of the reparameterization trick by using the Mo ̈bius transformations. They further relaxed the constraint to the posterior by using the maximum mean discrepancy [125] and the network is optimized by RSGD [62]. However, as pointed out by [114], the authors had to choose a Wasserstein Auto-Encoder framework since they could not derive a closed-form solution of the ELBO’s entropy term. Besides, work [108] mentioned that the approximation of the likelihood and its gradient can be avoided. Work [108] provided a new normal distribution function in the hyperbolic space (Lorentz model), which is called PseudoHyperbolic Gaussian, and it can be utilized to construct and learn a probabilistic model like VAE in this non-Euclidean space. The authors emphasise that this distribution is computed analytically and could be sampled efficiently. Pseudo-Hyperbolic Gaussian can be constructed with four steps, as mentioned above in the wrapped normal. The author further highlighted their contributions by deriving the density of Pseudo-Hyperbolic Gaussian distribution G1μ Σo due to the exponential map and the parallel transport in the wrapped normal are differentiable.
+log p1zo =
+log p1vo log det
+∂Expμ 1μo
+∂μ
+det
+∂PT μ0!μ1vo 1 μo
+∂v
+(87)
+where det denotes the determinant. Then they chose an orthonor
+mal basis of tangent space TμL to evaluate the determinant of
+∂Expμ 1 μo
+∂μ , which is derived as
+det
+∂Expμ 1μo
+∂μ
+= sinh jjμjjL
+jjμjjL
+(88)
+Since they provide a closed form of the density function, they could evaluate the ELBO exactly and there is no need to introduce the reparameterization trick in this hyperbolic VAE. However, as pointed out by [114], the neural layers are still the Euclidean ones, which did not take into account the hyperbolic geometry. Therefore, work [114] introduced a VAE that respects the geometry of the hyperbolic latent space. This is done by adding a generalization of the decision hyperplane in Euclidean space. Normally, the Euclidean linear affine transformation is f 1zo = sign1 a z p ¡ojjajjd 1z Ha po, where a is the coefficient, p
+Fig. 6. Hyperplane in Poincar  ́e model from work [114]. Illustration of an orthogonal projection on a hyperplane in a Poincar  ́e disc (Left) and an Euclidean plane (right).
+is the intercept (offset). The Ha p denotes a hyperplane passing through p with a as the normal direction, thus d 1z Ha bo means the Euclidean distance of z to the hyperplane. Analogues to the Euclidean linear function f 1zo, they generalized it like
+fa p 1zo = sign1 a Logp 1zo ¡ojjajj p dB 1z HB
+a po (89)
+Inspired by the MLR in work [23], the first layer of the decoder, which is called the gyroplane layer, as shown in Fig. 6, is chosen to be a concatenation with a Poincar ́e operator f . Then it is then composed with a standard feed-forward neural network. The gyroplane layer is then composed with a standard feedforward neural network. For the encoder part, the author also changed the last layer by adding an exponential map for the Fre ́chet mean, and a softplus function for the positive defined Σ. Then, the ELBO of VAE is optimized via an unbiased Monte Carlo (MC) estimator with two main Gaussian generalisations, which are wrapped normal and Riemannian normal generalizations. Through a hyperbolic polar change of coordinates, they provided an efficient and reparameterizable sampling schemes to calculate the probability density functions. Compared to the above-mentioned method, the work [118] highlights an implicit posterior and data-driven prior. Work [118] proposed an Adversarial Poincar ́e Variational Autoencoder (APoVAE). In particular, a wrapped normal distribution is used as the prior and the variational posterior for more expressive generalization. However, they replaced the tangent space sampling step in Eq. (86) with a more flexible implicit distribution from N 10 Io, inspired by work [126]. Then, a geometry-aware Poincar ́e decoder is constructed, which shares the same idea as it for the decoder in work [114]. ApoVAE further optimized the variational bound by adversarially training this model by exploiting the primal-dual formulation
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 18
+Fig. 7. Illustration of data with different structures. Leftmost shows a data with cycle. Middle shows a tree-structured data and the rightmost is a combination.
+of Kullback-Leibler (KL) divergence based on the Fenchel duality [127]. And the training procedure is following the training scheme of coupled variational Bayes (CVB) from work [128] and implicit VAE [126]. Meanwhile, inspired by [129], they replaced the prior with a data-driven alternative to reduce the induced bias. In addition to all these methods discussed above, the work [119] is also worth mentioning. This work presented an autoencoder in non-Euclidean space. However, instead of only using the hyperbolic space, they extended the VAE to multiple spaces, which is called mixed-curvature Variational Autoencoders. We will give details it in Sec.4.7.
+4.7 Neural Networks with Mixed Geometries
+As mentioned by work [130], the quality of the learnt representations is determined by how well the geometry of the embedding space matches the underlying structure of the data. Hyperbolic space has already proved to be a better space to model treestructured data. However, real-world data can be more complicated. For instance, in Fig. 7, the leftmost cycle data can be better modeled by spherical space, the middle can be better modeled by the hyperbolic one. However, for the rightmost one, either of them is a good choice. Instead, more flexible mixed spaces, providing a rich expressive representation for data, can be a choice for data involving multiple properties. Currently, there is also an increasing momentum of learning representations via hybrid geometries, especially for data involved with a variety of types. Here, we summarize the literature mixing hyperbolic models with other geometries. Work [123] provided a unified autoencoder model for spaces with different kinds of curvatures, including spaces with positive, negative and also zero curvatures. However, this work did not take the geometry information into consideration when building the neural architecture, which is far away from the expectation. Work [130] pointed out that introducing a unique space may only be suitable for a certain type of structured data. However, most data is not structured so uniformly such that a mixed spaces would be helpful to the representation learning procedure. In particular, they proposed to utilize a Riemannian product manifold of model spaces [131], including hyperbolic spaces with negative curvature, positively curved spherical space, and the flat Euclidean space. Given a sequence of smooth manifolds M1 M2 Mk , the product manifold is defined as a Cartesian product M = M1 M2 Mk . Here, each of the component spaces has a constant curvature and a point on this manifold M is p = 1 p1 pk o : pi 2 Mi through all coordinates on each manifold Mi. As a result, there will be two challenges here, first, for each component space, how to determine the curvature. Second, the number of components of each space type and their
+dimensions, which is called signature by [130]. To address these issues, the authors proposed to learn the curvature for each space. And for the choice of the number of spaces k and the projection dimensions for each space, they introduced a heuristic estimator. Specifically, let Sd, Hd and Ed be the spherical, hyperbolic, and Euclidean space with d dimensions, respectively. Then the product space P is represented by
+P = Ss1 Ss2 Ssm Hh1 Hs2 Shn Ee (90)
+where s1 s2 sm h1 h2 hn e are the dimensions for the corresponding spaces. Here, they only introduced one Euclidean space since the product of multiple Euclidean spaces is are isomorphic to the single space, while this is not the case for spherical and hyperbolic spaces [130]. They introduced a graph embedding task with a loss objective to minimize the average distortion. This function can be further optimized by RSGD [62]. Here, they highlighted the learning procedure by jointly optimizing the curvature of every non-Euclidean factor along with the embeddings. This is simply implemented by parameterizing the curvature in the distance metrics and then optimizing the non-Euclidean space in a unit space (by projecting the input into a unit space). For the signature, they matched the discrete notions of curvature on graphs with sectional curvature on manifolds and estimated it by triangle comparison theorem [132]. They also mentioned that the product manifold are at least as good as single spaces, while for more complicated structure, it can offer significant improvements. The hyperbolic and spherical models chosen by work [130] are Lorentz (hyperboloid) model and hypersphere model. However, as mentioned by [119], when the curvature K goes to zero, both of these two spaces have an unsuitable property, named the nonconvergence of the norm of points. For instance, the origin of Lorentz is 11 K 0 0 0o, of which the norm is 1
+K ! 1 when curvature K goes to zero. Work [74] adapted the Glove [75] algorithm to learn unsupervised word embeddings in this type of Riemannian manifolds. To this end, they proposed to embed words in a Cartesian product of hyperbolic spaces which they theoretically connected to the Gaussian word embeddings and their Fisher geometry. Sharing the same idea, work [119] provided an mixedcurvature variational autoencoders, devising a framework towards modeling probability distributions in products of spaces with constant curvature, utilizing latent space constructed by a product of constant curvature Riemannian manifolds. Like introduced in previous section, the wrapped normal distribution is used to change the parametrization of the mean and covariance in the VAE forward pass, and the choice of prior and posterior distributions. For the hyperbolic and spherical models, they chose the Poincar ́e model and projected sphere, utilizing classical stereographic projections [133]. They further proposed the fixed curvature and the learnable curvature VAEs. For the fixed one, they selected curvature values from the range [0.25, 1.0] with the corresponding radius in the range [1.0, 2.0]. And for the learnable curvature, they just simply introduced a parameter, while instead of directly learning the curvature, they learn the radius since they mentioned that learning curvature is badly conditioned. Another important thing is also to determine the the number of components (spaces) and also the dimension for each of them. They proposed to partition the space into many 2-dimensional components (one component will have 3 dimensions if the space dimension is odd). Then, all of these small spaces were initialized and trained as
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 19
+Euclidean components. After training for a while, the components were split into three groups, including one hyperbolic component, one spherical, and the last remains Euclidean. Finally, they allowed learning the curvatures of all non-Euclidean components. As also mentioned by the authors, the method is not completely general. With similar motivations, work [50] presented a constant curvature graph convolutional network, which is a mathematically grounded generalization of the traditional GCN framework. Work [50] provides a unified formalism for spaces with constant curvature. Based on this, they generalized GCN framework to nonEuclidean space and proposed a unified GCN, named κ-GCN. In particular, the authors unified all curvature spaces (positive, negative, and zero) via a stereographic projection [134], which is a mapping (function) that projects a sphere/hyperbolic manifold onto a plane. With this κ-stereographic model, they extended gyrovector spaces to positive curvature. Therefore, the exponential maps for a space with curvature κ are described as
+Expκ
+x 1vo = x κ tanκ 1jjvjj 2o v
+jjvjj (91)
+where the tanκ is defined as
+tanκ 1xo =
+8>><
+>> :
+κ
+1
+2 tan1xκ
+1
+2o κ ¡ 0
+x κ=0
+jκj 1
+2 tan1xjκj 1
+2o κ 0
+(92)
+Likewise, we can also extend it to logarithmic maps, parallel transport and distance. With this method, they derived a unified graph convolutional network, κ-GCN, which reduces to commonly used GCN when κ ! 0. However, the work [101] found that at the point of zero curvature, the gradient is not well defined. Therefore, based on work [50], they provided a new model, κ-Stereographic to correct the gradient for curvature κ. As the authors mentioned, by taking left and right Taylor expansions, the tanκ in Eq. (92) is re-defined as
+tanκ 1xo =
+8>><
+>> :
+κ
+1
+2 tan1xκ
+1
+2o κ ¡ 0
+x ̧ 1
+3 κx3  ̧ 2
+15 κ2x5 κ = 0
+jκj 1
+2 tan1xjκj 1
+2o κ 0
+(93)
+The authors also provided good examples to study various optimization techniques in non-Euclidean space, which is very valuable for this community. Specifically, the optimization step changes the geometry of space and the parameter constraints are also dependent on the curvature parameter, thus curvature optimization in hyperbolic space is challenging. As summarized by [101], there are mainly three ways to conduct curvature optimization, including alternating optimization, joint optimization, and tangent space optimization. Work [135] also noticed that the hierarchical datasets may also contain cycles, which cannot be represented using trees. Therefore, they provided a model using the pseudo-Riemannian manifold (also called semi-Riemannian [136]) with constant nonzero curvature, which is a generalization of hyperbolic and spherical geometries where the non-degenerate metric tensor is not positive definite. The comparison results on a social network graph even show a superiority to the hyperbolic space. Previous methods with mixed geometries are mainly focused on spaces with different curvatures and their combination. Very limited works study the interaction between them. Work [90] mix the dimensions of different manifolds and provided an efficient
+interaction way to search the optimal projection dimensions. However, they are in the same hyperbolic spaces. Work [137] developed more advanced architectures by the interaction of Euclidean or hyperbolic spaces, learning the representation of graph. Specifically, this geometry interaction learning method has two branches, e.g., Euclidean network and hyperbolic (Poincar ́e model) network, in which they propagated neighbor information simultaneously via a distance-aware attention mechanism. Then a dual feature interaction is introduced to enhance both features by exponential and logarithmic functions. Experiments prove the efficacy of the geometry interactions.
+5 APPLICATIONS AND PERFORMANCE
+Latent hierarchical structures are characteristic for many complex symbolic datasets, from various research fields. Therefore, we will introduce the applications for the data with hierarchical structures, including learning embeddings of graphs, NLP, tree-like properties. Then, we also notice that there is an increasing potential to introduce hyperbolic neural network to regular data like natural images. Therefore, we introduce how hyperbolic networks are adapted to computer vision tasks without clear structures.
+5.1 NLP with Hyperbolic Embeddings
+Natural language often conceives a latent hierarchical structure, e.g., linguistic ontology. Likewise, a more generic short phrase can have many plausible continuations and is therefore semantically related to a multitude of long phrases that are not necessarily closely related (in the semantic sense). Based on this, it is natural to transfer natural language processing (NLP) from Euclidean space to hyperbolic space due to its innate suitability to embed hierarchies with low distortion [69]. As mentioned by work [118], another advantage of modeling in hyperbolic space is that the latent representation gives us more control of the sentences we want to generate, which means an increase of sentence complexity and diversity can be achieved along some trajectory from a root to its children. As a result, numerous works are presented to take advantage of hyperbolic neural networks for various NLP tasks. As summarized in Table 2, there are more than one third hyperbolic methods being presented to deal with NLP tasks, of which specific tasks include text classification [149], entity typing [155], [156], taxonomy induction [144], taxonomies embedding [141], word embeddings [66], [74], Lexical Entailment [25] and text generation [118]. Among them, the WordNet [157] dataset is very commonly used for evaluation. This dataset is a large lexical database which, amongst other relations, provides hypernymy (is-a(v,m)) relations, such as is-a(dog,animal). In this dataset, the noun and verb hierarchy of WordNet. The transitive closure of the WordNet noun hierarchy consists of 82,115 nouns and 743,241 hypernymy relations. For WordNet verb, there are 13,542 verbs and 35,079 hypernymy relations.
+In the task of sentence entailment classification, works [23] and [15] evaluated the proposed MLRs in the sentence entailment classification task. The results confirm the tendency of the hyperbolic MLRs to outperform the Euclidean version in all settings. At the same time, the hyperbolic MLR from work [15] shows more stable training, relatively narrower confidence intervals, and at least comparable performance with only half of the parameters compared to the MLR in [23].
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 20
+TABLE 2
+Summary of the advanced machine learning methods in hyperbolic space. Here, G. means the type of Geometry. Its value ’mixed’ means the methods combine more than one different geometries to build the model.
+Method Year Architecture Tasks G. Institution Source PEmbedding [25] 2017 Embedding NLP and Graph B Facebook NeurIPS HyperGraph [138] 2017 Embedding Network Vertex Classification B ICL MLG W
+TextHyper [66] 2018 AE(GRUs) Text Embedding B Google NAACL W h-MDS [68] 2018 Embedding Tree and tree-like data modeling B Stanford PMLR HyperQA [139] 2018 Encoder-Decoder Neural Question Answering B NTU WSDM HyperCone [140] 2018 Embedding NLP and Graph B ETH Z ̈urich ICML HNN [23] 2018 RNN NLP(textual entailment and noisy prefixes) B ETH Z ̈urich NeurIPS Lorentz [141] 2018 Embedding Taxonomies Embedding, Graph and Historical Linguistics L Facebook ICML HyperBPR [142] 2018 BPR [143] Recommender Systems B NTU AAAI ProductM [130] 2018 Embedding Tree(with Cycle) Mixed Stanford ICLR
+HAN [37] 2019 Attention Module Graph, Machine translation and Relational Modeling L(K) Deepmind ICLR HGCN [35] 2019 GNN Graph L Stanford NeurIPS PGlove [74] 2019 Glove [75] Word Embedding Mixed ETH Z ̈urich ICLR HGNN [46] 2019 GNN Graph B,L Facebook NeurIPS Tiling [76] 2019 Tiling NLP and Compressing L Cornell NeurIPS PTaxo [144] 2019 Embedding Taxonomy Induction B U. Hamburg ACL H-SVM [56] 2019 SVM NLP(Word E) Graph (Node C) B MIT AISTATS H-Recom [26] 2019 BPR Recommender Systems L ASOS CoRR MuRP [145] 2019 Bilinear knowledge Graph B U. Edinburgh NeurIPS RAO [64] 2019 Optimizor NLP B ETH Z ̈urich ICLR WrapN [108] 2019 VAE NLP,MNIST and Atari trajectories B U.Tokyo ICML LDistance [92] 2019 Embedding NLP B U. Toronto ICML PVAE [114] 2019 VAE NLP, and MNIST B Oxford NeurIPS CCM-AAE [123] 2019 AE MNIST C, Graph Mixed U.Lugano ASOC HWAE [122] 2019 VAE G MNIST, Graph and Tree B ETH Z ̈urich gHHC [85] 2019 Clustering Clustering ImagNet, Multi-Task B U. Mass KDD
+HGAT [88] 2020 GNN Graph B BUPT AAAI H-STGCN [90] 2020 GNN Skeleton Action B U. Oulu ACM MM HyperKG [146] 2020 Translational Knowledge Graph B EPFL ESWC HyperML [147] 2020 Metric Learning Recommender Systems B NTU WSDM LorentzFM [148] 2020 Triangle Inequality Recommender Systems B eBay AAAI APo-VAE [118] 2020 VAE NLP (dialog-response generation) B Duke H-Image [45] 2020 Embedding Image c, few-shot B SIST CVPR HyperText [149] 2020 RNN NLP(text classification) B Huawei EMNLP ATTH [150] 2020 RNN Knowledge Graph B Stanford ACL κ-GCN [50] 2020 GNN Graph Mixed ETH Z ̈urich ICML FMean [34] 2020 GNN Graph B Cornell ICML H-NormF [107] 2020 Norm. Flow Graph B McGill ICML κ-Stereographic [101] 2020 GNN Graph Mixed SIST ICML L-Group [151] 2020 Group jet physics L U. Chicago ICML MVAE [119] 2020 VAE Image reconstruction and Tree systhsis Mixed ETH Z ̈urich ICLR HypHC [152] 2020 Clustering Clustering(e.g., CIFAR-100) B Stanford NeurIPS R-NormF [153] 2020 Norm. Flow Earth sciences B Oxford NeurIPS RH-SVM [57] 2020 SVM ImageNet(Pick 2classes) L Princeton NeurIPS TREEREP [154] 2020 Embedding Tree R U. Michigan NeurIPS UltraH [135] 2020 Embedding Graph Mixed NVIDIA NeurIPS GIL [137] 2020 GNN Graph B CAS NeurIPS
+HNN++ [15] 2021 CNN,Transformer NLP, Clustering, Machine Translation B U. Tokyo ICLR
+In the neural machine translation task, the Transformer [4] is a recently introduced state-of-the-art model. Based on the hyperbolic attention mechanism, work [37] provided a hyperbolic version of Transformer, which one can observe the improvements over the original Euclidean Transformer from experiments. The improvements are more significant when the model capacity is restricted. Work [15] also evaluates their Poincare ́ CNNs in the machine translation of WMT’17 English-German [158]. Comparison results demonstrate the large improvements compared to the usual Euclidean models in fewer dimensions. However, this superiority disappears when further increasing the embedding dimension.
+In the task of text classification, HyperText [149] performs significantly better than FastText [159], which is the state-of-theart text classifier based on shallow neural networks in Euclidean space, on datasets with more label categories. Besides, HyperText with 50-dimension achieves better performance to FastText with 300-dimension, which proves the hyperbolic space is a better choice for this task. Also, works [149] and [160] benefits from the hyperbolic methods in the Chinese text analysis tasks.
+In the text generation task, HyperQA from work [139] is the first to model QA pairs in hyperbolic space. HyperQA is an extremely fast and parameter efficient model that achieves very competitive results on multiple QA benchmarks, especially when
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 21
+compared to Euclidean methods at that time. ApoVAE [118] also deals with the dialog-response generation problem. It optimized the variational bound by adversarially training and exploited the primal-dual formulation of KL divergence based on the Fenchel duality [127]. In the task of word embeddings, work [108] proposed a Gaussian-like distribution in hyperbolic space, which is called pseudo-hyperbolic Gaussian. Based on this a hyperbolic VAE is presented to deal with the word embeddings. Work [74] adapted the Glove [75] algorithm to learn unsupervised word embeddings in this type of Riemannian manifolds. To this end, they proposed to embed words in a Cartesian product of hyperbolic spaces which they theoretically connected to the Gaussian word embeddings and their Fisher geometry. We can see some notable founds in the experiments of Hypernymy [161] evaluation task. Based on their method, the fully unsupervised model can almost outperform all supervised Euclidean counterparts. Once trained with a small amount of weakly supervision for the hypernymy score, they can obtain significant improvements and this result is much better that the models in Euclidean space. In the taxonomy embedding task, work [25] is one pioneer research piece that can learn embeddings in hyperbolic space (Poincar ́e model). They performed experiments on the tasks of embedding of taxonomies. To evaluate the ability of the embeddings to infer hierarchical relationships without supervision, they trained on data where the hierarchy of objects is not explicitly encoded. A significant improvement was witnessed in the Taxonomy Embedding task. Work [66] proposed a re-parametrization of Poincar ́e embeddings that removes the need for the projection step and allows the use of any of the popular optimization techniques in deep learning, such as Adam. Work [141] pointed out that the Lorentz model is substantially more efficient than in the Poincar ́e model. Therefore, they proposed to learn a continuous representation using Lorentz model, which further improves the performance in this task. Work [92] mentioned that Poincar ́e distance is numerically unstable and explained why the squared Lorentzian distance is a better choice than the Poincare ́ metric. Based on this, they learnt a closed-form squared Lorentzian distance and thus further improve the performance on the Taxonomy Embedding task. Very recently, work [15] shows the superior parameter efficiency of their methods compared to conventional hyperbolic components, and the stability and outperform over their Euclidean counterparts. They evaluated their Poincar ́e MLR on the WordNet with the one proposed in [23], as well as the counterpart in Euclidean space. As mentioned before, work [76] constructs the hyperbolic model for dealing with the numerical instability of the previous hyperbolic networks. Based on the Lorentz model, they provide a very efficient model to learn the embedding. For instance, they can even compress the embeddings down to 2% of a Poincar ́e embedding of the onWordNet Nouns. In the task of taxonomy induction, which is aiming at creating a semantic hierarchy of entities by using hyponym-hypernym relations, traditional approaches like extraction of lexicalsyntactic patterns [162] and co-occurrence information [163] are still dominating in the state-of-the-art taxonomy learning. Currently, work [144] proposed to employ Poincar ́e embeddings in this task. Specifically, they first created a domain-specific Poincar ́e embedding. Based on this, they identified and relocated the outliers, as well as attached the unconnected terms. Textual entailment, which is also called natural language inference, is a binary classification task to predict whether the
+second sentence (hypothesis) can be inferred from the first one (premise). Dataset SNLI [164] is one typical dataset for this task, which consists of 570K training, 10K validation and 10K test sentence pairs. In the textual entailment task, HNN [23] embedded two sentences using two distinct hyperbolic RNNs. With the corresponding distances, the sentence embeddings are then fed into a feedforward network and predicted with an MLR. Interestingly, the results shows that the fully Euclidean baselines might even have an advantage over hyperbolic models. On top of pre-trained Poincar ́e embeddings [25], they conducted experiments on the WordNet noun hierarchy to evaluate the hyperbolic MLR. On this subtree classification task, hyperbolic MLR displays a clear advantage to the Euclidean counterpart. Despite work HNN [23] is one big step for generalizing deep learning components to hyperbolic space, in what case hyperbolic is more suitable is not clear enough. Entity typing is a multi-class multi-label classification problem, in which, given a context sentence containing an entity mention, the goal is to predict the correct type labels that describe the mention. Usually, the types come from a predefined type inventory. Lopez et al. [156] provided the first fully hyperbolic neural model for hierarchical multi-class classification, and apply it in Entity typing. Based on hyperbolic neural network [23], they built an attention-based mention and context encoder to extract feature representations, followed by a hyperbolic multinomial logistic regression (MLR) to perform the predictions. They adapted the MLR such that several classes can be selected. They showed how the hyperbolic definition of the classification hyperplanes benefits the task, given the hierarchical structure of the type inventory.
+5.2 Hyperbolic for Graph applications
+Graph data and its applications increasingly attract attention since graphs can be found everywhere in the real-life world and they can be utilized to model more complex underlying relationship than regular data. At the same time, hierarchies are ubiquitous in graph data. There are a great deal of methods presented to deal with real-world problems with graph data, including node classification [35], graph classification [46], [90], link prediction [35], and graph embedding [50]. For instance, in the real-world dataset Amazon Photo [165], a node represents a product and an edge indicates that two goods are frequently bought together. All nodes in these datasets correspond to a label and a bag-of-words representation. Multiple graph tasks can be conducted on this dataset. There are numerous works leveraging deep hyperbolic neural networks dealing with the graph tasks. Here, we only concentrate on the models generalized from the GNN architecture, although there are many other existing hyperbolic embedding methods, like PVAE [114], HAT [37], which also consider the modeling of graph (mainly for natural language or networks). Work [138] is one of the pioneering works to deal with this topic. It introduces a new concept of neural embeddings in hyperbolic space. They evaluated their method on five publicly available network datasets for the problem of vertex attribution. The results shows that it significantly outperforms Euclidean deepwalk [166] embeddings. Hyperbolic graph neural network (HGNN) in work [46] and hyperbolic graph convolutional network (HGCN) in the work [35] are almost proposed at the same time. They are the pioneer works for generalizing graph neural networks to hyperbolic space, using the tangent space. The HGCN is built on the Lorentz model. The authors tested HGCN on both node classification and link prediction tasks. Experiments show that for a
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 22
+dataset with low δ-hyperbolicity, the HGCN can get a performance much better than models built in Euclidean space. The HGNN is built on both the Poincar ́e model and Lorentz model. The authors dealt with both graph classification tasks, in which the graphs are synthetically generated with three distinct graph generation algorithms. The results show that when the embedding dimension is smaller than 20, the HGNN shows a significant superiority. We can also see that for most cases, HGNN on the Lorentz model performs better than that on the Poincar ́e model. While the authors increased the dimension, this advantages disappeared and in the task of graph classification, when the dimension is larger than 256, the HGNN performs worse that its Euclidean counterpart. Since the networks are built in the tangent space, the authors also explore the effectiveness of the activation function. They concluded that the activation function should perform on the output of the exponential map, otherwise multiple layers of HGNN would collapse to a vanilla Euclidean GCN. However, they do not evaluate whether the features are still on the manifold after performing the activation function on the manifold. Currently, work [50] derives a general version of GCN with constant cavature, κ-GCN. In this case, the vanilla Euclidean GCN is just a special case of κ-GCN, with κ = 0. It is worth mentioning that this κ-GCN is not built on the tangent space. This model can significantly minimize the graph embedding distortion and get a superior performance on the node classification tasks. Most of previous mentioned tasks are focused on static graphs, while work [90] considered the graph classification task with a dynamic graph input. They constructed and searched for the optimal ST-GCN in the Poincar ́e model. Another very interesting work [101] is trying to answer the question that are hyperbolic representations of graphs created equal? The author doubted whether the hyperbolic spaces always give a superior performance when compared to the Euclidean counterparts. To this end, work [101] provided a profound analysis by conducting extensive experiments on four different kinds of graph tasks, including node classification, link prediction, graph classification, and graph embedding. The experimental results suggest that the non-Euclidean space are not always a better choice that the Euclidean counterpart. As summarized by work [101], in the task that labels depend only on the local neighborhood of the node, hyperbolic models may be inferior to their Euclidean counterparts. However, many other factors, like the the way to build the manifold and the corresponding optimization strategy, may also lead to this result. Therefore, more explorations are needed to draw this conclusion.
+5.3 Hyperbolic Space for Recommender Systems
+Recommender systems are a pervasive technology, providing a major source of revenue and user satisfaction in online digital businesses [167]. Recommender systems and ads click-trough rate (CTR) prediction both have a profound impact on web-scale big data in e-commerce, where due to large catalogue sizes, customers are often unaware of the full extent of available products [26]. One of the most important factor to the success of a recommender system is the accurate representation of user preferences and item characteristics. To this end, matrix factorization [168] is one of the most common approaches for this task. To approximate the original interaction matrix (huge), a factorization is performed such that the resulted two low-rank matrices, representing users and items respectively, proving a much efficient way to compute the interaction, in the Euclidean vector space. The user-item
+interaction matrix is then treated as the adjacency matrix of an undirected, bipartite graphs, which exhibit clustering produced by similar users interacting with similar items, thus modeled as the complex networks [169]. As mentioned in the page titled hyperbolic Geometry of Complex Networks [170], hyperbolic geometry naturally emerges from network heterogeneity in the same way that network heterogeneity emerges from hyperbolic geometry. Therefore, given the complex nature of these networks, a hyperbolic space is better suited to embed them than its Euclidean counterpart. Based on the above observation, work [26] that embeds bipartite user-item graphs in hyperbolic space can provide such a recommender system. This recommendation algorithm learns to rank loss that represents users and items, uses of hyperbolic representations for neural recommender systems through an analogy with complex networks. This algorithm shows a clear advantage when compared with the system in the Euclidean space. And the system based on this algorithm is scaled to millions of users. Although this system shows obvious superiority, work [147] pointed out that work [26] does not learn the embeddings with metric learning manner. Therefore, work [147] explored the connections between metric learning in hyperbolic space and collaborative filtering and proposed a highly effective model for recommender systems. They authors constructed an input triplet tuple with user, item liked by user and item unliked by user. Then they learnt the user-item joint metric in the hyperbolic space (Poincar ́e model). At the same time, they also introduced socalled local and global factor to better embed user-item pairs to hyperbolic space and at the same time preserve good structure quality for metric learning. Work [148] pointed out that in the factorization machine model [171], the naive inner product is not expressive enough for spurious or implicit feature interactions. Therefore, higherorder factorization machine [172] is proposed to learn higher-order feature interactions efficiently. As suggested by collaborative metric learning [173], learning the distance instead of inner product has advantages to learn a fine-grained embedding space which could capture the representation for item-user interactions, itemitem and user-user distances at the same time. Thus, the triangle inequality is preferred than the inner product. Inspired by this, work [148] proposed a model named Lorentzian Factorization Machine (LorentzFM), which learnt feature interactions with a score function measuring the validity of triangle inequalities. The authors argued that the feature interaction between two points can be learnt by the sign of the triangle inequality for Lorentz distance, rather than using the distance itself. Based on this, they presented the model in the hyperbolic space.
+5.4 Knowledge Graph completion
+Knowledge graph is a multi-relational graph representation of a collection of facts F , formed in a set of triplet 1es r eoo, where es is the subject entity, eo is the object entity and r is a binary relation (typed directed edges) between them. 1es r eoo 2 F denotes subject entity es is related to object entity eo by the relation r. As mentioned by work [145], knowledge graphs often exhibit multiple hierarchies simultaneously. For instance, nodes near the root of the tree under one relation may be leaf nodes under another. Besides, as mentioned in [146], Kiroukov et al.have shown that this kind of complex networks naturally emerge in the hyperbolic space, which provides a new way to model the data [170].
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 23
+Most of the previous works [174], [175] model in the Euclidean space, relying on the inner product or Euclidean distance as a similarity measure, which can be categorised as translational models and bilinear models, respectively. Work [176] proposed to embed the entities in a Riemannian manifold, where each relation is modeled as a move to a point and they also defined specific novel distance dissimilarities for the relations. However, as pointed out by [145], this model defined in the hyperbolic space does not outperform Euclidean models. The challenge for representing multi-relational data lies in the difficulty to represent entities, shared across relations, such that different hierarchies are formed under different relations. To deal with these issues, work [145] presented a new bilinear model called MuRP to embed hierarchical multi-relational data in the Poincar ́e ball model of hyperbolic space. MuRP defines a basis score function for multi-relational graph embedding and generalizes it to the hyperbolic space. Experiments show that MuRP can get superior performances on the link prediction task. Besides, it requires far fewer dimensions than Euclidean embeddings to achieve comparable performance. Work [150] points out that MuRP is not able to encode some logical properties of relationships. Therefore, the authors leveraged the hyperbolic isometries to simultaneously exhibit logical patterns and hierarchies, and achieved the current best performance. On the contrary, work [146] proposed a new translational model in Poincare ́ model, where both the entities and the relations are embedded. Compared to the translational models in Euclidean space, this method almost doubles the performance in terms of the mean reciprocal rank (MRR) metric. However, as mentioned by the authors, the HyperKG excludes from the comparison with many recent works that explores advanced techniques, thus this method is not comparable to the state-of-the-art methods, as listed in results in [145].
+5.5 Hyperbolic for Computer Vision
+As mentioned above, hyperbolic space fits very well for NLP tasks due to their natural ability to embed the hierarchies. Compared to NLP applications, there are limited works for small-scaled computer vision tasks in hyperbolic space. However, with these few available studies [45], [57], [90], [114], [119], [122], [123], [152], we can still witness the potential of modeling computer vision tasks in the non-Euclidean space. The passion of doing this is inspired from the observation that similar hierarchical relations between images are also common in computer vision tasks [45]. For instance, image retrieval tasks naturally can be modeled by tree-structure since the overview photograph is related to many images that correspond to the close-ups of different distinct details. Besides, hierarchies investigated in NLP can be also transcended to the visual domain, like the knowledge graph, as illustrated in Fig. 8. Work [45] is one of the pioneering methods to model images in the hyperbolic space. As the author mentioned, the penultimate layer of a deep neural network is utilized to learn higher level semantic representations for image embedding. Then the succeeding latter operations can be treated as implying a certain type of geometry of the embedding spaces, and pairs of classes are separated by Euclidean hyperplanes. To prove it is reasonable to utilize the hyperbolic space, they turned to the δ-Hyperbolicity, which is used to measure the basic common property of “negatively curved” spaces and where δ is defined as the minimal value such that the Gromov product holds for all points (features).
+Fig. 8. Example of hierarchy in computer vision [67]. In combination with NLP, hierarchies can also be constructed in computer vision tasks.
+The smaller the δ is, the higher the hyperbolicity of a dataset is. By using this, the author specified how close are the datasets CIFAR10, CIFAR100 [177], CUB [178] and MiniImageNet to a hyperbolic space. They proved that the feature embeddings from current famous architectures like ResNet [2], VGG19 [179], and InceptionV3 [180] are with a small δ thus processing some kind of hyperbolicity. Therefore, learning image embedding in hyperbolic space can be benefited. Based on these observations, the authors constructed the analogues of layers in hyperbolic spaces. They evaluated their models in computer vision tasks, including Person re-identification [181], and few–shot classification [182], and results proved its superiority. Another interesting observation from work [45] is the measurement of uncertainty. The author found that the distance to the center in Poincar ́e ball indicates a model’s uncertainty. As pointed out by another work [183], one common problem of current neural networks is that they often provide incorrect but very confident predictions when evaluated on slightly different test examples. Therefore, this finding may also improve the robustness of current neural networks via either measuring the uncertainty or smoothing the decision boundary. Work [90] introduced a Poincar ́e ST-GCN for the skeletonbased action recognition task. Since the input sequence (skeletons) can be modelled by the graph, thus compared to a normal computer vision task with images/RGB video input, it is straightforward to tend to hyperbolic space. But one thing to notice is that the author modelled the skeleton frame-by-frame, instead of the whole sequence as a point in the hyperbolic space. Another study in computer vision is trying to generalize generative models like VAE to the hyperbolic space and deal with image reconstruction or generation tasks. Work [122] provided a Wasserstein Autoencoder on the Poincare ́ model and apply it to the task of generating binarized MNIST digits in order to get an intuition for the properties of the latent hyperbolic geometry. However, they did not provide a better reconstruction results when compared to the Euclidean counterpart. As mentioned by the authors, both the models meet with a dimension mismatch problem [184] such that reconstructed samples present a deteriorating quality as the dimensionality increases despite the lower reconstruction error. But, this problem is worse for the Poincar ́e model, as shown in the illustrations of work [122]. Compared to work [114], the authors
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 24
+derived a closed-form solution of the ELBO with two different kinds of normal distributions in the hyperbolic space. Their VAE model outperforms its Euclidean counterpart, especially for low latent dimensions. However, as the latent dimension increases, the embeddings quality decreases, hence the gain from the hyperbolic geometry is reduced, just as also observed by work [25]. The same situation is also found in the work [119], where a mixed geometry space is introduced. On the MINIST reconstruction task, they displayed clear advantage when setting the latent dimension to six. However, this advantage to Euclidean space immediately disappears when they double the dimension of latent space. This can be also caused by the property of the datasets. More studies are needed to answer whether hyperbolic space has its advantages to address computer vision tasks. Moreover, it needs to extend to more complicated settings in larger-scale cases.
+6 DISCUSSION AND OPEN PROBLEMS
+6.1 Which hyperbolic models?
+Though both Lorentz model and Poincar ́e model are commonly used in generalizing neural networks, we can find majority of the research in the literature is based on the latter one. However, some current research found that the Lorentz model has shown to have better numerical stability properties [141], due to its large variance when close to the boundary. Recently, on the top of the Lorentz model with tiling method, Yu et al. provided a more stable model [76]. However, Lorentz model is un-bounded from the definition, which is not friendly to modern neural networks. Therefore, more studies are needed to ensure the right choice of hyperbolic model. Currently, we also find a trend to construct neural networks utilizing mixed geometries, as described in Sec. 4.7. For the Neural Networks with mixed geometries, there is a great potential especially for the real-world data possessing with very complicated structure or relationships. However, it is still not explored to a full extent. One major issue is how to construct the product manifold and at the same time determine its signature. Besides, current optimizations require a costly grid search to tune hyperparameters. Optimization is also a big problem of the neural network with mixed geometries.
+6.2 Hyperbolic Neural Networks for Computer Vision
+Computer vision is one core topic in machine learning and it is also one of our focuses. As mentioned before, hyperbolic neural networks are mainly constructed for NLP, graph and other treestructured datasets. However, there is still limited research for generalizing convolutional networks to hyperbolic space for image/video based tasks. One possible reason is that the conventional CNNs have already done a great job for the conventional computer vision tasks. And many hyperbolic counterparts do not share the superiority, especially when the embedding dimension is high. Another reason may lie in the fact that the tree-like structure is not significant as it for data like graph or symbolic natural language. Therefore, one potential application for image/video database is to explore the top-stream tasks like relationship inference, instead of solving the down-stream tasks like image classification. Another more attractive direction can be learning a hierarchical feature representation, instead of proving limited constraints to the feature learning processing. This also satisfies the concepts of cognitive science. In this way, it definitely can be conducted in the hyperbolic space.
+6.3 Consistency and Stability
+Another interesting observation is that the use of hyperbolic embeddings improves the performance for some problems and datasets, while not helping others [23]. For many cases, the Euclidean counterparts show superiority especially when embedding dimensions become larger. It is not clear whether the hyperbolic model can only provide a more compact model or it can provide a more efficient model with significant performance improvement. At the same time, a better understanding of when and why the use of hyperbolic geometry is justified is critical for this moment and therefore is very needed. Another problem is that different methods (even for the same backbone) test their methods using different tasks, or the same task with different protocols. It is hard to make the comparison. Thus, a standard benchmark for evaluating different hyperbolic approaches are also needed.
+6.4 Advanced Hyperbolic Networks
+One potential direction can be the combination of Riemannian neural network with advanced deep learning technology. For instance, exploring new Riemannian neural architectures with advanced automatic machine learning methods, like NAS [100]. Work [90] provided to search the best projection dimension in the Poincare ́ model, utilizing the NAS method. However, there is much room to improve by automatically designing the neural modules, instead of only searching for optimal projection dimensions. Another important research topic can be the generalization of more sophisticated Euclidean optimization algorithms. In many cases, as mentioned in [23], fully Euclidean baseline models might have an advantage over hyperbolic baselines. One possible reason is that Euclidean space is equipped with much more advanced optimization tools. Once the hyperbolic neural networks are also equipped with advanced machine learning tools, we can expect more advanced and powerful hyperbolic networks.
+ACKNOWLEDGMENTS
+The authors would like to thank Octavian-Eugen Ganea, from MIT for the useful discussion. We also want to thank Emile Mathieu, from University of Oxford, for the explanation regarding the gyroplane layer in their Poincare ́ Variational Auto-Encoder. This work is supported by the Academy of Finland for ICT 2023 project (grant 328115) and project MiGA (grant 316765) and Infotech Oulu.
+REFERENCES
+[1] Y. LeCun, Y. Bengio, and G. Hinton, “Deep learning,” nature, vol. 521, no. 7553, pp. 436–444, 2015. [2] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning for image recognition,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2016, pp. 770–778.
+[3] J. Deng, W. Dong, R. Socher, L.-J. Li, K. Li, and L. Fei-Fei, “Imagenet: A large-scale hierarchical image database,” in 2009 IEEE conference on computer vision and pattern recognition. Ieee, 2009, pp. 248–255. [4] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser, and I. Polosukhin, “Attention is all you need,” Advances in neural information processing systems, vol. 30, pp. 5998–6008, 2017. [5] V. Mnih, K. Kavukcuoglu, D. Silver, A. Graves, I. Antonoglou, D. Wierstra, and M. Riedmiller, “Playing atari with deep reinforcement learning,” arXiv preprint arXiv:1312.5602, 2013.
+[6] M. Abadi, P. Barham, J. Chen, Z. Chen, A. Davis, J. Dean, M. Devin, S. Ghemawat, G. Irving, M. Isard et al., “Tensorflow: A system for large-scale machine learning,” in 12th fUSENIXg symposium on operating systems design and implementation (fOSDIg 16), 2016, pp. 265–283.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 25
+[7] A. Paszke, S. Gross, S. Chintala, G. Chanan, E. Yang, Z. DeVito, Z. Lin, A. Desmaison, L. Antiga, and A. Lerer, “Automatic differentiation in pytorch,” 2017. [8] A. Paszke, S. Gross, F. Massa, A. Lerer, J. Bradbury, G. Chanan, T. Killeen, Z. Lin, N. Gimelshein, L. Antiga et al., “Pytorch: An imperative style, high-performance deep learning library,” in Advances in neural information processing systems, 2019, pp. 8026–8037.
+[9] M. M. Bronstein, J. Bruna, Y. LeCun, A. Szlam, and P. Vandergheynst, “Geometric deep learning: going beyond euclidean data,” IEEE Signal Processing Magazine, vol. 34, no. 4, pp. 18–42, 2017. [10] R. P. Duin and E. Pkekalska, “Non-euclidean dissimilarities: causes and informativeness,” in Joint IAPR International Workshops on Statistical Techniques in Pattern Recognition (SPR) and Structural and Syntactic Pattern Recognition (SSPR). Springer, 2010, pp. 324–333. [11] J. M. Lee, “Smooth manifolds,” in Introduction to Smooth Manifolds. Springer, 2013, pp. 1–31. [12] M. Gromov, “Hyperbolic groups,” in Essays in group theory. Springer, 1987, pp. 75–263. [13] Wiki. Non-euclidean space. [Online]. Available: https://en.wikipedia. org/wiki/Non-Euclidean geometry [14] J.-Y. Zhu, P. Kr ̈ahenbu ̈hl, E. Shechtman, and A. A. Efros, “Generative visual manipulation on the natural image manifold,” in European conference on computer vision. Springer, 2016, pp. 597–613.
+[15] R. Shimizu, Y. Mukuta, and T. Harada, “Hyperbolic neural networks++,” 2021. [16] M. E. Newman, “Power laws, pareto distributions and zipf’s law,” Contemporary physics, vol. 46, no. 5, pp. 323–351, 2005. [17] H. W. Lin and M. Tegmark, “Critical behavior in physics and probabilistic formal languages,” Entropy, vol. 19, no. 7, p. 299, 2017. [18] K. Katayama and E. W. Maina, “Indexing method for hierarchical graphs based on relation among interlacing sequences of eigenvalues,” Journal of information processing, vol. 23, no. 2, pp. 210–220, 2015. [19] A. M. Collins, M. R. Quillian et al., “Retrieval time from semantic memory,” Journal of verbal learning and verbal behavior, vol. 8, no. 2, pp. 240–247, 1969.
+[20] F. C. Keil, Semantic and conceptual development: An ontological perspective. Harvard University Press, 2013. [21] D. M. Roy, C. Kemp, V. K. Mansinghka, and J. B. Tenenbaum, “Learning annotated hierarchies from relational data,” in Advances in neural information processing systems, 2007, pp. 1185–1192.
+[22] J. W. Anderson, Hyperbolic geometry. Springer Science & Business Media, 2006. [23] O. Ganea, G. Be ́cigneul, and T. Hofmann, “Hyperbolic neural networks,” Advances in neural information processing systems, vol. 31, pp. 5345–5355, 2018. [24] N. Linial, E. London, and Y. Rabinovich, “The geometry of graphs and some of its algorithmic applications,” Combinatorica, vol. 15, no. 2, pp. 215–245, 1995. [25] M. Nickel and D. Kiela, “Poincar ́e embeddings for learning hierarchical representations,” in Advances in neural information processing systems, 2017, pp. 6338–6347. [26] B. P. Chamberlain, S. R. Hardwick, D. R. Wardrope, F. Dzogang, F. Daolio, and S. Vargas, “Scalable hyperbolic recommender systems,” CoRR, vol. abs/1902.08648, 2019. [27] K. Yu, S. Visweswaran, and K. Batmanghelich, “Semi-supervised hierarchical drug embedding in hyperbolic space,” Journal of Chemical Information and Modeling, 2020, pMID: 33140969. [Online]. Available: https://doi.org/10.1021/acs.jcim.0c00681 [28] M. P. d. Carmo, Riemannian geometry. Birkh ̈auser, 1992. [29] S. Gallot, D. Hulin, and J. Lafontaine, Riemannian geometry. Springer, 1990, vol. 2. [30] A. B. Adcock, B. D. Sullivan, and M. W. Mahoney, “Tree-like structure in large social and information networks,” in 2013 IEEE 13th International Conference on Data Mining. IEEE, 2013, pp. 1–10.
+[31] E. Beltrami, “Teoria fondamentale degli spazii di curvatura costante,” Annali di Matematica Pura ed Applicata (1867-1897), vol. 2, no. 1, pp. 232–255, 1868. [32] J. W. Cannon, W. J. Floyd, R. Kenyon, W. R. Parry et al., “Hyperbolic geometry,” Flavors of geometry, vol. 31, pp. 59–115, 1997. [33] R. Kleinberg, “Geographic routing using hyperbolic space,” in IEEE INFOCOM 2007-26th IEEE International Conference on Computer Communications. IEEE, 2007, pp. 1902–1909. [34] A. Lou, I. Katsman, Q. Jiang, S. Belongie, S.-N. Lim, and C. De Sa, “Differentiating through the frn’echet mean,” Thirty-seventh International Conference on Machine Learning, 2020.
+[35] I. Chami, Z. Ying, C. R ́e, and J. Leskovec, “Hyperbolic graph convolutional neural networks,” in Advances in neural information processing systems, 2019, pp. 4868–4879. [36] A. A. Ungar, “Hyperbolic trigonometry and its application in the poincar ́e ball model of hyperbolic geometry,” Computers & Mathematics with Applications, vol. 41, no. 1-2, pp. 135–147, 2001. [37] C. Gulcehre, M. Denil, M. Malinowski, A. Razavi, R. Pascanu, K. M. Hermann, P. Battaglia, V. Bapst, D. Raposo, A. Santoro et al., “Hyperbolic attention networks,” arXiv preprint arXiv:1805.09786, 2018. [38] A. A. Ungar, “A gyrovector space approach to hyperbolic geometry,” Synthesis Lectures on Mathematics and Statistics, vol. 1, no. 1, pp. 1194, 2008. [39] M. R. Fr ́echet, “Les  ́el ́ements al ́eatoires de nature quelconque dans un espace distanci ́e,” Annales de l’institut Henri Poincar ́e, vol. 10, no. 4, pp. 215–310, 1948. [40] M. Fr ́echet, “Les  ́el ́ements al ́eatoires de nature quelconque dans un espace distanci ́e,” in Annales de l’institut Henri Poincar ́e, vol. 10, no. 4, 1948, pp. 215–310. [41] S. Gould, B. Fernando, A. Cherian, P. Anderson, R. S. Cruz, and E. Guo, “On differentiating parameterized argmin and argmax problems with application to bi-level optimization,” arXiv preprint arXiv:1607.05447, 2016.
+[42] C. Udriste, Convex functions and optimization methods on Riemannian manifolds. Springer Science & Business Media, 2013, vol. 297. [43] H. Karcher, “Riemannian center of mass and mollifier smoothing,” Communications on pure and applied mathematics, vol. 30, no. 5, pp. 509–541, 1977. [44] K. He, X. Zhang, S. Ren, and J. Sun, “Delving deep into rectifiers: Surpassing human-level performance on imagenet classification,” in Proceedings of the IEEE international conference on computer vision, 2015, pp. 1026–1034. [45] V. Khrulkov, L. Mirvakhabova, E. Ustinova, I. Oseledets, and V. Lempitsky, “Hyperbolic image embeddings,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 2020, pp. 6418–6428. [46] Q. Liu, M. Nickel, and D. Kiela, “Hyperbolic graph neural networks,” in Advances in Neural Information Processing Systems, 2019, pp. 82308241. [47] S. Hochreiter and J. Schmidhuber, “Long short-term memory,” Neural computation, vol. 9, no. 8, pp. 1735–1780, 1997. [48] A. Graves, A.-r. Mohamed, and G. Hinton, “Speech recognition with deep recurrent neural networks,” in 2013 IEEE international conference on acoustics, speech and signal processing. IEEE, 2013, pp. 66456649. [49] K. Cho, B. v. M. C. Gulcehre, D. Bahdanau, F. B. H. Schwenk, and Y. Bengio, “Learning phrase representations using rnn encoder–decoder for statistical machine translation.” [50] G. Bachmann, G. B ́ecigneul, and O. Ganea, “Constant curvature graph convolutional networks,” in International Conference on Machine Learning. PMLR, 2020, pp. 486–496. [51] V. Nair and G. E. Hinton, “Rectified linear units improve restricted boltzmann machines,” in ICML, 2010. [52] S. Ioffe and C. Szegedy, “Batch normalization: Accelerating deep network training by reducing internal covariate shift,” arXiv preprint arXiv:1502.03167, 2015.
+[53] Y. Wu and K. He, “Group normalization,” in Proceedings of the European conference on computer vision (ECCV), 2018, pp. 3–19.
+[54] D. Ulyanov, A. Vedaldi, and V. Lempitsky, “Instance normalization: The missing ingredient for fast stylization,” arXiv preprint arXiv:1607.08022, 2016.
+[55] G. Lebanon and J. Lafferty, “Hyperplane margin classifiers on the multinomial manifold,” in Proceedings of the twenty-first international conference on Machine learning, 2004, p. 66.
+[56] H. Cho, B. DeMeo, J. Peng, and B. Berger, “Large-margin classification in hyperbolic space,” in The 22nd International Conference on Artificial Intelligence and Statistics. PMLR, 2019, pp. 1832–1840.
+[57] M. Weber, M. Zaheer, A. S. Rawat, A. Menon, and S. Kumar, “Robust large-margin learning in hyperbolic space,” Advances in Neural Information Processing Systems, 2020.
+[58] J. Duchi, E. Hazan, and Y. Singer, “Adaptive subgradient methods for online learning and stochastic optimization.” Journal of machine learning research, vol. 12, no. 7, 2011. [59] M. D. Zeiler, “Adadelta: an adaptive learning rate method,” arXiv preprint arXiv:1212.5701, 2012.
+[60] D. P. Kingma and J. Ba, “Adam: A method for stochastic optimization,” International Conference on Learning Representations (ICLR), 2015.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 26
+[61] S. J. Reddi, S. Kale, and S. Kumar, “On the convergence of adam and beyond,” International Conference on Learning Representations (ICLR), 2019.
+[62] S. Bonnabel, “Stochastic gradient descent on riemannian manifolds,” IEEE Transactions on Automatic Control, vol. 58, no. 9, pp. 2217–2229, 2013. [63] H. Zhang and S. Sra, “First-order methods for geodesically convex optimization,” in Conference on Learning Theory, 2016, pp. 1617–1638. [64] G. B ́ecigneul and O.-E. Ganea, “Riemannian adaptive optimization methods,” 2019. [65] M. Kochurov, R. Karimov, and S. Kozlukov, “Geoopt: Riemannian optimization in pytorch,” 2020. [66] B. Dhingra, C. J. Shallue, M. Norouzi, A. M. Dai, and G. E. Dahl, “Embedding text in hyperbolic spaces,” arXiv preprint arXiv:1806.04313, 2018. [67] I. Vendrov, R. Kiros, S. Fidler, and R. Urtasun, “Order-embeddings of images and language,” International Conference on Learning Representations (ICLR), 2016.
+[68] C. De Sa, A. Gu, C. R ́e, and F. Sala, “Representation tradeoffs for hyperbolic embeddings,” Proceedings of machine learning research, vol. 80, p. 4460, 2018. [69] R. Sarkar, “Low distortion delaunay embedding of trees in hyperbolic plane,” in International Symposium on Graph Drawing. Springer, 2011, pp. 355–366. [70] I. Abraham, M. Balakrishnan, F. Kuhn, D. Malkhi, V. Ramasubramanian, and K. Talwar, “Reconstructing approximate tree metrics,” in Proceedings of the twenty-sixth annual ACM symposium on Principles of distributed computing, 2007, pp. 43–52. [71] J. H. Conway and N. J. A. Sloane, Sphere packings, lattices and groups. Springer Science & Business Media, 2013, vol. 290. [72] M. A. Cox and T. F. Cox, “Multidimensional scaling,” in Handbook of data visualization. Springer, 2008, pp. 315–347. [73] R. Sibson, “Studies in the robustness of multidimensional scaling: Perturbational analysis of classical scaling,” Journal of the Royal Statistical Society: Series B (Methodological), vol. 41, no. 2, pp. 217–229, 1979. [74] A. Tifrea, G. B ́ecigneul, and O.-E. Ganea, “Poincarn’e glove: Hyperbolic word embeddings,” International Conference on Learning Representations (ICLR), 2019.
+[75] J. Pennington, R. Socher, and C. D. Manning, “Glove: Global vectors for word representation,” in Proceedings of the 2014 conference on empirical methods in natural language processing (EMNLP), 2014, pp. 1532–1543. [76] T. Yu and C. M. De Sa, “Numerically accurate hyperbolic embeddings using tiling-based models,” in Advances in Neural Information Processing Systems, 2019, pp. 2023–2033. [77] J. H. Conway, H. Burgiel, and C. Goodman-Strauss, The symmetries of things. CRC Press, 2016. [78] S. Katok, Fuchsian groups. University of Chicago press, 1992. [79] R. Yuncken, “Regular tessellations of the hyperbolic plane by fundamental domains of a fuchsian group,” arXiv preprint arXiv:1103.2051, 2011. [80] B. Kolbe and V. Robins, “Tiling the euclidean and hyperbolic planes with ribbons,” arXiv preprint arXiv:1904.03788, 2019.
+[81] J. Voight, “The arithmetic of quaternion algebras,” preprint, vol. 4, pp. 16–17, 2014. [82] V. Cohen-Addad, V. Kanade, F. Mallmann-Trenn, and C. Mathieu, “Hierarchical clustering: Objective functions and algorithms,” Journal of the ACM (JACM), vol. 66, no. 4, pp. 1–42, 2019. [83] O. Yim and K. T. Ramdeen, “Hierarchical cluster analysis: comparison of three linkage measures and application to psychological data,” The quantitative methods for psychology, vol. 11, no. 1, pp. 8–21, 2015.
+[84] S. Dasgupta, “A cost function for similarity-based hierarchical clustering,” in Proceedings of the forty-eighth annual ACM symposium on Theory of Computing, 2016, pp. 118–127.
+[85] N. Monath, M. Zaheer, D. Silva, A. McCallum, and A. Ahmed, “Gradient-based hierarchical clustering using continuous representations of trees in hyperbolic space,” in Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining, 2019, pp. 714–722. [86] J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, “Bert: Pre-training of deep bidirectional transformers for language understanding,” a Association for Computational Linguistics(ACL), 2019.
+[87] P. Veliˇckovi ́c, G. Cucurull, A. Casanova, A. Romero, P. Lio, and Y. Bengio, “Graph attention networks,” arXiv preprint arXiv:1710.10903, 2017.
+[88] Y. Zhang, X. Wang, X. Jiang, C. Shi, and Y. Ye, “Hyperbolic graph attention network,” Proceedings of the AAAI Conference on Artificial Intelligence, 2020.
+[89] W. Peng, X. Hong, H. Chen, and G. Zhao, “Learning graph convolutional network for skeleton-based human action recognition by neural searching,” Proceedings of the AAAI Conference on Artificial Intelligence, 2020.
+[90] W. Peng, J. Shi, Z. Xia, and G. Zhao, “Mix dimension in poincar ́e geometry for 3d skeleton-based action recognition,” in Proceedings of the 28th ACM International Conference on Multimedia, 2020, pp. 14321440. [91] A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn, X. Zhai, T. Unterthiner, M. Dehghani, M. Minderer, G. Heigold, S. Gelly, J. Uszkoreit, and N. Houlsby, “An image is worth 16x16 words: Transformers for image recognition at scale,” 2020. [92] M. Law, R. Liao, J. Snell, and R. Zemel, “Lorentzian distance learning for hyperbolic representations,” in International Conference on Machine Learning, 2019, pp. 3672–3681. [93] J. Lee, Y. Lee, J. Kim, A. Kosiorek, S. Choi, and Y. W. Teh, “Set transformer: A framework for attention-based permutation-invariant neural networks,” in International Conference on Machine Learning. PMLR, 2019, pp. 3744–3753. [94] F. Scarselli, M. Gori, A. C. Tsoi, M. Hagenbuchner, and G. Monfardini, “The graph neural network model,” IEEE Transactions on Neural Networks, vol. 20, no. 1, pp. 61–80, 2008. [95] M. Gori, G. Monfardini, and F. Scarselli, “A new model for learning in graph domains,” in Proceedings. 2005 IEEE International Joint Conference on Neural Networks, 2005., vol. 2. IEEE, 2005, pp. 729734. [96] J. Bruna, W. Zaremba, A. Szlam, and Y. LeCun, “Spectral networks and locally connected networks on graphs,” arXiv preprint arXiv:1312.6203, 2013. [97] M. Henaff, J. Bruna, and Y. LeCun, “Deep convolutional networks on graph-structured data,” arXiv preprint arXiv:1506.05163, 2015.
+[98] T. N. Kipf and M. Welling, “Semi-supervised classification with graph convolutional networks,” arXiv preprint arXiv:1609.02907, 2016.
+[99] S. Yan, Y. Xiong, and D. Lin, “Spatial temporal graph convolutional networks for skeleton-based action recognition,” Proceedings of the AAAI Conference on Artificial Intelligence, 2018.
+[100] T. Elsken, J. H. Metzen, and F. Hutter, “Neural architecture search: A survey,” 2019. [101] M. Kochurov, S. Ivanov, and E. Burnaev, “Are hyperbolic representations in graphs created equal?” 2020. [102] D. J. Rezende and S. Mohamed, “Variational inference with normalizing flows,” Proceedings of the 32nd International Conference on Machine Learning, PMLR 37:1530-1538, 2015.
+[103] I. Kobyzev, S. Prince, and M. Brubaker, “Normalizing flows: An introduction and review of current methods,” IEEE Transactions on Pattern Analysis and Machine Intelligence, 2020.
+[104] M. C. Gemici, D. Rezende, and S. Mohamed, “Normalizing flows on riemannian manifolds,” arXiv preprint arXiv:1611.02304, 2016.
+[105] D. J. Rezende, G. Papamakarios, S. Racani`ere, M. S. Albergo, G. Kanwar, P. E. Shanahan, and K. Cranmer, “Normalizing flows on tori and spheres,” Proceedings of the 37th International Conference on Machine Learning, PMLR 119:8083-8092, 2020.
+[106] J. Brehmer and K. Cranmer, “Flows for simultaneous manifold learning and density estimation,” Advances in neural information processing systems, 2020.
+[107] A. J. Bose, A. Smofsky, R. Liao, P. Panangaden, and W. L. Hamilton, “Latent variable modelling with hyperbolic normalizing flows,” arXiv preprint arXiv:2002.06336, 2020.
+[108] Y. Nagano, S. Yamaguchi, Y. Fujita, and M. Koyama, “A wrapped normal distribution on hyperbolic space for gradient-based learning,” Proceedings of the 36-th InternationalConference on Machine Learning, 2019. [109] L. Dinh, J. Sohl-Dickstein, and S. Bengio, “Density estimation using real nvp,” arXiv preprint arXiv:1605.08803, 2016.
+[110] D. P. Kingma and M. Welling, “Auto-encoding variational bayes,” 2014. [111] D. J. Rezende, S. Mohamed, and D. Wierstra, “Stochastic backpropagation and approximate inference in deep generative models,” International Conference on Machine Learning (ICML), 2014.
+[112] T. R. Davidson, L. Falorsi, N. De Cao, T. Kipf, and J. M. Tomczak, “Hyperspherical variational auto-encoders,” 34th Conference on Uncertainty in Artificial Intelligence (UAI-18), 2018.
+[113] L. Falorsi, P. de Haan, T. Davidson, and P. Forr ́e, “Reparameterizing distributions on lie groups,” 2019.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 27
+[114] E. Mathieu, C. Le Lan, C. J. Maddison, R. Tomioka, and Y. W. Teh, “Continuous hierarchical representations with poincar ́e variational autoencoders,” in Advances in neural information processing systems, 2019, pp. 12 565–12 576. [115] X. Pennec, “Intrinsic statistics on riemannian manifolds: Basic tools for geometric measurements,” Journal of Mathematical Imaging and Vision, vol. 25, no. 1, p. 127, 2006. [116] S. Said, L. Bombrun, and Y. Berthoumieu, “New riemannian priors on the univariate normal model,” Entropy, vol. 16, no. 7, pp. 4015–4031, 2014. [117] K. V. Mardia, Statistics of directional data. Academic press, 2014. [118] S. Dai, Z. Gan, Y. Cheng, C. Tao, L. Carin, and J. Liu, “Apo-vae: Text generation in hyperbolic space,” arXiv preprint arXiv:2005.00054, 2020. [119] O. Skopek, O.-E. Ganea, and G. B ́ecigneul, “Mixed-curvature variational autoencoders,” International Conference on Learning Representations (ICLR), 2020.
+[120] E. P. Hsu, “A brief introduction to brownian motion on a riemannian manifold,” lecture notes, 2008. [121] S.-H. Paeng, “Brownian motion on manifolds with time-dependent metrics and stochastic completeness,” Journal of Geometry and Physics, vol. 61, no. 5, pp. 940–946, 2011. [122] I. Ovinnikov, “Poincarn’e wasserstein autoencoder,” arXiv preprint arXiv:1901.01427, 2019.
+[123] D. Grattarola, L. Livi, and C. Alippi, “Adversarial autoencoders with constant-curvature latent manifolds,” Applied Soft Computing, vol. 81, p. 105511, 2019. [124] I. Tolstikhin, O. Bousquet, S. Gelly, and B. Schoelkopf, “Wasserstein auto-encoders,” International Conference on Learning Representations (ICLR), 2018.
+[125] K. M. Borgwardt, A. Gretton, M. J. Rasch, H.-P. Kriegel, B. Sch ̈olkopf, and A. J. Smola, “Integrating structured biological data by kernel maximum mean discrepancy,” Bioinformatics, vol. 22, no. 14, pp. e49e57, 2006. [126] L. Fang, C. Li, J. Gao, W. Dong, and C. Chen, “Implicit deep latent variable models for text generation,” EMNLP, 2019. [127] R. T. Rockafellar et al., “Extension of fenchel’duality theorem for convex functions,” Duke mathematical journal, vol. 33, no. 1, pp. 8189, 1966. [128] B. Dai, H. Dai, N. He, W. Liu, Z. Liu, J. Chen, L. Xiao, and L. Song, “Coupled variational bayes via optimization embedding,” in Advances in Neural Information Processing Systems, 2018, pp. 9690–9700.
+[129] J. Tomczak and M. Welling, “Vae with a vampprior,” in International Conference on Artificial Intelligence and Statistics. PMLR, 2018, pp. 1214–1223. [130] A. Gu, F. Sala, B. Gunel, and C. R ́e, “Learning mixed-curvature representations in product spaces,” in International Conference on Learning Representations, 2018. [131] J. M. Lee, Riemannian manifolds: an introduction to curvature. Springer Science & Business Media, 2006, vol. 176.
+[132] V. A. Toponogov, Differential geometry of curves and surfaces. Springer, 2006. [133] J. M. Lee and R. Manifolds, “an introduction to curvature,” Graduate text in mathematics, vol. 176, 1997.
+[134] G. Barth, “Stereographic projection,” 1937. [135] M. T. Law and J. Stam, “Ultrahyperbolic representation learning,” Advances in Neural Information Processing Systems, vol. 33, 2020. [136] B. O’neill, Semi-Riemannian geometry with applications to relativity. Academic press, 1983. [137] S. Zhu, S. Pan, C. Zhou, J. Wu, Y. Cao, and B. Wang, “Graph geometry interaction learning,” Advances in Neural Information Processing Systems, vol. 33, 2020. [138] B. P. Chamberlain, J. Clough, and M. P. Deisenroth, “Neural embeddings of graphs in hyperbolic space,” arXiv preprint arXiv:1705.10359, 2017. [139] Y. Tay, L. A. Tuan, and S. C. Hui, “Hyperbolic representation learning for fast and efficient neural question answering,” in Proceedings of the Eleventh ACM International Conference on Web Search and Data Mining, 2018, pp. 583–591. [140] O.-E. Ganea, G. B ́ecigneul, and T. Hofmann, “Hyperbolic entailment cones for learning hierarchical embeddings,” International Conference on Machine Learning (ICML), 2018.
+[141] M. Nickel and D. Kiela, “Learning continuous hierarchies in the lorentz model of hyperbolic geometry,” Proceedings of the 35-th International Conference on Machine Learning, PMLR, 2018.
+[142] T. D. Q. Vinh, Y. Tay, S. Zhang, G. Cong, and X.-L. Li, “Hyperbolic recommender systems,” Proceedings of the AAAI Conference on Artificial Intelligence, 2018.
+[143] S. Rendle, C. Freudenthaler, Z. Gantner, and L. Schmidt-Thieme, “Bpr: Bayesian personalized ranking from implicit feedback,” arXiv preprint arXiv:1205.2618, 2012.
+[144] R. Aly, S. Acharya, A. Ossa, A. K ̈ohn, C. Biemann, and A. Panchenko, “Every child should have parents: A taxonomy refinement algorithm based on hyperbolic term embeddings,” in Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics, 2019, pp. 4811–4817. [145] I. Balazevic, C. Allen, and T. Hospedales, “Multi-relational poincar ́e graph embeddings,” in Advances in Neural Information Processing Systems, 2019, pp. 4463–4473. [146] P. Kolyvakis, A. Kalousis, and D. Kiritsis, “Hyperkg: hyperbolic knowledge graph embeddings for knowledge base completion,” arXiv preprint arXiv:1908.04895, 2019.
+[147] L. V. Tran, Y. Tay, S. Zhang, G. Cong, and X. Li, “Hyperml: A boosting metric learning approach in hyperbolic space for recommender systems.” in WSDM, 2020, pp. 609–617. [148] C. Xu and M. Wu, “Learning feature interactions with lorentzian factorization machine,” in Proceedings of the AAAI Conference on Artificial Intelligence, vol. 34, no. 04, 2020, pp. 6470–6477. [149] Y. Zhu, D. Zhou, J. Xiao, X. Jiang, X. Chen, and Q. Liu, “Hypertext: Endowing fasttext with hyperbolic geometry,” in Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing, 2020, pp. 1166–1171. [150] I. Chami, A. Wolf, D.-C. Juan, F. Sala, S. Ravi, and C. R ́e, “Lowdimensional hyperbolic knowledge graph embeddings,” in Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics, 2020, pp. 6901–6914. [151] A. Bogatskiy, B. Anderson, J. T. Offermann, M. Roussi, D. W. Miller, and R. Kondor, “Lorentz group equivariant neural network for particle physics,” International Conference on Machine Learning (ICML), 2020. [152] I. Chami, A. Gu, V. Chatziafratis, and C. R ́e, “From trees to continuous embeddings and back: Hyperbolic hierarchical clustering,” Advances in Neural Information Processing Systems, vol. 33, 2020.
+[153] E. Mathieu and M. Nickel, “Riemannian continuous normalizing flows,” Advances in Neural Information Processing Systems, vol. 33, 2020.
+[154] R. Sonthalia and A. C. Gilbert, “Tree! i am no tree! i am a low dimensional hyperbolic embedding,” Advances in neural information processing systems, 2020.
+[155] F. L ́opez, B. Heinzerling, and M. Strube, “Fine-grained entity typing in hyperbolic space,” in Proceedings of the 4th Workshop on Representation Learning for NLP (RepL4NLP-2019). Florence, Italy: Association for Computational Linguistics, Aug. 2019, pp. 169–180. [156] F. L ́opez and M. Strube, “A fully hyperbolic neural model for hierarchical multi-class classification,” in EMNLP. Online: Association for Computational Linguistics, Nov. 2020, pp. 460–475.
+[157] G. A. Miller, WordNet: An electronic lexical database. MIT press, 1998. [158] B. Ondrej, R. Chatterjee, F. Christian, G. Yvette, H. Barry, H. Matthias, K. Philipp, L. Qun, L. Varvara, M. Christof et al., “Findings of the 2017 conference on machine translation (wmt17),” in Second Conference onMachine Translation. The Association for Computational Linguistics, 2017, pp. 169–214. [159] A. Joulin,  ́E. Grave, P. Bojanowski, and T. Mikolov, “Bag of tricks for efficient text classification,” in Proceedings of the 15th Conference of the European Chapter of the Association for Computational Linguistics: Volume 2, Short Papers, 2017, pp. 427–431.
+[160] M. V. Micic and H. Chu, “Hyperbolic deep learning for chinese natural language understanding,” arXiv preprint arXiv:1812.10408, 2018.
+[161] I. Vuli ́c, D. Gerz, D. Kiela, F. Hill, and A. Korhonen, “Hyperlex: A large-scale evaluation of graded lexical entailment,” Computational Linguistics, vol. 43, no. 4, pp. 781–835, 2017. [162] M. A. Hearst, “Automatic acquisition of hyponyms from large text corpora,” in Coling 1992 volume 2: The 15th international conference on computational linguistics, 1992.
+[163] G. Grefenstette, “INRIASAC: Simple hypernym extraction methods,” in Proceedings of the 9th International Workshop on Semantic Evaluation (SemEval 2015). Denver, Colorado: Association for Computational Linguistics, Jun. 2015, pp. 911–914. [Online]. Available: https://www.aclweb.org/anthology/S15-2152 [164] S. R. Bowman, G. Angeli, C. Potts, and C. D. Manning, “A large annotated corpus for learning natural language inference,” in EMNLP, 2015.
+
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2015 28
+[165] O. Shchur, M. Mumme, A. Bojchevski, and S. G ̈unnemann, “Pitfalls of graph neural network evaluation,” arXiv, pp. arXiv–1811, 2018. [166] B. Perozzi, R. Al-Rfou, and S. Skiena, “Deepwalk: Online learning of social representations,” in Proceedings of the 20th ACM SIGKDD international conference on Knowledge discovery and data mining, 2014, pp. 701–710. [167] C. A. Gomez-Uribe and N. Hunt, “The netflix recommender system: Algorithms, business value, and innovation,” ACM Transactions on Management Information Systems (TMIS), vol. 6, no. 4, pp. 1–19, 2015. [168] Y. Hu, Y. Koren, and C. Volinsky, “Collaborative filtering for implicit feedback datasets,” in 2008 Eighth IEEE International Conference on Data Mining. Ieee, 2008, pp. 263–272. [169] M. E. Newman, “The structure and function of complex networks,” SIAM review, vol. 45, no. 2, pp. 167–256, 2003. [170] D. Krioukov, F. Papadopoulos, M. Kitsak, A. Vahdat, and M. Bogun ́a, “Hyperbolic geometry of complex networks,” Physical Review E, vol. 82, no. 3, p. 036106, 2010. [171] S. Rendle, “Factorization machines,” in 2010 IEEE International Conference on Data Mining. IEEE, 2010, pp. 995–1000. [172] M. Blondel, A. Fujino, N. Ueda, and M. Ishihata, “Higher-order factorization machines,” in Advances in Neural Information Processing Systems, 2016, pp. 3351–3359. [173] C.-K. Hsieh, L. Yang, Y. Cui, T.-Y. Lin, S. Belongie, and D. Estrin, “Collaborative metric learning,” in Proceedings of the 26th international conference on world wide web, 2017, pp. 193–201.
+[174] A. Bordes, N. Usunier, A. Garcia-Duran, J. Weston, and O. Yakhnenko, “Translating embeddings for modeling multi-relational data,” Advances in neural information processing systems, vol. 26, pp. 2787–2795, 2013. [175] B. Yang, W.-t. Yih, X. He, J. Gao, and L. Deng, “Embedding entities and relations for learning and inference in knowledge bases,” International Conference on Learning Representations, 2015.
+[176] A. Suzuki, Y. Enokida, and K. Yamanishi, “Riemannian transe: Multirelational graph embedding in non-euclidean space,” 2018. [177] A. Krizhevsky et al., “Learning multiple layers of features from tiny images,” 2009. [178] C. Wah, S. Branson, P. Welinder, P. Perona, and S. Belongie, “The caltech-ucsd birds-200-2011 dataset,” 2011. [179] K. Simonyan and A. Zisserman, “Very deep convolutional networks for large-scale image recognition,” arXiv preprint arXiv:1409.1556, 2014. [180] C. Szegedy, W. Liu, Y. Jia, P. Sermanet, S. Reed, D. Anguelov, D. Erhan, V. Vanhoucke, and A. Rabinovich, “Going deeper with convolutions,” in Proceedings of the IEEE conference on computer vision and pattern recognition, 2015, pp. 1–9. [181] L. Zheng, Y. Yang, and A. G. Hauptmann, “Person re-identification: Past, present and future,” arXiv preprint arXiv:1610.02984, 2016.
+[182] J. Snell, K. Swersky, and R. Zemel, “Prototypical networks for few-shot learning,” Advances in neural information processing systems, vol. 30, pp. 4077–4087, 2017. [183] V. Verma, A. Lamb, C. Beckham, A. Najafi, I. Mitliagkas, D. LopezPaz, and Y. Bengio, “Manifold mixup: Better representations by interpolating hidden states,” in International Conference on Machine Learning. PMLR, 2019, pp. 6438–6447. [184] P. K. Rubenstein, B. Schoelkopf, and I. Tolstikhin, “On the latent space of wasserstein auto-encoders,” arXiv, pp. arXiv–1802, 2018.
+Wei Peng is currently a Ph.D. candidate with the Center for Machine Vision and Signal Analysis, University of Oulu, Oulu, Finland. He received the M.S. degree in computer science from the Xiamen University, Xiamen, China, in 2016. His articles have published in mainstream conferences and journals, such as AAAI, ICCV, ACM Multimedia, Transactions on Image Processing. His current research interests include machine learning, affective computing, medical imaging, and human action analysis.
+Tuomas Varanka is currently a Ph.D. candidate with the Center for Machine Vision and Signal Analysis, University of Oulu, Oulu, Finland. He received his B.S. and M.S. degree in computer science and engineering from the University of Oulu in 2019 and 2020, respectively. His work has focused on micro-expression recognition. His current research interests include machine learning, and affective computing.
+Abdelrahman Mostafa received the M.S. degree in Artificial Intelligence, University of Oulu, Finland. He is currently a researcher and PhD student, University of Oulu, Finland. His research interests are Machine Learning, Deep Learning and Computer Vision.
+Henglin Shi received the M.S. degree in Artificial Intelligence, University of Oulu, Finland. He is currently a researcher and PhD student, University of Oulu, Finland. His articles have published in mainstream conferences and journals, such as BMVC, TMM and TIP. His research interests are Machine Learning, Deep Learning and Computer Vision.
+Guoying Zhao received the Ph.D. degree (2005) in computer science from the Chinese Academy of Sciences, Beijing, China. She is currently a full professor with the Center for Machine Vision and Signal Analysis, University of Oulu, Finland. Her work has focused on affective computing and machine learning. She is IEEE senior member, IAPR fellow and ELLIS member, and associate editor for Pattern Recognition, IEEE Transactions on Circuits and Systems for Video Technology, and Image and Vision Computing Journals.

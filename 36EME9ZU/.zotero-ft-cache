@@ -1,0 +1,2259 @@
+Sliced Score Matching: A Scalable Approach to Density and Score Estimation
+Yang Song∗
+Stanford University
+Sahaj Garg∗
+Stanford University
+Jiaxin Shi
+Tsinghua University
+Stefano Ermon Stanford University
+Abstract
+Score matching is a popular method for estimating unnormalized statistical models. However, it has been so far limited to simple, shallow models or low-dimensional data, due to the difficulty of computing the Hessian of logdensity functions. We show this difficulty can be mitigated by projecting the scores onto random vectors before comparing them. This objective, called sliced score matching, only involves Hessian-vector products, which can be easily implemented using reverse-mode automatic differentiation. Therefore, sliced score matching is amenable to more complex models and higher dimensional data compared to score matching. Theoretically, we prove the consistency and asymptotic normality of sliced score matching estimators. Moreover, we demonstrate that sliced score matching can be used to learn deep score estimators for implicit distributions. In our experiments, we show sliced score matching can learn deep energy-based models effectively, and can produce accurate score estimates for applications such as variational inference with implicit distributions and training Wasserstein Auto-Encoders.
+1 INTRODUCTION
+Score matching (Hyvärinen, 2005) is particularly suitable for learning unnormalized statistical models, such as energy based ones. It is based on minimizing the distance between the derivatives of the log-density functions (a.k.a., scores) of the data and model distributions. Unlike maximum likelihood estimation (MLE), the objective of score
+∗ Joint first authors. Correspondence to Yang Song <yangsong@cs.stanford.edu> and Stefano Ermon <ermon@cs.stanford.edu>.
+matching only depends on the scores, which are oblivious to the (usually) intractable partition functions. However, score matching requires the computation of the diagonal elements of the Hessian of the model’s log-density function. This Hessian trace computation is generally expensive (Martens et al., 2012), requiring a number of forward and backward propagations proportional to the data dimension. This severely limits its applicability to complex models parameterized by deep neural networks, such as deep energy-based models (LeCun et al., 2006; Wenliang et al., 2019).
+Several approaches have been proposed to alleviate this difficulty: Kingma & LeCun (2010) propose approximate backpropagation for computing the trace of the Hessian; Martens et al. (2012) develop curvature propagation, a fast stochastic estimator for the trace in score matching; and Vincent (2011) transforms score matching to a denoising problem which avoids second-order derivatives. These methods have achieved some success, but may suffer from one or more of the following problems: inconsistent parameter estimation, large estimation variance, and cumbersome implementation.
+To alleviate these problems, we propose sliced score matching, a variant of score matching that can scale to deep unnormalized models and high dimensional data. The key intuition is that instead of directly matching the high-dimensional scores, we match their projections along random directions. Theoretically, we show that under some regularity conditions, sliced score matching is a well-defined statistical estimation criterion that yields consistent and asymptotically normal parameter estimates. Moreover, compared to the methods of Kingma & LeCun (2010) and Martens et al. (2012), whose implementations require customized backpropagation for deep networks, sliced score matching only involves Hessian-vector products, thus can be easily and efficiently implemented in frameworks such as TensorFlow (Abadi et al., 2016) and PyTorch (Adam et al., 2017).
+arXiv:1905.07088v2 [cs.LG] 27 Jun 2019
+
+
+Beyond training unnormalized models, sliced score matching can also be naturally adapted as an objective for estimating the score function of a data generating distribution (Sasaki et al., 2014; Strathmann et al., 2015) by training a score function model parameterized by deep neural networks. This observation enables many new applications of sliced score matching. For example, we show that it can be used to provide accurate score estimates needed for variational inference with implicit distributions (Huszár, 2017) and learning Wasserstein Auto-Encoders (WAE, Tolstikhin et al. (2018)).
+Finally, we evaluate the performance of sliced score matching on learning unnormalized statistical models (density estimation) and estimating score functions of a data generating process (score estimation). For density estimation, experiments on deep kernel exponential families (Wenliang et al., 2019) and NICE flow models (Dinh et al., 2015) show that our method is either more scalable or more accurate than existing score matching variants.
+For score estimation, our method improves the performance of variational auto-encoders (VAE) with implicit encoders, and can train WAEs without a discriminator or MMD loss by directly optimizing the KL divergence between aggregated posteriors and the prior. In both situations we outperformed kernel-based score estimators (Li & Turner, 2018; Shi et al., 2018) by achieving better test likelihoods and better sample quality in image generation.
+2 BACKGROUND
+Given i.i.d. samples {x1, x2, · · · , xN } ⊂ RD from a data distribution pd(x), our task is to learn an unnormalized density, p ̃m(x; θ), where θ is from some parameter space Θ. The model’s partition function is denoted as Zθ, which is assumed to be existent but intractable. Let pm(x; θ) be the normalized density determined by our model, we have
+pm(x; θ) = p ̃m(x; θ)
+Zθ
+, Zθ =
+∫
+p ̃m(x; θ)dx.
+For convenience, we denote the score functions of pm and pd as sm(x; θ) , ∇x log pm(x; θ) and sd(x) , ∇x log pd(x) respectively. Note that since log pm(x; θ) = log p ̃m(x; θ) − log Zθ, we immediately conclude that sm(x; θ) does not depend on the intractable partition function Zθ.
+2.1 SCORE MATCHING
+Learning unnormalized models with maximum likelihood estimation (MLE) can be difficult due to the intractable partition function Zθ. To avoid this, score matching (Hyvärinen, 2005) minimizes the Fisher divergence
+between pd and pm(·, θ), which is defined as
+L(θ) , 1
+2 Epd [‖sm(x; θ) − sd(x)‖2
+2]. (1)
+Since sm(x; θ) does not involve Zθ, the Fisher divergence does not depend on the intractable partition function. However, Eq. (1) is still not readily usable for learning unnormalized models, as we only have samples and do not have access to the score function of the data sd(x).
+By applying integration by parts, Hyvärinen (2005) shows that L(θ) can be written as L(θ) = J(θ) + C (cf ., Theorem 1 in Hyvärinen (2005)), where
+J (θ) , Epd
+[
+tr(∇xsm(x; θ)) + 1
+2 ‖sm(x; θ)‖2
+2
+]
+, (2)
+C is a constant that does not depend on θ, tr(·) denotes the trace of a matrix, and
+∇xsm(x; θ) = ∇2
+x log p ̃m(x; θ) (3)
+is the Hessian of the log-density function. The constant can be ignored and the following unbiased estimator of the remaining terms is used to train p ̃m(x; θ):
+Jˆ(θ; xN
+1), 1
+N
+N
+∑
+i=1
+[
+tr(∇xsm(xi; θ)) + 1
+2 ‖sm(xi; θ)‖2
+2
+]
+,
+where x1N is a shorthand used throughout the paper for a collection of N data points {x1, x2, · · · , xN } sampled i.i.d. from pd, and ∇xsm(xi; θ) denotes the Hessian of log p ̃m(x; θ) evaluted at xi.
+Computational Difficulty. While the score matching objective Jˆ(θ; x1N ) avoids the computation of Zθ for unnormalized models, it introduces a new computational difficulty: computing the trace of the Hessian of a logdensity function, ∇2x log p ̃m. A naïve approach of computing the trace of the Hessian requires D times more backward passes than computing the gradient sm = ∇x log p ̃m (see Alg. 2 in the appendix). For example, the trace could be computed by applying backpropogation D times to sm to get each diagonal term of ∇2x log p ̃m sequentially. In practice, D can be many thousands, which can render score matching too slow for practical purposes. Moreover, Martens et al. (2012) argues from a theoretical perspective that it is unlikely that there exists an algorithm for computing the diagonal of the Hessian defined by an arbitrary computation graph within a constant number of forward and backward passes.
+2.2 SCORE ESTIMATION FOR IMPLICIT DISTRIBUTIONS
+Besides parameter estimation in unnormalized models, score matching can also be used to estimate scores of
+
+
+implicit distributions, which are distributions that have a tractable sampling process but without a tractable density. For example, the distribution of random samples from the generator of a GAN (Goodfellow et al., 2014) is an implicit distribution. Implicit distributions can arise in many more situations such as the marginal distribution of a non-conjugate model (Sun et al., 2019), and models defined by complex simulation processes (Tran et al., 2017). In many cases learning and inference become intractable due to the need of optimizing an objective that involves the intractable density.
+In these cases, directly estimating the score function sq(x) = ∇x log qθ(x) based on i.i.d. samples from an implicit density qθ(x) can be useful. For example, suppose our learning problem involves optimizing the entropy H(qθ(x)) of an implicit distribution. This situation is common when dealing with variational free energies (Kingma & Welling, 2014). Suppose x ∼ qθ can be reparameterized as x = gθ( ), where is a simple random variable independent of θ, such as a standard normal, and gθ is a deterministic mapping. We can write the gradient of the entropy with respect to θ as
+∇θH(qθ) , −∇θEqθ(x)[log qθ(x)]
+= −∇θEp( )[log qθ(gθ( ))]
+= −Ep( )[∇x log qθ(x)|x=gθ( )∇θgθ( )],
+where ∇θgθ( ) is usually easy to compute. The score ∇x log qθ(x) is intractable but can be approximated by score estimation.
+Score matching is an attractive solution for score estimation since (1) naturally serves as an objective to measure the difference between the a trainable score function and the score of a data generating process. We will discuss this in more detail in Section 3.2 and mention some other approaches of score estimation in Section 5.2.
+3 DENSITY AND SCORE ESTIMATION WITH SLICED SCORE MATCHING
+3.1 SLICED SCORE MATCHING
+We observe that one dimensional problems are usually much easier to solve than high dimensional ones. Inspired by the idea of Sliced Wasserstein distance (Rabin et al., 2012), we consider projecting sd(x) and sm(x; θ) onto some random direction v and propose to compare their average difference along that random direction. More specifically, we consider the following objective as a replacement of the Fisher divergence L(θ) in Eq. (1):
+L(θ; pv) , 1
+2 Epv Epd
+[(vTsm(x; θ) − vTsd(x))2] .(4)
+Here v ∼ pv and x ∼ pd are independent, and we require Epv [vvT] 0 and Epv [‖v‖22] < ∞. Many examples of pv satisfy these requirements. For instance, pv can be a multivariate standard normal (N (0, ID)), a multivariate Rademacher distribution (the uniform distribution over {±1}D), or a uniform distribution on the hypersphere SD−1 (recall that D refers to the dimension of x).
+To eliminate the dependence of L(θ; pv) on sd(x), we use integration by parts as in score matching (cf ., the equivalence between Eq. (1) and (2)). Defining
+J (θ; pv) , Epv Epd
+[vT∇xsm(x; θ)v
++1
+2 (vTsm(x; θ))2 ], (5)
+the equivalence is summarized in the following theorem.
+Theorem 1. Under some regularity conditions (Assumption 1-3 in Appendix B.2), we have
+L(θ; pv) = J(θ; pv) + C, (6)
+where C is a constant w.r.t. θ.
+Other than our requirements on pv, the assumptions are exactly the same as in Theorem 1 of Hyvärinen (2005). We advise the interested readers to read Appendix B.2 for technical statements of the assumptions and a rigorous proof of the theorem.
+In practice, given a dataset x1N , we draw M projection vectors independently for each point xi from pv. The collection of all such vectors {vij}1≤i≤N,1≤j≤M are abbreviated as v1N1M .We then use the following unbiased estimator of J(θ; pv)
+Jˆ(θ; xN
+1 , vNM
+11 ) , 1
+N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+vT
+ij ∇xsm(xi; θ)vij
++1
+2
+(vT
+ijsm(xi; θ))2 . (7)
+Note that when pv is a multivariate standard normal or multivariate Rademacher distribution, we have Epv [(vTsm(x; θ))2] = ‖sm(x; θ)‖2
+2, in which case the second term of J(θ; pv) can be integrated analytically, and may lead to an estimator with reduced variance:
+Jˆvr(θ; xN
+1 , vNM
+11 ) , 1
+N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+vT
+ij ∇xsm(xi; θ)vij
++1
+2 ‖sm(xi; θ)‖2
+2 . (8)
+Empirically, we do find that Jˆvr has better performance
+than Jˆ. We refer to this version as sliced score matching with variance reduction (SSM-VR). In fact, we can
+
+
+leverage Epv [(vTsm(x; θ))2] = ‖sm(x; θ)‖2
+2 to create a control variate for guaranteed reduction of variance (Appendix D). Jˆvr is also closely related to Hutchinson’s trace estimator (Hutchinson, 1990), which we will analyze later in Section 4.3.
+For sliced score matching, the second derivative term vT∇xsm(x; θ)v is much less computationally expensive than tr(∇xsm(x; θ)). Using auto-differentiation systems that support higher order gradients, we can compute it using two gradient operations for a single v, as shown in Alg. 1. Similarly, when there are M v’s, the total number of gradient operations is M + 1. In contrast, assuming the dimension of x is D and D M , we typically need D + 1 gradient operations to compute tr(∇xsm(x; θ)) because each diagonal entry of ∇xsm(x; θ) needs to be computed separately (see Alg. 2 in the appendix).
+Algorithm 1 Sliced Score Matching
+Input: p ̃m(·; θ), x, v
+1: sm(x; θ) ← grad(log p ̃m(x; θ), x)
+2: vT∇xsm(x; θ) ← grad(vTsm(x; θ), x) 3: J ← 1
+2 (vTsm(x; θ))2 (or J ← 1
+2 ‖sm(x; θ)‖2
+2) 4: J ← J + vT∇xsm(x; θ)v return J
+In practice, we can tune M to trade off variance and computational cost. In our experiments, we find that oftentimes M = 1 is already a good choice.
+3.2 SLICED SCORE ESTIMATION
+As mentioned in section 2.2, the task of score estimation is to estimate ∇x log q(x) at some test point x, given a
+set of samples x1N
+i.i∼.d. q(x). In what follows, we show how our sliced score matching objective Jˆ(θ; x1N , v1N1M ) can be straightforwardly adapted for this task.
+We propose to use a vector-valued deep neural network h(x; θ) : RD → RD as our score model. Then, substituting h into Jˆ(θ; x1N , v1N1M ) for sm, we get
+1
+N
+1
+M
+N
+∑
+i=1
+M
+∑
+j=1
+vT
+ij ∇xh(xi; θ)vij + 1
+2
+(vT
+ij h(xi; θ))2,
+and we can optimize the objective to get θˆ. Afterwards, h(x; θˆ) can be used as an approximation to ∇x log q(x).1
+1Note that h(x; θ) may not correspond to the gradient of any scalar function. For h(x; θ) to represent a gradient, one necessary condition is ∇x × h(x; θ) = 0 for all x, which may not be satisfied by general networks. However, this is oblivious to the fact that h(x; θˆ) will be close to ∇x log qθ(x) in `2 norm. As will be shown later, our argument based on integration by parts does not require h(x; θ) to be a gradient.
+Using a similar argument of integration by parts (cf ., Eq. (4), (5) and (6)), we have
+Epv Epd
+[
+vT∇xh(x; θ)v + 1
+2 (vTh(x; θ))2
+]
+=
+1
+2 Epv Epd [(vTh(x; θ) − vT∇x log q(x))2] + C,
+which implies that minimizing Jˆ(θ; x1N , v1N1M ) with sm(x; θ) replaced by h(x; θ) is approximately minimizing the average projected difference between h(x; θ) and ∇x log q(x). Hence, h(x; θˆ) should be close to ∇x log q(x) and can serve as a score estimator.
+4 THEORETICAL ANALYSIS
+In this section, we present several theoretical results to justify sliced score matching as a principled objective. We also discuss the connection of sliced score matching to other methods. For readability, we will defer rigorous statements of assumptions and theorems to the Appendix.
+4.1 CONSISTENCY
+One important question to ask for any statistical estimation objective is whether the estimated parameter is consistent under reasonable assumptions. Our results confirm that for any M , the objective Jˆ(θ; x1N , v1N1M ) is consistent under suitable assumptions as N → ∞.
+We need several standard assumptions to prove the results rigorously. Let pm be the normalized density induced by our unnormalized model p ̃m, which is assumed to be normalizable. First, we assume Θ is compact (Assumption 6), and our model family {pm(x; θ) : θ ∈ Θ} is well-specified and identifiable (Assumption 4). These are standard assumptions used for proving the consistency of MLE (van der Vaart, 1998). We also adopt the assumption in Hyvärinen (2005) that all densities are strictly positive (Assumption 5). Finally, we assume that pm(x; θ) has some Lipschitz properties (Assumption 7), and pv has bounded higher-order moments (Assumption 2, true for all pv considered in the experiments). Then, we can prove the consistency of θˆN,M , arg minθ∈Θ Jˆ(θ; x1N , v1N1M ):
+Theorem 2 (Consistency). Assume the conditions of Theorem 1 are satisfied. Assume further that the assumptions discussed above hold. Let θ∗ be the true parameter of the data distribution. Then for every M ∈ N+,
+θˆN,M
+→p θ∗, N → ∞.
+Sketch of proof. We first prove that J(θ; pv) = 0 ⇔ θ =
+θ∗ (Lemma 1 and Theorem 1). Then we prove the uniform convergence of Jˆ(θ; x1N , v1N1M ) (Lemma 3), which
+
+
+holds regardless of M . These two facts lead to consistency. For a complete proof, see Appendix B.3.
+Remark 1. In Hyvärinen (2005), the authors only showed that J(θ) = 0 ⇔ θ = θ∗, which leads to “local consistency” of score matching. This is a weaker notion of consistency compared to our settings.
+4.2 ASYMPTOTIC NORMALITY
+Asymptotic normality results can be very useful for approximate hypothesis testing and comparing different estimators. Below we show that θˆN,M is asymptotically normal when N → ∞.
+In addition to the assumptions in Section 4.1, we need an extra assumption to prove asymptotic normality. We require pm(x; θ) to have a stronger Lipschitz property (Assumption 9).
+For simplicity, we denote ∇xh(x)|x=x′ as ∇xh(x′), where h(·) is an arbitrary function. In the following, we will only show the asymptotic normality result for a specific pv. More general results are in Appendix B.4.
+Theorem 3 (Asymptotic normality, special case). Assume the assumptions discussed above hold. If pv is the multivariate Rademacher distribution, we have
+√
+N (θˆN,M − θ∗) →d N (0, Σ),
+where
+Σ , [∇2
+θJ (θ∗)]−1
+( ∑
+1≤i,j≤D
+Vij + 2
+M
+∑
+1≤i6=j≤D
+Wij
+)
+· [∇2
+θJ (θ∗)]−1. (9)
+Here D is the dimension of data; Vij and Wij are p.s.d
+matrices depending on pm(x; θ∗), and their definitions can be found in Appendix B.4.
+Sketch of proof. Once we get the consistency (Theorem 2), the rest closely follows the proof of asymptotic normality of MLE (van der Vaart, 1998). A rigorous proof can be found in Appendix B.4.
+Remark 2. As expected, larger M will lead to smaller asymptotic variance, as can be seen in Eq. (9).
+Remark 3. As far as we know, there is no published proof of asymptotic normality for the standard (not sliced) score matching. However, by using the same techniques in our proofs, and under similar assumptions, we can conclude that the asymptotic variance of the score match
+ing estimator is [∇2
+θJ (θ∗)]−1
+( ∑
+ij Vij
+)
+[∇2
+θJ (θ∗)]−1
+(Corollary 1), which will always be smaller than sliced score matching with multivariate Rademacher projections. However, the gap reduces when M increases.
+4.3 CONNECTION TO OTHER METHODS
+Sliced score matching is widely connected to many other methods, and can be motivated from some different perspectives. Here we discuss a few of them.
+Connection to NCE. Noise contrastive estimation (NCE), proposed by Gutmann & Hyvärinen (2010), is another principle for training unnormalized statistical models. The method works by comparing pm(x; θ) with a noise distribution pn(x). We consider a special form of NCE which minimizes the following objective
+−Epd [log h(x; θ)] − Epn [log(1 − h(x; θ))], (10)
+where h(x; θ) , pm(x;θ)
+pm(x;θ)+pm(x−v;θ) , and we choose
+pn(x) = pd(x+v). Assuming ‖v‖2 to be small, Eq. (10) can be written as the following by Taylor expansion
+1
+4 Epd
+[
+vT∇xsm(x; θ)v + 1
+2 (sm(x; θ)Tv)2
+]
++ 2 log 2 + o(‖v‖2
+2). (11)
+For derivation, see Proposition 1 in the appendix. A similar derivation can also be found in Gutmann & Hirayama (2011). As a result of (11), if we choose some pv and take the expectation of (10) w.r.t. pv, the objective will be equivalent to sliced score matching whenever ‖v‖2 ≈ 0.
+Connection to Hutchinson’s Trick. Hutchinson’s trick (Hutchinson, 1990) is a stochastic algorithm to approximate tr(A) for any square matrix A. The idea is to choose a distribution of a random vector v such that Epv [vvT] = I, and then we have tr(A) = Epv [vTAv]. Hence, using Hutchinson’s trick, we can replace tr(∇xsm(x; θ)) with Epv [vT∇xsm(x; θ)v] in the score matching objective J(θ). Then the finite sample objective of score matching becomes
+1 N
+N
+∑
+i=1
+(1
+M
+M
+∑
+j=1
+vT
+ij ∇xsm(xi; θ)vij
+)
++1
+2 ‖sm(xi; θ)‖2
+2,
+which is exactly the sliced score matching objective with variance reduction Jˆvr(θ; x1N , v1N1M ).
+5 RELATED WORK
+5.1 SCALABLE SCORE MATCHING
+To the best of our knowledge, there are three existing methods that are able to scale up score matching to learning deep models on high dimensional data.
+
+
+Denoising Score Matching. Vincent (2011) proposes denoising score matching, a variant of score matching that completely circumvents the Hessian. Specifically, consider a noise distribution qσ(x ̃ | x), and let qσ(x ̃) = ∫ qσ(x ̃ | x)pd(x)dx. Denoising score matching applies the original score matching to the noise-corrupted data distribution qσ(x ̃), and the objective can be proven to be equivalent to the following up to a constant
+1
+2 Eqσ(x ̃|x)pd(x)[‖sm(x ̃; θ) − ∇x log qσ( ̃x | x)‖2
+2],
+which can be estimated without computing any Hessian. Although denoising score matching is much faster than score matching, it has obvious drawbacks. First, it can only recover the noise corrupted data distribution. Furthermore, choosing the parameters of the noise distribution is highly non-trivial and in practice the performance can be very sensitive to σ, and heuristics have to be used in practice. For example, Saremi et al. (2018) propose a heuristic for choosing σ based on Parzen windows.
+Approximate Backpropagation. Kingma & LeCun (2010) propose a backpropagation method to approximately compute the trace of the Hessian. Because the backpropagation of the full Hessian scales quadratically w.r.t. the layer size, the authors limit backpropagation only to the diagonal so that it has the same cost as the usual backpropagation for computing loss gradients. However, there are no theoretical guarantees for the approximation errors. In fact, the authors only did experiments on networks with a single hidden layer, in which case the approximation is exact. Moreover, there is no direct support for the proposed approximate backpropagation method in modern automatic differentiation frameworks.
+Curvature Propagation. Martens et al. (2012) estimate the trace term in score matching by applying curvature propagation to compute an unbiased, complex-valued estimator of the diagonal of the Hessian. The work claims that curvature propagation will have the smallest variance among a class of estimators, which includes the Hutchinson’s estimator. However, their proof evaluates the pseudo-variance of the complex-valued estimator instead of the variance. In practice, curvature propagation can have large variance when the number of nodes in the network is large, because it introduces noise for each node in the network. Finally, implementing curvature propagation also requires manually modifying the backpropagation code, handling complex numbers in neural networks, and will be inefficient for networks of more general structures, such as recurrent neural networks.
+5.2 KERNEL SCORE ESTIMATORS
+Two prior methods for score estimation are based on a generalized form of Stein’s identity (Stein, 1981; Gorham & Mackey, 2017):
+Eq(x)[h(x)∇x log q(x)T + ∇xh(x)] = 0, (12)
+where q(x) is a continuously differentiable density and h(x) is a function satisfying some regularity conditions. Li & Turner (2018) propose to set h(x) as the feature map of some kernel in the Stein class (Liu et al., 2016) of q, and solve a finite-sample version of (12) to obtain estimates of ∇x log q(x) at the sample points. We refer to this method as Stein in the experiments. Shi et al. (2018) adopt a different approach but also exploit (12). They build their estimator by expanding ∇x log q(x) as a spectral series of eigenfunctions and solve for the coefficients using (12). Compared to Stein, their method is argued to have theoretical guarantees and principled out-of-sample estimation at an unseen test point. We refer to their method as Spectral in the experiments.
+6 EXPERIMENTS
+Our experiments include two parts: (1) to test the effectiveness of sliced score matching (SSM) in learning deep models for density estimation, and (2) to test the ability of SSM in providing score estimates for applications such as VAEs with implicit encoders and WAEs. Unless specified explicitly, we choose M = 1 by default.
+6.1 DENSITY ESTIMATION
+We evaluate SSM and its variance-reduced version (SSMVR) for density estimation and compare against score matching (SM) and its three scalable baselines: denoising score matching (DSM), approximate backpropagation (approx BP), and curvature propagation (CP). All SSM methods in this section use the multivariate Rademacher distribution as pv. Our results demonstrate that: (1) SSM is comparable in performance to SM, (2) SSM outperforms other computationally efficient approximations to SM, and (3) unlike SM, SSM scales effectively to high dimensional data.
+6.1.1 Deep Kernel Exponential Families
+Model. Deep kernel exponential families (DKEF) are unnormalized density models trained using SM (Wenliang et al., 2019). DKEFs parameterize the unnormalized log density as log p ̃f (x) = f (x) + log q0(x), where f is a mixture of Gaussian kernels evaluated at different inducing points: f (x) = ∑L
+l=1 αlk(x, zl). The kernel is defined on the feature space of a neural network, and the
+
+
+Figure 1: SM loss after training DKEF models on UCI datasets with different loss functions; lower is better. Results for approximate backprapogation are not shown because losses were larger than 109.
+Figure 2: SM performance degrades linearly with the data dimension, while efficient approaches have relatively similar performance.
+network parameters are trained along with the inducing points zl. Further details of the model, which is identical to that in Wenliang et al. (2019), are presented in Appendix C.1.
+Setup. Following the settings of Wenliang et al. (2019), we trained models on three UCI datasets: Parkinsons, RedWine, and WhiteWine (Dua & Graff, 2017), and used their original code for SM. To compute the trace term exactly, Wenliang et al. (2019)’s manual implementation of backpropagation takes over one thousand lines for a model that is four layers deep, while the implementation of SSM only takes several lines. For DSM, the value of σ is chosen by grid search using the SM loss on a validation dataset. All models are trained with 15 different random seeds and training is stopped when validation loss does not improve for 200 steps.
+Results. Results in Fig. 1 demonstrate that SSM-VR performs comparably to SM, when evaluated using the SM loss on a held-out test set. We observe that variance reduction substantially improves the performance of SSM. In addition, SSM outperforms other computationally efficient approaches. DSM can perform comparably to SSM on RedWine. However, it is challenging to select σ for DSM. Models trained using σ from the heuristic in Saremi
+Test SM Loss Test LL
+MLE -579 -791 SSM-VR -8054 -3355 SSM -2428 -2039 DSM (σ = 0.10) -3035 -4363 DSM (σ = 1.74) -97 -8082 CP -1694 -1517 Approx BP -48 -2288
+Table 1: Score matching losses and log-likelihoods for NICE models on MNIST. σ = 0.1 is by grid search and σ = 1.74 is from the heuristic of Saremi et al. (2018).
+et al. (2018) are far from optimal (on both SM losses and likelihoods), and extensive grid search is needed to find the best σ. CP performs substantially worse, which is likely because it injects noise for each node in the computation graph, and the amount of noise introduced is too large for a neural-network-based kernel evaluated at 200 inducing points, which supports our hypothesis that CP does not work effectively for deep models. Results for approx BP are omitted because the losses exceeded 109 on all datasets. This is because approx BP provides a biased estimate of the Hessian without any error guarantees. All the results are similar when evaluating according to log-likelihood metric (Appendix C.1).
+Scalability to High Dimensional Data. We evaluate the computational efficiency of different losses on data of increasing dimensionality. We fit DKEF models to a multivariate standard normal in high dimensional spaces. The average running time per minibatch of 100 examples is reported in Fig. 2. SM performance degrades linearly with the dimension of the input data due to the computation of the Hessian, and creates out of memory errors for a 12GB GPU after the dimension increases beyond 400. SSM performs similarly to DSM, approx BP and CP, and they are all scalable to large dimensions.
+
+
+6.1.2 Deep Flow Models
+Setup. As a sanity check, we also evaluate SSM by training a NICE flow model (Dinh et al., 2015), whose likelihood is tractable and can be compared to results obtained by MLE. The model we use has 20 hidden layers, and 1000 units per layer. Models are trained to fit MNIST handwritten digits, which are 784 dimensional images. Data are dequantized by adding uniform noise in the range [− 1
+512 , 1
+512 ], and transformed using a logit transformation, log(x) − log(1 − x). We provide additional details in Appendix C.2.
+Training with SM is extremely computationally expensive in this case. Our SM implementation based on autodifferentiation takes around 7 hours to finish one epoch of training, and 12 GB GPU memory cannot hold a batch size larger than 24, so we do not include these results. Since NICE has tractable likelihoods, we also evaluate MLE as a surrogate objective for minimizing the SM loss. Notably, likelihoods and SM losses might be uncorrelated when the model is mis-specified, which is likely to be the case for a complex dataset like MNIST.
+Results. SM losses and log-likelihoods on the test dataset are reported in Tab. 1, where models are evaluated using the best checkpoint in terms of the SM loss on a validation dataset over 100 epochs of training. SSM-VR greatly outperforms all the other methods on the SM loss. DSM performs worse than SSM-VR, and σ is still hard to tune. Specifically, following the heuristic in Saremi et al. (2018) leads to σ = 1.74, which performed the worst (on both log-likelihood and SM loss) of the eight choices of σ in our grid search. Approx BP has more success on NICE than for training DKEF models. This might be because the Hessians of hidden layers of NICE are closer to a diagonal matrix, which results in a smaller approximation error for approx BP. As in the DKEF experiments, CP performs worse. This is likely due to injecting noise to all hidden units, which will lead to large variance for a network as big as NICE. Unlike the DKEF experiments, we find that good log-likelihoods are less correlated with good SM loss, probably due to model mis-specification.
+6.2 SCORE ESTIMATION
+We consider two typical tasks that require accurate score estimations: (1) training VAEs with an implicit encoder and (2) training Wasserstein Auto-Encoders. We show in both tasks SSM outperforms previous score estimators. Samples generated by various algorithms can be found in Appendix A.
+VAE WAE
+Latent Dim 8 32 8 32
+ELBO 96.87 89.06 N/A N/A SSM 95.50 89.25 (88.29†) 98.24 90.37 Stein 96.71 91.84 99.05 91.70 Spectral 96.60 94.67 98.81 92.55
+Table 2: Negative log-likelihoods on MNIST, estimated by AIS. †The result of SSM with M = 100, in which case SSM matches the computational cost of kernel methods, which used 100 samples for each data point.
+Method
+Iteration 10k 40k 70k 100k
+VAE
+ELBO 96.20 73.70 69.42 66.32
+SSM 108.52 70.28 66.52 62.50
+Stein 126.60 118.87 120.51 126.76
+Spectral 131.90 125.04 128.36 133.93
+WAE
+SSM 84.11 61.09 56.23 54.33
+Stein 82.93 63.46 58.53 57.61
+Spectral 82.30 62.47 58.03 55.96
+Table 3: FID scores of different methods versus number of training iterations on CelebA dataset.
+6.2.1 VAE with Implicit Encoders
+Background. Consider a latent variable model p(x, z), where x and z denote observed and latent variables respectively. A variational auto-encoder (VAE) is composed of two parts: 1) an encoder pθ(x | z) modeling the conditional distribution of x given z; and a decoder qφ(z | x) that approximates the posterior distribution of the latent variable. A VAE is typically trained by maximizing the following evidence lower bound (ELBO)
+Epd [Eqφ(z|x) log pθ(x | z)p(z) − Eqφ(z|x) log qφ(z | x)],
+where p(z) denotes a pre-specified prior distribution. The expressive power of qφ(z | x) is critical to the success of variational learning. Typically, qφ(z | x) is chosen to be a simple distribution with tractable densities so that H(qφ) , −Eqφ(z|x) log qφ(z | x) is tractable. We call this traditional approach “ELBO” in the experiments. With score estimation techniques, we can directly compute ∇φH(qφ) for implicit distributions, which enables more flexible options for qφ. We consider 3 score estimation techniques: SSM, Stein (Li & Turner, 2018) and Spectral (Shi et al., 2018).
+For a single data point x, kernel score estimators need multiple samples from qφ(z | x) to estimate its score. On MNIST, we use 100 samples, as done in Shi et al. (2018). On CelebA, however, we can only take 20 samples due to GPU memory limitations. In contrast, SSM learns a score
+
+
+network h(z | x) along with qφ(z | x), which amortizes the cost of score estimation. Unless noted explicitly, we use one projection per data point (M = 1) for SSM, which is scalable to deep networks.
+Setup. We consider VAE training on MNIST and CelebA (Liu et al., 2015). All images in CelebA are first cropped to a patch of 140 × 140 and then resized to 64 × 64. We report negative likelihoods on MNIST, as estimated by AIS (Neal, 2001) with 1000 intermediate distributions. We evaluate sample quality on CelebA with FID scores (Heusel et al., 2017). For fast AIS evaluation on MNIST, we use shallow fully-connected networks with 3 hidden layers. For CelebA experiments we use deep convolutional networks. The architectures of implicit encoders and score networks are straightforward modifications to the encoders of ELBO. More details are provided in Appendix C.3.
+Results. The negative likelihoods of different methods on MNIST are reported in the left part of Tab. 2. We note that SSM outperforms Stein and Spectral in all cases. When the latent dimension is 8, SSM outperforms ELBO, which indicates that the expressive power of implicit qφ(z | x) pays off. When the latent dimension is 32, the gaps between SSM and kernel methods are even larger, and the performance of SSM is still comparable to ELBO. Moreover, when M = 100 (matching the computation of kernel methods), SSM outperforms ELBO.
+For CelebA, we provide FID scores of samples in the top part of Tab. 3. We observe that after 40k training iterations, SSM outperforms all other baselines. Kernel methods perform poorly in this case because only 20 samples per data point can be used due to limited amount of GPU memory. Early during training, SSM does not perform as well. Since the score network is trained along with the encoder and decoder, a moderate number of training steps is needed to give an accurate score estimation (and better learning of the VAE).
+6.2.2 WAEs
+Background. WAE is another method to learn latent variable models, which generally produces better samples than VAEs. Similar to a VAE, it contains an encoder qφ(z | x) and a decoder pθ(x | z) and both can be implicit distributions. Let p(z) be a pre-defined prior distribution, and qφ(z) ,
+∫ qφ(z | x)pd(x)dx denote the aggregated posterior distribution. Using a metric function c(·, ·) and KL divergence between qφ(z) and p(z), WAE minimizes the following objective
+Epd [Eqφ(z|x)[c(x, pθ(x | z)) − λ log p(z)]] − λH(qφ(z)).
+Compared to ∇φH(qφ(z | x)), it is easier to estimate ∇φH(qφ(z)) for kernel methods, because the samples of qφ(z) can be collected by first sampling
+x1, x2, · · · , xN
+i.i∼.d. pd(x) and then sample one z for each xi from qφ(z | xi). In constrast, multiple z’s need to be sampled for each xi when estimating ∇φH(qφ(z | x)) with kernel approaches. For SSM, we use a score network h(z) and train it alongside qφ(z | x).
+Setup. The setup for WAE experiments is largely the same as VAE. The architectures are very similar to those used in the VAE experiments, and the only difference is that we made decoders implicit, as suggested in Tolstikhin et al. (2018). More details can be found in Appendix C.3.
+Results. The negative likelihoods on MNIST are provided in the right part of Tab. 2. SSM outperforms both kernel methods, and achieves a larger performance gap when the latent dimension is higher. The likelihoods are lower than the VAE results as the WAE objective does not directly maximize likelihoods.
+We show FID scores for CelebA experiments in the bottom part of Tab. 3. As expected, kernel methods perform much better than before, because it is faster to sample from qφ(z). The FID scores are generally lower than those in VAE experiments, which supports previous results that WAEs generally obtain better samples. SSM outperforms both kernel methods when the number of iterations is more than 40k. This shows the advantages of training a deep, expressive score network compared to using a fixed kernel in score estimation tasks.
+7 CONCLUSION
+We propose sliced score matching, a scalable method for learning unnormalized statistical models and estimating scores for implicit distributions. Compared to the original score matching and its variants, our estimator can scale to deep models on high dimensional data, while remaining easy to implement in modern automatic differentiation frameworks. Theoretically, our estimator is consistent and asymptotically normal under some regularity conditions. Experimental results demonstrate that our method outperforms competitors in learning deep energy-based models and provides more accurate estimates than kernel score estimators in training implicit VAEs and WAEs.
+Acknowledgements
+This research was supported by Intel Corporation, TRI, NSF (#1651565, #1522054, #1733686 ), ONR (N0001419-1-2145), AFOSR (FA9550- 19-1-0024).
+
+
+References
+Abadi, M., Barham, P., Chen, J., Chen, Z., Davis, A., Dean, J., Devin, M., Ghemawat, S., Irving, G., Isard, M., et al. Tensorflow: A system for large-scale machine learning. In 12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16), pp. 265–283, 2016.
+Adam, P., Soumith, C., Gregory, C., Edward, Y., Zachary, D., Zeming, L., Alban, D., Luca, A., and Adam, L. Automatic differentiation in pytorch. In NIPS Autodiff Workshop, 2017.
+Canu, S. and Smola, A. Kernel methods and the exponential family. Neurocomputing, 69(7):714 – 720, 2006. ISSN 0925-2312. New Issues in Neurocomputing: 13th European Symposium on Artificial Neural Networks.
+Dinh, L., Krueger, D., and Bengio, Y. NICE: Nonlinear independent components estimation. International Conference in Learning Representations Workshop Track, 2015.
+Dua, D. and Graff, C. UCI machine learning repository, 2017. URL http://archive.ics.uci.edu/ ml.
+Dudley, R. M. The sizes of compact subsets of Hilbert space and continuity of Gaussian processes. Journal of Functional Analysis, 1(3):290–330, 1967.
+Goodfellow, I., Pouget-Abadie, J., Mirza, M., Xu, B., Warde-Farley, D., Ozair, S., Courville, A., and Bengio, Y. Generative adversarial nets. In Advances in Neural Information Processing Systems, pp. 2672–2680, 2014.
+Gorham, J. and Mackey, L. Measuring sample quality with kernels. In Proceedings of the 34th International Conference on Machine Learning, pp. 12921301, 2017.
+Gutmann, M. and Hyvärinen, A. Noise-contrastive estimation: A new estimation principle for unnormalized statistical models. In Proceedings of the Thirteenth International Conference on Artificial Intelligence and Statistics, pp. 297–304, 2010.
+Gutmann, M. U. and Hirayama, J.-i. Bregman divergence as general framework to estimate unnormalized statistical models. In Proceedings of the Twenty-Seventh Conference on Uncertainty in Artificial Intelligence, pp. 283–290. AUAI Press, 2011.
+Heusel, M., Ramsauer, H., Unterthiner, T., Nessler, B., and Hochreiter, S. GANs trained by a two time-scale update rule converge to a local Nash equilibrium. In Advances in Neural Information Processing Systems, pp. 6626–6637, 2017.
+Huszár, F. Variational inference using implicit distributions. arXiv preprint arXiv:1702.08235, 2017.
+Hutchinson, M. F. A stochastic estimator of the trace of the influence matrix for Laplacian smoothing splines. Communications in Statistics-Simulation and Computation, 19(2):433–450, 1990.
+Hyvärinen, A. Estimation of non-normalized statistical models by score matching. Journal of Machine Learning Research, 6(Apr):695–709, 2005.
+Kingma, D. P. and LeCun, Y. Regularized estimation of image statistics by score matching. In Advances in Neural Information Processing Systems, pp. 11261134, 2010.
+Kingma, D. P. and Welling, M. Auto-encoding variational Bayes. International Conference on Learning Representations, 2014.
+LeCun, Y., Chopra, S., Hadsell, R., Ranzato, M. A., and Huang, F. J. A tutorial on energy-based learning. In Predicting structured data. MIT Press, 2006.
+Li, Y. and Turner, R. E. Gradient estimators for implicit models. In International Conference on Learning Representations, 2018.
+Liu, Q., Lee, J., and Jordan, M. A kernelized Stein discrepancy for goodness-of-fit tests. In Proceedings of The 33rd International Conference on Machine Learning, pp. 276–284, 2016.
+Liu, Z., Luo, P., Wang, X., and Tang, X. Deep learning face attributes in the wild. In Proceedings of International Conference on Computer Vision (ICCV), 2015.
+Martens, J., Sutskever, I., and Swersky, K. Estimating the Hessian by back-propagating curvature. Proceedings of the 29th International Conference on Machine Learning, 2012.
+Neal, R. M. Annealed importance sampling. Statistics and computing, 11(2):125–139, 2001.
+Owen, A. B. Monte Carlo theory, methods and examples. 2013.
+Rabin, J., Peyré, G., Delon, J., and Bernot, M. Wasserstein barycenter and its application to texture mixing. In Bruckstein, A. M., ter Haar Romeny, B. M., Bronstein, A. M., and Bronstein, M. M. (eds.), Scale Space and Variational Methods in Computer Vision, pp. 435–446, Berlin, Heidelberg, 2012. Springer Berlin Heidelberg. ISBN 978-3-642-24785-9.
+Saremi, S., Mehrjou, A., Schölkopf, B., and Hyvärinen, A. Deep energy estimator networks. arXiv preprint arXiv:1805.08306, 2018.
+Sasaki, H., Hyvärinen, A., and Sugiyama, M. Clustering via mode seeking by direct estimation of the gradient of a log-density. In Joint European Conference on Machine Learning and Knowledge Discovery in Databases, pp. 19–34. Springer, 2014.
+
+
+Shi, J., Sun, S., and Zhu, J. A spectral approach to gradient estimation for implicit distributions. In Proceedings of the 35th International Conference on Machine Learning, pp. 4651–4660, 2018.
+Sriperumbudur, B., Fukumizu, K., Gretton, A., Hyvärinen, A., and Kumar, R. Density estimation in infinite dimensional exponential families. Journal of Machine Learning Research, 18(57):1–59, 2017.
+Stein, C. M. Estimation of the mean of a multivariate normal distribution. The annals of Statistics, pp. 11351151, 1981.
+Strathmann, H., Sejdinovic, D., Livingstone, S., Szabo, Z., and Gretton, A. Gradient-free Hamiltonian monte carlo with efficient kernel exponential families. In Advances in Neural Information Processing Systems, pp. 955–963, 2015.
+Sun, S., Zhang, G., Shi, J., and Grosse, R. Functional variational Bayesian neural networks. In International Conference on Learning Representations, 2019.
+Sutherland, D., Strathmann, H., Arbel, M., and Gretton, A. Efficient and principled score estimation with Nyström kernel exponential families. In Proceedings of the Twenty-First International Conference on Artificial Intelligence and Statistics, pp. 652–660, 2018.
+Tolstikhin, I., Bousquet, O., Gelly, S., and Schoelkopf, B. Wasserstein auto-encoders. In International Conference on Learning Representations, 2018.
+Tran, D., Ranganath, R., and Blei, D. Hierarchical implicit models and likelihood-free variational inference. In Advances in Neural Information Processing Systems, pp. 5523–5533, 2017.
+van der Vaart, A. W. Asymptotic Statistics. Cambridge Series in Statistical and Probabilistic Mathematics. Cambridge University Press, 1998. doi: 10.1017/CBO9780511802256.
+Vincent, P. A connection between score matching and denoising autoencoders. Neural computation, 23(7): 1661–1674, 2011.
+Wenliang, L., Sutherland, D., Strathmann, H., and Gretton, A. Learning deep kernels for exponential family densities. In Chaudhuri, K. and Salakhutdinov, R. (eds.), Proceedings of the 36th International Conference on Machine Learning, volume 97 of Proceedings of Machine Learning Research, pp. 6737–6746, Long Beach, California, USA, 09–15 Jun 2019. PMLR. URL http://proceedings.mlr. press/v97/wenliang19a.html.
+
+
+A Samples
+A.1 VAE WITH IMPLICIT ENCODERS
+A.1.1 MNIST
+Latent Dim 8 Latent Dim 32
+ELBO
+SSM
+Stein
+Spectral
+Table 4: VAE samples on MNIST.
+
+
+A.1.2 CelebA
+(a) ELBO (b) SSM
+(c) Stein (d) Spectral
+Table 5: VAE samples on CelebA.
+
+
+A.2 WAE
+A.2.1 MNIST
+Latent Dim 8 Latent Dim 32
+SSM
+Stein
+Spectral
+Table 6: WAE samples on MNIST.
+
+
+A.2.2 CelebA
+SSM
+Stein
+Spectral
+Table 7: WAE samples on CelebA.
+
+
+B PROOFS
+B.1 NOTATIONS
+Below we provide a summary of the most commonly used notations used in the proofs. First, we denote the data distribution as pd(x) and assume that the training/test data {x1, x2, · · · , xN } are i.i.d. samples of pd(x). The model is denoted as pm(x; θ), where θ is restricted to a parameter space Θ. Note that pm(x; v) can be an unnormalized energy-based model. We use v to represent a random vector with the same dimension of input x. This vector v is often called the projection vector, and we use pv to denote its distribution.
+Next, we introduce several shorthand notations for quantities related to pm(x; θ) and pd(x). The log-likelihood log pm(x; θ) and log pd(x) are respectively denoted as lm(x; θ) and ld(x). The (Stein) score function ∇x log pm(x; θ) and ∇x log pd(x) are written as sm(x; θ) and sd(x), and finally the Hessian of log pm(x; θ) w.r.t. x is denoted as ∇xsm(x; θ).
+We also adopt some convenient notations for collections. In particular, we use x1N to denote a col
+lection of N vectors {x1, x2, · · · , xN } and use v1N1M to denote N × M vectors {v11, v12, · · · , v1M , v21, v22, · · · , v2M , · · · , vN1, vN2, · · · , vNM }.
+B.2 BASIC PROPERTIES
+The following regularity conditions are needed for integration by parts and identifiability.
+Assumption 1 (Regularity of score functions). The model score function sm(x) and data score function sd(x) are both differentiable. They additionally satisfy Epd [‖sm(x)‖2
+2] < ∞ and Epd [‖sd(x)‖2
+2] < ∞.
+Assumption 2 (Regularity of projection vectors). The projection vectors satisfy Epv [‖v‖2
+2] < ∞, and Epv [vvT] 0.
+Assumption 3 (Boundary conditions). ∀θ ∈ Θ, lim‖x‖→∞ sm(x; θ)pd(x) = 0.
+Assumption 4 (Identifiability). The model family {pm(x; θ) | θ ∈ Θ} is well-specified, i.e., pd(x) = pm(x; θ∗).
+Furthermore, pm(x; θ) 6= pm(x; θ∗) whenever θ 6= θ∗.
+Assumption 5 (Positiveness). pm(x; θ) > 0, ∀θ ∈ Θ and ∀x.
+Theorem 1. Assume sm(x; θ), sd(x) and pv satisfy some regularity conditions (Assumption 1, Assumption 2). Under proper boundary conditions (Assumption 3), we have
+L(θ; pv) , 1
+2 Epv Epd
+[(vTsm(x; θ) − vTsd(x))2] = Epv Epd
+[
+vT∇xsm(x; θ)v + 1
+2 (vTsm(x; θ))2
+]
++ C, (13)
+where C is a constant w.r.t. θ.
+Proof. The basic idea of this proof is similar to that of Theorem 1 in Hyvärinen (2005). First, note that L(θ, pv) can be expanded to
+L(θ, pv) = 1
+2 Epv Epd
+[(vTsm(x; θ) − vTsd(x))2]
+(i=) 1
+2 Epv Epd [(vTsm(x; θ))2 + (vTsd(x))2 − 2(vTsm(x; θ))(vTsd(x; θ))] (14)
+= Epv Epd
+[
+− (vTsm(x; θ))(vTsd(x; θ)) + 1
+2 (vTsm(x; θ))2
+]
++ C, (15)
+where (i) is due to the assumptions of bounded expectations. We have absorbed the second term in the bracket of (14) into C since it does not depend on θ. Now what we need to prove is
+−Epv Epd [(vTsm(x; θ))(vTsd(x; θ))] = Epv Epd [vT∇xsm(x; θ)v]. (16)
+This can be shown by first observing that
+− Epv Epd [(vTsm(x; θ))(vTsd(x; θ))]
+
+
+= − Epv
+∫
+pd(x)(vTsm(x; θ))(vTsd(x; θ))dx
+= − Epv
+∫
+pd(x)(vT∇x log pm(x; θ))(vT∇x log pd(x))dx
+= − Epv
+∫
+(vT∇x log pm(x; θ))(vT∇xpd(x))dx
+= − Epv
+D
+∑
+i=1
+∫
+(vT∇x log pm(x; θ))vi
+∂pd(x) ∂xi
+dx, (17)
+where we assume x ∈ RD. Then, applying multivariate integration by parts (cf ., Lemma 4 in Hyvärinen (2005)), we obtain
+∣ ∣ ∣ ∣
+Epv
+D
+∑
+i=1
+∫
+(vTsm(x; θ))vi
+∂pd(x) ∂xi
+dx + Epv
+D
+∑
+i=1
+∫
+vipd(x)vT ∂sm(x; θ)
+∂xi
+dx
+∣ ∣ ∣ ∣
+=
+∣ ∣ ∣ ∣
+Epv
+[D ∑
+i=1
+lim
+xi→∞(vTsm(x; θ))vipd(x) −
+D
+∑
+i=1
+lim
+xi→−∞(vTsm(x; θ))vipd(x)
+]∣ ∣ ∣ ∣
+≤
+D
+∑
+i=1
+lim
+xi →∞
+D
+∑
+j=1
+Epv |vivj ||sm,j (x; θ)pd(x)| +
+D
+∑
+i=1
+lim
+xi →−∞
+D
+∑
+j=1
+Epv |vivj ||sm,j (x; θ)pd(x)|
+(i)
+≤
+D
+∑
+i=1
+lim
+xi →∞
+D
+∑
+j=1
+√
+Epv v2
+i Epv v2
+j |sm,j(x; θ)pd(x)| +
+D
+∑
+i=1
+lim
+xi →−∞
+D
+∑
+j=1
+√
+Epv v2
+i Epv v2
+j |sm,j(x; θ)pd(x)|
+(i=i)0,
+where sm,j(x; θ) denotes the j-th component of sm(x; θ). In the above derivation, (i) is due to Cauchy-Schwarz inequality and (ii) is from the assumption that Epv [‖v‖2] < ∞ and s(x; θ)pd(x) vanishes at infinity.
+Now returning to (17), we have
+−Epv
+D
+∑
+i=1
+∫
+(vT∇x log pm(x; θ))vi
+∂pd(x) ∂xi
+dx = Epv
+D
+∑
+i=1
+∫
+vipd(x)vT ∂sm(x; θ)
+∂xi
+dx
+= Epv
+∫
+pd(x)vT∇xsm(x; θ)vdx,
+which proves (16) and the proof is completed.
+Lemma 1. Assume our model family is well-specified and identifiable (Assumption 4). Assume further that the densities are all positive (Assumption 5). When pv satisfies some regularity conditions (Assumption 2), we have
+L(θ; pv) = 0 ⇔ θ = θ∗.
+Proof. First, since pd(x) = pm(x; θ∗) > 0, L(θ; pv) = 0 implies
+1
+2 Epv (vT(sm(x; θ) − sd(x)))2 = 0
+⇔ Epv vT(sm(x; θ) − sd(x))(sm(x; θ) − sd(x))Tv = 0
+⇔ (sm(x; θ) − sd(x))TEpv [vvT](sm(x; θ) − sd(x)) = 0
+(⇔i) sm(x; θ) − sd(x) = 0
+⇔ log pm(x; θ) = log pd(x) + C
+where (i) holds because Epv [vvT] is positive definite. Because pm(x; θ) and pd(x) are normalized probability density
+functions, we have pm(x; θ) = pd(x). The identifiability assumption gives θ = θ∗. This concludes the left to right direction of the implication and the converse direction is trivial.
+
+
+B.3 CONSISTENCY
+In addition to the assumptions in Theorem 1 and Lemma 1, we need the following regularity conditions to prove the consistency of θˆN,M , arg minθ∈Θ Jˆ(θ; x1N , v1N1M ).
+Assumption 6 (Compactness). The parameter space Θ is compact.
+Assumption 7 (Lipschitz continuity). Both ∇xsm(x; θ) and sm(x; θ)sm(x; θ)T are Lipschitz continuous in terms of Frobenious norm, i.e., ∀θ1 ∈ Θ, θ2 ∈ Θ, ‖∇xsm(x; θ1) − ∇xsm(x; θ2)‖F ≤ L1(x) ‖θ1 − θ2‖2 and
+‖sm(x; θ1)sm(x; θ1)T − sm(x; θ2)sm(x; θ2)T‖F ≤ L2(x) ‖θ1 − θ2‖2. In addition, we require Epd [L21(x)] < ∞
+and Epd [L22(x)] < ∞.
+Assumption 8 (Bounded moments of projection vectors). Epv [‖vvT‖2
+F ] < ∞.
+Lemma 2. Suppose sm(x; θ) is sufficiently smooth (Assumption 7) and pv has bounded higher-order moments (Assumption 8). Let f (θ; x, v) , vT∇xsm(x; θ)v + 1
+2 (vTsm(x; θ))2. Then f (θ; x, v) is Lipschitz continuous with
+constant L(x, v) and Epd,pv [L2(x, v)] < ∞.
+Proof. Let A(θ) , ∇xsm(x; θ) and B(θ) , sm(x; θ)sm(x; θ)T. Consider θ1 ∈ Θ, θ2 ∈ Θ and let D be the dimension of v, we have
+|f (θ1; x, v) − f (θ2; x, v)|
+=
+D
+∑
+i=1
+D
+∑
+j=1
+[
+vivj (A(θ1)ij − A(θ2)ij ) + 1
+2 vivj (B(θ1)ij − B(θ2)ij )
+]
+(i)
+≤
+√ √ √ √
+D
+∑
+i=1
+D
+∑
+j=1
+v2
+i v2
+j
+√ √ √ √
+D
+∑
+i=1
+D
+∑
+j=1
+[
+(A(θ1)ij − A(θ2)ij) + 1
+2 (B(θ1)ij − B(θ2)ij )
+]2
+(ii)
+≤
+√ √ √ √
+D
+∑
+i=1
+D
+∑
+j=1
+v2
+i v2
+j
+√ √ √ √
+D
+∑
+i=1
+D
+∑
+j=1
+2(A(θ1)ij − A(θ2)ij )2 + 1
+2 (B(θ1)ij − B(θ2)ij )2
+(iii)
+≤
+√ √ √ √
+D
+∑
+i=1
+D
+∑
+j=1
+v2
+i v2
+j
+√
+2L21(x) ‖θ1 − θ2‖2
+2+ 1
+2 L22(x) ‖θ1 − θ2‖2
+2
+=
+√ √ √ √
+D
+∑
+i=1
+D
+∑
+j=1
+v2
+i v2
+j
+√
+2L21(x) + 1
+2 L22(x) ‖θ1 − θ2‖2 ,
+where (i) is Cauchy-Schwarz inequality, (ii) is Jensen’s inequality, and (iii) is due to Assumption 7. Now let
+L(x, v) ,
+√ √ √ √
+D
+∑
+i=1
+D
+∑
+j=1
+v2
+i v2
+j
+√
+2L21(x) + 1
+2 L22(x).
+Then
+Epd,pv [L2(x, v)] (i=) Epv
+[D ∑
+i=1
+D
+∑
+j=1
+v2
+i v2
+j
+]
+Epd
+[
+2L2
+1(x) + 1
+2 L2
+2(x)
+]
+(ii)
+< ∞,
+where (i) results from the independence of v, x, and (ii) is due to Assumption 7 and Assumption 8.
+Lemma 3 (Uniform convergence of the expected error). Under Assumption 6-8, we have
+Epv ,pd
+[
+sup
+θ∈Θ
+∣
+∣Jˆ(θ; xN
+1 , vNM
+11 ) − J (θ; pv)∣
+∣
+]
+≤O
+(
+diam(Θ)
+√D
+N
+)
+(18)
+where diam(·) denotes the diameter and D is the dimension of Θ.
+
+
+Proof. The proof consists of 3 steps. First, we use the symmetrization trick to get rid of the inner expectation term J (θ; pv) = Epv,pd [Jˆ(θ; x1N , v1N1M )]. Second, we use chaining to get an upper bound that involves integration of the metric entropy. Finally, we upper bound the metric entropy to obtain the uniform convergence bound.
+Step 1: From Jensen’s inequality, we obtain
+Epv ,pd
+[ sup
+θ∈Θ
+∣
+∣Jˆ(θ; xN
+1 , vNM
+11 ) − J (θ; pv)∣
+∣
+]
+=Epv ,pd
+[ sup
+θ∈Θ
+∣
+∣Jˆ(θ; xN
+1 , vNM
+11 ) − Epv,pd [Jˆ(θ; xN
+1 , vNM
+11 )]∣
+∣
+]
+=Epv ,pd
+[ sup
+θ∈Θ
+∣
+∣Jˆ(θ; xN
+1 , vNM
+11 ) − Epv,pd [Jˆ(θ; x′N
+1 , v′NM
+11 ]∣
+∣
+]
+≤Epv ,pd
+[ sup
+θ∈Θ
+∣
+∣Jˆ(θ; xN
+1 , vNM
+11 ) − Jˆ(θ; x′N
+1 , v′NM
+11 )∣
+∣
+],
+where x′N
+1 , v′NM
+11 are independent copies of x1N and v1N1M . Let { i}N
+i=1 be a set of independent Rademacher random variables, we have
+Epv ,pd
+[ sup
+θ∈Θ
+∣
+∣Jˆ(θ; xN
+1 , vNM
+11 ) − Jˆ(θ; x′N
+1 , v′NM
+11 )∣
+∣
+]
+=Epv ,pd
+[
+sup
+θ∈Θ
+1 N
+1 M
+∣ ∣ ∣ ∣
+N
+∑
+i=1
+M
+∑
+j=1
+vT
+ij ∇xsm(xi; θ)vij + 1
+2
+(vT
+ij sm(xi; θ))2
+} {{ }
+,f (θ;xi,vij )
+−
+[
+v′T
+ij ∇xsm(x′
+i; θ)v′ij + 1
+2
+(v′T
+ij sm(x′
+i; θ))2
+} {{ }
+,f (θ;x′
+i ,v′
+ij )
+]∣ ∣ ∣ ∣
+]
+=Epv ,pd
+[
+sup
+θ∈Θ
+1 N
+1 M
+∣ ∣ ∣ ∣
+N
+∑
+i=1
+M
+∑
+j=1
+f (θ; xi, vij) − f (θ; x′
+i, v′
+ij )
+∣ ∣ ∣ ∣
+]
+(i=)E
+[
+sup
+θ∈Θ
+∣ ∣ ∣ ∣
+1 N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+i(f (θ; xi, vij) − f (θ; x′
+i, v′
+ij ))
+∣ ∣ ∣ ∣
+]
+(ii)
+≤E
+[
+sup
+θ∈Θ
+∣ ∣ ∣ ∣
+1 N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+if (θ; xi, vij )
+∣ ∣ ∣ ∣
+]
++E
+[
+sup
+θ∈Θ
+∣ ∣ ∣ ∣
+1 N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+if (θ; x′
+i, v′
+ij )
+∣ ∣ ∣ ∣
+]
+=2E
+[
+sup
+θ∈Θ
+∣ ∣ ∣ ∣
+1 N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+if (θ; xi, vij )
+∣ ∣ ∣ ∣
+]
+, (19)
+where (i) is because the quantity is symmetric about 0 in distribution, and (ii) is due to Jensen’s inequality.
+Step 2: First note that given xi, vij, i
+M
+∑M
+j=1 f (θ; xi, vij) is a zero-mean sub-Gaussian process w.r.t. θ. This can be observed from
+E
+i
+[
+eλ i
+M
+∑M
+j=1[f (θ1;xi,vij )−f (θ2;xi,vij )]]
+(i)
+≤ exp
+
+
+
+λ2
+2M 2
+(M ∑
+j=1
+[f (θ1; xi, vij) − f (θ2; xi, vij)]
+)2
+
+
+
+(ii)
+≤ exp
+
+
+
+λ2
+2M 2 M
+M
+∑
+j=1
+[f (θ1; xi, vij ) − f (θ2; xi, vij )]2
+
+
+
+(iii)
+≤ exp
+
+
+
+λ2
+2M
+M
+∑
+j=1
+L2(xi, vij ) ‖θ1 − θ2‖2
+
+
+
+,
+where (i) holds because i is a 1-sub-Gaussian random variable, (ii) is from Cauchy-Schwarz inequality and (iii) is due to Lemma 2. As a result, 1
+N
+1 M
+∑N i=1
+∑M
+j=1 if (θ; xi, vij) is a zero-mean sub-Gaussian random process with
+
+
+metric
+d(θ1, θ2) = √1N
+√ √ √ √
+1 NM
+N
+∑
+i=1
+M
+∑
+j=1
+L2(xi, vij ) ‖θ1 − θ2‖ .
+Since Θ is compact, the diameter of Θ with respect to the Euclidean norm ‖·‖2 is finite and we denote it as diam(Θ) < ∞. Then, Dudley’s entropy integral (Dudley, 1967) gives
+E
+[
+sup
+θ∈Θ
+∣ ∣ ∣ ∣
+1 N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+if (θ; xi, vij )
+∣ ∣ ∣ ∣
+]
+≤ O(1)E
+[ ∫ √1N
+√1 NM
+∑N i=1
+∑M
+j=1 L2(xi,vij ) diam(Θ)
+0
+√log N (Θ, d, )d
+]
+.
+(20)
+Here log N (Θ, d, ) is the metric entropy of Θ with metric d(θ1, θ2) =
+√1N
+√
+1 NM
+∑N i=1
+∑M
+j=1 L2(xi, vij ) ‖θ1 − θ2‖2 and size .
+Step 3: When the dimension of θ ∈ Θ is D, it is known that the -covering number of Θ with Euclidean distance is
+N (Θ, ‖·‖ , ) ≤
+(
+1 + diam(Θ) )D
+.
+Therefore, N (Θ, d, ) can be bounded by
+N (Θ, d, ) ≤
+
+1 +
+√ √ √ √
+1 NM
+N
+∑
+i=1
+M
+∑
+j=1
+L2(xi, vij) diam(Θ)
+√N
+
+
+D
+.
+Hence, the metric integral can be bounded
+∫ √1N
+√1 NM
+∑N i=1
+∑M
+j=1 L2(xi,vij ) diam(Θ)
+0
+√log N (Θ, d, )d
+≤
+∫ √1N
+√1 NM
+∑N i=1
+∑M
+j=1 L2(xi,vij ) diam(Θ)
+0
+√ √ √ √
+√D log
+(
+1+
+√ √ √ √
+1 NM
+N
+∑
+i=1
+M
+∑
+j=1
+L2(xi, vij) diam(Θ)
+√N
+)
+d
+≤
+∫ √1N
+√1 NM
+∑N i=1
+∑M
+j=1 L2(xi,vij ) diam(Θ)
+0
+√ √ √ √ √
+√ √ √ √
+1 NM
+N
+∑
+i=1
+M
+∑
+j=1
+L2(xi, vij) D diam(Θ)
+√N d
+=2
+√ √ √ √
+1 NM
+N
+∑
+i=1
+M
+∑
+j=1
+L2(xi, vij )
+√D
+N diam(Θ) (21)
+Finally, combining (19), (20) and (21) gives us
+Epv ,pd
+[
+sup
+θ∈Θ
+∣
+∣Jˆ(θ; xN
+1 , vNM
+11 ) − J (θ; pv)∣
+∣
+]
+≤4O(1)Epv ,pd
+
+
+√ √ √ √
+1 NM
+N
+∑
+i=1
+M
+∑
+j=1
+L2(xi, vij )
+√D
+N diam(Θ)
+
+
+(i)
+≤O(1)
+√D
+N diam(Θ)
+√ √ √
+√Epv ,pd
+[1
+NM
+N
+∑
+i=1
+M
+∑
+j=1
+L2(xi, vij )
+]
+
+
+(ii)
+≤ O(1) diam(Θ)
+√D
+N,
+where (i) is due to Jensen’s inequality and (ii) results from E[L2(x, v)] < ∞, and the compactness of Θ guarantees that the bound is finite.
+Theorem 2. Suppose all the previous assumptions hold (Assumption 1-Assumption 8). Assume further the conditions of Theorem 1 and Lemma 1 are satisfied. Let θ∗ be the true parameter of the data distribution, and θˆN,M be the empirical estimator defined by
+θˆN,M , arg min
+θ∈Θ
+Jˆ(θ; xN
+1 , vNM
+11 )
+Then, θˆN,M is consistent, meaning that
+θˆN,M
+→p θ∗
+as N → ∞.
+Proof. Note that Theorem 1 and Lemma 1 together imply that θ∗ = arg minθ∈Θ J(θ; pv). Then, we will show
+J (θˆN,M ; pv) →p J (θ∗; pv) when N → ∞. This can be done by noticing
+J (θˆN,M ; pv) − J (θ∗; pv) =J (θˆN,M ; pv) − Jˆ(θˆN,M ; xN
+1 , vNM
+11 ) + Jˆ(θˆN,M ; xN
+1 , vNM
+11 ) − Jˆ(θ∗; xN
+1 , vNM
+11 )
++ Jˆ(θ∗; xN
+1 , vNM
+11 ) − J (θ∗; pv)
+≤ sup
+θ∈Θ
+|Jˆ(θ; xN
+1 , vNM
+11 ) − J (θ; pv)| + |Jˆ(θ∗; xN
+1 , vNM
+11 ) − J (θ∗; pv)|
+≤2 sup
+θ∈Θ
+|Jˆ(θ; xN
+1 , vNM
+11 ) − J (θ; pv)| (22)
+We can easily conclude that (22) is op(1) with the help of Lemma 3, because
+P
+(
+sup
+θ∈Θ
+|Jˆ(θ; xN
+1 , vNM
+11 ) − J (θ; pv)| > t
+)
+≤E
+[
+sup
+θ∈Θ
+|Jˆ(θ; xN
+1 , vNM
+11 ) − J (θ; pv)||
+]
+/t ≤ O(1)
+√1
+N t2 → 0,
+as N → ∞. From Lemma 1 we also have L(θˆN,M ; pv) − L(θ∗; pv) > 0 if θˆN,M 6= θ. As shown by Theorem 1, this
+is the same as J (θˆN,M ; pv) − J (θ∗; pv) > 0 if θˆN,M 6= θ. Therefore (22) = op(1) gives J (θˆN,M ; pv) →p J (θ∗; pv).
+Next, we show θˆN,M
+→p θ∗. This can be inferred from J (θˆN,M ; pv) →p J (θ∗; pv) because J (θ; pv) is continuous (Assumption 7) and Θ is compact (Assumption 6). The proof is reductio ad absurdum. Specifically, assume that θˆN,M 6→p θ∗. We know ∃ > 0, δ > 0, ∀K > 0, ∃N > K, M > 0 such that P (‖θˆN,M − θ∗‖ ≥ ) ≥ δ. Note that J(θ; pv) = E[f (θ; x, v)], f (θ; x, v) is Lipschitz continuous and E[L(θ; x, v)] ≤ √E[L2(θ; x, v)] < ∞. This implies that J(θ; pv) is continuous w.r.t. θ. Since Θ is compact and J(θ; pv) is continuous, we can define a compact
+set S , {θ ∈ Θ|‖θ − θ∗‖ ≥ } and let θS , arg minθ∈S J(θ; pv). Observe that
+p(J (θˆN,M ; pv) ≥ J (θS ; pv)) = p(|J (θˆN,M ; pv) − J (θ∗; pv)| ≥ J (θS ; pv) − J (θ∗; pv))
+≥ p(‖θˆN,M − θ∗‖ ≥ ) ≥ δ.
+However, the fact that p(|J(θˆN,M ; pv) − J(θ∗; pv)| ≥ J(θS ; pv) − J(θ∗; pv)) ≥ δ holds for arbitrarily large N
+contradicts J (θˆN,M ; pv) →p J (θ∗; pv).
+B.4 ASYMPTOTIC NORMALITY
+Notations. To simplify notations we use ∂i∂jh(·) , (∇2xh(·))ij, ∂ih(·) , (∇xh(·))i, and denote ∇xh(x)|x=x′ as ∇xh(x′). Here h(·) denotes some arbitrary function. Let lm , log pm(x; θ), lm(x; θ) , log pm(x; θ) and further adopt the following notations
+J (θ) , Epd
+[
+tr(∇xsm(x; θ)) + 1
+2 ‖sm(x; θ)‖2
+2
+]
+
+
+f (θ; x, v) , vT∇xsm(x; θ)v + 1
+2 (vTsm(x; θ))2
+f (θ; x, vM
+1 ), 1
+M
+M
+∑
+j=1
+f (θ; x, vj) = 1
+M
+M
+∑
+j=1
+vT
+j ∇xsm(x; θ)vj + 1
+2 (vT
+j sm(x; θ))2
+f (θ; x) , tr(∇xsm(x; θ)) + 1
+2 ‖sm(x; θ)‖2
+2
+Σij , (Epv [vvT])ij
+Sijpq , Epv [vivj vpvq]
+Vijpq , Epd
+[(
+∇θ∂i∂j lm + 1
+2 ∇θ(∂ilm∂j lm)
+)(
+∇θ∂p∂qlm + 1
+2 ∇θ(∂plm∂qlm)
+)T] ∣ ∣ ∣
+∣θ=θ∗
+Vij , Viijj
+Wij , Vijij
+For the proof of asymptotic normality we need the following extra assumptions.
+Assumption 9 (Lipschitz smoothness on second derivatives). For θ1, θ2 near θ∗, and ∀i, j,
+∥
+∥∇2
+θ∂i∂j lm(x; θ1) − ∇2
+θ∂i∂j lm(x; θ2)∥
+∥F ≤ Mij (x) ‖θ1 − θ2‖2
+∥
+∥∇2
+θ∂ilm(x; θ1)∂j lm(x; θ1) − ∇2
+θ∂ilm(x; θ2)∂j lm(x; θ2)∥
+∥F ≤ Nij (x) ‖θ1 − θ2‖2
+and
+Epd [M 2
+ij (x)] < ∞, Epd [N 2
+ij(x)] < ∞, ∀i, j.
+Lemma 4. Suppose lm(x; θ) is sufficiently smooth (Assumption 9) and pv has bounded moments (Assumption 2 and Assumption 8). Let ∇2
+θf (θ; x, v1M ) , 1
+M
+∑M
+i=1 ∇2
+θ vT
+i ∇xsm(x; θ)vi + 1
+2 ∇2
+θ (vT
+i sm(x; θ))2. Then ∇2
+θf (θ; x, v) is
+Lipschitz continuous, i.e., for θ1 and θ2 close to θ∗, there exists a Lipschitz constant L(x, v1M ) such that
+∥
+∥∇2
+θf (θ1; x, vM
+1 ) − ∇2
+θf (θ2; x, vM
+1 )∥
+∥F ≤ L(x, vM
+1 ) ‖θ1 − θ2‖2 ,
+and Epd,pv [L2(x, v1M )] < ∞.
+Proof. First, we write out ∇2
+θf (θ1; x, v1M ) − ∇2
+θf (θ2; x, v1M ) according to the definitions. Let Aij(θ) , ∇2
+θ∂i∂jlm(x; θ) and Bij(θ) , ∇2
+θ∂ilm(x; θ)∂jlm(x; θ). Then,
+∇2
+θf (θ1; x, vM
+1 ) − ∇2
+θf (θ2; x, vM
+1 )= 1
+M
+∑
+i,j,k
+vk,ivk,j
+[
+Aij (θ1) − Aij (θ2) + 1
+2 (Bij (θ1) − Bij (θ2))
+]
+.
+Then, Cauchy-Schwarz and Jensen’s inequality give
+∥
+∥∇2
+θf (θ1; x, vM
+1 ) − ∇2
+θf (θ2; x, vM
+1 )∥
+∥
+2 F
+=
+∑
+l,m
+(1
+M
+∑
+i,j,k
+vk,ivk,j
+[
+Aij (θ1)lm − Aij (θ2)lm + 1
+2 (Bij (θ1)lm − Bij (θ2))lm
+])2
+≤
+∑
+l,m
+
+  
+1 M
+√ √ √ √
+∑
+i,j
+( ∑
+k
+vk,ivk,j
+)2
+·
+√ √ √ √
+∑
+i,j
+[
+Aij (θ1)lm − Aij (θ2)lm + 1
+2 (Bij (θ1)lm − Bij (θ2))lm
+]2
+
+  
+2
+≤
+∑
+l,m
+1 M2
+( ∑
+i,j
+( ∑
+k
+vk,ivk,j
+)2)(
+∑
+i,j
+(
+2
+[
+Aij (θ1)lm − Aij (θ2)lm
+]2
++1
+2
+[
+(Bij (θ1)lm − Bij (θ2))lm
+]2)
+)
+
+
+=1
+M2
+( ∑
+i,j
+( ∑
+k
+vk,ivk,j
+)2)(
+∑
+i,j
+( ∑
+l,m
+2
+[
+Aij (θ1)lm − Aij (θ2)lm
+]2
++
+∑
+l,m
+1 2
+[
+(Bij (θ1)lm − Bij (θ2))lm
+]2)
+)
+=1
+M2
+( ∑
+i,j,p,q
+vp,ivp,j vq,ivq,j
+)(
+∑
+i,j
+(
+2 ‖Aij (θ1) − Aij (θ2)‖2
+F+1
+2 ‖Vij (θ1) − Vij (θ2)‖2
+F
+)
+)
+≤1
+M2
+( ∑
+i,j,p,q
+vp,ivp,j vq,ivq,j
+)(
+∑
+i,j
+(
+2M 2
+ij + 1
+2N2
+ij
+))
+} {{ }
+,L2 (x,vM
+1)
+‖θ1 − θ2‖2
+2
+Next, we bound the expectation
+Epd,pv [L2(x, vM
+1 )] = 1
+M 2 Epv
+[ ∑
+i,j,p,q
+vp,ivp,j vq,ivq,j
+]
+Epd
+[ ∑
+ij
+2M 2
+ij(x) + 1
+2N2
+ij (x)
+]
+(i)
+≤ O(1)Epv
+[ ∑
+i,j,p,q
+vp,ivp,j vq,ivq,j
+]
+= O(1)
+(∑
+ij
+M (M − 1)Epv [vivj ]2 + M Epv [(vivj )2]
+)
+= O(1)
+(
+M (M − 1) ‖Epv [vvT]‖2
+F + M Epv [‖vvT‖2
+F
+)
+(ii)
+≤ O(1)
+(
+M (M − 1)Epv [‖vvT‖2
+F ] + M Epv [‖vvT‖2
+F
+) (iii)
+< ∞,
+where (i) is due to Assumption 9, (ii) is Jensen’s, and (iii) is because of Assumption 2 and 8.
+Lemma 5. Assume that conditions in Theorem 1 and Lemma 1 hold, and pv has bounded higher-order moments (Assumption 8). Then
+Varpd,pv
+[∇θf (θ∗; x, vM
+1 )] =
+∑
+i,j,p,q
+[(
+1− 1
+M
+)
+Σij Σpq + 1
+M Sijpq
+]
+Vijpq, (23)
+where ∇θf (θ∗; x, v1M ) = ∇θf (θ; x, v1M )∣
+∣θ=θ∗
+In particular, if pv ∼ N (0, I), we have
+Varpd,pv
+[∇θf (θ∗; x, vM
+1 )] =
+∑
+ij
+Vij + 2
+M
+∑
+i
+Vii + 2
+M
+∑
+i6=j
+Wij .
+If pv is the distribution of multivariate Rademacher random variables, we have
+Varpd,pv
+[∇θf (θ∗; x, vM
+1 )] =
+∑
+ij
+Vij + 2
+M
+∑
+i6=j
+Wij .
+Proof. Since θ∗ is the true parameter of the data distribution, we have
+Epd,pv [∇θf (θ∗; x, vM
+1 )] = ∇θEpd,pv [f (θ∗; x, vM
+1 )] = ∇θJ (θ∗; pv) = 0.
+Therefore, (23) can be expanded as
+Varpd,pv
+[∇θf (θ∗; x, vM
+1 )]
+=Epd,pv
+[∇θf (θ∗; x, vM
+1 )∇θf (θ∗; x, vM
+1 )T]
+=E
+
+
+∑
+i,j,p,q
+
+
+1 M2
+∑
+k,l
+vk,ivk,j vl,pvl,q
+
+
+(
+∇θ∂i∂j lm + 1
+2 ∇θ(∂ilm∂j lm)
+)(
+∇θ∂p∂qlm + 1
+2 ∇θ(∂plm∂qlm)
+)T
+
+
+
+
+=
+∑
+i,j,p,q
+E
+
+
+1 M2
+∑
+k,l
+vk,ivk,j vl,pvl,q
+
+
+} {{ }
+,E1
+E
+[(
+∇θ∂i∂j lm + 1
+2 ∇θ(∂ilm∂j lm)
+)(
+∇θ∂p∂qlm + 1
+2 ∇θ(∂plm∂qlm)
+)T]
+} {{ } Vijpq
+.
+Continuing on E1, we have that
+E1 = 1
+M2
+∑
+k6=l
+E[vk,ivk,j ]E[vl,pvl,q] + 1
+M2
+∑
+k
+E[vk,ivk,j vk,pvk,q]
+=
+(
+1− 1
+M
+)
+Σij Σpq + 1
+M Sijpq,
+which leads to (23). Note that Assumption 2 guarantees that |Σij| < ∞ and Assumption 8 ensures |Sijpq| < ∞.
+If pv ∼ N (0, I), S and Σ have the following simpler forms
+Σij = δij
+Sijpq =
+
+ 
+ 
+3, i = j = p = q
+1, i = j 6= p = q or i = p 6= j = q or i = q 6= j = p
+0, otherwise
+.
+Then, if we assume that the second derivatives of lm are continuous, we have ∂i∂jlm = ∂j∂ilm, and the variance (23) can also be simplified to
+Varpd,pv
+[∇θf (θ∗; x, vM
+1 )] =
+∑
+i6=j
+Vij + M + 2
+M
+∑
+i
+Vii + 2
+M
+∑
+i6=j
+Wij =
+∑
+ij
+Vij + 2
+M
+∑
+i
+Vii + 2
+M
+∑
+i6=j
+Wij .
+Similarly, if pv ∼ U ({±1}D), (23) has the simplified form
+Varpd,pv
+[∇θf (θ∗; x, vM
+1 )] =
+∑
+ij
+Vij + 2
+M
+∑
+i6=j
+Wij .
+Theorem 3. With the notations and assumptions in Lemma 4, Lemma 5 and Theorem 2, we have
+√
+N (θˆN,M − θ∗) →d
+N
+(
+0,
+(
+∇2
+θJ (θ∗; pv)
+)−1(
+∑
+i,j,p,q
+[(
+1− 1
+M
+)
+Σij Σpq + 1
+M Sijpq
+]
+Vijpq
+)(
+∇2
+θJ (θ∗; pv)
+)−1)
+.
+In particular, if pv ∼ N (0, I), then the asymptotic variance is
+(
+∇2
+θJ (θ∗)
+)−1(
+∑
+ij
+Vij + 2
+M
+∑
+i
+Vii + 2
+M
+∑
+i6=j
+Wij
+)(
+∇2
+θJ (θ∗)
+)−1
+.
+If pv is the distribution of multivariate Rademacher random variables, the asymptotic variance is
+(
+∇2
+θJ (θ∗)
+)−1(
+∑
+ij
+Vij + 2
+M
+∑
+i6=j
+Wij
+)(
+∇2
+θJ (θ∗)
+)−1
+.
+Proof. To simplify notations, we use PN h(x) , 1
+N
+∑N
+i=1 h(xi, ·), where h(x, ·) is some arbitrary function.
+For example, Jˆ(θ; x1N , v1N1M ) can be written as PN f (θ; x, v1M ). By Taylor expansion, we can approximate
+PN ∇θf (θˆN,M ; x, v1M ) around θ∗:
+0 = ∇θPN f (θˆN,M ; x, vM
+1)
+
+
+= PN ∇θf (θ∗; x, vM
+1 ) + PN
+(
+∇2
+θf (θ∗; x, vM
+1 ) + EθˆN,M ,x,vM
+1
+)
+(θˆN,M − θ∗), (24)
+where ‖EθˆN,M ,x,vM
+1
+‖F ≤ L(x, v1M )‖θˆN,M − θ∗‖2 from Lemma 4 and Taylor expansion of vector-valued functions. Combining with the law of large numbers, we have
+PN ∇2
+θf (θ∗; x, vM
+1 ) = Epd,pv [∇2
+θf (θ∗; x, vM
+1 )] + op(1)
+and
+∥ ∥
+∥PN EθˆN,M
+∥ ∥ ∥F
+≤ Epd,pv [L(x, vM
+1 )]
+∥ ∥ ∥
+θˆN,M − θ∗∥
+∥ ∥2
++ op(1) = op(1) + op(1) = op(1),
+where we used E[L(x, v1M )] ≤ √E[L2(x, v1M )] < ∞ (Lemma 4) and the consistency of θˆN,M (Theorem 2). Now returning to (24), we get
+0 = PN ∇θf (θ∗; x, vM
+1 )+
+(
+Epd,pv [∇2
+θf (θ∗; x, vM
+1 )] + op(1)
+)
+(θˆN,M − θ∗)
+⇔
+(
+∇2
+θJ (θ∗; pv) + op(1)
+)√
+N (θˆN,M − θ∗) = −
+√
+N PN ∇θf (θ∗; x, vM
+1 ).
+But of course, the central limit theorem and Lemma 5 yield
+−
+√
+N PN ∇θf (θ∗; x, vM
+1 ) →d N (0, Varpd,pv
+[∇θf (θ∗; x, vM
+1 )])
+=N
+(
+0,
+∑
+i,j,p,q
+[(
+1− 1
+M
+)
+Σij Σpq + 1
+M Sijpq
+]
+Vijpq
+)
+.
+Then, Slutsky’s theorem gives the desired result √
+N (θˆN,M − θ∗) →d
+N
+(
+0,
+(
+∇2
+θJ (θ∗; pv)
+)−1(
+∑
+i,j,p,q
+[(
+1− 1
+M
+)
+Σij Σpq + 1
+M Sijpq
+]
+Vijpq
+)(
+∇2
+θJ (θ∗; pv)
+)−1)
+.
+In particular, if pv ∼ N (0, I) or pv ∼ U ({±1}D), we have J(θ∗; pv) = J(θ∗), and therefore ∇2
+θJ (θ∗; pv) =
+∇2
+θJ(θ∗). We can apply Lemma 5 to conclude the simplified expressions for the asymptotic variance.
+Corollary 1 (Consistency and asymptotic normality of score matching). Under similar assumptions used in Theorem 2 and Theorem 3, we can also conclude that the score matching estimator θˆN , arg minθ∈Θ Jˆ(θ; x) is consistent
+θˆN
+→p θ∗
+and asymptotically normal
+√
+N (θˆN − θ∗) d → N
+(
+0,
+(
+∇2
+θJ (θ∗)
+)−1(
+∑
+ij
+Vij
+)(
+∇2
+θJ (θ∗)
+)−1)
+.
+Proof. Note that
+Varpd [∇θf (θ∗; x)] = Epd [∇θf (θ∗; x)∇θf (θ∗; x)T]
+= Epd
+
+
+( ∑
+i
+∇θ∂i∂ilm + 1
+2 ∇θ(∂ilm∂ilm)
+)
+
+
+∑
+j
+∇θ∂j ∂j lm + 1
+2 ∇θ(∂j lm∂j lm)
+
+
+T
+
+=
+∑
+ij
+Epd
+[(
+∇θ∂i∂ilm + 1
+2 ∇θ(∂ilm∂ilm)
+)(
+∇θ∂j ∂j lm + 1
+2 ∇θ(∂j lm∂j lm)
+)T]
+=
+∑
+ij
+Vij
+The other part of the proof is similar to that of Theorem 2 and Theorem 3 and is thus obmitted.
+
+
+B.5 NOISE CONTRASTIVE ESTIMATION
+Proposition 1. Define
+JNCE(θ) , −Epd [log h(x; θ)] − Epn [log(1 − h(x; θ))]
+where
+h(x; θ) , pm(x; θ)
+pm(x; θ) + pm(x − v; θ)
+pn(x) = pd(x + v).
+Then when ‖v‖2 → 0, we have
+JNCE(θ) = 2 log 2 + 1
+4 Epd
+[
+vT∇2 log pm(x; θ)v + 1
+2 (∇ log pm(x; θ)Tv)2
+]
++ o(‖v‖2
+2)
+Proof. Using Taylor expansion, we can immediately get
+log pm(x + v; θ) = log pm(x; θ) + ∇ log pm(x; θ)Tv + 1
+2 vT∇2 log pm(x; θ)v + o(‖v‖2
+2).
+Next, observe that
+log(pm(x; θ) + pm(x + v; θ)) = log pm(x; θ) + log (1 + exp{log pm(x + v; θ) − log pm(x; θ)})
+= log pm(x; θ) + log
+(
+1 + exp
+{
+∇ log pm(x; θ)Tv + 1
+2 vT∇2 log pm(x; θ)v + o(‖v‖2
+2)
+})
+= log pm(x; θ) + log 2 + 1
+2
+[
+∇ log pm(x; θ)Tv + 1
+2 vT∇2 log pm(x; θ)v
+]
++1
+8 (∇ log pm(x; θ)Tv)2 + o(‖v‖2
+2).
+Similarly, we have
+log(pm(x; θ) + pm(x − v; θ))
+= log pm(x; θ) + log 2 + 1
+2
+[
+−∇ log pm(x; θ)Tv + 1
+2 vT∇2 log pm(x; θ)v
+]
++1
+8 (∇ log pm(x; θ)Tv)2 + o(‖v‖2
+2).
+Finally, note that
+JNCE(θ) = −Epd [log h(x; θ) + log(1 − h(x + v; θ))]
+= −Epd [log pm(x; θ) − log(pm(x; θ) + pm(x − v; θ))] − Epd [log pm(x; θ) − log(pm(x; θ) + pm(x + v; θ))]
+= 2 log 2 + 1
+4 Epd
+[
+vT∇2 log pm(x; θ)v + 1
+2 (∇ log pm(x; θ)Tv)2
+]
++ o(‖v‖2
+2),
+as desired.
+C ADDITIONAL DETAILS OF EXPERIMENTS
+C.1 KERNEL EXPONENTIAL FAMILIES
+Model. The kernel exponential family is a class of densities with unnormalized log density given by log p ̃f (x) = f (x) + log q0(x). Here, q0 is a fixed function and f belongs to a reproducing kernel Hilbert space H, with kernel k (Canu & Smola, 2006; Sriperumbudur et al., 2017). We see this is a member of the exponential family by using reproducing property, f (x) = 〈f, k(x, ·)〉H). Rewriting the density, the model has natural parameter f and sufficient statistic k(x, ·):
+p ̃f (x) = exp(f (x))q0(x) = exp(〈f, k(x, ·)〉H))q0(x)
+
+
+To improve computational cost of learning f, Sutherland et al. (2018) use a Nyström-type lite approximation, selecting L inducing points zl, and f of the form:
+f (x) =
+L
+∑
+l=1
+αlk(x, zl)
+We compare training using our objective against deep kernel exponential family (DKEF) models trained using exact score matching in Wenliang et al. (2019).
+The kernel k(x, y) is a mixture of R = 3 Gaussian kernels, with features extracted by a neural network, φwr (·), length scales σr, and nonnegative mixture coefficients ρr. The neural network is a three layer fully connected network with a skip connection from the input to output layers and softplus nonlinearities. Each hidden layer has 30 neurons. We have:
+kw(x, y) =
+R
+∑
+r=1
+ρr exp
+(
+−1
+2σr2
+‖φwr (x) − φwr (y)‖2
+)
+.
+When training DKEF models, Wenliang et al. (2019) note that it is possible to analytically minimize the score matching loss over α because the objective is quadratic in α. As a result, models are trained in a two step procedure: α is analytically minimized over a training minibatch, then the loss is computed over a validation minibatch. When training models, the analytically minimized α is treated as function of the other parameters. By doing this, Wenliang et al. (2019) can also directly optimize the coefficient λα of a `2 regularization loss on α. This regularization coefficient is initalized to 0.01, and is trained. (More details about the two-step optimization procedure can be found in Wenliang et al. (2019), which also includes a finalization stage for α).
+A similar closed form for sliced score matching, denoising score matching, approximate backpropogation, and curvature propagation can be derived. The derivation for sliced score matching is presented below for completeness.
+Proposition 2. Consider the loss
+Jˆ(θ, λα; xN
+1 , vNM
+11 ) = Jˆ(θ; xN
+1 , vNM
+11 ) + 1
+2 λα ‖α‖2
+2
+where
+Jˆ(θ; xN
+1 , vNM
+11 ) = 1
+N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+[
+vT
+ij ∇2 log pm(xi)vij + 1
+2
+(vT
+ij ∇ log pm(xi))2
+]
+.
+For fixed k, z, and λα, as long as λα > 0 then the optimal α is
+α(λα, k, z, xN
+1 , vNM
+11 ) = arg min
+α
+Jˆ(θ, λα; xN
+1 , vNM
+11 ) = − (G + λαI)−1 b
+Gl,l′ = 1
+N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+(vT
+ij ∇k(xi, zl)) (vT
+ij ∇k(xi, zl′ ))
+bl = 1
+N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+vT
+ij ∇2k(xi, zl)vij + (vT
+ij∇ log q0(xi)) (vT
+ij∇k(xi, zl)) .
+Proof. The derivation follows very similarly to Proposition 3 in Wenliang et al. (2019). We will show that the loss is quadratic in α. Note that
+1 N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+vT
+ij ∇2 log pm(xi)vij = 1
+N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+[M ∑
+m=1
+αlvT
+ij ∇2k(xi, zl)vij
+]
++C
+= αT
+
+
+1 N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+vT
+ij ∇2k(xi, zl)vij
+
+
+l
++C
+
+
+1 N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+1 2
+(vT
+ij∇ log pm(xi))2 = 1
+N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+1 2
+
+
+M
+∑
+m,m′ =1
+αlαm′
+(vT
+ij ∇k(xi, zl)) (vT
+ij ∇k(xi, zl′ ))
++2
+M
+∑
+m=1
+αl
+(vT
+ij∇ log q0(xi)) (vT
+ij∇k(xi, zl)) + (vT
+ij ∇ log q0(xi))2
+)
+=1
+2 αTGα + αT
+
+
+1 N
+1 M
+N
+∑
+i=1
+M
+∑
+j=1
+(vT
+ij∇ log q0(xi)) (vT
+ij ∇k(xi, zl))
+
+ + C.
+Thus the overall optimization problem is
+α(λα, k, z, xN
+1 , vNM
+11 ) = arg min
+α
+Jˆ(θ, λα; xN
+1 , vNM
+11 )
+= arg min
+α
+1
+2 αT (G + λαI) α + αTb.
+Because λα > 0 and G is positive semidefinite, the matrix in parentheses is strictly positive definite, and the claimed result follows directly from standard vector calculus.
+Hyperparameters. RedWine and WhiteWine are dequantized by adding uniform noise to each dimension in the range [−d, d] where d is the median distance between two values for that dimension. For each dataset, 10% of the entire data was used as testing, and 10% of the remaining was used for validation. PCA whitening is applied to the data. Noise of standard deviation 0.05 is added as part of preprocessing.
+The DKEF models have R = 3 Gaussian kernels. Each feature extractor is a 3-layer neural network with a skip connection from the input to output, with 30 hidden neurons per layer. Weights were initialized from a Gaussian distribution with standard deviation equal to √130 . Length scales σr were initialized to 1.0, 3.3 and 10.0. We use L = 200 trainable inducing points, which were initialized from training data.
+Models are trained using an Adam optimizer, with learning rate 10−2. A batch size of 200 is used, with 100 points for computing α, and 100 for computing the loss. Models are stopped after validation loss does not improve for 200 steps.
+For denoising score matching, we perform a grid search with values [0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.20, 0.24, 0.28, 0.32, 0.40, 0.48, 0.56, 0.64, 1.28]. We train models for each value of σ using two random seeds, and pick the σ with the best average validation score matching loss. For curvature propagation, one noise sample is used to match the performance of sliced score matching.
+Log-likelihoods. Log-likelihoods are presented below. They are estimated using AIS, using a proposal distribution N (0, 2I), using 1,000,000 samples.
+Figure 3: Log-likelihoods after training DKEF models on UCI datasets with different loss functions; higher is better. Results for approximate backpropagation are not shown because log-likelihoods were smaller than −106.
+
+
+Name Configuration Algorithm
+Encoder
+Linear(784, 256), Tanh ELBO VAE, WAE
+Linear(256, 256), Tanh Linear(256, Dz)
+Implicit Encoder
+Linear(784 + D , 256), Tanh Implicit VAE
+Linear(256, 256), Tanh Linear(256, Dz)
+Decoder
+Linear(Dz, 256), Tanh All
+Linear(256, 256), Tanh Linear(256, 784), Sigmoid
+Score Estimator
+Linear(784 + Dz, 256), Tanh Implicit VAE
+Linear(256, 256), Tanh Linear(256, Dz)
+Score Estimator
+Linear(Dz, 256), Tanh WAE
+Linear(256, 256), Tanh Linear(256, Dz)
+Table 8: Architectures on MNIST. In our models, D = Dz. Dz takes the values 8 and 32 in different experiments.
+C.2 NICE
+Hyperparameters and Model Architecture. The model has four coupling layers, each with five hidden layers, for a total of 20 hidden layers, as well as a final scale layer (Dinh et al., 2015). Softplus nonlinearities are used between hidden layers.
+Models are trained using the Adam optimizer with learning rate 10−3 for 100 epochs. The best checkpoint on exact score matching loss, evaluation every 100 iterations, is used to report test set performance. We use a batch size of 128.
+Data are dequantized by adding uniform noise in the range [− 1
+512 , 1
+512 ], clipped to be in the range [−0.001, 0.001], and then transformed using a logit transformation log(x) − log(1 − x). 90% of the training set is used for training, and 10% for validation, and the standard test set is used.
+For grid search for the optimal value of σ, eight values are used: [0.01, 0.05, 0.10, 0.20, 0.28, 0.50, 1.00, 1.50]. We also evaluate σ = 1.74, chosen by the heuristic in Saremi et al. (2018). The model with the best performance on validation score matching loss is used. Only nine values of σ are evaluated because training each model takes approximately two hours.
+C.3 SCORE ESTIMATION FOR IMPLICIT DISTRIBUTIONS
+Architectures. We put the architectures of all networks used in the MNIST and CelebA experiments in Tab. 8 and Tab. 9 respectively.
+Training. For MNIST experiments, we use RMSProp optimizer with a learning rate of 0.001 for all methods. On CelebA, the learning rate is changed to 0.0001. All algorithms are trained for 100000 iterations with a batch size of 128.
+Samples. All samples are generated after 100000 training iterations.
+D VARIANCE REDUCTION
+Below we discuss approaches to reduce the variance of Jˆ(θ; x1N , v1N1M ), which can lead to better performance in
+practice. The most naïve approach, of course, is using a larger M to compute Jˆ(θ; x1N , v1N1M ). However, this requires more computation and when M is close to the data dimension, sliced score matching will lose its computational advantage over score matching.
+An alternative approach is to leverage control variates (Owen, 2013). A control variate is a random variable whose expectation is tractable, and is highly correlated with another random variable without a tractable expectation. Define
+
+
+Name Configuration Algorithm
+Encoder
+5 × 5 conv; m maps; stride 2 × 2; padding 2, ReLU
+ELBO VAE, WAE
+5 × 5 conv; 2m maps; stride 2 × 2; padding 2, ReLU 5 × 5 conv; 4m maps; stride 2 × 2; padding 2, ReLU 5 × 5 conv; 8m maps; stride 2 × 2; padding 2, ReLU 512 Dense, ReLU Dz Dense
+Implicit Encoder
+concat [x, ReLU(Dense( ))] along channels
+Implicit VAE
+5 × 5 conv; m maps; stride 2 × 2; padding 2, ReLU 5 × 5 conv; 2m maps; stride 2 × 2; padding 2, ReLU 5 × 5 conv; 4m maps; stride 2 × 2; padding 2, ReLU 5 × 5 conv; 8m maps; stride 2 × 2; padding 2, ReLU 512 Dense, ReLU Dz Dense
+Decoder
+Dense, ReLU
+All
+5 × 5 convT; 4m maps; stride 2 × 2; padding 2; out padding 1, ReLU 5 × 5 convT; 2m maps; stride 2 × 2; padding 2; out padding 1, ReLU 5 × 5 convT; 1m maps; stride 2 × 2; padding 2; out padding 1, ReLU 5 × 5 convT; c maps; stride 2 × 2; padding 2; out padding 1, Tanh
+Score Estimator
+concat [x, ReLU(Dense(z))] along channels
+Implicit VAE
+5 × 5 conv; m maps; stride 2 × 2; padding 2, ReLU 5 × 5 conv; 2m maps; stride 2 × 2; padding 2, ReLU 5 × 5 conv; 4m maps; stride 2 × 2; padding 2, ReLU 5 × 5 conv; 8m maps; stride 2 × 2; padding 2, ReLU 512 Dense, ReLU Dz Dense
+Score Estimator
+Reshape(ReLU(Dense(z))]) to 1 channel
+WAE
+5 × 5 conv; m maps; stride 2 × 2; padding 2, ReLU 5 × 5 conv; 2m maps; stride 2 × 2; padding 2, ReLU 5 × 5 conv; 4m maps; stride 2 × 2; padding 2, ReLU 5 × 5 conv; 8m maps; stride 2 × 2; padding 2, ReLU 512 Dense, ReLU Dz Dense
+Table 9: Architectures on CelebA. In our models, D = Dz. Dz takes the values 8 or 32 in different experiments.
+c(θ; x, v) , 1
+2 (vTsm(x; θ))2. Note that when pv is a multivariate standard normal or multivariate Rademacher distribution, c(θ; x, v) will have a tractable expectation, i.e.,
+Epv [c(θ; x, v)] = 1
+2 ‖sm(x; θ)‖2
+2,
+which is easily computable. Now let β(x)c(θ; x, v) be our control variate, where β(x) is a function to be determined. Due to the structural similarity between β(x)c(θ; x, v) and Jˆ(θ; x1N , v1N1M ), it is easy to believe that β(x)c(θ; x, v) can be a correlated control variate with an appropriate β(x). We thus consider the following objective
+Jˆvr(θ; xN
+1 , vNM
+11 ) , Jˆ(θ; xN
+1 , vNM
+11 ) − 1
+N
+N
+∑
+i=1
+β(xi)
+(1
+M
+M
+∑
+j=1
+c(θ; xi, vij) − 1
+2 ‖sm(xi; θ)‖2
+2
+)
+.
+Note that E[Jˆvr(θ; x1N , v1N1M )] = J(θ; pv). The theory of control variates guarantees the existence of β(x) that can reduce the variance. In practice, there can be many heuristics of choosing β(x), and we found that β(x) ≡ 1 can often be a good choice in our experiments.
+
+
+E PSEUDOCODE
+Algorithm 2 Score Matching
+Input: p ̃m(·; θ), x
+1: sm(x; θ) ← grad(log p ̃m(x; θ), x) 2: J ← 1
+2 ‖sm(x; θ)‖2
+2
+3: for d ← 1 to D do . For each diagonal entry 4: (∇xsm(x; θ))d ← grad((sm(x; θ))d, x)d 5: J ← J + (∇xsm(x; θ))d 6: end for return J

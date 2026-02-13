@@ -1,0 +1,554 @@
+Neural stochastic differential equations for time series modelling
+James Foster
+University of Bath
+(joint with Patrick Kidger, Xuechen Li, Terry Lyons and Harald Oberhauser)
+
+
+ Outline
+1 Introduction
+2 Neural Ordinary Differential Equations
+3 Neural Stochastic Differential Equations
+4 Numerical experiments
+5 References
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 1 / 25
+
+
+ Introduction
+Two dominant modelling paradigms:
+Differential equations and Neural networks
+Neural differential equations: awkward hybrid or perfect match?
+Goal for this talk: convince you of the latter!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 2 / 25
+
+
+ Introduction
+Two dominant modelling paradigms:
+Differential equations and Neural networks
+Neural differential equations: awkward hybrid or perfect match?
+Goal for this talk: convince you of the latter!
+References V
+Neural Ordinary Differential Equations, NeurIPS 2018.
+Neural Controlled Differential Equations for Irregular Time Series, NeurIPS 2020.
+Universal Differential Equations for Scientific Machine Learning, 2020.
+Scalable Gradients for Stochastic Differential Equations, AISTATS 2020.
+Neural SDEs as Infinite-Dimensional GANs, ICML 2021.
+Efficient and Accurate Gradients for Neural SDEs, NeurIPS 2021.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 2 / 25
+
+
+ Outline
+1 Introduction
+2 Neural Ordinary Differential Equations
+3 Neural Stochastic Differential Equations
+4 Numerical experiments
+5 References
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 3 / 25
+
+
+ What is a neural differential equation?
+There are differential equations where the vector field is parametrised as a neural network.
+Standard example – Neural ODEs (Chen et al. 2018).
+dy
+dt = fθ(t, y(t)),
+y(0) = y0,
+where fθ can be any neural network (feedforward, convolutional, etc).
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 4 / 25
+
+
+ Examples of neural ordinary differential equations
+A simple example: The SIR model for modelling infectious diseases
+d dt
+
+
+s(t) i(t) r(t)
+
+=
+
+
+−bs(t)i(t) bs(t)i(t) − ki(t) ki(t)
+
+,
+where b and k are parameters that are learnt from data.
+why you might already be using them.)
+assical example of a ‘neural’ differential equation: the SIR model.
+d
+dt
+
+
+s (t ) i (t ) r (t)
+
+=
+
+
+−b s(t) i(t) b s(t) i(t) − k i(t) k i(t)
+
+
+and k are parameters learnt from data.
+n ODE solve produces a computation graph, that we can backpropaga rough: train b and k via SGD.
+At the other extreme, Neural ODEs can outperform standard machine learning models (e.g. ResNets) on tasks such as image classification [2].
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 5 / 25
+
+
+ Reconstruction and extrapolation of spirals with irregular time points (taken from [1])
+work. Cond the n ODE solver. Figure 7 shows the event rate
+(a) Recurrent Neural Network
+(b) Latent Neural Ordinary Differential Equation
+Figure: Recurrent Neural Network
+d the ODE solver. Figure 7 shows the event rate
+(a) Recurrent Neural Network
+(b) Latent Neural Ordinary Differential Equation
+Figure: Neural ODE
+(a) Recurrent N
+(b) Latent Neural Ordin
+Ground Truth Observation Prediction Extrapolation
+Figure 8: (a): Reconstr of spirals with irregular neural network. (b): Rec
+5.1 Time-series Latent ODE Experiments
+We investigate the ability of the latent ODE model to fit and extrapolate time series. The recognition network is an RNN with 25 hidden units. We use a 4-dimensional latent space. We parameterize the dynamics function f with a one-hidden-layer network with 20 hidden units. The decoder computing p(xti |zti ) is another neural network with one hidden layer with 20 hidden units. Our baseline was a recurrent neural net with 25 hidden units trained to minimize negative Gaussian log-likelihood. We trained a second version of this RNN whose inputs were concatenated with the time difference to the next observation to aid RNN with irregular observaions.
+Bi-directional spiral dataset We generated a dataset of 1000 2-dimensional spirals, each
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 6 / 25
+
+
+ Universal differential equations for scientific computing
+Universal differential equations [3] are the general idea of modelling systems with
+dy
+dt = fknown(t, y(t)) + funknown(t, y(t)). (1)
+• fknown describes the system well and utilizes domain knowledge.
+• funknown is a (small) neural network so that (1) can better fit data.
+100 101 102 103
+100
+101
+102
+103
+104
+Training steps
+Error
+Training error, Neural net Testing error, Neural net Training error, linear model Testing error, linear model
+01234567
+- 5.0
+- 2.5
+0.0
+2.5
+5.0
+t
+stress
+Linear model NN solution True solution
+B
+A
+Figure 5: Convergence of neural closure relations for a non-Newtonian Fluid.
+Figure: Approximating a FENE-P model for non-Newtonian fluids (from [3]).
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 7 / 25
+
+
+ Why Neural ODEs?
+• Continuous time, so well suited for handling (irregular) time series
+• Flexible, includes “mechanistic” and “deep” models (+ hybrids [3])
+• State-of-the-art ODE solvers, e.g. adaptive steps or reversibility [2]
+• Choice of ODE solver allows trade-offs between accuracy and cost
+• Allows for “continuous time” backpropagation with O(1) memory!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 8 / 25
+
+
+ Why Neural ODEs?
+• Continuous time, so well suited for handling (irregular) time series
+• Flexible, includes “mechanistic” and “deep” models (+ hybrids [3])
+• State-of-the-art ODE solvers, e.g. adaptive steps or reversibility [2]
+• Choice of ODE solver allows trade-offs between accuracy and cost
+• Allows for “continuous time” backpropagation with O(1) memory!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 8 / 25
+
+
+ Why Neural ODEs?
+• Continuous time, so well suited for handling (irregular) time series
+• Flexible, includes “mechanistic” and “deep” models (+ hybrids [3])
+• State-of-the-art ODE solvers, e.g. adaptive steps or reversibility [2]
+• Choice of ODE solver allows trade-offs between accuracy and cost
+• Allows for “continuous time” backpropagation with O(1) memory!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 8 / 25
+
+
+ Why Neural ODEs?
+• Continuous time, so well suited for handling (irregular) time series
+• Flexible, includes “mechanistic” and “deep” models (+ hybrids [3])
+• State-of-the-art ODE solvers, e.g. adaptive steps or reversibility [2]
+• Choice of ODE solver allows trade-offs between accuracy and cost
+• Allows for “continuous time” backpropagation with O(1) memory!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 8 / 25
+
+
+ Why Neural ODEs?
+• Continuous time, so well suited for handling (irregular) time series
+• Flexible, includes “mechanistic” and “deep” models (+ hybrids [3])
+• State-of-the-art ODE solvers, e.g. adaptive steps or reversibility [2]
+• Choice of ODE solver allows trade-offs between accuracy and cost
+• Allows for “continuous time” backpropagation with O(1) memory!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 8 / 25
+
+
+ Why Neural ODEs?
+• Continuous time, so well suited for handling (irregular) time series
+• Flexible, includes “mechanistic” and “deep” models (+ hybrids [3])
+• State-of-the-art ODE solvers, e.g. adaptive steps or reversibility [2]
+• Choice of ODE solver allows trade-offs between accuracy and cost
+• Allows for “continuous time” backpropagation with O(1) memory!
+Potential limitation
+ODEs are deterministic, so are not suitable for modelling “noisy” data.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 8 / 25
+
+
+ Outline
+1 Introduction
+2 Neural Ordinary Differential Equations
+3 Neural Stochastic Differential Equations
+4 Numerical experiments
+5 References
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 9 / 25
+
+
+ Neural Stochastic Differential Equations
+The Neural SDE takes the form
+yt = lθ(xt),
+dxt = μθ(t, xt)dt + σθ(t, xt)dWt ,
+x0 ∼ νθ(ξ),
+where • μθ, σθ and νθ are neural networks.
+• lθ is a linear map.
+• W is a multidimensional Brownian motion.
+• ξ ∼ N (0, Id) is some initial noise.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 10 / 25
+
+
+ Neural Stochastic Differential Equations
+The Neural SDE takes the form
+yt = lθ(xt),
+dxt = μθ(t, xt)dt + σθ(t, xt)dWt ,
+x0 ∼ νθ(ξ),
+where • μθ, σθ and νθ are neural networks.
+• lθ is a linear map.
+• W is a multidimensional Brownian motion.
+• ξ ∼ N (0, Id) is some initial noise.
+Questions
+• What does it mean for a Neural SDE to correctly model the data?
+• Should we minimize mean squared error? (like for Neural ODEs)
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 10 / 25
+
+
+ Loss functions for Neural SDEs
+We want
+Distribution(SDE solution) ≈ Distribution(Data)
+Some approaches:
+• Match mean behaviour, i.e. minimize |Ey∼SDE[F(y)] − Ey∼Data[F(y)]|
+• F is a neural network with ∥F∥ ≤ 1 trained to maximize the difference
+• F is defined by a reproducing kernel k(·, ·). If F = ∑
+i αi k(xi , ·), then
+max
+∥F∥≤1
+∣∣ESDE[F(y)] − EData[F(y)]∣∣ = Ex,x′
+[k(x, x′)] − 2 Ex,y
+[k(x, y)] + Ey,y′
+[k(y, y′)],
+where x, x′, y, y′ are independent with x, x′ ∼ SDE and y, y′ ∼ Data .
+• Domain knowledge: E.g. in finance, F can be the pay-off of an option
+• Variational inference gives lower quality SDEs, but is easier to train!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 11 / 25
+
+
+ Loss functions for Neural SDEs
+We want
+Distribution(SDE solution) ≈ Distribution(Data)
+Some approaches:
+• Match mean behaviour, i.e. minimize |Ey∼SDE[F(y)] − Ey∼Data[F(y)]|
+• F is a neural network with ∥F∥ ≤ 1 trained to maximize the difference
+• F is defined by a reproducing kernel k(·, ·). If F = ∑
+i αi k(xi , ·), then
+max
+∥F∥≤1
+∣∣ESDE[F(y)] − EData[F(y)]∣∣ = Ex,x′
+[k(x, x′)] − 2 Ex,y
+[k(x, y)] + Ey,y′
+[k(y, y′)],
+where x, x′, y, y′ are independent with x, x′ ∼ SDE and y, y′ ∼ Data .
+• Domain knowledge: E.g. in finance, F can be the pay-off of an option
+• Variational inference gives lower quality SDEs, but is easier to train!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 11 / 25
+
+
+ Loss functions for Neural SDEs
+We want
+Distribution(SDE solution) ≈ Distribution(Data)
+Some approaches:
+• Match mean behaviour, i.e. minimize |Ey∼SDE[F(y)] − Ey∼Data[F(y)]|
+• F is a neural network with ∥F∥ ≤ 1 trained to maximize the difference
+• F is defined by a reproducing kernel k(·, ·). If F = ∑
+i αi k(xi , ·), then
+max
+∥F∥≤1
+∣∣ESDE[F(y)] − EData[F(y)]∣∣ = Ex,x′
+[k(x, x′)] − 2 Ex,y
+[k(x, y)] + Ey,y′
+[k(y, y′)],
+where x, x′, y, y′ are independent with x, x′ ∼ SDE and y, y′ ∼ Data .
+• Domain knowledge: E.g. in finance, F can be the pay-off of an option
+• Variational inference gives lower quality SDEs, but is easier to train!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 11 / 25
+
+
+ Loss functions for Neural SDEs
+We want
+Distribution(SDE solution) ≈ Distribution(Data)
+Some approaches:
+• Match mean behaviour, i.e. minimize |Ey∼SDE[F(y)] − Ey∼Data[F(y)]|
+• F is a neural network with ∥F∥ ≤ 1 trained to maximize the difference
+• F is defined by a reproducing kernel k(·, ·). If F = ∑
+i αi k(xi , ·), then
+max
+∥F∥≤1
+∣∣ESDE[F(y)] − EData[F(y)]∣∣ = Ex,x′
+[k(x, x′)] − 2 Ex,y
+[k(x, y)] + Ey,y′
+[k(y, y′)],
+where x, x′, y, y′ are independent with x, x′ ∼ SDE and y, y′ ∼ Data .
+• Domain knowledge: E.g. in finance, F can be the pay-off of an option
+• Variational inference gives lower quality SDEs, but is easier to train!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 11 / 25
+
+
+ Loss functions for Neural SDEs
+We want
+Distribution(SDE solution) ≈ Distribution(Data)
+Some approaches:
+• Match mean behaviour, i.e. minimize |Ey∼SDE[F(y)] − Ey∼Data[F(y)]|
+• F is a neural network with ∥F∥ ≤ 1 trained to maximize the difference
+• F is defined by a reproducing kernel k(·, ·). If F = ∑
+i αi k(xi , ·), then
+max
+∥F∥≤1
+∣∣ESDE[F(y)] − EData[F(y)]∣∣ = Ex,x′
+[k(x, x′)] − 2 Ex,y
+[k(x, y)] + Ey,y′
+[k(y, y′)],
+where x, x′, y, y′ are independent with x, x′ ∼ SDE and y, y′ ∼ Data .
+• Domain knowledge: E.g. in finance, F can be the pay-off of an option
+• Variational inference gives lower quality SDEs, but is easier to train!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 11 / 25
+
+
+ Loss functions for Neural SDEs
+We want
+Distribution(SDE solution) ≈ Distribution(Data)
+Some approaches:
+• Match mean behaviour, i.e. minimize |Ey∼SDE[F(y)] − Ey∼Data[F(y)]|
+• F is a neural network with ∥F∥ ≤ 1 trained to maximize the difference
+• F is defined by a reproducing kernel k(·, ·). If F = ∑
+i αi k(xi , ·), then
+max
+∥F∥≤1
+∣∣ESDE[F(y)] − EData[F(y)]∣∣ = Ex,x′
+[k(x, x′)] − 2 Ex,y
+[k(x, y)] + Ey,y′
+[k(y, y′)],
+where x, x′, y, y′ are independent with x, x′ ∼ SDE and y, y′ ∼ Data .
+• Domain knowledge: E.g. in finance, F can be the pay-off of an option
+• Variational inference gives lower quality SDEs, but is easier to train!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 11 / 25
+
+
+ Training Neural SDEs in the Wasserstein metric
+We would like to train the SDE to minimize the 1-Wasserstein distance:
+W1
+(SDE, Data) := sup
+∥F∥Lipschitz ≤1
+∣∣Ey∼SDE[F(y)] − Ey∼Data[F(y)]∣∣.
+That is, we want to find F that distinguishes between real and fake data.
+Some natural choices:
+• Feedforward neural network
+• Recurrent neural network
+• Another neural differential equation!
+We use the latter to define Fφ , which is then trained alongside the SDE.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 12 / 25
+
+
+ Training Neural SDEs in the Wasserstein metric
+We would like to train the SDE to minimize the 1-Wasserstein distance:
+W1
+(SDE, Data) := sup
+∥F∥Lipschitz ≤1
+∣∣Ey∼SDE[F(y)] − Ey∼Data[F(y)]∣∣.
+That is, we want to find F that distinguishes between real and fake data.
+Some natural choices:
+• Feedforward neural network
+• Recurrent neural network
+• Another neural differential equation!
+We use the latter to define Fφ , which is then trained alongside the SDE.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 12 / 25
+
+
+ Neural SDEs as Infinite-Dimensional GANs
+In data science, a generator (NSDE) trained with learnt discriminator(s) (Fφ) is known as a Generative Adversarial Network (or GAN).
+They usually generate images – not time series!
+2.2. Prior art
+Much of the w on improving the discriminators [18 [60, 55], or self-a has mostly focuse tent space [5] or s mixture models [4 ity [52]. Recent conditi through a separat of layers in the ge vided though the i feeding parts of th [9, 5]. In parallel generator using A consider an interm
+3. Properties o
+Our generator the image synthes styles. We can vie
+Figure: Images generated by the StyleGAN [5]
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 13 / 25
+
+
+ Neural SDEs as Infinite-Dimensional GANs
+Neural SDEs as Infinite-Dimensional GANs
+H0 = ξφ(Y0)
+X0 = ζθ(V )
+V ∼ N (0, Iv) Wt = Brownian motion
+dXt = μθ(t, Xt) dt + σθ(t, Xt) ◦ dWt
+dHt = fφ(t, Ht) dt + gφ(t, Ht) ◦ dYt D = mφ · HT
+Yt = αθXt + βθ
+Noise
+Generator
+Discriminator
+Initial Hidden state Output
+Figure 2. Summary of equations.
+able to introduce a backward-in-time adjoint equasing only efficient-to-compute vector-Jacobian prodn applications, they use neural SDEs in a latent varimodelling framework, using the stochasticity to model ian uncertainty.
+kinson et al. (2020) introduce neural SDEs as a limit dom ODEs. The limit is made meaningful via rough heory. In applications, they use the limiting random , and treat stochasticity as a regulariser within a norng flow. However, they remark that in this setting imal diffusion is zero. This is a recurring problem:
+Rackauckas et al. (2020) and Gierjatowicz et al. we emphasise the connection of our approach to st mathematical formalisms. In terms of the two group tioned at the start of this section, we fall into the s we use stochasticity to model distributions on path The resulting neural SDE is not an improvement to lar neural ODE, but a standalone concept in its own
+3. Method
+3.1. SDEs as GANs
+he aim of this paper (and neural SDEs more generally) is strengthen the capabilities of SDE modelling by hybrising with deep learning.
+3. Contributions
+DEs are a classical way to understand uncertainty over aths or over time series. Here, we show that the current assical approach to fitting SDEs may be generalised, and pproached from the perspective of Wasserstein GANs. In articular this is done by putting together a neural SDE nd a neural CDE (controlled differential equation) as a enerator–discriminator pair.
+nal state of the SDE is the quantity of interest. The second instead consider the full time-evolution of the SDE as the quantity of interest.
+Tzen & Raginsky (2019a;b) obtain Neural SDEs as a continuous limit of deep latent Gaussian models. They train by optimising a variational bound, using forward-mode autodifferentiation. They consider only theoretical applications, for modelling distributions as the terminal value of an SDE.
+Li et al. (2020) give arguably the closest analogue to the neural ODEs of Chen et al. (2018). They introduce neural SDEs via a subtle argument involving two-sided filtrations and backward Stratonovich integrals, but in doing
+Brownian Motion
+SDE
+Fixed statistics
+Classical approach
+Data or SDE
+CDE
+Final value
+Learnt statistic
+Generalised (GAN) approach
+Continuously perform control
+Continuously inject noise
+gure 1. Pictorial summary of just the high level ideas: Brownian motion is continuously injected as noise into an SDE. The classical proach fits the SDE to prespecified statistics. Generalising to (Wasserstein) GANs, which instead introduce a learnt statistic (the
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 14 / 25
+
+
+ Outline
+1 Introduction
+2 Neural Ordinary Differential Equations
+3 Neural Stochastic Differential Equations
+4 Numerical experiments
+5 References
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 15 / 25
+
+
+ Numerical experiments
+As a synthetic example, we generate 8192 samples {zt}t∈{0,1,···,63} of the time-dependent Ornstein–Uhlenbeck process:
+dzt = (μt − θzt
+)dt + σ dWt ,
+where μ = 0.02, θ = 0.1, σ = 0.4 and z0 ∼ U[−1, 1].
+We then trained a SDE-GAN with
+• evolving hidden states of size 32,
+• a 3-dimensional Brownian motion,
+• neural networks (MLPs) with width 16 and a single hidden layer.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 16 / 25
+
+
+ Numerical experiments Neural SDEs as Infinite-Dimensional GANs
+Figure 4. Sample paths from the time-dependent OrnsteinUhlenbeck SDE, and from the neural SDE trained to match it.
+Sample paths Next we plot 50 samples from the true distribution against 50 samples from the learnt distribution.
+See Figure 4. Once again we see excellent agreement between the data and the model.
+Overall we see that the neural SDEs are sufficient to recover classical non-neural SDEs: at least on this experiment, nothing has been lost in the generalisation.
+including latent variables, is
+Between them these models Latent ODEs are trained CTFPs are trained as norma trained as GANs. (To the SDEs as considered here are class, namely continuous-tim
+Performance metrics We sification, prediction, and M
+Classification is given by tra tinguish real data from fake (Kidger et al., 2020) for the ing inability to classify, indi generative model.
+Prediction is a train-on-synt ric (Hyland et al., 2017). W model to predict the latter pa part, using generated data. data. We use a neural CDE pair. Smaller losses, meanin
+Maximum mean discrepanc bility distributions with resp We use the depth-5 signatur (Kira ́ly & Oberhauser, 201
+Figure: Sample paths generated by an SDE-GAN trained on an OU dataset [6]
+̂
+We attribute this to the observation that neural SDEs (as with RNNs) have a recurrent structure. If a single step has Lipschitz constant λ, then the Lipschitz constant of the overall neural SDE will be O(λT ) in the time horizon T . Even small positive deviations from λ = 1 may produce large Lipschitz constants. In contrast gradient penalty regularises the Lipschitz constant of the entire discriminator.
+Training with gradient penalty implies the need for a double backward. If using the continuous-time adjoint equations of (Li et al., 2020), then this implies the need for a double-adjoint. Mathematically this is fine: however for moderate step sizes this produces gradients that are sufficiently inaccurate as to prevent models from training. For this reason we instead backpropagate through the internal operations of the solver.
+Learning any SDE The Wasserstein metric has a unique global minima at Y = Ytrue. By universal approximation of Neural CDEs (with respect to either continuous inputs or interpolated sequences, corresponding to dense and
+In all cases see Appendix A for details of hyperparameters, learning rates, optimisers and so on.
+4.1. Synthetic example: time-dependent Ornstein–Uhlenbeck process
+We begin by considering neural SDEs only (our other experiments feature comparisons to other models), and attempt to mimic a time-dependent one-dimensional Ornstein–Uhlenbeck process. This is an SDE of the form
+dzt = (μt − θzt) dt + σ ◦ dWt.
+We let μ = 0.02, θ = 0.1, σ = 0.4, and generate 8192 samples from t = 0 to t = 63, sampled at every integer.
+Marginal distributions We plot marginal distributions at t = 6, 19, 32, 44, 57. (Corresponding to 10%, 30%, 50%, 70% and 90% of the way along.) See Figure 3. We can visually confirm that the model has accurately recovered the true marginal distributions.
+Figure 3. Left to right: marginal distributions at t = 6, 19, 32, 44, 57.
+Figure: Marginal distributions at t = 6, 19, 32, 44, 57.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 17 / 25
+
+
+ Numerical experiments
+Next, we consider a dataset of Google/Alphabet stock prices, obtained by LOBSTER (Limit Order Book System: The Efficient Reconstructor [7])
+We trained a SDE-GAN with
+• evolving hidden states of size 96, • a 3-dimensional Brownian motion, • neural networks (MLPs) with width 64 and two hidden layers.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 18 / 25
+
+
+ Numerical experiments
+Next, we consider a dataset of Google/Alphabet stock prices, obtained by LOBSTER (Limit Order Book System: The Efficient Reconstructor [7])
+We trained a SDE-GAN with
+• evolving hidden states of size 96, • a 3-dimensional Brownian motion, • neural networks (MLPs) with width 64 and two hidden layers.
+Metric Neural SDE Continuous Time Neural ODE [6] Flow Process [8] [9]
+Classification 0.357 ± 0.045 0.165 ± 0.087 0.000239 ± 0.000086 Prediction 0.144 ± 0.045 0.725 ± 0.233 46.2 ± 12.3 Kernel distance 1.92 ± 0.09 2.70 ± 0.47 60.4 ± 35.8
+Table: Stocks dataset: mean ± standard deviation over 3 runs. We model the 2D path consisting of the midpoint and log-spread (samples have length 100).
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 18 / 25
+
+
+ Conclusion
+• NSDEs are continuous-time generative models for time series
+• Flexible; ideas applicable to both mechanistic and deep models
+• General approaches: Wasserstein GAN or Variational Inference
+• NSDEs can be difficult to train! (and training can take a long time!)
+• Software for neural differential equations in Python (PyTorch, Jax)
+– https://github.com/rtqichen/torchdiffeq – https://github.com/google-research/torchsde – https://github.com/patrick-kidger/diffrax
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 19 / 25
+
+
+ Thank you
+for your attention!
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 20 / 25
+
+
+ Outline
+1 Introduction
+2 Neural Ordinary Differential Equations
+3 Neural Stochastic Differential Equations
+4 Numerical experiments
+5 References
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 21 / 25
+
+
+ References I
+R. T. Q. Chen, Y. Rubanova, J. Bettencourt and D. Duvenaud. Neural Ordinary Differential Equations, Neural Information Processing Systems, 2018.
+J. Zhuang, N. C. Dvornek, S. Tatikonda and J. S. Duncan. MALI: A memory efficient and reverse accurate integrator for Neural ODEs, International Conference on Learning Representations (ICRL), 2021.
+C. Rackauckas, Y. Ma, J. Martensen, C. Warner, K. Zubov, R. Supekar, D. Skinner, A. Ramadhan and A. Edelman. Universal Differential Equations for Scientific Machine Learning, arXiv:2001.04385, 2020.
+P. Gierjatowicz, M. Sabate-Vidales, D. Šiška, L Szpruch and Ž. Žurič. Robust pricing and hedging via neural SDEs, arXiv:2007.04154, 2020.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 22 / 25
+
+
+ References II
+T. Karras, S. Laine and T. Aila. A Style-Based Generator Architecture for Generative Adversarial Networks, IEEE Conference on Computer Vision and Pattern Recognition, CVPR 2019.
+P. Kidger, J. Foster, X. Li, H. Oberhauser and T. Lyons. Neural SDEs as Infinite-Dimensional GANs, International Conference on Machine Learning, 2021.
+J. Haase. Limit order book system – the efficient reconstructor, https://lobsterdata.com, 2013.
+R. Deng, B. Chang, M. A. Brubaker, G. Mori and A. Lehrmann. Modeling Continuous Stochastic Processes with Dynamic
+Normalizing Flows, Neural Information Processing Systems, 2020.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 23 / 25
+
+
+ References III
+Y. Rubanova, R. T. Q. Chen and D. Duvenaud. Latent Ordinary Differential Equations for Irregularly-Sampled Time Series, Neural Information Processing Systems, 2019.
+T. DeLise. Neural Options Pricing, arXiv:2105.13320, 2021.
+X. Li, T.-K. L. Wong, R. T. Q. Chen and D. Duvenaud. Scalable Gradients for Stochastic Differential Equations, International Conference on Artificial Intelligence and Statistics (AISTATS), 2020.
+P. Kidger, J. Foster, X. Li and T. Lyons. Efficient and Accurate Gradients for Neural SDEs, arXiv:2105.13493, 2021.
+W. Xu, R. T.Q. Chen, X. Li and D. Duvenaud. Infinitely Deep Bayesian Neural Networks with Stochastic Differential Equations, arXiv:2102.06559, 2021.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 24 / 25
+
+
+ References IV
+P. Kidger, J. Morrill, J. Foster and T. Lyons. Neural Controlled Differential Equations for Irregular Time Series. Neural Information Processing Systems, 2020.
+J. Morrill, C. Salvi, P. Kidger, J. Foster and T. Lyons. Neural Rough Differential Equations for Long Time Series. International Conference on Machine Learning (ICML), 2021.
+J. Morrill, P. Kidger, L. Yang and T. Lyons. Neural Controlled Differential Equations for Online Prediction Tasks. arXiv:2106.11028, 2021.
+S. N. Cohen, C. Reisinger and S. Wang. Arbitrage-free neural-SDE market models, arXiv:2105.11053, 2021.
+James Foster (University of Bath) Neural SDEs for time series 20 July 2023 25 / 25

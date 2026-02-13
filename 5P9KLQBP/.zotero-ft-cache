@@ -1,0 +1,4153 @@
+An Introduction to
+Stochastic Differential Equations
+
+
+
+
+An Introduction to
+Stochastic Differential Equations
+Lawrence C. Evans
+Department of Mathematics
+University of California, Berkeley
+AMERICAN MATHEMATICAL SOCIETY
+
+
+2010 Mathematics Subject Classification. Primary 65C30, 60J65. 60H10, 65N75.
+For additional information and updates on this book, visit www.ams.org/bookpages/mbk-82
+Library of Congress Cataloging-in-Publication Data
+Evans, Lawrence C., 1949An introduction to stochastic differential equations / Lawrence C. Evans. pages cm Includes bibliographical references and index. ISBN 978-1-4704-1054-4 (alk. paper) 1. Stochastic differential equations. I. Title.
+QA274.23.E93 2013 519.2—dc23 2013024818
+Copying and reprinting. Individual readers of this publication, and nonprofit libraries acting for them, are permitted to make fair use of the material, such as to copy a chapter for use in teaching or research. Permission is granted to quote brief passages from this publication in reviews, provided the customary acknowledgment of the source is given. Republication, systematic copying, or multiple reproduction of any material in this publication is permitted only under license from the American Mathematical Society. Requests for such permission should be addressed to the Acquisitions Department, American Mathematical Society, 201 Charles Street, Providence, Rhode Island 02904-2294 USA. Requests can also be made by e-mail to reprint-permission@ams.org.
+c© 2013 by the American Mathematical Society. All rights reserved. Printed in the United States of America.
+©∞ The paper used in this book is acid-free and falls within the guidelines established to ensure permanence and durability. Visit the AMS home page at http://www.ams.org/
+10 9 8 7 6 5 4 3 2 1 18 17 16 15 14 13
+
+
+CONTENTS
+Preface vii
+Chapter 1. Introduction 1
+§1.1. Deterministic and random differential equations 1
+§1.2. Stochastic differentials 2
+§1.3. Itˆo’s chain rule 3
+Chapter 2. A Crash Course in Probability Theory 7
+§2.1. Basic definitions 7
+§2.2. Expected value, variance 14
+§2.3. Independence 17
+§2.4. Some probabilistic methods 21
+§2.5. Law of Large Numbers, Central Limit Theorem 23
+§2.6. Conditional expectation 28
+§2.7. Martingales 34
+Chapter 3. Brownian Motion and “White Noise” 37
+§3.1. Motivation 37
+§3.2. Definition, elementary properties 41
+§3.3. Construction of Brownian motion 45
+§3.4. Sample path properties 53
+§3.5. Markov property 57
+v
+
+
+vi CONTENTS
+Chapter 4. Stochastic Integrals 59
+§4.1. Preliminaries 59
+§4.2. Itˆo’s integral 65
+§4.3. Itˆo’s chain and product rules 70
+§4.4. Itˆo’s integral in higher dimensions 77
+Chapter 5. Stochastic Differential Equations 83
+§5.1. Definitions, examples 83
+§5.2. Existence and uniqueness of solutions 90
+§5.3. Properties of solutions 96
+§5.4. Linear stochastic differential equations 98
+Chapter 6. Applications 103
+§6.1. Stopping times 103
+§6.2. Applications to PDE, Feynman–Kac formula 108
+§6.3. Optimal stopping 112
+§6.4. Options pricing 117
+§6.5. The Stratonovich integral 121
+Appendix 127
+Exercises 135
+Notes and Suggested Reading 145
+Bibliography 147
+Index 149
+
+
+PREFACE
+This book is a revision of lecture notes for a course on stochastic differential equations (SDE) that I have taught several times over the past decades at the University of Maryland, the University of California, Berkeley, and the Mathematical Sciences Research Institute.
+My intention has been to survey, honestly but with some omission of precise detail, the basics of the Itoˆ stochastic calculus and the foundations of stochastic differential equations, with particular emphasis upon applications to partial differential equations (PDE).
+I assume my readers to be fairly conversant with measure-theoretic mathematical analysis but do not assume any particular knowledge of probability theory (which I develop very rapidly in Chapter 2). I downplay most measure theory issues but do emphasize the probabilistic interpretations. I “prove” many formulas by confirming them in easy cases (for simple random variables or for step functions) and then just stating that by approximation these rules hold in general. This whirlwind introduction is of course no substitute for a solid graduate level course in probability; but this book should provide enough background and motivation for students who lack the preparation to tackle the standard SDE text Øksendal [O].
+Thanks to my colleague Fraydoun Rezakhanlou, who has taught from these notes and added several improvements, and to Lisa Goldberg, who several years ago gave my class with several lectures on financial applications. Jonathan Weare provided several computer simulations illustrating the text. Thanks also to many readers of the online version who have found errors, especially Robert Piche, who provided me with an extensive list of typos and suggestions.
+vii
+
+
+viii PREFACE
+For this printing as a book, the notes have been retyped and reformatted; I have also updated the references and made many improvements in the presentation. I have, as usual, received great help from everyone at the American Mathematical Society, especially Sergei Gelfand, Stephen Moye, Arlene O’Sean, Tom Costa and Chris Thivierge.
+I will post a list of errors on my homepage, accessible through the math.berkeley.edu website.
+I have been supported by the NSF during the writing of this book, most recently by the grants DMS-1001724 and DMS-1301661.
+LCE
+July 2013
+Berkeley
+
+
+Chapter 1
+INTRODUCTION
+1.1. DETERMINISTIC AND RANDOM DIFFERENTIAL EQUATIONS
+Fix a point x0 ∈ Rn and consider then the ordinary differential equation
+(ODE)
+{
+x ̇ (t) = b(x(t)) (t > 0)
+x(0) = x0,
+where b : Rn → Rn is a given smooth vector field and the solution is the trajectory x : [0, ∞) → Rn, where x = x(t) is a function of time t. The dot means differentiation: · = d
+dt .
+Trajectory of the differential equation ODE
+We call x(t) the state of the system at time t ≥ 0. Under reasonable assumptions on the vector field b, the ordinary differential equation (ODE) has a solution, uniquely determined by the initial condition x0.
+In many applications, however, the experimentally measured trajectories of systems modeled by (ODE) do not in fact behave as predicted: the observed state seems to more or less follow the trajectory predicted by (ODE), but is apparently subject also to random perturbations.
+1
+
+
+2 1. INTRODUCTION
+Trajectory of a stochastic differential equation (SDE)
+Hence it seems reasonable to modify (ODE), somehow to include the possibility of random effects disturbing the system. A formal way to do so is to write
+(1)
+{ X ̇ (t) = b(X(t)) + B(X(t))ξ(t) (t > 0)
+X(0) = x0,
+where
+B : Rn → Mn×m (= space of n × m matrices)
+and
+ξ(·) := m-dimensional “white noise”.
+We then have these mathematical problems:
+• Define “white noise” ξ(·).
+• Define what it means for X(·) to solve (1).
+• Show that (1) has a solution and discuss uniqueness, asymptotic behavior, dependence upon x0, b, B, etc.
+This book develops the rigorous mathematical theory to address these and many related questions.
+1.2. STOCHASTIC DIFFERENTIALS
+Let us first study (1) in the case m = n, x0 = 0, b ≡ 0, and B ≡ I. The solution in this setting turns out to be n-dimensional Brownian motion (or Wiener process), denoted W(·). Thus we may symbolically write
+(2) W ̇ (·) = ξ(·),
+thereby asserting that “white noise” is the time derivative of Brownian motion.
+Now return to the general form of equation (1), write d
+dt instead of the dot:
+dX(t)
+dt = b(X(t)) + B(X(t)) dW(t)
+dt ,
+
+
+1.3. ITOˆ’S CHAIN RULE 3
+and formally multiply by “dt”:
+(SDE)
+{
+dX(t) = b(X(t))dt + B(X(t))dW(t)
+X(0) = x0.
+The terms “dX” and “BdW” are called stochastic differentials, and the expression (SDE), properly interpreted, is a stochastic differential equation.
+We say that X(·) solves (SDE) provided
+(3) X(t) = x0 +
+∫t
+0
+b(X(s)) ds +
+∫t
+0
+B(X(s)) dW for all times t > 0.
+To make sense of all this, we must:
+• Construct Brownian motion W(·): see Chapter 3.
+• Define the stochastic integral ∫ t
+0 · · · dW : see Chapter 4.
+• Show that (3) has a solution, etc.: see Chapter 5.
+And once all this is accomplished, there will still remain these modeling problems:
+• Does (SDE) truly model the physical situation?
+• Is the term ξ(·) in “really” white noise or is it rather some ensemble of smooth but highly oscillatory functions? See Chapter 6.
+As we will see later, these questions are subtle, and different answers can yield completely different solutions of (SDE).
+1.3. IT ˆO’S CHAIN RULE
+Part of the trouble is the strange form of the chain rule in the stochastic calculus. To illustrate this, let us assume n = m = 1 and X(·) solves the SDE
+(4) dX = b(X)dt + dW.
+Suppose next that u : R → R is a given smooth function, u = u(x). We ask: what stochastic differential equation does
+Y (t) := u(X(t)) (t ≥ 0)
+solve? Offhand, we would guess from (4) that
+dY = u′dX = u′bdt + u′dW,
+according to the usual chain rule, where ′ = d
+dx .
+This is wrong, however ! In fact, as we will later see, Brownian motion is so irregular that
+(5) dW ≈ (dt)1/2
+
+
+4 1. INTRODUCTION
+in some heuristic sense. Consequently if we compute dY and keep all terms of order dt or (dt) 1
+2 , we obtain from (4) that
+dY = u′dX + 1
+2 u′′(dX)2 + · · ·
+= u′(bdt + dW ) + 1
+2 u′′(bdt + dW )2 + · · ·
+=
+(
+u′b + 1
+2 u′′
+)
+dt + u′dW + {terms of order (dt)3/2 and higher}.
+Here we used the “fact” that (dW )2 = dt, which follows from (5). Hence
+(6) du(X) =
+(
+u′b + 1
+2 u′′
+)
+dt + u′dW,
+with the extra term “ 1
+2 u′′dt” not present in ordinary calculus.
+The strange looking expression (6) is an instance of Itˆo’s chain rule, also known as Itˆo’s formula. A major goal of this book is to provide a rigorous interpretation for calculations like these, involving stochastic differentials.
+EXAMPLE 1. According to Itˆo’s chain rule (6), the solution of the stochastic differential equation {
+dY = Y dW
+Y (0) = 1
+is
+Y (t) := eW (t)− t
+2
+and not what might seem the obvious guess, namely Yˆ (t) := eW (t).
+EXAMPLE 2. Let S(t) denote the (random) price of a stock at time t ≥ 0. A standard model assumes that dS
+S , the relative change of price, evolves according to the SDE
+dS
+S = μdt + σdW
+for certain constants μ > 0 and σ, called respectively the drift and the volatility of the stock. In other words,
+{
+dS = μSdt + σSdW
+S(0) = s0,
+where s0 is the starting price. Using Itoˆ’s chain rule (6) once again, we can check that the solution is
+S(t) = s0eσW (t)+
+(
+μ− σ2
+2
+) t.
+We will return to this example several times later.
+
+
+1.3. ITOˆ’S CHAIN RULE 5
+A trajectory for stock prices
+
+
+
+
+Chapter 2
+A CRASH COURSE
+IN PROBABILITY
+THEORY
+This chapter is an extremely rapid introduction to the measure-theoretic foundations of probability theory. See the Notes and Suggested Reading at the back of the book for recommendations of good textbooks that can provide full details of the proofs that we will sometimes omit.
+2.1. BASIC DEFINITIONS
+Let us begin with a puzzle:
+2.1.1. Bertrand’s paradox. Take a circle of radius 2 inches in the plane and choose a chord of this circle at random. What is the probability this chord intersects the concentric circle of radius 1 inch?
+Solution #1. Any such chord (provided it does not hit the center) is uniquely determined by the location of its midpoint:
+7
+
+
+8 2. A CRASH COURSE IN PROBABILITY THEORY
+Thus
+probability of hitting the inner circle = area of inner circle
+area of larger circle = 1
+4.
+Solution #2. By symmetry under rotation we may assume the chord is vertical. The diameter of the large circle is 4 inches and the chord will hit the small circle if it falls within its 2-inch diameter:
+Hence
+probability of hitting the inner circle = 2 inches
+4 inches = 1
+2.
+Solution #3. By symmetry we may assume one end of the chord is at the far left point of the larger circle. The angle θ that the chord makes with the horizontal lies between ± π
+2 , and the chord hits the inner circle if θ lies
+between ± π
+6:
+θ
+Therefore
+probability of hitting the inner circle =
+2π 6 2π 2
+=1
+3.
+2.1.2. Probability spaces. Bertrand’s paradox shows that we must carefully define what we mean by the term “random”. The correct way to do so is by introducing as follows the precise mathematical structure of a probability space.
+We start with a nonempty set, denoted Ω, certain subsets of which we will in a moment interpret as being “events”.
+
+
+2.1. BASIC DEFINITIONS 9
+DEFINITION. A σ-algebra is a collection U of subsets of Ω with these properties:
+(i) ∅, Ω ∈ U .
+(ii) If A ∈ U , then Ac ∈ U .
+(iii) If A1, A2, . . . ∈ U , then
+∞ ⋃
+k=1
+Ak ,
+⋂∞
+k=1
+Ak ∈ U .
+NOTATION. Here
+Ac := Ω − A
+denotes the complement of A in Ω.
+DEFINITION. Let U be a σ-algebra of subsets of Ω. We call
+P : U → [0, 1]
+a probability measure provided:
+(i) P (∅) = 0, P (Ω) = 1.
+(ii) If A1, A2, . . . ∈ U , then
+(1) P
+( ∞ ⋃
+k=1
+Ak
+)
+≤
+∑ ∞
+k=1
+P (Ak).
+(iii) If A1, A2, . . . are disjoint sets in U , then
+(2) P
+( ∞ ⋃
+k=1
+Ak
+)
+=
+∑ ∞
+k=1
+P (Ak).
+It follows that if A, B ∈ U , then
+(3) A ⊆ B implies P (A) ≤ P (B).
+DEFINITION. A triple
+(Ω, U , P )
+is called a probability space provided Ω is a nonempty set, U is a σ-algebra of subsets of Ω, and P is a probability measure on U .
+TERMINOLOGY.
+(i) A set A ∈ U is called an event; points ω ∈ Ω are sample points.
+(ii) P (A) is the probability of the event A.
+(iii) A property which is true except for an event of probability zero is said to hold almost surely (usually abbreviated “a.s.”).
+
+
+10 2. A CRASH COURSE IN PROBABILITY THEORY
+A probability space is the proper setting for mathematical probability theory. This means that we must first of all carefully identify an appropriate (Ω, U , P ) when we try to solve problems. The reader should convince himself or herself that the three “solutions” to Bertrand’s paradox discussed above represent three distinct interpretations of the phrase “at random”, that is, to three distinct models of (Ω, U , P ).
+EXAMPLE 1. Let Ω = {ω1, ω2, . . . , ωN } be a finite set, and suppose we
+are given numbers 0 ≤ pj ≤ 1 for j = 1, . . . , N satisfying ∑ pj = 1. We take U to comprise all subsets of Ω.
+For each set A = {ωj1 , ωj2 , . . . , ωjm} ∈ U , with 1 ≤ j1 < j2 < · · · < jm ≤ N , we define P (A) := pj1 + pj2 + · · · + pjm .
+EXAMPLE 2. The smallest σ-algebra containing all the open subsets of Rn is called the Borel σ-algebra, denoted B. Assume that f is a nonnegative,
+integrable function such that ∫
+Rn f dx = 1. We define
+P (B) :=
+∫
+B
+f (x) dx
+for each B ∈ B. Then (Rn, B, P ) is a probability space. We call f the density of the probability measure P .
+EXAMPLE 3. Suppose instead we fix a point x0 ∈ Rn and now define
+P (B) :=
+{
+1 if x0 ∈ B
+0 if x0 ∈/ B
+for sets B ∈ B. Then (Rn, B, P ) is a probability space. We call P the Dirac point mass concentrated at the point x0 and write
+P = δx0 .
+EXAMPLE 4 (Buffon’s needle problem). The plane is ruled by parallel lines 2 inches apart, and a 1-inch long needle is dropped at random on the plane. What is the probability that it hits one of the parallel lines?
+The first issue is to find some appropriate probability space (Ω, U , P ). For this, let
+{
+h = distance from the center of the needle to the nearest line,
+θ = angle (≤ π
+2 ) that the needle makes with the horizontal.
+These fully determine the position of the needle up to translations and reflection. Let us next take
+Ω = [0, π
+2)
+} {{ }
+values of θ
+× [0, 1],
+} {{ }
+values of h
+
+
+2.1. BASIC DEFINITIONS 11
+θ
+Geometry of Buffon’s problem
+U the Borel subsets of Ω, and
+P (B) = 2(area of B)
+π for each B ∈ U .
+We denote by A the event that the needle hits a horizontal line. We can now check that this happens provided
+h
+sin θ ≤ 1
+2.
+Consequently A = {(θ, h) ∈ Ω | h ≤ sin θ
+2 }, and so
+P (A) = 2(area of A)
+π =2
+π
+∫
+π 2
+0
+1
+2 sin θ dθ = 1
+π.
+This is a prediction based upon the probabilistic model introduced above. Whether or not the model is “physically correct” is a matter to be resolved by experiments.
+2.1.3. Random variables. We can think of the probability space as being an essential mathematical construct, which is nevertheless not “directly observable”. We are therefore interested in introducing mappings X from Ω to Rn, the values of which we can observe.
+Remember from Example 2 above that
+DEFINITION. The Borel subsets of Rn, denoted
+B,
+comprise the smallest σ-algebra of subsets of Rn containing all open sets.
+We may henceforth informally just think of B as containing all the “nice, well-behaved” subsets of Rn.
+DEFINITION. Let (Ω, U , P ) be a probability space. A mapping
+X : Ω → Rn
+is called an n-dimensional random variable if for each B ∈ B, we have
+X−1(B) ∈ U .
+We equivalently say that X is U -measurable.
+
+
+12 2. A CRASH COURSE IN PROBABILITY THEORY
+NOTATION. (i) We usually write “X” and not “X(ω)”. This follows the custom within probability theory of mostly not displaying the dependence of random variables on the sample point ω ∈ Ω.
+(ii) We also denote P (X−1(B)) as
+P (X ∈ B),
+the probability that X takes a value within B.
+(iii) In this book we will usually use capital letters to denote random variables. Boldface usually means a vector-valued mapping.
+EXAMPLE 1. Let A ∈ U . Then the indicator function of A,
+χA(ω) :=
+{
+1 if ω ∈ A
+0 if ω ∈/ A,
+is a random variable.
+EXAMPLE 2. More generally, if A1, A2, . . . , Am ∈ U , with Ω = ⋃m
+i=1 Ai,
+and a1, a2, . . . , am are real numbers, then
+X=
+∑ m
+i=1
+aiχAi
+is a random variable, called a simple function.
+We will also use without further comment various standard facts from measure theory, for instance that sums and products of random variables are random variables.
+LEMMA. Let X : Ω → Rn be a random variable. Then
+U (X) := {X−1(B) | B ∈ B}
+is a σ-algebra, called the σ-algebra generated by X.
+This is the smallest sub-σ-algebra of U with respect to which X is measurable.
+Proof. Check that {X−1(B) | B ∈ B} is a σ-algebra; clearly it is the smallest σ-algebra with respect to which X is measurable.
+IMPORTANT REMARK. It is essential to understand that, in probabilistic terms, the σ-algebra U (X) can be interpreted as “containing all relevant information” about the random variable X.
+In particular, if a random variable Y is a function of X, that is, if
+Y = Φ(X)
+for some reasonable function Φ, then Y is U (X)-measurable.
+
+
+2.1. BASIC DEFINITIONS 13
+Conversely, suppose Y : Ω → R is U (X)-measurable. Then there exists a function Φ such that
+Y = Φ(X).
+Hence if Y is U (X)-measurable, Y is in fact a function of X. Consequently if we know the value X(ω), we in principle also know Y (ω) = Φ(X(ω)), although we may have no practical way to construct Φ.
+2.1.4. Stochastic processes. We introduce next random variables depending upon time.
+DEFINITIONS. (i) A collection {X(t) | t ≥ 0} of random variables is called a stochastic process.
+(ii) For each point ω ∈ Ω, the mapping t → X(t, ω) is the corresponding sample path.
+The idea is that if we run an experiment and observe the random values of X(·) as time evolves, we are in fact looking at a sample path X(t, ω) (t ≥ 0) for some fixed ω ∈ Ω. If we rerun the experiment, we will in general observe a different sample path:
+ω
+ω2
+Two continuous sample paths of a stochastic process
+WARNING ABOUT NOTATION. Many books write “Xt” to denote a stochastic process indexed by the variable t.
+We will in this book instead use variables as subscripts to denote partial derivatives: see page 77.
+
+
+14 2. A CRASH COURSE IN PROBABILITY THEORY
+2.2. EXPECTED VALUE, VARIANCE
+2.2.1. Integration with respect to a measure. If (Ω, U , P ) is a prob
+ability space and X = ∑k
+i=1 aiχAi is a real-valued simple random variable,
+we define the integral of X by
+∫
+Ω
+X dP :=
+k ∑
+i=1
+aiP (Ai).
+Next, if X is a nonnegative random variable, we define ∫
+Ω
+X dP := sup
+Y ≤X,Y simple
+∫
+Ω
+Y dP.
+Finally if X : Ω → R is a random variable, we write
+∫
+Ω
+X dP :=
+∫
+Ω
+X+ dP −
+∫
+Ω
+X− dP
+provided at least one of the integrals on the right is finite. Here
+X+ := max(X, 0), X− := max(−X, 0),
+so that X = X+ − X−.
+We will assume without further comment the usual rules for these integrals. We also suppose later that the various integrals that we write in fact exist and are finite.
+NOTATION. When X : Ω → Rn is a random variable, X = (X1, X2, . . . , Xn), we write ∫
+Ω
+X dP =
+(∫
+Ω
+X1 dP,
+∫
+Ω
+X2 dP, . . . ,
+∫
+Ω
+Xn dP
+)
+.
+DEFINITIONS. If X : Ω → Rn is a vector-valued random variable, we call
+(4) E(X) :=
+∫
+Ω
+X dP
+the expected value (or mean value) of X and
+(5) V (X) :=
+∫
+Ω
+|X − E(X)|2 dP
+the variance, where | · | denotes the Euclidean norm.
+A simple calculation shows that
+(6) V (X) = E(|X|2) − |E(X)|2.
+
+
+2.2. EXPECTED VALUE, VARIANCE 15
+2.2.2. Distribution functions. Let (Ω, U , P ) be a probability space and suppose X : Ω → Rn is a random variable.
+NOTATION. Let x = (x1, . . . , xn) ∈ Rn, y = (y1, . . . , yn) ∈ Rn. Then
+x≤y
+means xi ≤ yi for i = 1, . . . , n.
+DEFINITIONS. (i) The distribution function of X is the function
+FX : Rn → [0, 1]
+defined by
+FX(x) := P (X ≤ x) for all x ∈ Rn.
+(ii) More generally, if X1, . . . , Xm : Ω → Rn are random variables, their joint distribution function is the function
+FX1,...,Xm : (Rn)m → [0, 1]
+defined as
+FX1,...,Xm(x1, . . . , xm) := P (X1 ≤ x1, . . . , Xm ≤ xm)
+for all xk ∈ Rn and k = 1, . . . , m:
+DEFINITION. Suppose X : Ω → Rn is a random variable and F = FX is its distribution function. If there exists a nonnegative, integrable function f : Rn → R such that
+(7) F (x) = F (x1, . . . , xn) =
+∫ x1
+−∞
+...
+∫ xn
+−∞
+f (y1, . . . , yn) dyn . . . dy1,
+then f is called the density function for X.
+
+
+16 2. A CRASH COURSE IN PROBABILITY THEORY
+It follows then that
+(8) P (X ∈ B) =
+∫
+B
+f (x) dx for all B ∈ B.
+This formula is important as the expression on the right-hand side is an ordinary integral and can often be explicitly calculated.
+EXAMPLE 1. If X : Ω → R has density
+f (x) = 1
+√2πσ2 e− |x−m|2
+2σ2 (x ∈ R),
+we say X has a Gaussian (or normal ) distribution with mean m and variance σ2. In this case we write
+X is an N (m, σ2) random variable.
+EXAMPLE 2. If X : Ω → Rn has density
+f (x) = 1
+((2π)n det C)1/2 e− 1
+2 (x−m)·C−1(x−m) (x ∈ Rn)
+for some m ∈ Rn and some positive definite, symmetric matrix C, we say X has a Gaussian (or normal ) distribution with mean m and covariance matrix C. We then write
+X is an N (m, C) random variable.
+LEMMA. Let X : Ω → Rn be a random variable, and assume that its distribution function F = FX has the density f . Suppose g : Rn → R and that g(X) is integrable. Then
+(9) E(g(X)) =
+∫
+Rn
+g(x)f (x) dx.
+In particular,
+(10) E(X) =
+∫
+Rn
+xf (x) dx and V (X) =
+∫
+Rn
+|x − m|2f (x) dx
+where m := E(X).
+IMPORTANT REMARK. Hence we can compute E(X), V (X), etc. in terms of integrals over Rn. This is an important observation, since as mentioned before the probability space (Ω, U , P ) is “unobservable”: all that we “see” are the values X takes on in Rn.
+Indeed, all quantities of interest in probability theory can be computed in Rn in terms of the density f .
+Proof. Suppose first that g is a simple function on Rn:
+g=
+∑ m
+i=1
+biχBi (Bi ∈ B).
+
+
+2.3. INDEPENDENCE 17
+Then
+E(g(X)) =
+m ∑
+i=1
+bi
+∫
+Ω
+χBi(X) dP =
+∑ m
+i=1
+biP (X ∈ Bi).
+But also
+∫
+Rn
+g(x)f (x) dx =
+∑ m
+i=1
+bi
+∫
+Bi
+f (x) dx =
+∑ m
+i=1
+biP (X ∈ Bi)
+by (8).
+Consequently the formula holds for all simple functions g and, by approximation, it holds therefore for general functions g.
+EXAMPLE. If X is N (m, σ2), a computation shows that
+E(X) = 1
+√2πσ2
+∫∞
+−∞
+xe− (x−m)2
+2σ2 dx = m
+and
+V (X) = 1
+√2πσ2
+∫∞
+−∞
+(x − m)2e− (x−m)2
+2σ2 dx = σ2.
+Therefore m is indeed the mean, and σ2 is the variance.
+2.3. INDEPENDENCE
+2.3.1. Conditional probability. Let (Ω, U , P ) be a probability space, and let A, B ∈ U be two events, with P (B) > 0. We want to find a reasonable definition of
+P (A | B) = the probability of A, given B.
+Think this way. Suppose some point ω ∈ Ω is selected “at random” and we are told ω ∈ B. What then is the probability that ω ∈ A also?
+Ω
+ω
+Since we know ω ∈ B, we can regard B as being a new probability space. Therefore we can define  ̃Ω := B, U ̃ := {C ∩ B | C ∈ U }, and P ̃ := P
+P (B) , so
+that P ̃(  ̃Ω) = 1. Then the probability that ω lies in A is P ̃(A ∩ B) = P (A∩B)
+P (B) .
+
+
+18 2. A CRASH COURSE IN PROBABILITY THEORY
+This observation motivates the following
+DEFINITION. The conditional probability of A, given B, is
+(11) P (A | B) := P (A ∩ B)
+P (B) provided P (B) > 0.
+2.3.2. Independent events. Now what should it mean to say “the events A and B are independent”? This should mean P (A | B) = P (A), since presumably any information that the event B has occurred is irrelevant in determining the probability that A has occurred. Thus
+P (A) = P (A | B) = P (A ∩ B)
+P (B)
+and so
+P (A ∩ B) = P (A)P (B)
+if P (B) > 0. We take this for the definition, even if P (B) = 0:
+DEFINITION. Two events A and B are called independent if
+(12) P (A ∩ B) = P (A)P (B).
+This concept and its ramifications are the hallmarks of probability theory. To gain some further insight, the reader may wish to check that if A and B are independent events, then so are Ac and B. Likewise, Ac and Bc are independent.
+DEFINITION. Let A1, . . . , An, . . . be events. These events are independent if for all choices 1 ≤ k1 < k2 < · · · < km, we have
+P (Ak1 ∩ Ak2 ∩ · · · ∩ Akm ) = P (Ak1 )P (Ak1) · · · P (Akm ).
+It is important to extend this definition to σ-algebras:
+DEFINITION. Let Ui ⊆ U be σ-algebras, for i = 1, . . . . We say that {Ui}i∞=1 are independent if for all choices of 1 ≤ k1 < k2 < · · · < km and of events Aki ∈ Uki, we have
+P (Ak1 ∩ Ak2 ∩ · · · ∩ Akm ) = P (Ak1 )P (Ak2) · · · P (Akm ).
+2.3.3. Independent random variables. Lastly, we transfer our definitions to random variables:
+DEFINITION. Let Xi : Ω → Rn be random variables (i = 1, . . . ). We say the random variables X1, . . . are independent if for all integers k ≥ 2 and all choices of Borel sets B1, . . . , Bk ⊆ Rn,
+P (X1 ∈ B1, X2 ∈ B2, . . . , Xk ∈ Bk)
+= P (X1 ∈ B1)P (X2 ∈ B2) · · · P (Xk ∈ Bk).
+This is equivalent to saying that the σ-algebras {U (Xi)}i∞=1 are independent.
+
+
+2.3. INDEPENDENCE 19
+EXAMPLE. Take Ω = [0, 1), U the Borel subsets of [0, 1), and P Lebesgue measure.
+Define for n = 1, 2, . . .
+Xn(ω) :=
+{
+1 if k
+2n ≤ ω < k+1
+2n , k even
+−1 if k
+2n ≤ ω < k+1
+2n , k odd (0 ≤ ω < 1).
+These are the Rademacher functions, which we assert are in fact independent random variables. To prove this, it suffices to verify
+P (X1 = e1, X2 = e2, . . . , Xk = ek) = P (X1 = e1)P (X2 = e2) · · · P (Xk = ek),
+for all choices of e1, . . . , ek ∈ {−1, 1}. This we check by showing that both sides are equal to 2−k.
+THEOREM. Let X1, . . . , Xm+n be independent Rk-valued random variables. Suppose f : (Rk)n → R and g : (Rk)m → R. Then
+Y := f (X1, . . . , Xn) and Z := g(Xn+1, . . . , Xn+m)
+are independent.
+We omit the proof; see for instance Breiman [B].
+THEOREM. (i) The random variables X1, . . . , Xm : Ω → Rn are independent if and only if
+(13) FX1,...,Xm (x1, . . . , xm) = FX1 (x1) · · · FXm (xm)
+for all xk ∈ Rn, k = 1, . . . , m.
+(ii) If the random variables have densities, (13) is equivalent to
+(14) fX1,...,Xm (x1, . . . , xm) = fX1 (x1) · · · fXm (xm)
+for all xi ∈ Rn, i = 1, . . . , m, where the functions fXi are the appropriate densities.
+Proof. 1. Assume first that {Xk}m
+k=1 are independent. Then
+FX1,...,Xm (x1, . . . , xm) = P (X1 ≤ x1, . . . , Xm ≤ xm)
+= P (X1 ≤ x1) · · · P (Xm ≤ xm)
+= FX1(x1) · · · FXm(xm).
+
+
+20 2. A CRASH COURSE IN PROBABILITY THEORY
+2. We prove the converse statement for the case that all the random
+variables have densities. Select Ai ∈ U (Xi), i = 1, . . . , m. Then Ai =
+X−1
+i (Bi) for some Bi ∈ B. Hence
+P (A1 ∩ · · · ∩ Am) = P (X1 ∈ B1, . . . , Xm ∈ Bm)
+=
+∫
+B1×···×Bm
+fX1,...,Xm (x1, . . . , xm) dx1 · · · dxm
+=
+(∫
+B1
+fX1 (x1) dx1
+)
+...
+(∫
+Bm
+fXm (xm) dxm
+)
+by (14)
+= P (X1 ∈ B1) · · · P (Xm ∈ Bm)
+= P (A1) · · · P (Am).
+Therefore U (X1), . . . , U (Xm) are independent σ-algebras.
+One of the most important properties of independent random variables is this:
+THEOREM. If X1, . . . , Xm are independent, real-valued random variables with
+E(|Xi|) < ∞ (i = 1, . . . , m),
+then E(|X1 · · · Xm|) < ∞ and
+E(X1 · · · Xm) = E(X1) · · · E(Xm).
+Proof. Suppose that each Xi is bounded and has a density. Then
+E(X1 · · · Xm) =
+∫
+Rm
+x1 · · · xm fX1,...,Xm (x1, . . . , xm) dx1 · · · dxm
+=
+(∫
+R
+x1 fX1 (x1) dx1
+)
+···
+(∫
+R
+xm fXm (xm) dxm
+)
+by (14)
+= E(X1) · · · E(Xm).
+THEOREM. If X1, . . . , Xm are independent, real-valued random variables with
+V (Xi) < ∞ (i = 1, . . . , m),
+then
+V (X1 + · · · + Xm) = V (X1) + · · · + V (Xm).
+
+
+2.4. SOME PROBABILISTIC METHODS 21
+Proof. We use induction, the case m = 2 holding as follows. Let m1 := EX1, m2 := E(X2). Then E(X1 + X2) = m1 + m2 and
+V (X1 + X2) =
+∫
+Ω
+(X1 + X2 − (m1 + m2))2 dP
+=
+∫
+Ω
+(X1 − m1)2 dP +
+∫
+Ω
+(X2 − m2)2 dP
++2
+∫
+Ω
+(X1 − m1)(X2 − m2) dP
+= V (X1) + V (X2) + 2E(X1 − m1
+} {{ }
+=0
+)E(X2 − m2
+} {{ }
+=0
+),
+where we used independence in the last step.
+2.4. SOME PROBABILISTIC METHODS
+This section collects various probabilistic tools that we will need later.
+2.4.1. Chebyshev’s inequality. We start with a simple estimate:
+LEMMA. If X is a random variable and if 1 ≤ p < ∞, then
+(15) P (|X| ≥ λ) ≤ 1
+λp E(|X|p) for all λ > 0.
+Proof. We have
+E(|X|p) =
+∫
+Ω
+|X|p dP ≥
+∫
+{|X|≥λ}
+|X|p dP ≥ λpP (|X| ≥ λ).
+We will apply this surprisingly useful inequality many times later.
+2.4.2. Borel–Cantelli Lemma. We introduce next a simple way to check if some sequence A1, . . . , An, . . . of events “occurs infinitely often”.
+DEFINITION. Let A1, . . . , An, . . . be events in a probability space. Then the event ⋂∞
+n=1
+∞ ⋃
+m=n
+Am = {ω ∈ Ω | ω belongs to infinitely many of the An}
+is called “An infinitely often”, abbreviated “An i.o.”.
+LEMMA (Borel–Cantelli). If
+∞ ∑
+n=1
+P (An) < ∞,
+then
+P (An i.o.) = 0.
+
+
+22 2. A CRASH COURSE IN PROBABILITY THEORY
+Proof. By definition An i.o. = ⋂∞
+n=1
+⋃∞
+m=n Am, and so for each n
+P (An i.o.) ≤ P
+( ∞ ⋃
+m=n
+Am
+)
+≤
+∑ ∞
+m=n
+P (Am).
+The limit of the right-hand side is zero as n → ∞, since ∑ P (Am) < ∞.
+APPLICATION. We illustrate a typical use of the Borel–Cantelli Lemma.
+A sequence of random variables {Xk}k∞=1 defined on some probability space converges in probability to a random variable X provided
+kli→m∞ P (|Xk − X| > ) = 0
+for each > 0.
+THEOREM. If Xk → X in probability, then there exists a subsequence {Xkj }j∞=1 ⊂ {Xk}k∞=1 such that
+Xkj → X a.s.
+Proof. For each positive integer j we select kj so large that
+P (|Xkj − X| > 1
+j) ≤ 1
+j2 ,
+with k1 < · · · < kj−1 < kj < · · · and therefore kj → ∞. Let Aj := {|Xkj − X| > 1
+j }. Since ∑ 1
+j2 < ∞, the Borel–Cantelli Lemma implies
+P (Aj i.o.) = 0. Therefore for almost all sample points ω, |Xkj (ω) − X(ω)| ≤
+1
+j provided j ≥ J, for some index J depending on ω.
+2.4.3. Characteristic functions. We introduce next a form of the Fourier transform that will provide us with a convenient way to identify Gaussian random variables.
+DEFINITION. Let X be an Rn-valued random variable. Then
+(16) φX(λ) := E(eiλ·X) (λ ∈ Rn)
+is the characteristic function of X.
+EXAMPLE. If the real-valued random variable X is N (m, σ2), then
+(17) φX (λ) = eimλ− λ2σ2
+2 (λ ∈ R).
+To see this, let us suppose that m = 0, σ = 1 and calculate
+φX (λ) =
+∫∞
+−∞
+eiλx √12π e− x2
+2 dx = e −λ2
+2
+√2π
+∫∞
+−∞
+e− (x−iλ)2
+2 dx.
+We move the path of integration in the complex plane from the line {Im(z) =
+−λ} to the real axis and recall that ∫ ∞
+−∞ e− x2
+2 dx = √2π. Hence φX (λ) =
+e− λ2
+2 . (Im(z) denotes the imaginary part of the complex number z.)
+
+
+2.5. LAW OF LARGE NUMBERS, CENTRAL LIMIT THEOREM 23
+LEMMA. (i) If X1, . . . , Xm are independent random variables, then for each λ ∈ Rn
+(18) φX1+···+Xm (λ) = φX1 (λ) . . . φXm (λ).
+(ii) If X is a real-valued random variable,
+φ(k)(0) = ikE(Xk) (k = 0, 1, . . . ).
+(iii) If X and Y are random variables and
+φX(λ) = φY(λ) for all λ,
+then
+FX (x) = FY (x) for all x.
+Assertion (iii) says the characteristic function of X determines the distribution of X.
+Proof. 1. Let us calculate
+φX1+···+Xm (λ) = E(eiλ·(X1+···+Xm))
+= E(eiλ·X1 eiλ·X2 · · · eiλ·Xm )
+= E(eiλ·X1) · · · E(eiλ·Xm) by independence
+= φX1(λ) . . . φXm (λ).
+2. We have φ′(λ) = iE(XeiλX ), and so φ′(0) = iE(X). The formulas in (ii) for k = 2, . . . follow similarly.
+3. We will not prove (iii); see, for example, Breiman [B].
+EXAMPLE. If X and Y are independent, real-valued random variables and if X is N (m1, σ12) and Y is N (m2, σ22), then
+X + Y is N (m1 + m2, σ2
+1 + σ2
+2 ).
+To see this, just calculate
+φX+Y (λ) = φX (λ)φY (λ) = eim1λ− λ2σ12
+2 eim2λ− λ2σ22
+2 = ei(m1+m2)λ− λ2
+2 (σ2
+1 +σ2
+2).
+2.5. LAW OF LARGE NUMBERS, CENTRAL LIMIT THEOREM
+This section discusses a mathematical model for “repeated, independent experiments”.
+
+
+24 2. A CRASH COURSE IN PROBABILITY THEORY
+2.5.1. Identically distributed random variables. The idea is this. Suppose we are given a probability space and on it a real-valued random variable X that records the outcome of some sort of random experiment. We can model repetitions of this experiment by introducing a sequence of random variables X1, . . . , Xn, . . . , each of which “has the same probabilistic information as X”:
+DEFINITION. A sequence X1, . . . , Xn, . . . of random variables is called identically distributed if
+FX1(x) = FX2(x) = · · · = FXn(x) = · · · for all x.
+If we additionally assume that the random variables X1, . . . , Xn, . . . are independent, we can regard this sequence as a model for repeated and independent runs of the experiment, the outcomes of which we can measure. More precisely, imagine that a “random” sample point ω ∈ Ω is given and that we can observe the sequence of values X1(ω), X2(ω), . . . , Xn(ω), . . . . What can we infer from these observations?
+2.5.2. Strong Law of Large Numbers. First we show that with probability one, we can deduce the common expected values of the random variables.
+THEOREM (Strong Law of Large Numbers). Let X1, . . . , Xn, . . . be a sequence of independent, identically distributed, integrable random variables defined on the same probability space.
+Write m := E(Xi) for i = 1, . . . . Then
+(19) P
+(
+nli→m∞
+X1 + · · · + Xn
+n =m
+)
+= 1.
+Proof. 1. Supposing that the random variables are real-valued entails no loss of generality. We will as well suppose for simplicity that
+E (X 4
+i ) < ∞ (i = 1, . . . ).
+We may also assume m = 0, as we could otherwise consider Xi − m in place of Xi.
+2. Then
+E
+⎛
+⎝
+(∑n
+i=1
+Xi
+)4⎞
+⎠=
+∑n
+i,j,k,l=1
+E (XiXj Xk Xl ).
+If i = j, k, or l, independence implies
+E(XiXjXkXl) = E(Xi)
+} {{ }
+=0
+E (Xj Xk Xl ).
+
+
+2.5. LAW OF LARGE NUMBERS, CENTRAL LIMIT THEOREM 25
+Consequently, since the Xi are identically distributed, we have
+E
+⎛
+⎝
+( n ∑
+i=1
+Xi
+)4⎞
+⎠=
+n ∑
+i=1
+E (X 4
+i)+3
+∑n
+i,j=1 i=j
+E (X 2
+i X2
+j)
+= nE(X4
+1 ) + 3(n2 − n)(E(X2
+1 ))2
+≤ n2C
+for some constant C.
+Now fix ε > 0. Then
+P
+(∣∣∣∣∣
+1
+n
+∑n
+i=1
+Xi
+∣∣∣∣∣ ≥ ε
+)
+=P
+(∣∣∣∣∣
+∑n
+i=1
+Xi
+∣∣∣∣∣ ≥ εn
+)
+≤1
+(εn)4 E
+⎛
+⎝
+( n ∑
+i=1
+Xi
+)4⎞
+⎠
+≤C
+ε4
+1
+n2 .
+We used Chebyshev’s inequality for the first inequality. Therefore the BorelCantelli Lemma implies
+P
+(∣∣∣∣∣
+1
+n
+n ∑
+i=1
+Xi
+∣∣∣∣∣ ≥ ε i.o.
+)
+= 0.
+3. Take ε = 1
+k . The foregoing says that
+lim sup n→∞
+∣∣∣∣∣
+1
+n
+∑n
+i=1
+Xi(ω)
+∣∣∣∣∣ ≤ 1
+k,
+except possibly for ω lying in an event Bk, with P (Bk) = 0. Write B :=
+⋃∞
+k=1 Bk. Then P (B) = 0 and
+nli→m∞
+1
+n
+n ∑
+i=1
+Xi(ω) = 0
+for each sample point ω ∈/ B.
+2.5.3. Fluctuations, Laplace–De Moivre Theorem. The Strong Law of Large Numbers says that for almost every sample point ω ∈ Ω,
+X1(ω) + · · · + Xn(ω)
+n → m as n → ∞.
+We turn next to the Laplace–De Moivre Theorem and its generalization the Central Limit Theorem, which estimate the “fluctuations” we can expect in this limit.
+
+
+26 2. A CRASH COURSE IN PROBABILITY THEORY
+Let us start with a simple calculation.
+LEMMA. Suppose the real-valued random variables X1, . . . , Xn, . . . are in
+dependent and identically distributed, with
+{
+P (Xi = 1) = p
+P (Xi = 0) = q
+for p, q ≥ 0, p + q = 1. Then
+E(X1 + · · · + Xn) = np,
+V (X1 + · · · + Xn) = npq.
+We imagine these random variables as modeling, for example, repeated tosses of a biased coin which has probability p of coming up heads and probability q = 1 − p of coming up tails.
+Proof. E(X1) = ∫
+Ω X1 dP = p and therefore E(X1 + · · · + Xn) = np. Also,
+V (X1) =
+∫
+Ω
+(X1 − p)2 dP = (1 − p)2P (X1 = 1) + p2P (X1 = 0)
+= q2p + p2q = qp.
+By independence, V (X1 + · · · + Xn) = V (X1) + · · · + V (Xn) = npq.
+THEOREM (Laplace–De Moivre). Let X1, . . . , Xn be the independent, identically distributed, real-valued random variables in the preceding lemma. Define the sums
+Sn := X1 + · · · + Xn.
+Then for all −∞ < a < b < +∞,
+nli→m∞ P
+(
+a ≤ Sn − np
+√npq ≤ b
+)
+= √12π
+∫b
+a
+e− x2
+2 dx.
+A proof is in the appendix.
+INTERPRETATION. In view of the lemma,
+Sn − np
+√npq = Sn − E(Sn)
+V (Sn)1/2 .
+Hence the Laplace–De Moivre Theorem says that the sums Sn, properly renormalized, have a distribution which tends to the Gaussian N (0, 1) as n → ∞.
+Consider in particular the situation p = q = 1
+2 . Suppose a > 0; then
+nli→m∞ P
+(
+− a√n
+2 ≤ Sn − n
+2 ≤ a√n
+2
+)
+= √12π
+∫a
+−a
+e− x2
+2 dx.
+
+
+2.5. LAW OF LARGE NUMBERS, CENTRAL LIMIT THEOREM 27
+If we fix b > 0 and write a = √2bn , then for large n
+P
+(
+−b ≤ Sn − n
+2 ≤b
+)
+≈ √12π
+∫
+√2bn
+− √2bn
+e− x2
+2 dx → 0
+as n → ∞. Thus for almost every ω, 1
+n Sn(ω) → 1
+2 , in accord with the Strong
+Law of Large Numbers; but ∣∣Sn(ω) − n
+2
+∣∣ “fluctuates” with probability 1 to exceed any finite bound b.
+2.5.4. Central Limit Theorem. We now generalize the Laplace–De Moivre Theorem:
+THEOREM (Central Limit Theorem). Let X1, . . . , Xn, . . . be independent, identically distributed, real-valued random variables with
+E(Xi) = m, V (Xi) = σ2 > 0
+for i = 1, . . . . Set
+Sn := X1 + · · · + Xn.
+Then for all −∞ < a < b < +∞
+(20) nli→m∞ P
+(
+a ≤ Sn − nm
+√nσ ≤ b
+)
+= √12π
+∫b
+a
+e− x2
+2 dx.
+Thus the conclusion of the Laplace–De Moivre Theorem holds not only for the 0- or 1-valued random variable considered earlier, but for any sequence of independent, identically distributed random variables with finite variance. We will later invoke this assertion to motivate our requirement that Brownian motion be normally distributed for each time t ≥ 0.
+Outline of proof. For simplicity assume m = 0, σ = 1, since we can always rescale to this case. Then
+φ S√nn
+(λ) = φ √X1n
+(λ) . . . φ X√nn
+(λ) =
+(
+φX1
+( √λn
+))n
+for λ ∈ R, because the random variables are independent and identically distributed.
+Now φ = φX1 satisfies
+φ(μ) = φ(0) + φ′(0)μ + 1
+2 φ′′(0)μ2 + o(μ2) as μ → 0,
+with φ(0) = 1, φ′(0) = iE(X1) = 0, φ′′(0) = −E(X12) = −1. Consequently
+our setting μ = √λn gives
+φX1
+( √λn
+)
+= 1 − λ2
+2n + o
+( λ2
+n
+)
+,
+
+
+28 2. A CRASH COURSE IN PROBABILITY THEORY
+and so
+φ S√nn
+(λ) =
+(
+1 − λ2
+2n + o
+( λ2
+n
+))n
+→ e− λ2
+2
+for all λ, as n → ∞. But e− λ2
+2 is the characteristic function of an N (0, 1) random variable. It turns out that this convergence of the characteristic functions implies the limit (20); see, for example, Breiman [B] for more.
+2.6. CONDITIONAL EXPECTATION
+2.6.1. Motivation. We earlier decided to define P (A | B), the probability
+of A, given B, to be P (A∩B)
+P (B) provided P (B) > 0.
+How then should we define
+E(X | B),
+the expected value of the random variable X, given the event B? Remember that we can think of B as the new probability space, with P ̃ = P
+P (B) . Thus
+if P (B) > 0, we should set
+E(X | B) = mean value of X over B = 1
+P (B)
+∫
+B
+X dP.
+Next we pose a more interesting question. What is a reasonable definition of
+E(X | Y ),
+the expected value of the random variable X, given another random variable Y ? In other words if “chance” selects a sample point ω ∈ Ω and all we know about ω is the value Y (ω), what is our best guess as to the value X(ω)?
+This turns out to be a subtle, but extremely important, issue, for which we provide two introductory discussions.
+2.6.2. A first approach to conditional expectation. We start with an informative first case.
+EXAMPLE. Assume we are given a probability space (Ω, U , P ) on which
+is defined a simple random variable Y . That is, Y = ∑m
+i=1 aiχAi , and so
+Y=
+⎧⎪⎪⎪⎪⎨
+⎪⎪⎪⎪⎩
+a1 on A1
+a2 on A2
+...
+am on Am,
+for distinct real numbers a1, a2, . . . , am and disjoint events A1, A2, . . . , Am, each of positive probability, whose union is Ω.
+
+
+2.6. CONDITIONAL EXPECTATION 29
+Next, let X be any other real-valued random variable on Ω. What is our best guess of X, given Y ? Think about the problem this way: if we know the value of Y (ω), we can tell which event A1, A2, . . . , Am contains ω. This, and only this, being known, our best estimate for X should then be the average value of X over each appropriate event. That is, we should take
+E(X | Y ) :=
+⎧⎪⎪⎪⎪⎪⎨
+⎪⎪⎪⎪⎪⎩
+1 P (A1)
+∫
+A1 X dP on A1
+1 P (A2)
+∫
+A2 X dP on A2
+...
+1
+P (Am)
+∫
+Am X dP on Am.
+We note for this example that:
+• E(X | Y ) is a random variable and not a constant.
+• E(X | Y ) is U(Y )-measurable.
+•∫
+A XdP = ∫
+A E(X | Y ) dP for all A ∈ U (Y ).
+Let us take these properties as the definition in the general case:
+DEFINITION. Let X and Y be random variables defined on the same probability space Ω. The conditional expectation of X given Y is any U (Y )measurable random variable Z such that
+∫
+A
+X dP =
+∫
+A
+Z dP for all A ∈ U (Y ).
+NOTATION. It turns out that such a Z is unique up to sets of probability zero, and we hereafter denote Z as
+E(X | Y ).
+Next, notice that it is not really the values of Y that are important, but rather the σ-algebra it generates. This motivates the next
+DEFINITION. Let (Ω, U , P ) be a probability space and suppose V is a σ-algebra, V ⊆ U . If X : Ω → Rn is an integrable random variable, we define
+E(X | V)
+to be any random variable on Ω such that
+(i) E(X | V) is V-measurable and
+(ii) ∫
+A X dP = ∫
+A E(X | V) dP for all A ∈ V.
+INTERPRETATION. We can understand E(X | V) as follows. We are given the “information” available in a σ-algebra V, from which we intend to build an estimate of the random variable X. Condition (i) in the definition requires that E(X | V) be constructed from the information in V, and (ii)
+
+
+30 2. A CRASH COURSE IN PROBABILITY THEORY
+requires that our estimate be consistent with X, at least as regards integration over events in V. We will later see that the conditional expectation E(X | V), so defined, has various additional nice properties.
+REMARK. We can check without difficulty that:
+(i) E(X | Y ) = E(X | U(Y )).
+(ii) E(E(X | V)) = E(X).
+(iii) E(X) = E(X | W), where W = {∅, Ω} is the trivial σ-algebra.
+THEOREM. Let X be an integrable random variable. Then for each σalgebra V ⊂ U , the conditional expectation E(X | V) exists and is unique up to V-measurable sets of probability zero.
+We omit the proof, which uses a few advanced concepts from measure theory.
+2.6.3. A second approach to conditional expectation. An elegant alternative approach to conditional expectations is based upon projections onto closed subspaces and is motivated by this example:
+Least squares method. Consider for the moment Rn and suppose that V is a proper subspace.
+Suppose we are given a vector x ∈ Rn. The least squares problem asks us to find a vector z ∈ V so that
+|z − x|2 = min
+y∈V |y − x|2,
+| · | denoting the Euclidean length. It is not particularly difficult to show that, given x, there exists a unique vector z ∈ V solving this minimization problem. We call v the projection of x onto V ,
+(21) z = projV (x).
+Now we want to find a formula characterizing z. For this, take any other vector w ∈ V . Define then
+i(τ ) := |z + τ w − x|2.
+Since z + τ w ∈ V for all τ , we see that the function i(·) has a minimum at τ = 0. Hence 0 = i′(0) = 2(z − x) · w; that is,
+(22) x · w = z · w for all w ∈ V.
+The geometric interpretation is that the “error” x − z is perpendicular to the subspace V .
+Projection of random variables. Motivated by the example above, we return now to conditional expectation. Let us take the linear space
+
+
+2.6. CONDITIONAL EXPECTATION 31
+Projection onto a subspace
+L2(Ω) = L2(Ω, U ), which consists of all real-valued, U -measurable random variables Y such that
+||Y || :=
+(∫
+Ω
+Y 2 dP
+)
+1 2
+< ∞.
+We call ||Y || the norm of Y ; and if X, Y ∈ L2(Ω), we define their inner product to be
+(X, Y ) :=
+∫
+Ω
+XY dP = E(XY ).
+Next, take as before V to be a σ-algebra contained in U . Consider then
+V := L2(Ω, V),
+the space of square-integrable random variables that are V-measurable. This is a closed subspace of L2(Ω). Consequently if X ∈ L2(Ω), we can define its projection
+(23) Z = projV (X)
+by analogy with (21) in the finite-dimensional case. Almost exactly as we established (22) above, we can likewise show
+(X, W ) = (Z, W ) for all W ∈ V.
+Take in particular W = χA for any set A ∈ V. In view of the definition of
+the inner product, it follows that ∫
+A
+X dP =
+∫
+A
+Z dP for all A ∈ V.
+
+
+32 2. A CRASH COURSE IN PROBABILITY THEORY
+Since Z ∈ V is V-measurable, we see that Z is in fact E(X | V), as defined in the earlier discussion. That is,
+E(X | V) = projV (X).
+We could therefore alternatively take the last identity as a definition of conditional expectation.
+INTERPRETATION. This point of view also makes it clear that Z = E(X | V) solves the least squares problem:
+||Z − X||2 = min
+Y ∈V ||Y − X||2;
+and so E(X | V) can be interpreted as that V-measurable random variable which is the best least squares approximation of the random variable X.
+2.6.4. Properties. The two introductory discussions now completed, we turn next to examining conditional expectation more closely.
+THEOREM (Properties of conditional expectation).
+(i) If a, b are constants, then
+E(aX + bY | V) = aE(X | V) + bE(Y | V) a.s.
+(ii) If X is V-measurable, then
+E(X | V) = X a.s.
+(iii) If X is V-measurable and XY is integrable, then
+E(XY | V) = XE(Y | V) a.s.
+(iv) If X is independent of V, then
+E(X | V) = E(X) a.s.
+(v) If W ⊆ V, we have
+E(X | W) = E(E(X | V) | W) = E(E(X | W) | V) a.s.
+(vi) The inequality X ≤ Y a.s. implies
+E(X | V) ≤ E(Y | V) a.s.
+Proof. 1. Statement (i) is obvious, and (ii) is easy to check
+2. By uniqueness a.s. of E(XY | V), it is enough in proving (iii) to show
+(24)
+∫
+A
+XE(Y | V) dP =
+∫
+A
+XY dP for all A ∈ V.
+
+
+2.6. CONDITIONAL EXPECTATION 33
+First suppose X = ∑m
+i=1 biχBi , where Bi ∈ V for i = 1, . . . , m. Then
+∫
+A
+XE(Y | V) dP =
+∑ m
+i=1
+bi
+∫
+A∩Bi
+} {{ }
+∈V
+E(Y | V) dP
+=
+∑ m
+i=1
+bi
+∫
+A∩Bi
+Y dP =
+∫
+A
+XY dP.
+This proves (24) if X is a simple function. The general case follows by approximation.
+3. To show (iv), it suffices to prove ∫
+A E(X) dP = ∫
+A X dP for all A ∈ V. Let us compute: ∫
+A
+X dP =
+∫
+Ω
+χAX dP = E(χAX) = E(X)P (A) =
+∫
+A
+E(X) dP,
+the third equality owing to independence.
+4. Assume W ⊆ V and let A ∈ W. Then ∫
+A
+E(E(X | V) | W) dP =
+∫
+A
+E(X | V) dP =
+∫
+A
+X dP
+since A ∈ W ⊆ V. Thus E(X | W) = E(E(X | V) | W) a.s.
+Furthermore, assertion (i) implies that E(E(X | W) | V) = E(X | W) since E(X | W) is W-measurable and so also V-measurable. This establishes assertion (v).
+5. Finally, suppose X ≤ Y , and note that ∫
+A
+E(Y | V) − E(X | V) dP =
+∫
+A
+E(Y − X | V) dP
+=
+∫
+A
+Y − X dP ≥ 0
+for all A ∈ V. Take A := {E(Y | V) − E(X | V) ≤ 0}. This event lies in V, and we deduce from the previous inequality that P (A) = 0.
+THEOREM (Conditional Jensen inequality). Suppose Φ : R → R is convex, with E(|Φ(X)|) < ∞. Then
+(25) Φ(E(X | V)) ≤ E(Φ(X) | V).
+We leave the proof as an exercise.
+
+
+34 2. A CRASH COURSE IN PROBABILITY THEORY
+2.7. MARTINGALES
+2.7.1. Definitions. Suppose Y1, Y2, . . . are independent real-valued random variables, with E(Yi) = 0 (i = 1, 2, . . . ).
+Define the sum Sn := Y1 + · · · + Yn.
+What is our best guess of Sn+k, given the values of S1, . . . , Sn? The answer is
+(26)
+E(Sn+k | S1, . . . , Sn) = E(Y1 + · · · + Yn | S1, . . . , Sn)
++ E(Yn+1 + · · · + Yn+k | S1, . . . , Sn)
+= Y1 + · · · + Yn + E(Yn+1 + · · · + Yn+k)
+} {{ }
+=0
+= Sn.
+Thus the best estimate of the “future value” of Sn+k, given the history up to time n, is just Sn.
+If we interpret Yi as the payoff of a “fair” gambling game at time i, and therefore Sn as the total winnings at time n, the calculation above says that at any time one’s future expected winnings, given the winnings to date, is just the current amount of money. So formula (26) characterizes a “fair” game.
+We incorporate these ideas into a formal definition:
+DEFINITION. Let X1, . . . , Xn, . . . be a sequence of real-valued random variables, with E(|Xi|) < ∞ (i = 1, 2, . . . ). If
+(27) Xk = E(Xj | X1, . . . , Xk) a.s. for all j ≥ k,
+we call {Xi}i∞=1 a (discrete) martingale.
+DEFINITION. Let X(·) be a real-valued stochastic process. Then
+U (t) := U (X(s) | 0 ≤ s ≤ t),
+the σ-algebra generated by the random variables X(s) for 0 ≤ s ≤ t, is called the history of the process until (and including) time t ≥ 0.
+DEFINITIONS. Let X(·) be a stochastic process such that E(|X(t)|) < ∞ for all t ≥ 0.
+(i) If
+(28) X(s) = E(X(t) | U (s)) a.s. for all t ≥ s ≥ 0,
+then X(·) is called a martingale.
+(ii) If X(s) ≤ E(X(t) | U (s)) a.s. for all t ≥ s ≥ 0,
+X(·) is a submartingale.
+
+
+2.7. MARTINGALES 35
+EXAMPLE. Let W (·) be a one-dimensional Brownian motion, as defined later in Chapter 3. Then
+W (·) is a martingale.
+To see this, write W(t) := U (W (s)| 0 ≤ s ≤ t), and let t ≥ s. Then
+E(W (t) | W(s)) = E(W (t) − W (s) | W(s)) + E(W (s) | W(s))
+= E(W (t) − W (s)) + W (s)
+= W (s) a.s.
+(The reader should refer back to this calculation after reading Chapter 3.)
+LEMMA. Suppose X(·) is a real-valued martingale and Φ : R → R is convex. Then if E(|Φ(X(t))|) < ∞ for all t ≥ 0,
+Φ(X(·)) is a submartingale.
+We omit the proof, which uses Jensen’s inequality.
+2.7.2. Martingale inequalities. Martingales are important in probability theory mainly because they admit the following powerful estimates:
+THEOREM (Discrete martingale inequalities).
+(i) If {Xn}n∞=1 is a submartingale, then
+(29) P
+(
+max
+1≤k≤n Xk ≥ λ
+)
+≤1
+λ E(X+
+n)
+for all n = 1, . . . and λ > 0.
+(ii) If {Xn}n∞=1 is a martingale and 1 < p < ∞, then
+(30) E
+(
+max
+1≤k≤n |Xk|p
+) ≤
+(p
+p−1
+)p
+E(|Xn|p)
+for all n = 1, . . . .
+A proof is provided in the appendix. Notice that (i) is a generalization of the Chebyshev inequality. We can also extend these estimates to continuoustime martingales.
+THEOREM (Martingale inequalities). Let X(·) be a stochastic process with continuous sample paths a.s.
+(i) If X(·) is a submartingale, then
+(31) P
+(
+max
+0≤s≤t X(s) ≥ λ
+)
+≤1
+λ E(X(t)+) for all λ > 0, t ≥ 0.
+
+
+36 2. A CRASH COURSE IN PROBABILITY THEORY
+(ii) If X(·) is a martingale and 1 < p < ∞, then
+(32) E
+(
+max
+0≤s≤t |X(s)|p
+) ≤
+(p
+p−1
+)p
+E (|X (t)|p).
+Outline of proof. Choose λ > 0, t > 0 and select 0 = t0 < t1 < · · · < tn = t. We check that {X(ti)}in=1 is a martingale and apply the discrete martingale inequality. Next choose a finer and finer partition of [0, t] and pass to limits.
+The proof of assertion (ii) is similar.
+
+
+Chapter 3
+BROWNIAN
+MOTION AND
+“WHITE NOISE”
+“And I will throw in Robert Brown’s new thing—Microscopic Observations on the Pollen of Plants—if you don’t happen to have it already.”
+Middlemarch
+3.1. MOTIVATION
+3.1.1. Some history. R. Brown in 1826–1827 observed the irregular motion of tiny particles ejected from pollen grains suspended in water. He and others noted that
+• the path of a given particle is very irregular and
+• the motions of two distinct particles appear to be independent.
+In 1900 L. Bachelier attempted to describe fluctuations in stock prices mathematically and essentially discovered first certain results later rederived and extended by A. Einstein in 1905.
+Einstein studied the Brownian phenomena this way. Let us consider a long, thin tube filled with clear water, into which we inject at time t = 0 a unit amount of ink, at the location x = 0. Now let u = u(x, t) denote the density of ink particles at position x ∈ R and time t ≥ 0. Initially we have
+u(x, 0) = δ0, the Dirac mass at 0.
+37
+
+
+38 3. BROWNIAN MOTION AND “WHITE NOISE”
+Next, suppose that the probability density of the event that an ink particle moves from x to x + y in (small) time τ is f (y, τ ). Then
+(1)
+u(x, t + τ ) =
+∫∞
+−∞
+u(x − y, t)f (y, τ ) dy
+=
+∫∞
+−∞
+(
+u − uxy + 1
+2 uxxy2 + · · ·
+)
+f (y, τ ) dy.
+We are using here subscripts to denote partial derivatives: ux = ∂u
+∂x , uxx =
+∂2u
+∂x2 .
+Since f is a probability density, we have ∫ ∞
+−∞ f dy = 1, whereas f (−y, τ )
+= f (y, τ ) by symmetry. Consequently ∫ ∞
+−∞ yf dy = 0. We further assume
+that ∫ ∞
+−∞ y2f dy, the variance of f , is linear in τ :
+∫∞
+−∞
+y2f (y, τ ) dy = Dτ,
+for some constant D > 0.
+We insert these identities into (1), thereby to obtain
+u(x, t + τ ) − u(x, t)
+τ =D
+2 uxx(x, t) {+ higher-order terms}.
+Sending now τ → 0, we discover that
+(2) ut = D
+2 uxx,
+where ut = ∂u
+∂t . This is the diffusion equation, also known as the heat equation. This partial differential equation, with the initial condition u(x, 0) = δ0 (the Dirac point mass at the origin), has the solution
+(3) u(x, t) = 1
+(2πDt)1/2 e− x2
+2Dt ;
+see my PDE book [E, Section 2.3] for this calculation. Consequently, the density of the diffusing ink at time t is N (0, Dt), for some constant D.
+In fact, Einstein computed
+D = RT
+NAf , where
+⎧⎪⎪⎪⎪⎨
+⎪⎪⎪⎪⎩
+R = gas constant
+T = absolute temperature
+f = friction coefficient
+NA = Avogadro’s number.
+This equation and the observed properties of Brownian motion allowed J. Perrin to compute NA (≈ 6 × 1023 = the number of molecules in a mole) and to help confirm the atomic theory of matter.
+
+
+3.1. MOTIVATION 39
+N. Wiener in the 1920’s (and later) put the theory on a firm mathematical basis. His ideas are at the heart of the mathematics in §§3.3–3.5 below.
+3.1.2. Random walks. A variant of Einstein’s argument follows. We introduce a two-dimensional rectangular lattice, comprising the sites
+{(mΔx, nΔt) | m = 0, ±1, ±2, . . . ; n = 0, 1, 2, . . . }
+for a given spacing Δx > 0 and time duration Δt > 0.
+Consider a particle starting at x = 0 and time t = 0, and at each time nΔt moves to the left an amount Δx with probability 1/2, to the right an amount Δx with probability 1/2, arriving at the new position at time (n + 1)Δt. Let p(m, n) denote the probability that the particle is at position mΔx at time nΔt. Then
+p(m, 0) =
+{
+0 m=0
+1 m = 0.
+Also
+p(m, n + 1) = 1
+2 p(m − 1, n) + 1
+2 p(m + 1, n),
+and hence
+p(m, n + 1) − p(m, n) = 1
+2 (p(m + 1, n) − 2p(m, n) + p(m − 1, n)).
+Now assume the space and time scaling
+(Δx)2
+Δt = D for some positive constant D.
+This implies
+p(m, n + 1) − p(m, n)
+Δt = D
+2
+p(m + 1, n) − 2p(m, n) + p(m − 1, n)
+(Δx)2 .
+Let Δt → 0, Δx → 0, mΔx → x, nΔt → t, with (Δx)2
+Δt = D. Then presumably p(m, n) → u(x, t), which we now interpret as the probability density that particle is at x at time t. The above difference equation becomes formally in the limit
+ut = D
+2 uxx,
+and so we arrive at the diffusion equation (2) again.
+
+
+40 3. BROWNIAN MOTION AND “WHITE NOISE”
+3.1.3. Mathematical justification. A more careful study of this technique of passing to limits with random walks on a lattice depends upon the Laplace–De Moivre Theorem.
+As above we assume that the particle moves to the left or right a distance Δx with probability 1/2. Let X(t) denote the position of the particle at time t = nΔt (n = 0, . . . ). Define
+Sn :=
+∑n
+i=1
+Xi,
+where the Xi are independent random variables such that
+{
+P (Xi = 0) = 1/2
+P (Xi = 1) = 1/2
+for i = 1, . . . . Then V (Xi) = 1
+4.
+Now Sn is the number of moves to the right by time t = nΔt. Consequently
+X(t) = SnΔx + (n − Sn)(−Δx) = (2Sn − n)Δx.
+Note also
+V (X(t)) = (Δx)2V (2Sn − n)
+= (Δx)24V (Sn) = (Δx)24nV (X1)
+= (Δx)2n = (Δx)2
+Δt t.
+Again assume (Δx)2
+Δt = D. Then
+X(t) = (2Sn − n)Δx =
+(
+Sn − n
+2
+√n 4
+) √nΔx =
+(
+Sn − n
+2
+√n 4
+) √tD.
+The Laplace–De Moivre Theorem thus implies
+nli→m∞
+t=nΔt, (Δx)2
+Δt =D
+P (a ≤ X(t) ≤ b) = nli→m∞
+(
+√taD ≤ Sn − n
+2
+√n 4
+≤ √tbD
+)
+= √12π
+∫
+√tbD
+√taD
+e− x2
+2 dx
+=1
+√2πDt
+∫b
+a
+e− x2
+2Dt dx.
+Once again, and rigorously this time, we obtain the N (0, Dt) distribution.
+
+
+3.2. DEFINITION, ELEMENTARY PROPERTIES 41
+3.2. DEFINITION, ELEMENTARY PROPERTIES
+3.2.1. Definition of Brownian motion. Inspired by all the above considerations, we now introduce Brownian motion, for which we take D = 1 in the foregoing:
+DEFINITION. A real-valued stochastic process W (·) is called a Brownian motion (or Wiener process) if
+(i) W (0) = 0 a.s.,
+(ii) W (t) − W (s) is N (0, t − s) for all t ≥ s ≥ 0,
+(iii) for all times 0 < t1 < t2 < · · · < tn, the random variables W (t1), W (t2) − W (t1), . . . , W (tn) − W (tn−1) are independent (“independent increments”).
+The Central Limit Theorem provides some further motivation for our definition of Brownian motion, since we can expect that any suitably scaled sum of independent, random disturbances affecting the position of a moving particle will result in a Gaussian distribution.
+3.2.2. Computation of joint probabilities. From the definition we know that if W (·) is a Brownian motion, then for all t > 0 and a ≤ b,
+P (a ≤ W (t) ≤ b) = √21πt
+∫b
+a
+e− x2
+2t dx
+since W (t) is N (0, t).
+Suppose we now choose times 0 < t1 < · · · < tn and real numbers ai ≤ bi, for i = 1, . . . , n. What is the joint probability
+P (a1 ≤ W (t1) ≤ b1, . . . , an ≤ W (tn) ≤ bn)?
+In other words, what is the probability that a sample path of Brownian motion takes values between ai and bi at time ti for each i = 1, . . . , n?
+We can guess the answer as follows. We know
+P (a1 ≤ W (t1) ≤ b1) =
+∫ b1
+a1
+e− x21
+2t1
+√2πt1
+dx1;
+and given that W (t1) = x1, a1 ≤ x1 ≤ b1, then presumably the process is N (x1, t2 −t1) on the interval [t1, t2]. Thus the probability that a2 ≤ W (t2) ≤ b1, given that W (t1) = x1, should equal
+∫ b2
+a2
+1
+√2π(t2 − t1) e− |x2−x1|2
+2(t2−t1) dx2.
+
+
+42 3. BROWNIAN MOTION AND “WHITE NOISE”
+Hence it should be that
+P (a1 ≤ W (t1) ≤ b1, a2 ≤ W (t2) ≤ b2)
+=
+∫ b1
+a1
+∫ b2
+a2
+g(x1, t1 | 0)g(x2, t2 − t1 | x1) dx2dx1
+for
+g(x, t | y) := √21πt e− (x−y)2
+2t .
+We therefore guess that in general
+(4) P (a1 ≤ W (t1) ≤ b1, . . . , an ≤ W (tn) ≤ bn) =
+∫ b1
+a1
+...
+∫ bn
+an
+g(x1, t1 | 0)g(x2, t2−t1 | x1) . . . g(xn, tn−tn−1 | xn−1) dxn . . . dx1.
+The next assertion confirms and extends this formula.
+THEOREM. Let W (·) be a one-dimensional Brownian motion. Then for all positive integers n, all choices of times 0 = t0 < t1 < · · · < tn and each function f : Rn → R, we have
+(5)
+E(f (W (t1), . . . , W (tn)))
+=
+∫∞
+−∞
+...
+∫∞
+−∞
+f (x1, . . . , xn)g(x1, t1 | 0)g(x2, t2 − t1 | x1)
+. . . g(xn, tn − tn−1 | xn−1) dxn . . . dx1.
+Our taking
+f (x1, . . . , xn) = χ[a1,b1] (x1) · · · χ[an,bn] (xn)
+gives (4).
+
+
+3.2. DEFINITION, ELEMENTARY PROPERTIES 43
+Proof. Let us write Xi := W (ti), Yi := Xi − Xi−1 for i = 1, . . . , n. We also define
+h(y1, y2, . . . , yn) := f (y1, y1 + y2, . . . , y1 + · · · + yn).
+Then
+E(f (W (t1), . . . , W (tn))) = Eh(Y1, . . . , Yn)
+=
+∫∞
+−∞
+...
+∫∞
+−∞
+h(y1, . . . , yn)g(y1, t1 | 0)g(y2, t2 − t1 | 0)
+. . . g(yn, tn − tn−1 | 0)dyn . . . dy1
+=
+∫∞
+−∞
+...
+∫∞
+−∞
+f (x1, . . . , xn)g(x1, t1 | 0)g(x2, t2 − t1 | x1)
+. . . g(xn, tn − tn−1 | xn−1) dxn . . . dx1.
+For the second equality we recalled that the random variables Yi = W (ti) − W (ti−1) are independent for i = 1, . . . , n and that each Yi is N (0, ti − ti−1). We also changed variables using the identities yi = xi − xi−1 for i = 1, . . . , n and x0 = 0. The Jacobian for this change of variables equals 1.
+3.2.3. More on white noise.
+LEMMA. Suppose W (·) is a one-dimensional Brownian motion. Then
+(6) E(W (t)) = 0, E(W 2(t)) = t (t ≥ 0)
+and
+(7) E(W (t)W (s)) = t ∧ s = min{s, t} (t, s ≥ 0).
+Proof. The first identities are immediate from the definition of Brownian motion since W (t) is N (0, t).
+Now assume t ≥ s ≥ 0. Then
+E(W (t)W (s)) = E((W (s) + W (t) − W (s))W (s))
+= E(W 2(s)) + E((W (t) − W (s))W (s))
+= s + E(W (t) − W (s))
+} {{ }
+=0
+E(W (s))
+} {{ }
+=0
+= s = t ∧ s,
+since W (s) is N (0, s) and W (t) − W (s) is independent of W (s).
+Heuristics. Remember from Chapter 1 that the formal time derivative
+W ̇ (t) = ξ(t)
+is “one-dimensional white noise” however, we will see later, for a.e. ω the sample path t → W (t, ω) is in fact differentiable for no time t ≥ 0. Thus W ̇ (t) = ξ(t) does not really exist.
+
+
+44 3. BROWNIAN MOTION AND “WHITE NOISE”
+However, we do have the heuristic formula
+(8) “E(ξ(t)ξ(s)) = δ0(s − t)”,
+where δ0 is the Dirac mass at 0.
+A formal “proof” is this. Suppose h > 0, fix t > 0, and set
+φh(s) := E
+(( W (t + h) − W (t)
+h
+) ( W (s + h) − W (s)
+h
+))
+=1
+h2 [E(W (t + h)W (s + h)) − E(W (t + h)W (s))
+− E(W (t)W (s + h)) + E(W (t)W (s))]
+=1
+h2 [((t + h) ∧ (s + h)) − ((t + h) ∧ s) − (t ∧ (s + h)) + (t ∧ s)].
+φ
+!"
+Then φh(s) → 0 as h → 0 for each s = t. But φh ≥ 0 and ∫ φh(s) ds = 1; and so presumably φh(s) → δ0(s−t) in some sense, as h → 0. In addition, we expect that φh(s) → E(ξ(t)ξ(s)). These observations suggest that formula (8) is valid, at least in some informal sense.
+We will see in the next section that (8) provides some important insight when we are trying to build a Brownian motion.
+REMARK. Why W ̇ (·) = ξ(·) is called white noise.
+If X(·) is a real-valued stochastic process with E(X2(t)) < ∞ for all t ≥ 0, we define
+r(t, s) := E(X(t)X(s)) (t, s ≥ 0),
+the autocorrelation function of X(·).
+If r(t, s) = c(t−s) for some function c : R → R and if E(X(t)) = E(X(s)) for all t, s ≥ 0, X(·) is called stationary in the wide sense. A white noise process ξ(·) is, at least at the formal level, Gaussian, wide sense stationary, with c(·) = δ0.
+
+
+3.3. CONSTRUCTION OF BROWNIAN MOTION 45
+In general we define the Fourier transform of the autocorrelation function,
+f (λ) := 1
+2π
+∫∞
+−∞
+e−iλtc(t) dt (λ ∈ R),
+to be the spectral density of the process X(·). For white noise, we have
+f (λ) = 1
+2π
+∫∞
+−∞
+e−iλtδ0 dt = 1
+2π for all λ.
+Thus the spectral density of ξ(·) is flat; that is, all “frequencies” contribute equally in the correlation function, just as—by analogy—all colors contribute equally to make white light.
+3.3. CONSTRUCTION OF BROWNIAN MOTION
+The main issue now is to demonstrate that a Brownian motion actually exists.
+Our method will be to develop a formal expansion of white noise ξ(·) in terms of a cleverly selected orthonormal basis of L2(0, 1), the space of all real-valued, square-integrable functions defined on (0, 1). We will then integrate the resulting expression in time, show that this series converges, and then prove that we have built a Brownian motion. (This procedure is a form of “wavelet analysis”, as explained in Pinsky [P].)
+3.3.1. Expansions in an orthonormal basis. Suppose now that {ψn}n∞=0
+is a complete, orthonormal basis of L2(0, 1), where the ψn = ψn(t) are functions of 0 ≤ t ≤ 1 only and so are not random variables. Orthonormality means that
+∫1
+0
+ψn(s)ψm(s) ds = δmn =
+{
+1 if m = n
+0 if m = n
+for all m, n. We introduce the formal expansion
+(9) ξ(t) =
+∞ ∑
+n=0
+Anψn(t) (0 ≤ t ≤ 1),
+in which the coefficients An are random. It is easy to see that then
+An =
+∫1
+0
+ξ(t)ψn(t) dt.
+We also expect that the An are independent and Gaussian, with E(An) = 0.
+
+
+46 3. BROWNIAN MOTION AND “WHITE NOISE”
+Therefore to be consistent we must have for m = n
+0 = E(An)E(Am) = E(AnAm) =
+∫1
+0
+∫1
+0
+E(ξ(t)ξ(s))ψn(t)ψm(s) dtds
+=
+∫1
+0
+∫1
+0
+δ0(s − t)ψn(t)ψm(s) dtds by (8)
+=
+∫1
+0
+ψn(s)ψm(s) ds.
+But this is already automatically true as the ψn are orthogonal. Similarly,
+E(A2
+n) =
+∫1
+0
+ψ2
+n(s) ds = 1.
+Consequently if the An are independent, N (0, 1) random variables, it is reasonable to believe that formula (9) makes sense. But then the Brownian motion W (·) should be given by
+(10) W (t) :=
+∫t
+0
+ξ(s) ds =
+∑ ∞
+n=0
+An
+∫t
+0
+ψn(s) ds.
+This seems to be true for any orthonormal basis, and we will next make this rigorous by choosing a particularly nice basis.
+3.3.2. Construction of Brownian motion. We embark upon a sequence of definitions and lemmas that will enable us to carry out the plan sketched above. This procedure is due to Le ́vy and Ciesielski.
+DEFINITION. The family {hk(·)}k∞=0 of Haar functions is defined for 0 ≤ t ≤ 1 as follows:
+h0(t) := 1 for 0 ≤ t ≤ 1,
+h1(t) :=
+{
+1 for 0 ≤ t ≤ 1
+2
+−1 for 1
+2 < t ≤ 1.
+If 2n ≤ k < 2n+1, n = 1, 2, . . . , we set
+hk(t) :=
+⎧⎪⎨
+⎪⎩
+2n/2 for k−2n
+2n ≤ t ≤ k−2n+1/2
+2n
+−2n/2 for k−2n+1/2
+2n < t ≤ k−2n+1
+2n
+0 otherwise.
+LEMMA 1. The functions {hk(·)}k∞=0 form a complete, orthonormal basis
+of L2(0, 1).
+Proof. 1. We have ∫ 1
+0 h2
+k dt = 2n ( 1
+2n+1 + 1
+2n+1
+) = 1.
+
+
+3.3. CONSTRUCTION OF BROWNIAN MOTION 47
+#
+!"
+$!
+Graph of a Haar function
+Note also that for all l > k, either hkhl = 0 for all t or else hk is constant on the support of hl. In this second case
+∫1
+0
+hlhk dt = ±2n/2
+∫1
+0
+hl dt = 0.
+2. Suppose f ∈ L2(0, 1), ∫ 1
+0 f hk dt = 0 for all k = 0, 1, . . . . We will prove f = 0 almost everywhere.
+If n = 0, we have ∫ 1
+0 f dt = 0. Let n = 1. Then ∫ 1/2
+0 f dt = ∫ 1
+1/2 f dt; and
+both are equal to zero since 0 = ∫ 1/2
+0 f dt + ∫ 1
+1/2 f dt = ∫ 1
+0 f dt. Continuing
+in this way, we deduce ∫ k+1
+2n+1 k 2n+1
+f dt = 0 for all 0 ≤ k < 2n+1. Thus ∫ r
+s f dt = 0
+for all dyadic rationals 0 ≤ s ≤ r ≤ 1, and so for all 0 ≤ s ≤ r ≤ 1. This implies f = 0 a.e.
+DEFINITION. For k = 0, 1, 2, . . . ,
+sk(t) :=
+∫t
+0
+hk(s) ds (0 ≤ t ≤ 1)
+is the k-th Schauder function.
+The graph of sk is a “tent” of height 2−n/2−1, lying above the interval
+[ k−2n
+2n , k−2n+1
+2n ]. Consequently
+(11) max
+0≤t≤1 |sk(t)| = 2−n/2−1 if 2n ≤ k < 2n+1.
+LEMMA 2. We have
+(12)
+∑ ∞
+k=0
+sk(s)sk(t) = t ∧ s
+for each 0 ≤ t, s ≤ 1.
+
+
+48 3. BROWNIAN MOTION AND “WHITE NOISE”
+%#
+!"
+$!
+Graph of a Schauder function
+Proof. Define for 0 ≤ s ≤ 1,
+φs(τ ) :=
+{
+1 0≤τ ≤s
+0 s < τ ≤ 1.
+Then if s ≤ t, Lemma 1 implies
+s=
+∫1
+0
+φtφs dτ =
+∑ ∞
+k=0
+ak bk ,
+where
+ak =
+∫1
+0
+φthk dτ =
+∫t
+0
+hk dτ = sk(t), bk =
+∫1
+0
+φshk dτ = sk(s).
+Motivated by the heuristics leading to (10), our intention is to define
+W (t) :=
+∞ ∑
+k=0
+Ak sk (t)
+for times 0 ≤ t ≤ 1, where the coefficients {Ak}k∞=0 are independent, N (0, 1) random variables defined on some probability space.
+We must first of all check whether this series converges.
+LEMMA 3. Let {ak}k∞=0 be a sequence of real numbers such that
+|ak| ≤ Ckδ (k = 1, 2, . . . )
+for some constants C and 0 ≤ δ < 1/2. Then the series
+∑ ∞
+k=0
+ak sk (t)
+converges uniformly for 0 ≤ t ≤ 1.
+Proof. Fix ε > 0. Notice that for 2n ≤ k < 2n+1, the functions sk(·) have disjoint supports. Set
+bn := max
+2n≤k<2n+1 |ak| ≤ C(2n+1)δ.
+
+
+3.3. CONSTRUCTION OF BROWNIAN MOTION 49
+Then for 0 ≤ t ≤ 1, the estimate (11) implies
+∞ ∑
+k=2m
+|ak||sk(t)| ≤
+∑ ∞
+n=m
+bn max
+2n≤k<2n+1
+0≤t≤1
+|sk(t)|
+≤C
+∑ ∞
+n=m
+(2n+1)δ2−n/2−1 < ε
+for m large enough, since 0 ≤ δ < 1/2.
+LEMMA 4. Suppose {Ak}k∞=1 are independent, N (0, 1) random variables. Then for almost every ω,
+|Ak(ω)| = O(√log k) as k → ∞.
+Since √log k ≤ Ck 1
+4 , the numbers {Ak(ω)}k∞=1 almost surely satisfy the hypothesis of the Lemma 3 above.
+Proof. For all x > 0, k = 2, . . . , we have
+P (|Ak| > x) = √22π
+∫∞
+x
+e− s2
+2 ds
+≤ √22π e− x2
+4
+∫∞
+x
+e− s2
+4 ds
+≤ Ce− x2
+4,
+for some constant C. Set x := 4√log k; then
+P (|Ak| ≥ 4√log k) ≤ Ce−4 log k = C 1
+k4 .
+Since ∑ 1
+k4 < ∞, the Borel–Cantelli Lemma implies
+P (|Ak| ≥ 4√log k i.o.) = 0.
+Therefore for almost every sample point ω, we have
+|Ak(ω)| ≤ 4√log k provided k ≥ K,
+where K depends on ω.
+
+
+50 3. BROWNIAN MOTION AND “WHITE NOISE”
+THEOREM (Constructing Brownian motion). Let {Ak}k∞=0 be a sequence of independent, N (0, 1) random variables defined on the same probability space. Then the sum
+(13) W (t, ω) :=
+∑ ∞
+k=0
+Ak(ω)sk(t) ( 0 ≤ t ≤ 1)
+converges uniformly in t, for a.e. ω. Furthermore
+(i) W (·) is a Brownian motion for 0 ≤ t ≤ 1, and
+(ii) for a.e. ω, the sample path t → W (t, ω) is continuous.
+Proof. 1. The uniform convergence is a consequence of Lemmas 3 and 4; this implies (ii).
+2. To prove W (·) is a Brownian motion, we first note that clearly W (0) = 0 a.s. We assert as well that W (t) − W (s) is N (0, t − s) for all 0 ≤ s ≤ t ≤ 1. To prove this, let us compute
+E(eiλ(W (t)−W (s))) = E(eiλ ∑∞
+k=0 Ak(sk(t)−sk(s)))
+=
+∏ ∞
+k=0
+E(eiλAk(sk(t)−sk(s))) by independence
+=
+∏ ∞
+k=0
+e− λ2
+2 (sk(t)−sk(s))2 since Ak is N (0, 1)
+= e− λ2
+2
+∑∞
+k=0 (sk (t)−sk (s))2
+= e− λ2
+2
+∑∞
+k=0 s2
+k (t)−2sk (t)sk (s)+s2
+k (s)
+= e− λ2
+2 (t−2s+s) by Lemma 2
+= e− λ2
+2 (t−s).
+By uniqueness of characteristic functions, the increment W (t) − W (s) is N (0, t − s), as asserted.
+3. Next we claim for all m = 1, 2, . . . and for all 0 = t0 < t1 < · · · < tm ≤ 1 that
+(14) E(ei ∑m
+j=1 λj (W (tj )−W (tj−1))) =
+∏m
+j=1
+e− λj2
+2 (tj −tj−1).
+Once this is proved, we will know from uniqueness of characteristic functions that
+FW (t1),...,W (tm)−W (tm−1)(x1, . . . , xm) = FW (t1)(x1) · · · FW (tm)−W (tm−1)(xm)
+
+
+3.3. CONSTRUCTION OF BROWNIAN MOTION 51
+for all x1, . . . , xm ∈ R. This proves that
+W (t1), . . . , W (tm) − W (tm−1) are independent.
+Thus (14) will establish the theorem.
+Now in the case m = 2, we have
+E(ei[λ1W (t1)+λ2(W (t2)−W (t1))]) = E(ei[(λ1−λ2)W (t1)+λ2W (t2)])
+= E(ei(λ1−λ2) ∑∞
+k=0 Aksk(t1)+iλ2
+∑∞
+k=0 Aksk(t2))
+=
+∏ ∞
+k=0
+E (eiAk [(λ1 −λ2 )sk (t1 )+λ2 sk (t2 )] )
+=
+∏ ∞
+k=0
+e− 1
+2 ((λ1−λ2)sk(t1)+λ2sk(t2))2
+= e− 1
+2
+∑∞
+k=0 (λ1 −λ2 )2 s2
+k (t1 )+2(λ1 −λ2 )λ2 sk (t1 )sk (t2 )+λ22 s2
+k (t2 )
+= e− 1
+2 [(λ1−λ2)2t1+2(λ1−λ2)λ2t1+λ22t2] by Lemma 4
+= e− 1
+2 [λ21t1+λ22(t2−t1)].
+This is (14) for m = 2, and the general case follows similarly.
+THEOREM (Existence of one-dimensional Brownian motion). Let (Ω, U , P ) be a probability space on which countably many N (0, 1), independent random variables {An}n∞=1 are defined.
+Then there exists a one-dimensional Brownian motion W (·) defined for ω ∈ Ω, t ≥ 0.
+Outline of proof. The theorem above demonstrated how to build a Brownian motion on 0 ≤ t ≤ 1. As we can reindex the N (0, 1) random variables to obtain countably many families of countably many random variables, we can therefore build countably many independent Brownian motions W n(t) for 0 ≤ t ≤ 1.
+We assemble these inductively by setting
+W (t) := W (n − 1) + W n(t − (n − 1)) for n − 1 ≤ t ≤ n.
+Then W (·) is a one-dimensional Brownian motion, defined for all times t ≥ 0.
+This theorem shows that we can construct a Brownian motion defined on any probability space on which there exist countably many independent N (0, 1) random variables.
+
+
+52 3. BROWNIAN MOTION AND “WHITE NOISE”
+3.3.3. Brownian motion in Rn. It is straightforward to extend our definitions to Brownian motions taking values in Rn.
+DEFINITION. An Rn-valued stochastic process W(·) = (W 1(·), . . . , W n(·)) is an n-dimensional Brownian motion (or Wiener process) provided
+(i) for each k = 1, . . . , n, W k(·) is a one-dimensional Wiener process and
+(ii) the σ-algebras Wk := U (W k(t) | t ≥ 0) are independent, k = 1, . . . , n.
+By the arguments above we can build a probability space and on it n independent one-dimensional Brownian motions W k(·) (k = 1, . . . , n). Then W(·) := (W 1(·), . . . , W n(·)) is an n-dimensional Brownian motion.
+LEMMA. If W(·) is an n-dimensional Brownian motion, then for k, l = 1, . . . , n
+(i) E(W k(t)W l(s)) = (t ∧ s)δkl,
+(ii) E((W k(t) − W k(s))(W l(t) − W l(s))) = (t − s)δkl (t ≥ s ≥ 0).
+Proof. If k = l, E(W k(t)W l(s)) = E(W k(t))E(W l(s)) = 0, by independence. The proof of (ii) is similar.
+THEOREM. (i) If W(·) is an n-dimensional Brownian motion, then W(t) is N (0, tI) for each time t > 0. Therefore
+(15) P (W(t) ∈ A) = 1
+(2πt)n/2
+∫
+A
+e− |x|2
+2t dx
+for each Borel subset A ⊆ Rn.
+(ii) More generally, for each m = 1, 2, . . . and each function f : Rn × Rn × · · · Rn → R, we have
+(16)
+Ef (W(t1), . . . , W(tm))
+=
+∫
+Rn
+...
+∫
+Rn
+f (x1, . . . , xm)g(x1, t1 | 0)g(x2, t2 − t1 | x1)
+. . . g(xm, tm − tm−1 | xm−1) dxm . . . dx1,
+where
+g(x, t | y) := 1
+(2πt)n/2 e− |x−y|2
+2t .
+
+
+3.4. SAMPLE PATH PROPERTIES 53
+Proof. For each time t > 0, the random variables W 1(t), . . . , W n(t) are independent. Consequently for each point x = (x1, . . . , xn) ∈ Rn, we have
+fW(t)(x1, . . . , xn) = fW 1(t)(x1) · · · fW n(t)(xn)
+=1
+(2πt)1/2 e− x21
+2t · · · 1
+(2πt)1/2 e− x2n
+2t
+=1
+(2πt)n/2 e− |x|2
+2t = g(x, t | 0).
+We prove formula (16) as in the one-dimensional case.
+3.4. SAMPLE PATH PROPERTIES
+In this section we will demonstrate that for almost every ω, the sample path
+t → W(t, ω)
+is uniformly Ho ̈lder continuous for each exponent 0 < γ < 1
+2 , but is nowhere
+H ̈older continuous with any exponent γ > 1
+2 . In particular t → W(t, ω) almost surely is nowhere differentiable and is of infinite variation for each time interval.
+3.4.1. Continuity of sample paths.
+DEFINITIONS. (i) Let 0 < γ ≤ 1. A function f : [0, T ] → R is called uniformly H ̈older continuous with exponent γ > 0 if there exists a constant K such that
+|f (t) − f (s)| ≤ K|t − s|γ for all s, t ∈ [0, T ].
+(ii) We say f is H ̈older continuous with exponent γ > 0 at the point s if there exists a constant K such that
+|f (t) − f (s)| ≤ K|t − s|γ for all t ∈ [0, T ].
+A good general way to prove Ho ̈lder continuity is this important theorem of Kolmogorov:
+THEOREM (H ̈older continuity of sample paths). Let X(·) be a stochastic process with continuous sample paths a.s. such that
+(17) E(|X(t) − X(s)|β) ≤ C|t − s|1+α
+for constants β, α > 0, C ≥ 0 and for all times t, s ≥ 0.
+Then for each T > 0, almost every ω, and each
+(18) 0 < γ < α
+β,
+
+
+54 3. BROWNIAN MOTION AND “WHITE NOISE”
+there exists a constant K = K(ω, γ, T ) such that
+(19) |X(t, ω) − X(s, ω)| ≤ K|t − s|γ for all 0 ≤ s, t ≤ T.
+Hence the sample path t → X(t, ω) is uniformly H ̈older continuous with exponent γ on [0, T ].
+A proof is in the appendix.
+REMARK. A modification of the proof shows that if X(·) is a stochastic process such that
+E(|X(t) − X(s)|β) ≤ C|t − s|1+α (α, β > 0)
+for some constant C, then X(·) has a version X ̃ (·) such that a.e. sample path is H ̈older continuous for each exponent 0 < γ < α/β. (We call X ̃ (·) a version of X(·) if P (X(t) = X ̃ (t)) = 1 for all t ≥ 0.)
+THEOREM (Continuity of Brownian sample paths). Thus for almost all ω and any T > 0, the sample path t → W(t, ω) is uniformly Ho ̈lder continuous on [0, T ] for each exponent 0 < γ < 1/2.
+Proof. Consider W(·), an n-dimensional Brownian motion. We have for all integers m = 1, 2, . . .
+E(|W(t) − W(s)|2m) = 1
+(2πr)n/2
+∫
+Rn
+|x|2me− |x|2
+2r dx for r = t − s > 0
+=1
+(2π)n/2 rm
+∫
+Rn
+|y|2me− |y|2
+2 dy
+(
+y = √xr
+)
+= Crm = C|t − s|m.
+Thus the hypotheses of Kolmogorov’s theorem hold for β = 2m, α = m − 1. The process W(·) is thus H ̈older continuous a.s. for exponents γ satisfying
+0<γ< α
+β=1
+2− 1
+2m
+for all m.
+3.4.2. Nowhere differentiability. Next we prove that sample paths of Brownian motion are with probability one nowhere H ̈older continuous with exponent greater than 1
+2 , and thus are nowhere differentiable.
+THEOREM. (i) For each 1
+2 < γ ≤ 1 and almost every ω, t → W(t, ω) is nowhere Ho ̈lder continuous with exponent γ.
+(ii) In particular, for almost every ω, the sample path t → W(t, ω) is nowhere differentiable and is of infinite variation on each subinterval.
+
+
+3.4. SAMPLE PATH PROPERTIES 55
+Proof. 1. It suffices to consider a one-dimensional Brownian motion, and we may for simplicity consider only times 0 ≤ t ≤ 1.
+Fix an integer N so large that
+N
+(
+γ−1
+2
+)
+> 1.
+Now if the function t → W (t, ω) is Ho ̈lder continuous with exponent γ at some point 0 ≤ s < 1, then
+|W (t, ω) − W (s, ω)| ≤ K|t − s|γ
+for all t ∈ [0, 1] and some constant K.
+For n 1, set i = [ns] + 1 and note that for j = i, i + 1, . . . , i + N − 1
+∣∣∣W ( j
+n , ω) − W ( j+1
+n , ω)
+∣∣∣ ≤
+∣∣∣W (s, ω) − W ( j
+n, ω)
+∣∣∣
++
+∣∣∣W (s, ω) − W ( j+1
+n , ω)
+∣∣∣
+≤K
+(∣∣∣∣s − j
+n
+∣∣∣∣
+γ
++
+∣∣∣∣s − j + 1
+n
+∣∣∣∣
+γ)
+≤M
+nγ
+for some constant M . Thus
+ω ∈ Ai
+M,n :=
+{∣∣∣W ( j
+n ) − W ( j+1
+n)
+∣∣∣ ≤ M
+nγ for j = i, . . . , i + N − 1
+}
+for some 1 ≤ i ≤ n, some M ≥ 1, and all large n.
+Therefore the set of ω ∈ Ω such that W (ω, ·) is H ̈older continuous with exponent γ at some time 0 ≤ s < 1 is contained in
+∞ ⋃
+M =1
+∞ ⋃
+k=1
+∞ ⋂
+n=k
+n ⋃
+i=1
+Ai
+M,n.
+We will show this event has probability 0.
+2. For all k and M ,
+P
+( ∞ ⋂
+n=k
+n ⋃
+i=1
+Ai
+M,n
+)
+≤ lim inf
+n→∞ P
+( n ⋃
+i=1
+Ai
+M,n
+)
+≤ lim inf
+n→∞
+n ∑
+i=1
+P (Ai
+M,n)
+≤ lim inf
+n→∞ n (P (|W ( 1
+n )| ≤ M
+nγ
+))N ,
+
+
+56 3. BROWNIAN MOTION AND “WHITE NOISE”
+since the random variables W ( j+1
+n ) − W(j
+n ) are N (0, 1
+n
+) and independent. Now
+P (|W ( 1
+n )| ≤ M
+nγ
+)=
+√n
+√2π
+∫ M n−γ
+−M n−γ
+e− nx2
+2 dx
+= √12π
+∫ M n1/2−γ
+−M n1/2−γ
+e− y2
+2 dy
+≤ Cn1/2−γ.
+We use this calculation to deduce
+P
+( ⋂∞
+n=k
+n ⋃
+i=1
+Ai
+M,n
+)
+≤ lim inf
+n→∞ nC[n1/2−γ]N = 0,
+since N (γ − 1/2) > 1. This holds for all k, M . Thus
+P
+( ⋃∞
+M =1
+⋃∞
+k=1
+⋂∞
+n=k
+n ⋃
+i=1
+Ai
+M,n
+)
+= 0,
+and assertion (i) of the theorem follows.
+3. If t → W (t, ω) were differentiable at s, then W (t, ω) would be H ̈older continuous (with exponent 1) at s. But this is almost surely not so. If W (t, ω) were of finite variation on some subinterval, it would then be differentiable almost everywhere there.
+A sample path of Brownian motion
+
+
+3.5. MARKOV PROPERTY 57
+REMARK. The idea underlying this proof, due to Dvoretzky, Erdo ̈s and Kakutani, is that if
+|W (t, ω) − W (s, ω)| ≤ K|t − s|γ for all t,
+then
+|W ( j
+n , ω) − W ( j+1
+n , ω)| ≤ M
+nγ
+for all n 1 and at least N values of j. But these are independent events of small probability. The probability that the above inequality holds for all these j’s is a small number to the large power N , and is therefore extremely small.
+3.5. MARKOV PROPERTY
+DEFINITION. If V is a σ-algebra, V ⊆ U , then
+P (A | V) := E(χA | V) for A ∈ U .
+Therefore P (A | V) is a random variable, the conditional probability of A, given V.
+DEFINITION. If X(·) is a stochastic process, the σ-algebra
+U (s) := U (X(r) | 0 ≤ r ≤ s)
+is called the history of the process up to and including time s.
+We can informally interpret U (s) as recording the information available from our observing X(r) for all times 0 ≤ r ≤ s.
+DEFINITION. An Rn-valued stochastic process X(·) is called a Markov process if
+P (X(t) ∈ B | U (s)) = P (X(t) ∈ B | X(s)) a.s.
+for all 0 ≤ s ≤ t and all Borel subset B of Rn.
+The idea of this definition is that, given the current value X(s), you can predict the probabilities of future values of X(t) just as well as if you knew the entire history of the process before time s. Loosely speaking, the process only “knows” its value at time s and does not “remember” how it got there.
+THEOREM. Let W(·) be an n-dimensional Brownian motion. Then W(·) is a Markov process, and
+(20) P (W(t) ∈ B | W(s)) = 1
+(2π(t − s))n/2
+∫
+B
+e− |x−W(s)|2
+2(t−s) dx a.s.
+for all 0 ≤ s < t and Borel sets B.
+Note carefully that each side of this identity is a random variable.
+
+
+58 3. BROWNIAN MOTION AND “WHITE NOISE”
+Proof. We will only prove (20). Let A be a Borel set and write
+Φ(y) := 1
+(2π(t − s))n/2
+∫
+A
+e− |x−y|2
+2(t−s) dx.
+As Φ(W(s)) is U (W(s))-measurable, we must show that
+(21)
+∫
+C
+χ{W(t)∈A}dP =
+∫
+C
+Φ(W(s)) dP for all C ∈ U (W(s)).
+Now if C ∈ U (W(s)), then C = {W(s) ∈ B} for some Borel set B ⊆ Rn. Hence ∫
+C
+χ{W(t)∈A}dP = P (W(s) ∈ B, W(t) ∈ A)
+=
+∫
+B
+∫
+A
+g(y, s | 0)g(x, t − s | y) dxdy
+=
+∫
+B
+g(y, s | 0)Φ(y) dy.
+On the other hand,
+∫
+C
+Φ(W(s))dP =
+∫
+Ω
+χB(W(s))Φ(W(s)) dP
+=
+∫
+Rn
+χB(y)Φ(y) e− |y|2
+2s
+(2πs)n/2 dy
+=
+∫
+B
+g(y, s | 0)Φ(y) dy.
+This last expression agrees with that above. This verifies (21) and so establishes (20).
+REMARK. The Markov property partially “explains” the nondifferentiability of sample paths for Brownian motion, as discussed earlier in §3.4.
+If W(s, ω) = b, say, then the future behavior of W(t, ω) depends only upon this fact and not on how W(t, ω) approached the point b as t → s−. Thus the sample path W(·, ω) “cannot remember” how to leave b in such a way that it will have a tangent there.
+
+
+Chapter 4
+STOCHASTIC
+INTEGRALS
+4.1. PRELIMINARIES
+Remember from Chapter 1 that we want to develop a theory of stochastic differential equations of the form
+(SDE)
+{
+dX = b(X, t)dt + B(X, t)dW
+X(0) = X0,
+which we will interpret in Chapter 5 to mean
+(1) X(t) = X0 +
+∫t
+0
+b(X, s) ds +
+∫t
+0
+B(X, s) dW
+for all times t ≥ 0. But before we can study and solve such an integral equation, we must first define stochastic integrals of the form ∫T
+0
+G dW
+for some wide class of stochastic processes G. Then the right-hand side of (1) at least makes sense.
+But it is not at all obvious how to do this. Since t → W(t, ω) is of infinite
+variation for almost every ω, the expression “∫ T
+0 G dW” simply cannot be understood as an ordinary integral.
+4.1.1. The Paley–Wiener–Zygmund stochastic integral. A first definition of a stochastic integral for m = n = 1 is due to Paley, Wiener and Zygmund [P-W-Z].
+59
+
+
+60 4. STOCHASTIC INTEGRALS
+DEFINITION. Suppose g : [0, T ] → R is continuously differentiable, with g(0) = g(T ) = 0. We define
+(2)
+∫T
+0
+g dW := −
+∫T
+0
+g′W dt.
+Note carefully that ∫ T
+0 g dW is a random variable, but g is an ordinary, deterministic function.
+Let us check out the properties following from this definition:
+LEMMA. We have
+(i) E
+(∫ T
+0 g dW
+)
+= 0,
+(ii) E
+((∫ T
+0 g dW
+)2)
+= ∫T
+0 g2 dt.
+Proof. 1. E
+(∫ T
+0 g dW
+)
+= −E
+(∫ T
+0 g′W dt
+)
+= −∫T
+0 g′E(W (t))
+} {{ }
+=0
+dt = 0.
+2. To confirm (ii), we calculate
+E
+((∫ T
+0
+g dW
+)2)
+=E
+(∫ T
+0
+g′(t)W (t) dt
+∫T
+0
+g′(s)W (s) ds
+)
+=
+∫T
+0
+∫T
+0
+g′(t)g′(s)E(W (t)W (s))
+} {{ }
+=t∧s
+dsdt
+=
+∫T
+0
+g′(t)
+(∫ t
+0
+sg′(s) ds +
+∫T
+t
+tg′(s) ds
+)
+dt
+=
+∫T
+0
+g′(t)
+(
+tg(t) −
+∫t
+0
+g ds − tg(t)
+)
+dt
+=
+∫T
+0
+g′(t)
+( −
+∫t
+0
+g ds
+)
+dt =
+∫T
+0
+g2 dt.
+Extending the definition. Now let g be any function in L2(0, T ).
+Select a sequence of C1 functions gn, with gn(0) = gn(T ) = 0, such that
+∫T
+0 (gn − g)2 dt → 0. In view of property (ii),
+E
+((∫ T
+0
+gm dW −
+∫T
+0
+gn dW
+)2)
+=
+∫T
+0
+(gm − gn)2 dt;
+and therefore {∫ T
+0 gn dW }n∞=1 is a Cauchy sequence in L2(Ω). Consequently we can define ∫ T
+0
+g dW := nli→m∞
+∫T
+0
+gn dW,
+
+
+4.1. PRELIMINARIES 61
+the limit taken in L2(Ω). The extended definition still satisfies properties (i) and (ii) from the lemma.
+REMARK. This is a reasonable definition of ∫ T
+0 g dW , except that it only
+makes sense for deterministic functions g ∈ L2(0, T ), and not for stochastic processes. This is not good enough: in (1) we have the expression ∫t
+0
+B(X, s) dW,
+the integrand of which is a stochastic process.
+We must devise a definition for a wider class of integrands (although the definition we finally decide upon will agree with that of Paley, Wiener, Zygmund if g happens to be a deterministic C1 function, with g(0) = g(T ) = 0).
+4.1.2. Riemann sums. To continue our study of stochastic integrals with random integrands, let us think about what might be an appropriate definition for ∫ T
+0
+W dW = ?,
+where W (·) is a one-dimensional Brownian motion. A reasonable procedure is to construct a Riemann sum approximation and then—if possible—to pass to limits.
+DEFINITIONS. (i) If [0, T ] is an interval, a partition P of [0, T ] is a finite collection of distinct points in [0, T ], including the endpoints:
+P := {0 = t0 < t1 < · · · < tm = T }.
+(ii) The mesh size of P is
+|P | := max
+0≤k≤m−1 |tk+1 − tk|.
+(iii) For fixed 0 ≤ λ ≤ 1 and P a given partition of [0, T ], set
+τk := (1 − λ)tk + λtk+1 (k = 0, . . . , m − 1).
+This is a point lying within the subinterval [tk, tk+1].
+DEFINITION. For such a partition P and for 0 ≤ λ ≤ 1, we write
+R = R(P, λ) :=
+m−1
+∑
+k=0
+W (τk)(W (tk+1) − W (tk)).
+This is the corresponding Riemann sum approximation of ∫ T
+0 W dW .
+The key question is this: what happens when |P | → 0, with λ fixed?
+
+
+62 4. STOCHASTIC INTEGRALS
+LEMMA (Quadratic variation). Let [a, b] be an interval in [0, ∞), and suppose
+P n := {a = tn
+0 < tn
+1 < · · · < tn
+mn = b}
+are partitions of [a, b], with |P n| → 0 as n → ∞. Then
+(3)
+mn−1
+∑
+k=0
+(W (tn
+k+1) − W (tn
+k ))2 → b − a in L2(Ω),
+as n → ∞.
+Proof. Set Qn := ∑mn−1
+k=0 (W (tn
+k+1) − W (tn
+k ))2. Then
+Qn − (b − a) =
+mn−1
+∑
+k=0
+((W (tn
+k+1) − W (tn
+k ))2 − (tn
+k+1 − tn
+k )).
+Hence
+E((Qn − (b − a))2) =
+mn−1
+∑
+k=0
+mn−1
+∑
+j=0
+E([(W (tn
+k+1) − W (tn
+k ))2 − (tn
+k+1 − tn
+k )]
+× [(W (tn
+j+1) − W (tn
+j ))2 − (tn
+j+1 − tn
+j )]).
+For k = j, the term in the double sum is
+E((W (tn
+k+1) − W (tn
+k ))2 − (tn
+k+1 − tn
+k ))E(· · · ),
+according to the independent increments, and thus equals 0, as W (t) −W (s) is N (0, t − s) for all t ≥ s ≥ 0. Hence
+E((Qn − (b − a))2) =
+mn−1
+∑
+k=0
+E((Y 2
+k − 1)2(tn
+k+1 − tn
+k )2),
+where
+Yk = Y n
+k := W (tn
+k+1) − W (tn
+k)
+√tn
+k+1 − tn
+k
+is N (0, 1).
+Therefore for some constant C we have
+E((Qn − (a − b))2) ≤ C
+mn−1
+∑
+k=0
+(tn
+k+1 − tn
+k )2 ≤ C | P n | (b − a) → 0
+as n → ∞.
+REMARKS. (i) This assertion partly justifies the heuristic idea, introduced in Chapter 1, that
+dW ≈ (dt)1/2.
+(ii) Passing if necessary to a subsequence, we have
+mn−1
+∑
+k=0
+(W (tn
+k+1) − W (tn
+k ))2 → b − a a.s.
+
+
+4.1. PRELIMINARIES 63
+Pick an ω for which this holds and also for which the sample path is uniformly H ̈older continuous with some exponent 0 < γ < 1
+2 . Then
+b − a ≤ K lim sup n→∞
+|Pn|γ
+mn−1
+∑
+k=0
+|W (tn
+k+1) − W (tn
+k )|
+for a constant K. Since |Pn| → 0, we see again that sample paths of Brownian motion have infinite variation with probability one:
+sup
+partitions P
+{m−1
+∑
+k=0
+|W (tk+1) − W (tk)|
+}
+= ∞.
+Let us now return to the question posed above, as to the limit of the Riemann sum approximations.
+LEMMA. If P n denotes a partition of [0, T ] and 0 ≤ λ ≤ 1 is fixed, define
+Rn :=
+mn−1
+∑
+k=0
+W (τ n
+k )(W (tn
+k+1) − W (tn
+k )).
+Then
+(4) nli→m∞ Rn = W (T )2
+2+
+(
+λ− 1
+2
+)
+T in L2(Ω).
+In particular, the limit of the Riemann sum approximations depends upon the choice of intermediate points
+τn
+k = (1 − λ)tn
+k + λtn
+k+1.
+Proof. We have
+Rn :=
+mn−1
+∑
+k=0
+W (τ n
+k )(W (tn
+k+1) − W (tn
+k ))
+= W 2(T )
+2 −1
+2
+mn−1
+∑
+k=0
+(W (tn
+k+1) − W (tn
+k ))2
+} {{ }
+=:A
++
+mn−1
+∑
+k=0
+(W (τ n
+k ) − W (tn
+k ))2
+} {{ }
+=:B
++
+mn−1
+∑
+k=0
+(W (tn
+k+1) − W (τ n
+k ))(W (τ n
+k ) − W (tn
+k ))
+} {{ }
+=:C
+.
+According to the lemma on quadratic variation, A → T
+2 in L2(Ω) as n → ∞. A similar argument shows that B → λT as n → ∞.
+
+
+64 4. STOCHASTIC INTEGRALS
+Next we study the term C:
+E
+⎛
+⎝
+(mn−1
+∑
+k=0
+(W (tn
+k+1) − W (τ n
+k ))(W (τ n
+k ) − W (tn
+k ))
+)2⎞
+⎠
+=
+mn−1
+∑
+k=0
+E ([W (tn
+k+1) − W (τ n
+k )]2)E([W (τ n
+k ) − W (tn
+k )]2)
+(independent increments)
+=
+mn−1
+∑
+k=0
+(1 − λ)(tn
+k+1 − tn
+k )λ(tn
+k+1 − tn
+k)
+≤ λ(1 − λ)T |P n | → 0.
+Hence C → 0 in L2(Ω) as n → ∞.
+REMARK. It turns out that Itˆo’s definition (discussed later, in §4.2) of
+∫T
+0 W dW corresponds to the choice λ = 0. That is,
+(5)
+∫T
+0
+W dW = W 2(T )
+2 −T
+2 (Itoˆ integral).
+This is not what one would guess offhand. An alternative definition, due to Stratonovich, takes λ = 1
+2 , so that
+(6)
+∫T
+0
+W ◦ dW = W 2(T )
+2 (Stratonovich integral).
+See Chapter 6 for more.
+What are the advantages of selecting λ = 0 and so accepting the strange formula (5)? First and most importantly, building the Riemann sum approximation by evaluating the integrand at the left-hand endpoint τ n
+k = tn
+k
+on each subinterval [tn
+k , tn
+k=1] will ultimately permit the definition of
+∫T
+0
+G dW
+for a wide class of so-called “nonanticipating” stochastic processes G(·). Exact definitions are given later, but the idea is that t represents time, and since we do not know what W (·) will do on [tn
+k , tn
+k+1], it is best to use the
+known value of G(tn
+k ) in the approximation. Indeed, G(·) will in general
+depend on Brownian motion W (·), and we do not know at time tn
+k its future
+value at the future time τ n
+k = (1 − λ)tn
+k + λtn
+k+1, if λ > 0.
+
+
+4.2. ITOˆ’S INTEGRAL 65
+4.2. IT ˆO’S INTEGRAL
+4.2.1. Nonanticipating processes. Let W (·) be a one-dimensional Brownian motion defined on some probability space (Ω, U , P ).
+DEFINITIONS. (i) The σ-algebra
+W(t) := U (W (s) | 0 ≤ s ≤ t)
+is called the history of the Brownian motion up to (and including) time t.
+(ii) The σ-algebra
+W+(t) := U (W (s) − W (t) | s ≥ t)
+is the future of the Brownian motion beyond time t.
+DEFINITION. A family F (·) of σ-algebras ⊆ U is called nonanticipating (with respect to W (·)) if
+(a) F (t) ⊇ F (s) for all t ≥ s ≥ 0,
+(b) F (t) ⊇ W(t) for all t ≥ 0,
+(c) F (t) is independent of W+(t) for all t ≥ 0.
+We will also refer to F (·) as a filtration.
+REMARK. We should informally think of F (t) as “containing all information available to us at time t”. Our primary example will be
+F (t) := U (W (s) (0 ≤ s ≤ t), X0),
+where X0 is a random variable independent of W+(0). This will be employed in Chapter 5, where X0 will be the (possibly random) initial condition for a stochastic differential equation.
+DEFINITION. A real-valued stochastic process G(·) is called nonanticipating (with respect to F (·)) if for each time t ≥ 0, G(t) is F (t)-measurable.
+The idea is that for each time t ≥ 0, the random variable G(t) “depends upon only the information available in the σ-algebra F (t)”.
+REMARK. We will actually need a slightly stronger notion, namely that G(·) be progressively measurable. This is however a bit subtle to define, and we will not do so here. The idea is that G(·) is nonanticipating and, in addition, is appropriately jointly measurable in the variables t and ω together.
+These measure-theoretic issues can be confusing to students, and so we pause here to emphasize the basic point, to be developed below. For progressively measurable integrands G(·), we will be able to define, and understand,
+
+
+66 4. STOCHASTIC INTEGRALS
+the Itˆo stochastic integral ∫ T
+0 G dW in terms of some simple, useful and elegant formulas. In other words, we will see that since at each moment of time “G depends only upon the past history of the Brownian motion”, some nice identities hold, which would be false if G “depends upon the future behavior of the Brownian motion”.
+DEFINITIONS. (i) We denote by
+L2(0, T )
+the space of all real-valued, progressively measurable stochastic processes G(·) such that
+E
+(∫ T
+0
+G2 dt
+)
+< ∞.
+(ii) Likewise, L1(0, T )
+is the space of all real-valued, progressively measurable processes F (·) such that
+E
+(∫ T
+0
+|F | dt
+)
+< ∞.
+4.2.2. Step processes.
+DEFINITION. A process G ∈ L2(0, T ) is called a step process if there exists a partition P = {0 = t0 < t1 < · · · < tm = T } such that
+G(t) ≡ Gk f or tk ≤ t < tk+1 (k = 0, . . . , m − 1).
+Then each Gk is an F (tk)-measurable random variable, since G is nonanticipating.
+DEFINITION. Let G ∈ L2(0, T ) be a step process, as above. Then
+∫T
+0
+G dW :=
+m−1
+∑
+k=0
+Gk(W (tk+1) − W (tk))
+is the Itˆo stochastic integral of G on the interval (0, T ).
+Note carefully that this is a random variable.
+LEMMA. We have for all constants a, b ∈ R and for all step processes G, H ∈ L2(0, T )
+(i)
+∫T
+0
+aG + bH dW = a
+∫T
+0
+G dW + b
+∫T
+0
+H dW,
+(ii) E
+(∫ T
+0
+G dW
+)
+= 0,
+
+
+4.2. ITOˆ’S INTEGRAL 67
+(iii) E
+((∫ T
+0
+G dW
+)2)
+=E
+(∫ T
+0
+G2 dt
+)
+.
+Proof. 1. The first assertion is easy to check. Suppose next that G(t) ≡ Gk for tk ≤ t < tk+1. Then
+E
+(∫ T
+0
+G dW
+)
+=
+m−1
+∑
+k=0
+E(Gk(W (tk+1) − W (tk))).
+Now Gk is F (tk)-measurable and F (tk) is independent of W+(tk). On the other hand, W (tk+1) − W (tk) is W+(tk)-measurable, and so Gk is independent of W (tk+1) − W (tk). Hence
+E(Gk(W (tk+1) − W (tk))) = E(Gk)E(W (tk+1) − W (tk))
+} {{ }
+=0
+.
+2. Furthermore,
+E
+((∫ T
+0
+G dW
+)2)
+=
+m−1
+∑
+k,j=1
+E (GkGj(W (tk+1) − W (tk))(W (tj+1) − W (tj))) .
+Now if j < k, then W (tk+1) − W (tk) is independent of GkGj(W (tj+1) − W (tj)). Thus
+E(GkGj(W (tk+1) − W (tk))(W (tj+1) − W (tj)))
+= E(GkGj(W (tj+1) − W (tj)))
+} {{ }
+<∞
+E(W (tk+1) − W (tk))
+} {{ }
+=0
+.
+Consequently
+E
+((∫ T
+0
+G dW
+)2)
+=
+m−1
+∑
+k=0
+E(G2
+k(W (tk+1) − W (tk))2)
+=
+m−1
+∑
+k=0
+E(G2
+k)E((W (tk+1) − W (tk))2)
+} {{ }
+=tk+1−tk
+=E
+(∫ T
+0
+G2 dt
+)
+.
+The plan now is to approximate an arbitrary process G ∈ L2(0, T ) by step processes in L2(0, T ) and then pass to limits to define the Itˆo integral of G.
+
+
+68 4. STOCHASTIC INTEGRALS
+LEMMA (Approximation by step processes). If G ∈ L2(0, T ), there exists a sequence of bounded step processes Gn ∈ L2(0, T ) such that
+E
+(∫ T
+0
+|G − Gn|2 dt
+)
+→ 0.
+Outline of proof. We omit full details of the proof, but the idea is this: if t → G(t, ω) is continuous for almost every ω, we can set
+Gn(t) := G( k
+n ) for k
+n ≤ t < k+1
+n , k = 0, . . . , [nT ].
+For a general G ∈ L2(0, T ), define
+Gm(t) :=
+∫t
+0
+mem(s−t)G(s) ds.
+Then Gm ∈ L2(0, T ), t → Gm(t, ω) is continuous for a.e. ω, and ∫T
+0
+|Gm − G|2dt → 0 a.s.
+Now approximate Gm by step processes, as above.
+4.2.3. Definition and properties of Itˆo’s integral.
+DEFINITION. If G ∈ L2(0, T ), take step processes Gn as above. Then
+E
+((∫ T
+0
+Gn − Gm dW
+)2)
+=E
+(∫ T
+0
+(Gn − Gm)2 dt
+)
+→ 0 as n, m → ∞
+and so the limit ∫ T
+0
+G dW := nli→m∞
+∫T
+0
+Gn dW
+exists in L2(Ω).
+It is not hard to check that this definition does not depend upon the particular sequence of step process approximations in L2(0, T ).
+THEOREM. For all constants a, b ∈ R and for all G, H ∈ L2(0, T ), we have
+(i)
+∫T
+0
+aG + bH dW = a
+∫T
+0
+G dW + b
+∫T
+0
+H dW,
+(ii) E
+(∫ T
+0
+G dW
+)
+= 0,
+(iii) E
+((∫ T
+0
+G dW
+)2)
+=E
+(∫ T
+0
+G2 dt
+)
+,
+
+
+4.2. ITOˆ’S INTEGRAL 69
+(iv) E
+(∫ T
+0
+G dW
+∫T
+0
+H dW
+)
+=E
+(∫ T
+0
+GH dt
+)
+.
+Proof. Assertion (i) follows at once from the corresponding linearity property for step processes. Statements (ii) and (iii) are also easy consequences of the similar rules for step processes.
+Finally, assertion (iv) results from (iii) and the identity 2ab = (a + b)2 − a2 − b2.
+4.2.4. Extending the definition. For many applications, it is important to consider a wider class of integrands, instead of just L2(0, T ).
+DEFINITION. We write
+M2(0, T )
+to denote the space of all real-valued, progressively measurable processes G(·) such that ∫ T
+0
+G2 dt < ∞ a.s.
+It is possible to extend the definition of the Itˆo integral to cover integrands G ∈ M2(0, T ), although we will not do so in this book. The idea is to find a sequence of step processes Gn ∈ M2(0, T ) such that
+∫T
+0
+(G − Gn)2 dt → 0 a.s.
+as n → ∞. It turns out that we can then define ∫T
+0
+G dW := nli→m∞
+∫T
+0
+Gn dW,
+the expressions on the right converging in probability. See for instance Friedman [F1] or Gı ̄hman–Skorohod [G-S] for details.
+REMARK (More on Riemann sums). In particular, if G ∈ M2(0, T ) and t → G(t, ω) is continuous for a.e. ω, then
+mn−1
+∑
+k=0
+G(tn
+k )(W (tn
+k+1) − W (tn
+k )) →
+∫T
+0
+G dW
+in probability, where P n = {0 = tn < · · · < tnmn = T } is any sequence of
+partitions, with |P n| → 0. This confirms the consistency of Itoˆ’s integral with the earlier calculations involving Riemann sums, evaluated at τ n
+k=
+tn
+k.
+
+
+70 4. STOCHASTIC INTEGRALS
+4.2.5. Indefinite Itoˆ integrals.
+DEFINITION. For G ∈ L2(0, T ), set
+I(t) :=
+∫t
+0
+G dW (0 ≤ t ≤ T ),
+the indefinite integral of G(·). Note that I(0) = 0.
+We note next some properties of the process I(·), namely that it is a martingale and has continuous sample paths a.s. These facts will be quite useful for proving Itˆo’s chain rule later in §4.3 and in solving the stochastic differential equations in Chapter 5.
+THEOREM. (i) If G ∈ L2(0, T ), then the indefinite integral I(·) is a martingale.
+(ii) Furthermore, I(·) has a version with continuous sample paths a.s.
+Henceforth when we refer to I(·), we will always mean this version. We will not prove assertion (i); a proof of (ii) is in the appendix.
+4.3. IT ˆO’S CHAIN AND PRODUCT RULES
+4.3.1. Statement of Itoˆ’s chain rule.
+DEFINITION. Suppose that X(·) is a real-valued stochastic process satisfying
+X(r) = X(s) +
+∫r
+s
+F dt +
+∫r
+s
+G dW
+for some F ∈ L1(0, T ), G ∈ L2(0, T ) and all times 0 ≤ s ≤ r ≤ T . We say that X(·) has the stochastic differential
+(7) dX = F dt + GdW
+for 0 ≤ t ≤ T .
+Note carefully that the differential symbols are simply an abbreviation for the integral expressions above: strictly speaking, “dX”, “dt” and “dW ” have no meaning alone.
+THEOREM (Itoˆ’s chain rule). Suppose that X(·) has a stochastic differential
+dX = F dt + GdW,
+for F ∈ L1(0, T ), G ∈ L2(0, T ). Assume u : R × [0, T ] → R, u = u(x, t), is
+continuous and that its partial derivatives ut = ∂u
+∂t , ux = ∂u
+∂x and uxx = ∂2u
+∂x2
+exist and are continuous.
+
+
+4.3. ITOˆ’S CHAIN AND PRODUCT RULES 71
+Then Y (t) := u(X(t), t) has the stochastic differential
+(8) du(X, t) = utdt + uxdX + 1
+2 uxxG2dt
+= (ut + uxF + 1
+2 uxxG2) dt + uxGdW.
+We call (8) Itoˆ’s chain rule (or Itoˆ’s formula).
+REMARKS. (i) The argument of ux, ut, etc., above is (X(t), t).
+(ii) In view of our definitions, expression (8) means that for all times 0 ≤ s ≤ r ≤ T,
+(9)
+Y (r) − Y (s) = u(X(r), r) − u(X(s), s)
+=
+∫r
+s
+ut(X, t) + ux(X, t)F + 1
+2 uxx(X, t)G2 dt
++
+∫r
+s
+ux(X, t)G dW a.s.
+(iii) Since X(t) = X(0) +∫ t
+0 F ds + ∫ t
+0 G dW , X(·) has continuous sample paths almost surely. Thus for almost every ω, the functions t → ut(X(t), t), ux(X(t), t), uxx(X(t), t) are continuous; and so the integrals in (9) are defined.
+4.3.2. Illustrations of Itoˆ’s chain rule. We will prove Itoˆ’s chain rule later, but first here are some applications:
+EXAMPLE 1. Let X(·) = W (·), u(x) = xm. Then dX = dW and thus F ≡ 0, G ≡ 1. Hence Itoˆ’s chain rule gives
+d(W m) = mW m−1dW + 1
+2 m(m − 1)W m−2dt.
+In particular the case m = 2 reads
+d(W 2) = 2W dW + dt.
+This integrated is the identity
+∫r
+s
+W dW = W 2(r) − W 2(s)
+2 − (r − s)
+2,
+a formula we have established from first principles before.
+EXAMPLE 2. Again take X(·) = W (·), u(x, t) = eλx− λ2t
+2 , F ≡ 0, G ≡ 1. Then
+d
+(
+eλW (t)− λ2t
+2
+)
+=
+(
+− λ2
+2 eλW (t)− λ2t
+2 + λ2
+2 eλW (t)− λ2t
+2
+)
+dt + λeλW (t)− λ2t
+2 dW
+by Itˆo’s chain rule. Thus {
+dY = λY dW
+Y (0) = 1.
+
+
+72 4. STOCHASTIC INTEGRALS
+This is a stochastic differential equation, about which lots more in Chapter 5.
+EXAMPLE 3 (Stochastic calculus with Hermite polynomials).
+DEFINITION. For n = 0, 1, . . . , define the n-th Hermite polynomial
+(10) hn(x, t) := (−t)n
+n! ex2/2t dn
+dxn
+(
+e−x2/2t)
+.
+Then ⎧⎪⎨
+⎪⎩
+h0(x, t) = 1, h1(x, t) = x,
+h2(x, t) = x2
+2 −t
+2 , h3(x, t) = x3
+6 − tx
+2,
+h4(x, t) = x4
+24 − tx2
+4 + t2
+8 , etc.
+We will see next that in the Itoˆ stochastic calculus the expression hn(W (t), t) plays the role that tn
+n! plays in ordinary calculus.
+THEOREM. We have
+∫t
+0
+hn(W, s) dW = hn+1(W (t), t) for t ≥ 0, n = 0, 1, . . . ;
+that is,
+(11) dhn+1(W, t) = hn(W, t) dW.
+Proof. Since
+dn
+dλn (e− (x−λt)2
+2t )|λ=0 = (−t)n dn
+dxn (e−x2/2t),
+we have
+dn
+dλn (eλx− λ2t
+2 )|λ=0 = (−t)nex2/2t dn
+dxn (e−x2/2t)
+= n!hn(x, t).
+Hence
+eλx− λ2t
+2=
+∑ ∞
+n=0
+λnhn(x, t),
+and so
+Y (t) = eλW (t)− λ2t
+2=
+∞ ∑
+n=0
+λnhn(W (t), t).
+But according to the previous example Y (·) solves
+{
+dY = λY dW
+Y (0) = 1;
+that is,
+Y (t) = 1 + λ
+∫t
+0
+Y dW for all t ≥ 0.
+
+
+4.3. ITOˆ’S CHAIN AND PRODUCT RULES 73
+Plug in the expansion above for Y (t):
+∞ ∑
+n=0
+λnhn(W (t), t) = 1 + λ
+∫t
+0
+∑ ∞
+n=0
+λnhn(W (s), s) dW
+=1+
+∑ ∞
+n=1
+λn
+∫t
+0
+hn−1(W (s), s) dW.
+This identity holds for all λ and so the coefficients of λn on both sides are equal.
+4.3.3. Itˆo’s product rule. We begin by verifying directly two important special cases:
+LEMMA (Two simple stochastic differentials). We have
+(i) d(W 2) = 2W dW + dt and
+(ii) d(tW ) = W dt + tdW .
+Proof. We have already established formula (i). To verify (ii), note that
+∫r
+0
+t dW = nli→m∞
+mn−1
+∑
+k=0
+tn
+k (W (tn
+k+1) − W (tn
+k )),
+where P n = {0 = t0n < t1n < · · · < tnmn = r} is a sequence of partitions of
+[0, r], with |P n| → 0. The limit above is taken in L2(Ω).
+Similarly, since t → W (t) is continuous a.s.,
+∫r
+0
+W dt = nli→m∞
+mn−1
+∑
+k=0
+W (tn
+k+1)(tn
+k+1 − tn
+k ),
+since for almost every ω the sum is an ordinary Riemann sum approximation and for this we can take the right-hand endpoint tn
+k+1 at which to evaluate the continuous integrand.
+We add these formulas to obtain
+∫r
+0
+t dW +
+∫r
+0
+W dt = rW (r).
+These integral identities for all r ≥ 0 give (ii).
+These special cases in hand, we now prove
+THEOREM (Itˆo’s product rule). Suppose
+⎧⎨
+⎩
+dX1 = F1dt + G1dW
+dX2 = F2dt + G2dW
+(0 ≤ t ≤ T ),
+
+
+74 4. STOCHASTIC INTEGRALS
+for Fi ∈ L1(0, T ), Gi ∈ L2(0, T ) (i = 1, 2). Then
+(12) d(X1X2) = X2dX1 + X1dX2 + G1G2dt.
+We refer to (12) as Itoˆ’s product rule or product formula.
+REMARKS. (i) The expression G1G2dt is the Itˆo correction term.
+(ii) The integrated version of the product rule is Itˆo integration-by-parts formula :
+(13)
+∫r
+s
+X2 dX1 = X1(r)X2(r) − X1(s)X2(s) −
+∫r
+s
+X1 dX2 −
+∫r
+s
+G1G2 dt.
+(iii) If either G1 or G2 is identically equal to 0, the correction term vanishes and we get the ordinary calculus integration-by-parts formula. This confirms that the Paley–Wiener–Zygmund definition (see page 60) ∫T
+0
+g dW = −
+∫T
+0
+g′W dt,
+for deterministic C1 functions g with g(0) = g(T ) = 0, agrees with the Itoˆ definition.
+Proof. 1. Choose 0 ≤ r ≤ T .
+First of all, assume for simplicity that X1(0) = X2(0) = 0, Fi(t) ≡ Fi, Gi(t) ≡ Gi, where Fi, Gi are time-independent, F (0)-measurable random variables (i = 1, 2). Then
+Xi(t) = Fit + GiW (t) (t ≥ 0, i = 1, 2).
+Thus∫ r
+0
+X2 dX1 + X1 dX2 + G1G2 dt
+=
+∫r
+0
+X1F2 + X2F1 dt +
+∫r
+0
+X1G2 + X2G1 dW
++
+∫r
+0
+G1G2 dt
+=
+∫r
+0
+(F1t + G1W )F2 + (F2t + G2W )F1 dt
++
+∫r
+0
+(F1t + G1W )G2 + (F2t + G2W )G1 dW + G1G2r
+= F1F2r2 + (G1F2 + G2F1)
+(∫ r
+0
+W dt +
+∫r
+0
+t dW
+)
++ 2G1G2
+∫r
+0
+W dW + G1G2r.
+
+
+4.3. ITOˆ’S CHAIN AND PRODUCT RULES 75
+We now use the lemma above to compute 2 ∫ r
+0 W dW = W 2(r) − r and
+∫r
+0 W dt + ∫ r
+0 t dW = rW (r). Employing these identities, we deduce
+∫r
+0
+X2 dX1 + X1 dX2 + G1G2 dt
+= F1F2r2 + (G1F2 + G2F1)rW (r) + G1G2W 2(r)
+= X1(r)X2(r).
+This is formula (13) for the special circumstance that s = 0, Xi(0) = 0, and Fi, Gi are time-independent random variables.
+The case that s ≥ 0, X1(s) and X2(s) are arbitrary, and Fi and Gi are constant F (s)-measurable random variables has a similar proof.
+2. If Fi, Gi are step processes, we apply step 1 on each subinterval [tk, tk+1) on which Fi and Gi are constant random variables, and we add the resulting integral expressions.
+3. In the general situation, we select step processes Fin ∈ L1(0, T ),
+Gin ∈ L2(0, T ), with
+⎧⎨
+⎩
+E
+(∫ T
+0 |Fin − Fi| dt
+)
+→0
+E
+(∫ T
+0 (Gin − Gi)2 dt
+)
+→0
+as n → ∞, i = 1, 2.
+Define
+Xn
+i (t) := Xi(0) +
+∫t
+0
+Fn
+i ds +
+∫t
+0
+Gn
+i dW (i = 1, 2).
+We apply step 2 to Xin(·) on (s, r) and pass to limits, to obtain the formula
+X1(r)X2(r) = X1(s)X2(s) +
+∫r
+s
+X1dX2 + X2dX1 + G1G2 dt.
+4.3.4. Proof of Itˆo’s chain rule. Suppose dX = F dt + GdW , with F ∈ L1(0, T ), G ∈ L2(0, T ).
+1. We start with the case u(x) = xm, m = 0, 1, . . . , and first of all claim that
+(14) d(Xm) = mXm−1dX + 1
+2 m(m − 1)Xm−2G2dt.
+This is clear for m = 0, 1, and the case m = 2 follows from the Itˆo product formula. Now assume the stated formula for m − 1:
+d(Xm−1) = (m − 1)Xm−2dX + 1
+2 (m − 1)(m − 2)Xm−3G2dt
+= (m − 1)Xm−2(F dt + GdW ) + 1
+2 (m − 1)(m − 2)Xm−3G2dt,
+
+
+76 4. STOCHASTIC INTEGRALS
+and we prove it for m:
+d(Xm) = d(XXm−1)
+= Xd(Xm−1) + Xm−1dX + (m − 1)Xm−2G2dt
+(by the product rule)
+=X
+(
+(m − 1)Xm−2dX + 1
+2 (m − 1)(m − 2)Xm−3G2dt
+)
++ (m − 1)Xm−2G2dt + Xm−1dX
+= mXm−1dX + 1
+2 m(m − 1)Xm−2G2dt,
+because m − 1 + 1
+2 (m − 1)(m − 2) = 1
+2 m(m − 1). This proves (14).
+Since Itoˆ’s chain rule thus holds for the functions u(x) = xm, m = 0, 1, . . . , and since the operator “d” is linear, it is valid as well for all polynomials u in the variable x.
+2. Suppose now that u(x, t) = f (x)g(t), where f and g are polynomials. Then
+d(u(X, t)) = d(f (X)g)
+= f (X)dg + gdf (X)
+= f (X)g′dt + g
+(
+f ′(X)dX + 1
+2 f ′′(X)G2dt
+)
+= utdt + uxdX + 1
+2 uxxG2dt.
+This calculation confirms Itoˆ’s chain rule for u(x, t) = f (x)g(t), where f and g are polynomials. Thus it is true as well for any function u having the form
+u(x, t) =
+∑ m
+i=1
+f i(x)gi(t),
+where f i and gi polynomials. That is, Itˆo’s chain rule is valid for all polynomial functions u of the variables x, t.
+3. Given u as in the statement of Itˆo’s chain rule, there exists a sequence of polynomials un such that
+un → u, un
+t → ut, un
+x → ux, un
+xx → uxx,
+uniformly on compact subsets of R × [0, T ]. Invoking step 2, we know that for all 0 ≤ r ≤ T ,
+un(X(r), r) − un(X(0), 0) =
+∫r
+0
+un
+t + un
+xF + 1
+2 un
+xxG2 dt +
+∫r
+0
+un
+xG dW a.s.;
+
+
+4.4. ITOˆ’S INTEGRAL IN HIGHER DIMENSIONS 77
+the argument of the partial derivatives of un is (X(t), t). We pass to limits as n → ∞ in this expression, thereby proving Itˆo’s chain rule in general.
+NOTATION. (i) We write a typical point in Rn as x = (x1, . . . , xn).
+(ii) A function u : Rn × [0, T ] → R is written u = u(x, t) and its partial derivatives, assuming they exist, are denoted
+ut = ∂u
+∂t , uxi = ∂u
+∂xi
+, uxixj = ∂2u
+∂xi∂xj
+, etc.,
+for i, j = 1, . . . , n.
+4.3.5. Generalized Itoˆ chain rule. We can as follows extend Itˆo’s chain rule to a function of more variables:
+THEOREM (Generalized Itˆo chain rule). Suppose
+dXi = F idt + GidW,
+with F i ∈ L1(0, T ), Gi ∈ L2(0, T ), for i = 1, . . . , n.
+If u : Rn × [0, T ] → R is continuous, with continuous partial derivatives ut, uxi, uxixj for i, j = 1, . . . , n, then
+(15) d(u(X1, . . . , Xn, t)) = utdt +
+∑n
+i=1
+uxi dXi + 1
+2
+n ∑
+i,j=1
+uxixj GiGj dt.
+The proof is a straightforward modification of that provided for Itˆo’s chain rule.
+4.4. IT ˆO’S INTEGRAL IN HIGHER DIMENSIONS
+4.4.1. Notation, definitions.
+NOTATION. (i) Let W(·) = (W 1(·), . . . , W m(·)) be an m-dimensional Brownian motion.
+(ii) We assume F (·) is a family of nonanticipating σ-algebras, meaning that
+(a) F (t) ⊇ F (s) for all t ≥ s ≥ 0,
+(b) F (t) ⊇ W(t) = U (W(s) | 0 ≤ s ≤ t),
+(c) F (t) is independent of W+(t) := U (W(s) − W(t) | t ≤ s < ∞).
+
+
+78 4. STOCHASTIC INTEGRALS
+DEFINITIONS. (i) An Mn×m-valued stochastic process G = ((Gij)) belongs to L2n×m(0, T ) if
+Gij ∈ L2(0, T ) (i = 1, . . . , n; j = 1, . . . , m).
+(ii) An Rn-valued stochastic process F = (F 1, F 2, . . . , F n) belongs to L1n(0, T ) if
+F i ∈ L1(0, T ) (i = 1, . . . , n).
+DEFINITION. If G ∈ L2n×m(0, T ), then
+∫T
+0
+G dW
+is an Rn-valued random variable whose i-th component is
+∑ m
+j=1
+∫T
+0
+Gij dW j (i = 1, . . . , n).
+Approximating by step processes as before, we can establish this
+LEMMA. If G ∈ L2n×m(0, T ), then
+E
+(∫ T
+0
+G dW
+)
+= 0,
+and
+E
+(∣∣∣∣
+∫T
+0
+G dW
+∣∣∣∣
+2)
+=E
+(∫ T
+0
+|G|2 dt
+)
+,
+where
+|G|2 :=
+∑
+1≤i≤n
+1≤j≤m
+|Gij |2 .
+DEFINITION. If X(·) = (X1(·), . . . , Xn(·)) is an Rn-valued stochastic process such that
+X(r) = X(s) +
+∫r
+s
+F dt +
+∫r
+s
+G dW
+for some F ∈ L1n(0, T ), G ∈ L2n×m(0, T ) and all 0 ≤ s ≤ r ≤ T , we say X(·) has the stochastic differential
+(16) dX = Fdt + GdW.
+This means that
+(17) dXi = F idt +
+∑ m
+j=1
+GijdW j (i = 1, . . . , n).
+
+
+4.4. ITOˆ’S INTEGRAL IN HIGHER DIMENSIONS 79
+4.4.2. The chain and product rules.
+THEOREM (Itoˆ’s chain rule in n dimensions). Suppose that
+dX = Fdt + GdW.
+Let u : Rn × [0, T ] be continuous, with continuous partial derivatives ut, uxi, uxixj for i, j = 1, . . . , n. Then
+(18) d(u(X(t), t)) = utdt +
+∑n
+i=1
+uxi dXi + 1
+2
+n ∑
+i,j=1
+uxi xj
+∑ m
+l=1
+GilGjldt,
+where the argument of the partial derivatives of u is (X(t), t).
+An outline of the proof follows some preliminary results:
+LEMMA (Another simple stochastic differential). Let W (·) and W ̄ (·) be independent one-dimensional Brownian motions. Then
+(19) d(W W ̄ ) = W dW ̄ + W ̄ dW.
+Compare this to the case W = W ̄ . There is now no correction term involving “dt”, since W, W ̄ are independent.
+Proof. 1. To begin, set X(t) := W (t)+W ̄ (t)
+√2 .
+We claim that X(·) is a one-dimensional Brownian motion. To see this, first note that X(0) = 0 a.s. and that X(·) has independent increments. Next observe that since X is the sum of two independent, N (0, t
+2 ) random variables, X(t) is N (0, t). A similar observation shows that X(t) − X(s) is N (0, t − s) for t ≥ s. This establishes the claim.
+2. From the one-dimensional Itˆo calculus, we know
+⎧⎪⎨
+⎪⎩
+d(X2) = 2XdX + dt
+d(W 2) = 2W dW + dt
+d(W ̄ 2) = 2W ̄ dW ̄ + dt.
+Thus
+d(W W ̄ ) = d
+(
+X2 − 1
+2W2 − 1
+2
+W ̄ 2
+)
+= 2XdX + dt − 1
+2 (2W dW + dt)
+−1
+2 (2W ̄ dW ̄ + dt)
+= (W + W ̄ )(dW + dW ̄ ) − W dW − W ̄ dW ̄
+= W dW ̄ + W ̄ dW.
+
+
+80 4. STOCHASTIC INTEGRALS
+We will also need the following modification of the product rule:
+LEMMA (Itoˆ product rule with several Brownian motions). Suppose {
+dX1 = F1dt + ∑m
+k=1 G1kdW k
+dX2 = F2dt + ∑m
+l=1 Gl2dW l (0 ≤ t ≤ T ),
+where Fi ∈ L1(0, T ) and Gik ∈ L2(0, T ) for i = 1, 2 and k = 1, . . . , m. Then
+(20) d(X1X2) = X1dX2 + X2dX1 +
+∑ m
+k=1
+Gk
+1 Gk
+2 dt.
+The proof is a modification of that for the one-dimensional Itˆo product rule, as before, with the new feature that
+d(W iW j) = W idW j + W jdW i + δijdt,
+according to the lemma above.
+The Itoˆ chain rule in n dimensions can now be proved by a suitable modification of the one-dimensional proof. We first establish the formula for the multinomial u = u(x) = xk1
+1 . . . xkmm, proving this by an induction on k1, . . . , km, using the lemma above. This done, the formula follows easily for polynomials u = u(x, t) in the variables x = (x1, . . . , xn) and t, and then, after an approximation, for all functions u as stated.
+REMARK (Alternative notation). When
+dX = Fdt + GdW,
+we sometimes write
+Hij :=
+∑ m
+k=1
+Gik Gj k .
+Itoˆ’s chain rule then reads
+(21) du(X, t) =
+(
+ut + F · Du + 1
+2H : D2u
+)
+dt + Du · GdW,
+where Du = (ux1, . . . , uxn) is the gradient of u in the x-variables, D2u = ((uxixj )) is the Hessian matrix, and
+F · Du :=
+n ∑
+i=1
+F iuxi , H : D2u :=
+n ∑
+i,j=1
+H ij uxixj ,
+Du · GdW :=
+∑n
+i=1
+∑ m
+k=1
+uxi GikdW k.
+
+
+4.4. ITOˆ’S INTEGRAL IN HIGHER DIMENSIONS 81
+4.4.3. Mnemonics.
+• HOW TO REMEMBER IT ˆO’S CHAIN RULE
+If
+dX = Fdt + GdW,
+we may symbolically compute
+(22) d(u(X, t)) = utdt +
+∑n
+i=1
+uxi dXi + 1
+2
+n ∑
+i,j=1
+uxixj dXidXj
+and then simplify the term “dXidXj” by expanding it out and using the formal multiplication rules
+(23)
+⎧⎪⎨
+⎪⎩
+(dt)2 = 0
+dt dW k = 0 (k = 1, . . . , m)
+dW kdW l = δkldt (k, l = 1, . . . , m).
+This provides a convenient way to remember the chain rule (18).
+• HOW TO REMEMBER IT ˆO’S PRODUCT RULE
+Likewise, to remember the product rule (20) when
+{
+dX1 = F1dt + ∑m
+k=1 G1kdW k
+dX2 = F2dt + ∑m
+l=1 Gl2dW l,
+we may symbolically compute
+(24) d(X1X2) = X1dX2 + X2dX1 + dX1dX2
+and simplify using (23).
+
+
+
+
+Chapter 5
+STOCHASTIC
+DIFFERENTIAL
+EQUATIONS
+5.1. DEFINITIONS, EXAMPLES
+We are finally ready to study stochastic differential equations.
+5.1.1. Preliminaries.
+NOTATION. (i) Let W(·) be an m-dimensional Brownian motion and X0 an n-dimensional random variable that is independent of W(·). We will henceforth take
+(1) F (t) := U (W(s) (0 ≤ s ≤ t), X0) (t ≥ 0),
+the σ-algebra generated by X0 and the history of the Brownian motion up to (and including) time t.
+(ii) Assume T > 0 is given and
+b : Rn × [0, T ] → Rn, B : Rn × [0, T ] → Mn×m
+are given functions. (Note carefully that these are not random variables.) We sometimes display the components of these functions by writing
+b = (b1, b2, . . . , bn), B =
+⎛
+⎜⎝
+b11 . . . b1m
+... . . . ...
+bn1 . . . bnm
+⎞
+⎟⎠ .
+83
+
+
+84 5. STOCHASTIC DIFFERENTIAL EQUATIONS
+DEFINITION. We say that an Rn-valued stochastic process X(·) is a solution of the Itoˆ stochastic differential equation
+(SDE)
+{
+dX = b(X, t)dt + B(X, t)dW
+X(0) = X0
+for 0 ≤ t ≤ T provided
+(i) X(·) is progressively measurable with respect to F (·),
+(ii) F := b(X, t) ∈ L1n(0, T ),
+(iii) G := B(X, t) ∈ L2n×m(0, T ), and
+(iv) for all times 0 ≤ t ≤ T ,
+(2) X(t) = X0 +
+∫t
+0
+b(X(s), s) ds +
+∫t
+0
+B(X(s), s) dW a.s.
+In view of assertion (iii) above, we can always assume X(·) has continuous sample paths almost surely.
+REMARK. A higher-order SDE of the form
+Y (n) = f (t, Y, . . . , Y (n−1)) + g(t, Y, . . . , Y (n−1))ξ,
+where as usual ξ denotes “white noise”, can be rewritten into the form above by the device of setting
+X(t) =
+⎛
+⎜⎜⎜⎝
+Y (t) Y ̇ (t)
+...
+Y (n−1)(t)
+⎞
+⎟⎟⎟⎠ =
+⎛
+⎜⎜⎜⎝
+X 1 (t) X 2 (t)
+...
+X n (t)
+⎞
+⎟⎟⎟⎠ .
+Then
+dX =
+⎛
+⎜⎝
+X2
+...
+f (· · · )
+⎞
+⎟⎠ dt +
+⎛
+⎜⎝
+0
+...
+g(· · · )
+⎞
+⎟⎠ dW.
+5.1.2. Examples of linear stochastic differential equations.
+EXAMPLE 1. Let m = n = 1 and suppose g is a continuous function (not a random variable). Then the unique solution of
+(3)
+{
+dX = gXdW
+X(0) = 1
+is
+X(t) = e− 1
+2
+∫t
+0 g2 ds+∫ t
+0 g dW
+
+
+5.1. DEFINITIONS, EXAMPLES 85
+for 0 ≤ t ≤ T . To verify this, note that
+Y (t) := − 1
+2
+∫t
+0
+g2 ds +
+∫t
+0
+g dW
+satisfies
+dY = −1
+2 g2dt + gdW.
+Thus Itˆo’s chain rule for u(x) = ex gives
+dX = u′dY + 1
+2 u′′g2dt
+= eY
+(
+−1
+2 g2dt + gdW + 1
+2 g2dt
+)
+= gXdW,
+as claimed.
+We will prove uniqueness later, in §5.2.
+EXAMPLE 2. Similarly, the unique solution of
+(4)
+{
+dX = f Xdt + gXdW
+X(0) = 1
+is X(t) = e
+∫t
+0 f−1
+2 g2 ds+∫ t
+0 g dW
+for 0 ≤ t ≤ T .
+EXAMPLE 3 (Stock prices again). Let S(t) denote the price of a stock at time t. We can model the evolution of S(t) in time by supposing that dS
+S, the relative change of price, evolves according to the SDE
+dS
+S = μdt + σdW
+for certain constants μ > 0 and σ, called the drift and the volatility of the stock. Hence
+(5)
+{
+dS = μSdt + σSdW
+S(0) = s0,
+and so
+d(log S) = dS
+S −1
+2
+σ2S2dt
+S2 by Itˆo’s chain rule
+=
+(
+μ − σ2
+2
+)
+dt + σdW.
+Consequently
+S(t) = s0eσW (t)+
+(
+μ− σ2
+2
+) t,
+
+
+86 5. STOCHASTIC DIFFERENTIAL EQUATIONS
+similarly to Example 2. Observe that the price is always positive, assuming the initial price s0 is positive.
+Since (5) implies
+S(t) = s0 +
+∫t
+0
+μS ds +
+∫t
+0
+σS dW
+and E
+(∫ t
+0 σS dW
+)
+= 0, we see that
+E(S(t)) = s0 +
+∫t
+0
+μE(S(s)) ds.
+Hence E(S(t)) = s0eμt (t ≥ 0).
+The expected value of the stock price consequently agrees with the deterministic solution of (5) corresponding to σ = 0.
+EXAMPLE 4 (Brownian bridge). The solution of the SDE
+(6)
+{
+dB = − B
+1−t dt + dW (0 ≤ t < 1)
+B(0) = 0
+is
+B(t) = (1 − t)
+∫t
+0
+1
+1 − s dW (0 ≤ t < 1),
+as we confirm by a direct calculation. It also turns out that limt→1− B(t) = 0 almost surely. We call B(·) a Brownian bridge between the origin at time 0 and at time 1.
+EXAMPLE 5 (Langevin’s equation). A possible improvement of our mathematical model of the motion of a Brownian particle models frictional forces as follows for the one-dimensional case:
+X ̇ = −bX + σξ,
+where ξ(·) is “white noise”, b > 0 is a coefficient of friction, and σ is a diffusion coefficient. We interpret this to mean
+(7)
+{
+dX = −bXdt + σdW
+X(0) = X0,
+for some initial distribution X0, independent of the Brownian motion. This is the Langevin equation. In this interpretation X(·) is the velocity of the Brownian particle; see Example 6 for the position process Y (·).
+The solution is
+X(t) = e−btX0 + σ
+∫t
+0
+e−b(t−s)dW (t ≥ 0),
+
+
+5.1. DEFINITIONS, EXAMPLES 87
+A sample path of the Brownian bridge
+as is straightforward to verify. Observe that
+E(X(t)) = e−btE(X0)
+and
+E(X2(t)) = E
+(
+e−2btX 2
+0 + 2σe−btX0
+∫t
+0
+e−b(t−s)dW
++ σ2
+(∫ t
+0
+e−b(t−s)dW
+)2)
+= e−2btE(X2
+0 ) + 2σe−btE(X0)E
+(∫ t
+0
+e−b(t−s)dW
+)
++ σ2
+∫t
+0
+e−2b(t−s)ds
+= e−2btE(X2
+0) + σ2
+2b (1 − e−2bt).
+Thus the variance
+V (X(t)) = E(X2(t)) − E(X(t))2
+is
+V (X(t)) = e−2btV (X0) + σ2
+2b (1 − e−2bt),
+
+
+88 5. STOCHASTIC DIFFERENTIAL EQUATIONS
+assuming, of course, V (X0) < ∞. For any such initial condition X0 we therefore have {
+E(X(t)) → 0
+V (X(t)) → σ2
+2b
+as t → ∞.
+From the explicit form of the solution we see that the distribution of X(t)
+approaches N
+(
+0, σ2
+2b
+)
+as t → ∞. We interpret this to mean that irrespective
+of the initial distribution, the solution of the SDE for large time “settles down” into a Gaussian distribution whose variance σ2
+2b represents a balance between the random disturbing force σξ(·) and the frictional damping force −bX (·).
+A simulation of Langevin’s equation
+EXAMPLE 6 (Ornstein–Uhlenbeck process). A better model of Brownian movement is provided by the Ornstein–Uhlenbeck equation
+⎧⎪⎨
+⎪⎩
+Y ̈ = −bY ̇ + σξ
+Y (0) = Y0
+Y ̇ (0) = Y1,
+where Y (t) is the position of the Brownian particle at time t, Y0 and Y1 are given Gaussian random variables. As before b > 0 is the friction coefficient, σ is the diffusion coefficient, and ξ(·) as usual is “white noise”.
+
+
+5.1. DEFINITIONS, EXAMPLES 89
+Then X := Y ̇ , the velocity process, satisfies the Langevin equation {
+dX = −bXdt + σdW
+X(0) = Y1,
+studied in Example 5. We assume Y1 to be Gaussian; consequently the explicit formula for the solution,
+X(t) = e−btY1 + σ
+∫t
+0
+e−b(t−s)dW,
+shows X(t) to be Gaussian for all times t ≥ 0. Now the position process is
+Y (t) = Y0 +
+∫t
+0
+X ds.
+Therefore
+E(Y (t)) = E(Y0) +
+∫t
+0
+E(X(s)) ds
+= E(Y0) +
+∫t
+0
+e−bsE(Y1) ds
+= E(Y0) + 1 − e−bt
+b E(Y1),
+and a somewhat lengthly calculation shows that
+V (Y (t)) = V (Y0) + σ2
+b2 t + σ2
+2b3 (−3 + 4e−bt − e−2bt).
+Nelson [N, p. 57] discusses this model as compared with Einstein’s.
+EXAMPLE 7 (Random harmonic oscillator). A model for a stochastic oscillator is the SDE
+⎧⎪⎨
+⎪⎩
+X ̈ = −λ2X − bX ̇ + σξ
+X(0) = X0
+X ̇ (0) = X1,
+where −λ2X represents a linear, restoring force and −bX ̇ is a frictional damping term.
+An explicit solution can be worked out using the general formulas presented below in §5.4. For the special case X1 = 0, b = 0, σ = 1, we have
+X(t) = X0 cos(λt) + 1
+λ
+∫t
+0
+sin(λ(t − s)) dW.
+
+
+90 5. STOCHASTIC DIFFERENTIAL EQUATIONS
+5.2. EXISTENCE AND UNIQUENESS OF SOLUTIONS
+In this section we address the problem of building solutions to stochastic differential equations. We start with a simple case:
+5.2.1. A construction in one dimension. Let us first suppose b : R → R is C1, with |b′| ≤ L for some constant L, and try to solve the one-dimensional stochastic differential equation
+(8)
+{
+dX = b(X)dt + dW
+X(0) = x0
+where x0 ∈ R.
+Now the SDE means
+X(t) = x0 +
+∫t
+0
+b(X) ds + W (t) (t > 0),
+and this formulation suggests that we try a successive approximation method to construct a solution. So define X0(t) ≡ x0, and then
+Xk+1(t) := x0 +
+∫t
+0
+b(Xk) ds + W (t) (t ≥ 0)
+for k = 0, 1, . . . . Next write
+Dk(t) := max
+0≤s≤t | Xk+1(s) − Xk(s)| (n = 0, . . . ).
+Notice that for a given continuous sample path of the Brownian motion, we have
+D0(t) = max
+0≤s≤t
+∣∣∣∣
+∫s
+0
+b(x) dr + W (s)
+∣∣∣∣ ≤ C
+for all times 0 ≤ t ≤ T , where C depends on ω.
+We now claim that
+Dk(t) ≤ C Lk
+k! tk
+for k = 0, 1, . . . , 0 ≤ t ≤ T . To see this, note that
+Dk(t) = max
+0≤s≤t
+∣∣∣∣
+∫s
+0
+b(Xk(r)) − b(Xk−1(r)) dr
+∣∣∣∣
+≤L
+∫t
+0
+Dk−1(s) ds
+≤L
+∫t
+0
+C Lk−1sk−1
+(k − 1)! ds by the induction assumption
+= C Lktk
+k! .
+
+
+5.2. EXISTENCE AND UNIQUENESS OF SOLUTIONS 91
+In view of the claim, for l ≥ k we have
+max
+0≤t≤T |Xl(t) − Xk(t)| ≤ C
+∑ ∞
+j=k
+LjT j
+j! → 0 as n → ∞.
+Thus for almost every ω, Xk(·) converges uniformly for 0 ≤ t ≤ T to a limit process X(·) which, as is easy to check, solves (8).
+5.2.2. Solving SDE by changing variables. Next is a procedure for solving SDE by means of a clever change of variables.
+Given a general one-dimensional SDE of the form
+(9)
+{
+dX = b(X)dt + σ(X)dW
+X(0) = x0,
+let us first solve
+(10)
+{
+dY = f (Y )dt + dW
+Y (0) = y0,
+where f will be selected later, and try to find a function u such that
+X := u(Y )
+solves our SDE (9). Note that we can in principle at least solve (10), according to the previous example. Assuming for the moment that u and f are known, we compute using Itˆo’s formula that
+dX = u′dY + 1
+2 u′′dt =
+(
+u′f + 1
+2 u′′
+)
+dt + u′dW.
+Thus X(·) solves (9) provided
+{
+u′(Y ) = σ(X) = σ(u(Y ))
+u′(Y )f (Y ) + 1
+2 u′′(Y ) = b(X) = b(u(Y )),
+and
+u(y0) = x0.
+So let us first solve the ODE
+{
+u′(z) = σ(u(z))
+u(y0) = x0
+(z ∈ R),
+where ′ = d
+dz , and then, once u is known, define
+f (z) := 1
+σ(u(z))
+(
+b(u(z)) − 1
+2 u′′(z)
+)
+.
+We will not discuss here conditions under which all of this is possible; see Lamperti [L2].

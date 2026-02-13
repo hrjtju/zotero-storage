@@ -1,0 +1,3516 @@
+Preprint.
+RECOVERING MANIFOLD STRUCTURE USING
+OLLIVIER-RICCI CURVATURE
+Tristan Luca Saidi
+Department of Computer Science Columbia University New York, NY 10025, USA tls2160@columbia.edu
+Abigail Hickok & Andrew J. Blumberg Department of Mathematics Columbia University New York, NY 10025, USA
+{ah3966, andrew.blumberg}@columbia.edu
+ABSTRACT
+We introduce ORC-MANL, a new algorithm to prune spurious edges from nearest neighbor graphs using a criterion based on Ollivier-Ricci curvature and estimated metric distortion. Our motivation comes from manifold learning: we show that when the data generating the nearest-neighbor graph consists of noisy samples from a low-dimensional manifold, edges that shortcut through the ambient space have more negative Ollivier-Ricci curvature than edges that lie along the data manifold. We demonstrate that our method outperforms alternative pruning methods and that it significantly improves performance on many downstream geometric data analysis tasks that use nearest neighbor graphs as input. Specifically, we evaluate on manifold learning, persistent homology, dimension estimation, and others. We also show that ORC-MANL can be used to improve clustering and manifold learning of single-cell RNA sequencing data. Finally, we provide empirical convergence experiments that support our theoretical findings.
+1 INTRODUCTION
+The first step for almost all geometric data analysis tasks is to build a nearest neighbor graph. This reflects faith in the manifold hypothesis—the belief that the data actually lies on a low-dimensional submanifold of the ambient RD. In this setting, the nearest neighbor graph recovers the intrinsic geometry of the data manifold, using the observation that small ambient distances lie along the manifold whereas larger ones may not.
+Unfortunately, building nearest neighbor graphs from noisy data typically results in inaccurate representation of the metric structure of the underlying manifold. In this paper, we study edges in nearest neighbor graphs that shortcut through the ambient space and bridge distant neighborhoods of the underlying manifold. Such “shortcut edges” distort inferred distances and negatively impact downstream algorithms that operate on the graphs.
+We show that Ollivier-Ricci curvature (ORC), a measure of discrete curvature on graphs (Ollivier, 2007), can be used to effectively identify shortcut edges when the data consists of noisy samples from a low dimensional submanifold. We also show that graph distances can be used to support the identification of shortcut edges, allowing us to avoid accidentally catching “good” edges. Guided by these results, we describe an algorithm, ORC-MANL, to detect and prune shortcut edges.
+ORC-MANL marks edges with extremely negative ORC as candidate shortcut edges. The algorithm then constructs a thresholded graph with the candidates removed. We then use the thresholded graph distance between the endpoints of all candidate edges to check—if the distance is large, the edge was likely shortcutting the manifold through the ambient space. If the distance is small, the edge is added back to the graph. We find that despite its simplicity, ORC-MANL is incredibly effective and provides tangible performance improvement for downstream geometric data analysis algorithms for a variety of synthetic and real datasets. We make our code for ORC-MANL and all experiments available on GitHub. 1
+1https://github.com/TristanSaidi/orcml
+1
+arXiv:2410.01149v1 [cs.LG] 2 Oct 2024
+
+
+Preprint.
+1.1 CONTRIBUTIONS
+We introduce a general-purpose method, ORC-MANL, that uses discrete graph curvature to detect and prune unwanted connectivity in nearest-neighbor graphs. Our method is theoretically justified, and in practice significantly improves the performance of downstream tasks like manifold learning, persistent homology, and estimation of important geometric quantities like intrinsic dimension and curvature. Furthermore we find that ORC-MANL is effective on real world single-cell RNA sequencing data: ORC-MANL pruning reveals clusters in PBMC data in accordance with ground truth annotations and results in embeddings that better preserves communities of neuronal cells. Finally, we also include experiments to show that our theoretical convergence results are supported by empirical experimentation.
+1.2 RELATED WORK
+Graph Pruning. Several graph pruning approaches have been proposed in the literature. Some use density estimation as a heuristic for detecting unwanted edges and show results on noiseless toy datasets (Xia et al., 2008; Chao et al., 2007). Zemel & Carreira-Perpin ̃a ́n (2004) proposed an approach that builds a minimum spanning tree of the original nearest neighbor graph; but this relies on the assumption that shortcutting edges are longer than good edges, a phenomenon that does not always hold. Another family of approaches attempt to adaptively tune the number-of-neighbors parameter k of the nearest neighbor graph based on the local geometry of the data. Zhan et al. (2009); Elhenawy et al. (2019) adopt similar approaches, looking at the linearity of neighborhoods using PCA and pruning accordingly. These methods typically demonstrate a limited set of results on noiseless data and provide little theoretical justification.
+Ollivier-Ricci Curvature. Ollivier-Ricci curvature (ORC) was proposed as a measure of curvature for finite metric spaces by Ollivier (2007), with follow-up results demonstrating theoretical and empirical convergence to the underlying manifold Ricci curvature under mild assumptions (Ollivier, 2009; van der Hoorn et al., 2021). In the network geometry literature, ORC based approaches have been effective for community detection, drawing connections to Ricci flow from Riemannian geometry (Sia et al., 2019; Ni et al., 2019). Sia et al. (2019) prune edges with extremely negative ORC and justify it using theory that argues that ORC detects communities. Our theoretical work instead justifies the use of ORC for recovering correct manifold structure. A multitude of papers have used ORC for clustering and modeling diffusion processes on graphs as well (Gosztolai & Arnaudon, 2021; Tian et al., 2023). This work has led to applications for graph neural networks, where ORC was used to prevent over-squashing and over-smoothing (Liu et al., 2023; Nguyen et al., 2023), and improving encodings of local graph structure (Fesser & Weber, 2024).
+2 BACKGROUND AND DEFINITIONS
+2.1 DIFFERENTIAL AND RIEMANNIAN GEOMETRY
+Manifolds. A manifold is a generalization of the notion of a surface—it is a topological space that locally looks like Euclidean space. Concretely, a manifold M is an m-dimensional space such that for every point x ∈ M there is a neighborhood U ⊆ M such that U is homeomorphic to Rm. At every point x ∈ M one can attach a m-dimensional vector space called the tangent space (denoted TxM) that contains all directions in which a path in M can tangentially pass through x. In a similar manner, the normal space at x (denoted NxM) is a vector space containing all directions normal to M at x. We will work with Riemannian manifolds, which are smooth manifolds endowed with a Riemannian metric. A Riemannian metric is an assignment of an inner product to each tangent space that varies smoothly with respect to x ∈ M. This metric allows one to make statements about local similarity, angles, and distances. For a more detailed treatment of differential and Riemannian geometry, we direct readers to Prasolov (2022) and Lee (2018).
+Geodesics. In this paper we are concerned with submanifolds M of RD whose Riemannian metrics are induced by the ambient Euclidean metric. Recall that the length of a continuously differentiable
+path γ : [a, b] → RD is L(γ) = R a
+b ∥γ′(t)∥2 dt. The geodesic distance between two points x and y
+in a submanifold M of RD is simply the minimum length over all continuously differentiable paths connecting x and y.
+2
+
+
+Preprint.
+Tubular Neighborhoods. The τ -tubular neighborhood Tubτ (M) of a submanifold M of RD is the
+set {x ∈ RD | d(M, x) ≤ τ }, where d(M, x) is the Euclidean distance between x and the nearest point x′ ∈ M. Intuitively, Tubτ (M) is a “fattened” submanifold of RD that envelops M. We use the tubular neighborhood as a model of the support of a noisy sampling distribution over M with a bounded level of isotropic noise.
+Manifold Embedding Parameters. We will define two manifold parameters that are central to the theoretical analysis that follows, adopted from Bernstein et al. (2001). The minimum radius of curvature is r0(M) = 1
+maxγ,t ∥γ ̈(t)∥2 where γ : R+ → RD is a time-parameterized unit-speed
+geodesic in M. Intuitively, r0(M) indicates the extent to which manifold geodesics curl in the ambient Euclidean space. The minimum branch separation s0(M) is the largest positive number such that ∀x, y ∈ M, ∥x − y∥2 < s0(M) implies dM(x, y) ≤ πr0(M). While in general people use quantities like the reach and injectivity radius to describe manifold embeddings, these quantities are intimately related to the ones described; we choose to stick to the described parameters for compatibility with theorems invoked from prior work.
+Proposition 1. Suppose M is a compact submanifold of RD without boundary and with a minimum radius of curvature r0(M). Then Tubτ M has a minimum radius of curvature of r0(M) − τ .
+2.2 NEAREST NEIGHBOR GRAPHS AND UNWANTED CONNECTIVITY
+Geometric machine learning approaches attempt to capture the underlying structure of M from noisy samples X , typically beginning with the construction of a nearest neighbor graph. These graphs use connectivity rules of two flavors: ε-radius, or k-nearest neighbor (k-NN) (Bernstein et al., 2001). The ε-radius connectivity scheme asserts that for any two vertices a and b, an edge exists between them if ∥a − b∥2 ≤ ε. The k-NN rule on the other hand asserts that the edge exists only if b is one of the k nearest neighbors of a, or vice versa. While the ε-radius rule is more amenable to theoretical analysis, the k-NN rule is used more often in practice.
+Definition 2.1: Shortcut Edge
+An edge (x, y) in a nearest neighbor graph of noisy samples from M is a shortcut edge if
+dM projM x, projM y > (π + 1)r0(M)
+where projM(·) is the orthogonal projection onto M and r0(M) is the minimum radius of curvature of M.
+Tub¿(M)
+M
+Figure 1: Visualization of a nearest neighbor graph build from noisy samples from M. Desirable edges are shown in green, while the shortcut edge is shown in red.
+One of the main corrupting phenomena in the construction of nearest neighbor graphs is the formation of shortcut edges, edges that bridge distant neighborhoods of the underlying manifold M. Figure 1 depicts a simple 2-dimensional example of a shortcut edge, while Definition 2.1 provides a mathematical description of such edges. Note that in Section 3 we state the assumption that τ < r0(M), which guarantees the uniqueness of the projection map. Intuitively, a shortcut edge is one where a large distance through M is required to traverse between the endpoints, relative to the Euclidean distance between the endpoints of the edge itself. While the definition has no explicit dependence on ∥x − y∥2, we make the assumption in Section 3 that the connectivity threshold ε (and thus ∥x − y∥2) is smaller than r0(M).
+2.3 OLLIVIER-RICCI CURVATURE
+Ollivier-Ricci curvature (ORC) was proposed as a measure of curvature for discrete spaces by leveraging the connection between optimal transport and Ricci curvature of Riemannian manifolds (Ollivier, 2009). While there have been many subtle variations of ORC, we will describe a modification to the most common one. Given an edge (x, y) in a weighted graph G with vertices V and edges E, define the neighborhoods of x and y as N (x) := {v ∈ V | (x, v) ∈ E, v ̸= x} and
+3
+
+
+Preprint.
+N (y) := {v ∈ V | (y, v) ∈ E, v ̸= y}. Further define μx and μy as uniform probability measures over N (x) \ {y} and N (y) \ {x}, respectively. The ORC of the edge (x, y), denoted κ(x, y), is defined as
+κ(x, y) := 1 − W (μx, μy)
+dG(x, y)
+where W (μx, μy) is the 1-Wasserstein distance between the measures μx and μy (regarded as measures on V ), with respect to the (weighted) shortest-path metric dG(· , ·). The 1-Wasserstein distance is computed by solving the following optimal transport problem,
+W (μx, μy) = inf
+γ∈Π(μx,μy )
+X
+(a,b) ∈ V ×V
+dG(a, b)γ(a, b)
+where Π(μx, μy) is the set of all measures on V × V with marginals μx and μy. Intuitively, ORC quantifies the local structure of G: negative curvature implies that the edge is a “bottleneck”, while positive curvature indicates the edge is present in a highly connected community.
+In our setting, the vertices of the graph G are points in RD, and edges connect points (x, y) such that ∥x − y∥2 ≤ ε, where ε is a user-chosen connectivity threshold. A common choice is to weight the edges by the Euclidean distance ∥x − y∥2, but we make a slight modification to this formulation. In computing the ORC in the present paper we use ε-weighted edges; namely, all edges are snapped to a weight of ε, the parameter used to build the underlying nearest neighbor graph. This is a key aspect of our method, as it forces the ORC to reflect only the local connectivity, and makes it invariant to scale. This modification also restricts the ORC values to lie between −2 and +1, whereas with weighted graphs, the values are unbounded below. For the rest of the paper, any reference to Ollivier-Ricci curvature is a reference to the formulation we have just described.
+Proposition 2. The ORC of any edge (x, y) in an ε-weighted graph satisfies −2 ≤ κ(x, y) ≤ 1.
+3 METHOD AND THEORETICAL RESULTS
+In this section we will describe ORC-MANL, a novel algorithm for pruning nearest neighbor graphs based on ORC and metric distortion. We will also describe the theoretical results that justify the algorithm construction, the proofs of which are in Appendix A.3.
+ORC-MANL (Algorithm 1) takes as input noisy samples X from some underlying manifold, an accompanying nearest neighbor graph G = (V, E) of the data, and tolerances δ, λ ∈ [0, 1]. The method constructs a candidate set C of edges that have curvature more negative than a threshold just larger than −1 (with δ determining the gap between the threshold and −1, the expression for which comes from Lemma A.1). Importantly, not every edge in the candidate set is necessarily a shortcut; good edges can have extremely negative curvature as well. To combat this, the method proceeds by constructing a thresholded graph G′ = (V, E′) where E′ = E \ C. The weighted graph distance dG′ (x, y) is checked for every edge (x, y) ∈ C. If this distance exceeds the theoretically determined threshold we can be confident that (x, y) undesirably bridges distant neighborhoods of M (a visualization for which is shown in Figure 11). The edge is therefore removed from G. If the threshold is not exceeded, the edge is not removed.
+We provide three theoretical results that justify ORC-MANL. First, we show that when the data generating the nearest neighbor graph consists of noisy samples from an underlying manifold M, the ORC of shortcutting edges tends to be very negative. Second, we show that as one samples more points, every vertex has an increasing number of non-shortcutting edges with very positive ORC. Last, we derive a bound on the graph distance (in the ORC thresholded graph G′) between any vertices connected by a shortcut edge in G.
+We consider the setting where M is a compact m-dimensional smooth submanifold of RD without boundary. Let Tubτ (M) be the tubular neighborhood of M, and assume X ⊂ Tubτ (M) consists of n independent draws from the probability density function ρ : Tubτ (M) → R+,
+ρ(z) =
+
+
+
+1
+Ze
+−∥z−projM z∥22
+2σ2 , ∥z − projM z∥2 ≤ τ
+0 , o.w. ,
+(1)
+4
+
+
+Preprint.
+where Z is a normalizing constant such that R
+Tubτ (M) ρ(z)dV integrates to 1. We are given a con
+stant λ < 1, which controls the threshold we use when checking the weighted-graph distances of candidate edges. For the rest of the paper, suppose that
+1. (Support criteria): 2τ < ε, 3τ < s0(M), 3τ < r0(M)
+2. (ε-radius criterion): ε < min
+np(s0(M) − τ )2 − τ 2, 2
+π (r0(M) − τ )√24λ, r0(M)
+o
+,
+where s0(M) is the minimum branch separation of M and r0(M) is the minimum radius of curvature of M. Assumption 1 ensures that the orthogonal projection projM : Tubτ M → M is unique, while 2 allows us to use Bernstein et al. (2001) to make statements about geodesic distances.
+Algorithm 1 ORC-MANL
+Require: G = (V, E) a nearest neighbor graph, λ, δ 1: C ← {} 2: for (x, y) in E do ▷ candidate selection 3: κ(x, y) ← OllivierRicci(G, (x, y)) 4: if κ(x, y) ≤ −1 + 4 1 − δ then ▷ Lemma A.1 5: C ← C ∪ {(x, y)}
+6: E′ ← E \ C 7: G′ ← (V, E′)
+8: for (x, y) in C do ▷ shortcut detection 9: dG′ (x, y) ← ShortestPath(G′, x, y) 10: if dG′ (x, y) > π(π+1)(1−λ)
+2√24λ ε then ▷ Theorem 3.3 11: E ← E \ {(x, y)} 12: return (V, E)
+Our first theorem establishes that the ORC for shortcut edges converges to negative values in the limit of vanishing noise σ. We note that so long as τ > 0 and σ > 0, shortcut edges occur with nonzero probability. Observe that, in combination with Proposition 2, this result indicates that the ORC of shortcut edges tends to concentrate in the bottom third of the possible range of values.
+Theorem 3.1 (Ollivier-Ricci Curvature of Shortcut Edges). Suppose that Xi is a point cloud sampled from ρ with parameters σi and τi and Gi is its nearest-neighbor graph. Also suppose that M satisfies the conditions above, and σi → 0+ and τi → 0+ as i → ∞. Then as i → ∞, we have κ(x, y) ≤ −1 for all shortcut edges (x, y) in Gi with probability approaching 1.
+To be confident that ORC can be effective at identifying potentially shortcutting edges, we would also like to be sure that there exists a sufficient number of good (non-shortcut) edges with more positive ORC. This motivates Theorem 3.2.
+Theorem 3.2 (Ollivier-Ricci Curvature of Non-Shortcut Edges). Let k be a positive integer. With high probability as the number of points n → ∞, every point has at least k neighbors that it is connected to by non-shortcut edges with ORC +1.
+Proofs of Theorem 3.1 and Theorem 3.2 can be found in Appendix A.3.1. These results allow us to create a candidate set of shortcut edges by looking at the ORC of edges in G. We then expect that the graph G′ = (V, E′), where E′ has all extremely negative-curvature edges removed, has no shortcut edges and a large number of good edges. It should therefore have a metric structure that is more aligned with that of the underlying manifold M. With that said, we also expect the candidate set to contain some non-shortcut edges, which we do not want to remove from G. In the last part of our algorithm, we filter our candidate set to identify edges that are most likely to be shortcuts. This motivates our third theorem, which establishes that for vertices that were previously connected in G by a shortcut edge, their weighted graph distance in G′ is long relative to ε.
+Theorem 3.3 (Filtered Graph Distance). Suppose that Xi is a point cloud sampled from ρ with parameters σi and τi and Gi = (Vi, Ei) is its nearest neighbor graph. Also suppose that M satisfies
+the conditions above and σi → 0+ and τi → 0+ as i → ∞. Define the subgraph G′
+i = (Vi, E′
+i) where
+E′
+i=
+n
+(xi, yi) ∈ Ei κ(xi, yi) > −1
+o
+.
+Then as i → ∞ we have
+dG′ (x, y) > β π(π + 1)(1 − λ)
+2√24λ ε
+for all shortcut edges in Gi with probability approaching 1, where β ∈ [0, 1] (eq. (34)) is a random variable whose distribution is dependent on M and τi.
+5
+
+
+Preprint.
+Remark 1. The random variable β is inversely related to the number and lengths of edges that shortcut through Tubτ M but do not satisfy the definition of a shortcut edge in M. We expect that β concentrates close to 1, and experimentally we find that β = 1 works well.
+Theorem 3.3 arises from two results: (1) one can bound geodesic distances through Tubτ M with geodesic distances of paths through M with similar endpoints, and (2) under reasonable conditions one can relate the graph distances through a nearest neighbor graph built from data sampled from
+Tubτ M to the geodesic distance through Tubτ M.
+Non-Shortcut Shortcut
+Ollivier-Ricci Curvature
+larger
+smaller larger
+smaller
+smaller larger smaller larger Concentric Circles Chained Torii
+Percent of nodes with > k
+incident edges satisfying
+Figure 2: Empirical convergence results. The bottom row plots the percent of nodes with at least k incident edges that (∗) are non-shortcutting and have positive ORC.
+Figure 2 shows experimental support for Theorem 3.1 and Theorem 3.2 on two synthetic manifolds averaged across 10 seeds. In accordance with Theorem 3.1 we find that as the noise parameter σ falls, the ORC of shortcutting edges falls commensurately. We see that it rapidly drops below −1 and asymptotes to the most negative possible value, −2. In accordance with Theorem 3.2 we find that as we sample more points each vertex has an increasing number of non-shortcut incident edges with positive ORC. For more empirical support of the theory we provide an illustrative example in Figure 22 in Appendix A.4.5. We also discuss the behavior of ORC-MANL as a function of underlying manifold curvature in Appendix A.4.4.
+4 EXPERIMENTS
+Building nearest neighbor graphs as a data pre-processing step is ubiquitous in the realm of geometric data analysis. Therefore our method is well suited for evaluation on a broad range of algorithms that operate on nearest neighbor graphs.
+Our experiments are divided into two sections. Firstly, we evaluate ORC-MANL on a variety of synthetic manifolds for a broad array of benchmark geometric data analysis and machine learning tasks. We also compare pruning accuracy to several benchmark methods presented previously in the literature. We then show that ORC-MANL pruning reveals clusters aligned with ground truth annotation for single-cell RNA sequencing (scRNAseq) data of peripheral blood mononuclear cells (PBMCs). We also find that ORC-MANL pruning improves downstream manifold learning embeddings of scRNAseq data of anterolateral motor cortex (ALM) brain cells in mice.
+4.1 RESULTS: SYNTHETIC DATA
+For our synthetic manifolds, we have curated a list of 1 and 2-dimensional manifolds embedded in R2 and R3, respectively, that exhibit varying intrinsic and extrinsic curvature. The 1-dimensional manifolds include concentric circles, a mixture of Gaussians, twin moons, an S curve, the 1dimensional swiss roll, a Cassini oval (Cassini, 1693) and concentric parabolas. The 2-dimensional manifolds include chained torii, concentric hyperboloids, an adjacent hyperboloid and paraboloid, adjacent paraboloids and the 2-dimensional swiss roll. Note that we include additional experiments indicating the improved performance of spectral clustering with ORC-MANL pruning in Appendix A.4.2. We also provide more experimental details regarding sampling and nearest neighbor graph construction in Appendix A.2.
+4.1.1 PRUNING
+Our first experiment quantifies the ability of ORC-MANL to prune (and therefore classify) edges of nearest neighbor graphs. We report classification accuracy for 1 and 2-dimensional manifolds in Table 1. In the tables we also include performance for several baseline graph pruning approaches. Algorithm descriptions for each baseline are provided in Appendix A.2.1. Each entry in the table has two rows: the top row indicates the mean and standard deviation of classification accuracy for non-shortcut edges, while the bottom row indicates the mean and standard deviation of classification accuracy for shortcut edges across 10 different trials. Accompanying visualizations for ORC-MANL pruning results are shown in Figure 3.
+6
+
+
+Preprint.
+Table 1: Pruning performance of our method vs. baselines described in Appendix A.2.1. For each entry, the top row indicates the percentage of “good” edges removed, while the bottom row indicates the percentage of shortcut edges removed.
+Concentric Circles
+Mixture of
+Gaussians Moons S Cassini
+ORC-MANL 0.0 ± 0.0
+100.0 ± 0.0
+0.0 ± 0.0 100.0 ± 0.0
+0.0 ± 0.0 100.0 ± 0.0
+0.0 ± 0.0 100.0 ± 0.0
+0.0 ± 0.0 100.0 ± 0.0
+ORC ONLY
+12.6 ± 0.2 100.0 ± 0.0
+13.7 ± 0.2 100.0 ± 0.0
+12.3 ± 0.2 100.0 ± 0.0
+13.4 ± 0.2 100.0 ± 0.0
+10.9 ± 0.1 100.0 ± 0.0
+BISECTION
+2.6 ± 0.2 45.8 ± 21.5
+2.0 ± 0.1 45.3 ± 18.5
+1.7 ± 0.1 100.0 ± 0.0
+1.9 ± 0.1 82.0 ± 33.7
+2.5 ± 0.1 40.0 ± 38.1 MST 0.3 ± 0.2
+59.6 ± 8.8
+1.3 ± 0.2 9.9 ± 11.2
+0.3 ± 0.1 4.0 ± 12.0
+2.8 ± 0.4 100.0 ± 0.0
+0.0 ± 0.1 70.0 ± 45.8
+DENSITY
+2.1 ± 0.4 81.9 ± 16.7
+0.3 ± 0.0 100.0 ± 0.0
+5.7 ± 0.3 88.9 ± 23.4
+3.1 ± 0.3 100.0 ± 0.0
+2.1 ± 0.1 0.0 ± 0.0
+DISTANCE
+0.8 ± 0.1 80.3 ± 12.0
+2.8 ± 0.1 100.0 ± 0.0
+0.1 ± 0.1 98.6 ± 4.3
+8.8 ± 0.2 100.0 ± 0.0
+1.3 ± 0.1 0.0 ± 0.0
+Concentric Torii
+Concentric Hyperboloids
+Hyperboloid
+and Paraboloid Paraboloids Swiss Roll
+ORC-MANL 0.0 ± 0.0
+100.0 ± 0.0
+0.0 ± 0.0 99.1 ± 2.6
+0.0 ± 0.0 89.4 ± 21.3
+0.0 ± 0.0 100.0 ± 0.0
+0.0 ± 0.0 100.0 ± 0.0
+ORC ONLY
+15.7 ± 0.3 100.0 ± 0.0
+13.1 ± 0.2 100.0 ± 0.0
+18.1 ± 0.3 98.9 ± 3.3
+18.0 ± 0.3 100.0 ± 0.0
+14.8 ± 0.2 100.0 ± 0.0
+BISECTION
+2.8 ± 0.0 8.8 ± 3.5
+0.4 ± 0.1 20.0 ± 4.2
+0.4 ± 0.1 61.3 ± 21.3
+0.5 ± 0.0 10.3 ± 12.2
+0.4 ± 0.1 32.8 ± 9.4 MST 29.2 ± 0.3
+89.6 ± 3.7
+2.3 ± 0.2 91.6 ± 1.3
+20.4 ± 0.5 58.5 ± 10.8
+24.3 ± 0.4 66.2 ± 17.2
+1.8 ± 0.3 100.0 ± 0.0
+DENSITY
+30.4 ± 1.6 16.8 ± 8.0
+22.9 ± 0.9 1.0 ± 1.3
+32.9 ± 1.1 0.6 ± 1.9
+63.6 ± 1.3 8.9 ± 7.4
+7.8 ± 0.7 29.5 ± 8.0
+DISTANCE
+22.0 ± 0.4 88.8 ± 5.6
+9.2 ± 0.5 61.1 ± 8.7
+18.9 ± 0.4 73.8 ± 18.2
+34.7 ± 0.5 26.5 ± 13.7
+2.3 ± 0.2 40.0 ± 9.8
+We find that ORC-MANL vastly outperforms all baselines on a majority of the synthetic manifolds. Our approach removes all shortcut edges in all but two examples, and removes no shortcut edges across all examples. Unsurprisingly, we find that ORC ONLY exhibits identical performance on shortcut edge removal, but typically removes around 15% of good edges as well.
+Figure 3: Visualization of nearest neighbor graphs before and after pruning with ORCMANL. Shortcut edges are highlighted red.
+BISECTION performs poorly on all manifolds except the moons and the S curve, likely stemming from the fact that shortcut edges for those examples travel longer distances and pass through lower density regions than shortcut edges for other synthetic manifolds. This is also reflected in stronger performance by DISTANCE on the moons and the S curve. MST unsurprisingly performs well on examples where the underlying manifold M has a single connected component (like the swiss roll and S curve) but consistently struggles with most other examples. Finally, DENSITY and DISTANCE exhibit erratic performance, at times being competitive with ORCMANL, and at times performing poorly. We attribute this to the variability in the extent to which shortcut edges (1) pass through low density regions, and (2) have longer length relative to other graph edges. Furthermore, these effects can be compounded by poor kernel density estimates for the DENSITY baseline.
+7
+
+
+Preprint.
+We would like to underscore the fact that algorithm parameters for ORC-MANL are fixed at δ = 0.8 and λ = 0.01 across all manifolds and trials (and δ for ORC ONLY is similarly fixed at 0.8) in Table 1. The baseline methods MST, DENSITY and DISTANCE however required manual threshold tuning for each manifold in the evaluation set listed. Despite this additional labor induced by parameter tuning, we find that ORC-MANL outperforms these other methods. All manifold and algorithm parameters are listed in Table 2 and Table 3.
+4.1.2 MANIFOLD LEARNING
+We turn to evaluate ORC-MANL on manifold learning, a family of algorithms concerned with finding low dimensional coordinates on the data submanifold. Almost all manifold learning algorithms begin by constructing a nearest neighbor graph, making ORC-MANL a perfect pre-processing step.
+We compare embeddings of nearest neighbor graphs with and without ORC-MANL preprocessing for data sampled from a noisy 2-dimensional swiss roll embedded in R3 with and without a hole. We test on Isomap (Tenenbaum et al., 2000), Locally Linear Embeddings (LLE), (Belkin & Niyogi, 2003), UMAP (McInnes et al., 2018) and t-SNE (Van der Maaten & Hinton, 2008) shown in Figure 4. We leave out Laplacian Eigenmaps (Belkin & Niyogi, 2003) as we find that it fails to preserve both underlying dimensions of the noisy swiss roll, independent of the presence of shortcut edges. To the best of our understanding, this likely arises from the Repeated Eigendirection Problem (REP) associated with eigenfunction based methods (Dsilva et al., 2018). For UMAP and t-SNE we use graph distances (induced by the pruned and unpruned graphs respectively) as algorithm inputs.
+We observe that across both manifolds and all methods, ORC-MANL pruning typically improves the embedding. For Isomap, this improvement is the most pronounced; without pruning, Isomap fails to unroll either swiss roll. We attribute this to distorted geodesic distance estimates (which is the first step of the Isomap algorithm) arising from shortcut edges. We also find significant improvement in the quality of the embeddings for LLE. For both manifolds, LLE without ORC-MANL struggles to preserve the primary dimension of the underlying manifold. We find that UMAP ben
+(a) Isomap (b) LLE
+(a) Isomap (b) LLE
+None
+Original Data
+(c) UMAP (c) UMAP
+(d) t-SNE (d) t-SNE
+Figure 4: Embeddings of the noisy 3-dimensional swiss roll (left) and noisy 3-dimensional swiss hole (right) produced by several popular manifold learning algorithms. The UMAP embeddings shown were run on noisier samples than those for the other embedding algorithms.
+efits from ORC-MANL pruning as well, though the difference with and without pruning emerges only when the noise τ is extremely large. Finally, t-SNE embeddings for both datasets appear to be better when coupled with ORC-MANL, as it prevents discontinuities that arise in the unpruned embeddings. Unfortunately across trials we do not see consistent benefit from pruning, though it is never detrimental. Embeddings for three different trials are shown in Figure 18 in Appendix A.4.1.
+4.1.3 PERSISTENT HOMOLOGY
+Next, we evaluate our method on persistent homology. Persistent homology begins by constructing a nested sequence Kr0 ⊆ Kr1 ⊆ . . . Krn . . . of simplicial complexes, also referred to as a filtered complex. A common example is the Vietoris-Rips (VR) filtered complex. For data points X with metric d, the VR simplicial complex Kr has a simplex for every subset of points with pairwise distances ≤ r (Ghrist, 2014). For our experiments, we construct the VR filtered complex where the metric is the weighted graph distance. One can summarize the result of persistent homology with a
+persistence diagram, simply a multiset of points in R ̄ 2>. Each point (rbirth, rdeath) in the persistence diagram records the filtration parameter at which a homology class is born and dies respectively.
+8
+
+
+Preprint.
+We present results for persistent homology applied to nearest neighbor graphs with and without ORC-MANL preprocessing in Figure 5. We show results on (1) the noisy concentric circles dataset, and (2) the noisy chained torii manifolds. For each manifold, we present the persistence diagram of an oversampled, noiseless point cloud of the manifold as a proxy for ground truth. The persistence diagrams are shown for qualitative evaluation, but we also include dissimilarity scores measured as the Wasserstein distance to the noiseless persistence diagram for quantitative evaluation (the details for which are provided in Appendix A.2.2).
+None
+Noiseless
+Persistence Diagram
+Data
+Noiseless None
+Wasserstein Distance
+Figure 5: Persistent homology applied to the concentric-circles (left) and the chained-torii (right). The bottom row indicates the Wasserstein distance to the noiseless persistence diagram.
+We observe that for both the noisy concentric circles and the noisy chained torii, the persistence diagrams computed on ORC-MANL pruned nearest neighbor graphs are qualitatively and quantitatively more similar to the noiseless persistence diagrams than their unpruned counterparts. We emphasize that for both synthetic manifolds, the pruned diagrams correctly capture the number of essential classes (homology classes that persist forever), while non-pruned diagrams do not. We observe infinite Wasserstein distances for H0 between the unpruned and noiseless persistence diagrams, but only finite distances for the ORC-MANL pruned diagrams. For other homology dimensions, we also see that ORC-MANL pruned diagrams consistently exhibit smaller distances to the noiseless than non-pruned diagrams.
+4.1.4 GEOMETRIC DESCRIPTORS
+None
+Intrinsic Dimension
+Scalar Curvature
+Intrinsic Dimension
+Scalar Curvature
+MSE: 3.5e-4
+MSE: 0.001
+MSE: 0.026
+MSE: 0.053 MSE: 2.107
+MSE: 0.636 MSE: 0.004
+MSE: 0.006
+Figure 6: Scalar curvature and intrinsic dimension estimation. The star indicates the ground truth.
+Finally, we test the ability of ORCMANL to preserve geometric descriptors of the underlying manifolds. We estimate intrinsic dimension and scalar curvature for the (1) swiss roll and (2) adjacent spheres datasets. We compare our estimates to the ground-truth values. We use the maximum-likelihood estimation approach to estimating intrinsic dimension from Levina & Bickel (2004), and we use the algorithm from Hickok & Blumberg (2023) to estimate scalar curvature. The details for both algorithms are detailed in Appendix A.2.3 and Appendix A.2.4, respectively.
+We report intrinsic dimension and scalar curvature estimation results on the noisy swiss roll and noisy adjacent spheres dataset in Figure 6. We find that ORC-MANL pruning provides tangible improvement over non-pruned estimates, especially for scalar curvature. For intrinsic dimension estimation we see improved point-wise accuracy in regions with a high number of shortcut edges (for example, the area between the adjacent spheres); in regions with a smaller presence of shortcut edges, we find that the unpruned graphs produce accurate results.
+4.2 RESULTS: REAL DATA
+We evaluate the efficacy of ORC-MANL on real-world data by using it to analyze cell-type annotated scRNAseq data of (1) anterolateral motor cortex (ALM) brain cells in mice available from the Allen Institute (Abdelaal et al., 2019), and (2) peripheral blood mononuclear cells (PBMC) available
+9
+
+
+Preprint.
+from 10XGenomics. In accordance with previous work, we extract the 2000 most variable genes, followed by PCA (Pearson, 1901) to obtain a 50-dimensional representation of the data.
+None
+Neuronal
+Non-neuronal Neuronal
+Non-neuronal
+Neuronal
+Figure 7: Isomap (Tenenbaum et al., 2000) embedding of scRNAseq data from anterolateral motor cortex (ALM) brain cells in mice with and without ORC-MANL pruning.
+For the brain cells we use Isomap (Tenenbaum et al., 2000) to embed ORC-MANL pruned and unpruned nearest neighbor graphs. Figure 7 shows the embeddings with base truth annotations. We find that pruning with ORC-MANL qualitatively improves the Isomap embedding of the data, as the distinction between neuronal cells (labeled “Inhibitory” and “Excitatory”) and non-neuronal cells becomes significantly more pronounced after pruning. For completeness, we include UMAP and t-SNE embeddings of this dataset in the appendix in Figure 20; we observe poor performance as measured by neuronal community preservation both with and without pruning, suggesting issues with the embedding algorithms themselves as opposed to pruning.
+None
+None
+Figure 8: UMAP and spectral embeddings of PBMC scRNAseq data with and without ORC-MANL preprocessing. Base truth cell types are annotated and edges of the pruned and unpruned graphs are visualized in grey. Gaussian noise was added to the spectral embeddings with ORC-MANL pruning for visibility, as connected components get mapped to a single point.
+Now we turn to the PBMC dataset, where we show UMAP and spectral embeddings in Figure 8. We find that ORC-MANL pruning leads to connected components that largely align with base truth annotations; this is reflected in the spectral embedding, which maps each component to a unique location in the embedding space. Furthermore, edges that formerly bridged seemingly distinct clusters in the embeddings were removed, resulting in clearer cluster structure in the pruned graphs.
+5 CONCLUSION
+In this work we present ORC-MANL, a theoretically justified and empirically validated approach for nearest neighbor graph pruning. We rigorously demonstrate that shortcut edges necessarily exhibit particularly negative ORC for graphs sampled from manifolds with a bounded level of isotropic noise. Our method also validates the removal of any edge by using a theoretically derived bound on graph distances implied by the geometry of shortcut edges. We qualitatively and quantitatively demonstrate that ORC-MANL is beneficial to a variety of downstream geometric data analysis tasks on synthetic and real data. We also compare our method to baselines from the literature in its ability to correctly prune shortcut edges and avoid non-shortcut edges.
+10
+
+
+Preprint.
+REFERENCES
+Tamim Abdelaal, Lieke Michielsen, Davy Cats, Dylan Hoogduin, Hailiang Mei, Marcel JT Reinders, and Ahmed Mahfouz. A comparison of automatic cell identification methods for single-cell RNA sequencing data. Genome biology, 20:1–19, 2019.
+Francis Bach and Michael Jordan. Learning spectral clustering. In S. Thrun, L. Saul, and B. Scho ̈lkopf (eds.), Advances in Neural Information Processing Systems, volume 16. MIT Press, 2003. URL https://proceedings.neurips.cc/paper_files/paper/ 2003/file/d04863f100d59b3eb688a11f95b0ae60-Paper.pdf.
+Mikhail Belkin and Partha Niyogi. Laplacian eigenmaps for dimensionality reduction and data representation. Neural computation, 15(6):1373–1396, 2003.
+Mira Bernstein, Vin Silva, John Langford, and Joshua Tenenbaum. Graph approximations to geodesics on embedded manifolds. 02 2001.
+Giovanni Domenico Cassini. De l’Origine et du progr`es de l’astronomie et de son usage dans la g ́eographie et dans la navigation, par M. Cassini. Impr. royale, 1693. URL https://books. google.com/books?id=PvcqQwAACAAJ.
+Shao Chao, Huang Hou-kuan, and Zhao Lian-wei. P-ISOMAP: A new ISOMAP-based data visualization algorithm with less sensitivity to the neighborhood size. Acta Electronica Sinica, 34(8): 1497, 2006. URL https://www.ejournal.org.cn/EN/Y2006/V34/I8/1497.
+Shao Chao, Huang Hou-kun, and Zhao Lian-wei. A more topologically stable ISOMAP algorithm. Journal of software, 18(4):869–877, 2007.
+Carmeline J. Dsilva, Ronen Talmon, Ronald R. Coifman, and Ioannis G. Kevrekidis. Parsimonious representation of nonlinear dynamical systems through manifold learning: A chemotaxis case study. Applied and Computational Harmonic Analysis, 44(3):759–773, 2018. ISSN 1063-5203. doi: https://doi.org/10.1016/j.acha.2015.06.008. URL https://www.sciencedirect. com/science/article/pii/S1063520315000949.
+Mohammed Elhenawy, Mahmoud Masoud, Sebastian Glaser, and Andry Rakotonirainy. Topological stability: A new algorithm for selecting the nearest neighbors in non-linear dimensionality reduction techniques. arXiv preprint arXiv:1911.05312, 2019.
+Lukas Fesser and Melanie Weber. Effective structural encodings via local curvature profiles. In The Twelfth International Conference on Learning Representations, 2024.
+Robert W Ghrist. Elementary applied topology, volume 1. Createspace Seattle, 2014.
+Adam Gosztolai and Alexis Arnaudon. Unfolding the multiscale structure of networks with dynamical Ollivier-Ricci curvature. Nature Communications, 12(1):4561, 2021.
+John Hartigan and Manchek Wong. A k-means clustering algorithm. Journal of the Royal Statistical Society. Series C (Applied Statistics), 28(1):100–108, 1979. ISSN 00359254, 14679876. URL http://www.jstor.org/stable/2346830.
+Abigail Hickok and Andrew J. Blumberg. An intrinsic approach to scalar-curvature estimation for point clouds, 2023. URL https://arxiv.org/abs/2308.02615.
+Lawrence Hubert and Phipps Arabie. Comparing partitions. Journal of classification, 2:193–218, 1985.
+Joseph Kruskal. On the Shortest Spanning Subtree of a Graph and the Traveling Salesman Problem. In Proceedings of the American Mathematical Society, 7, 1956.
+The ́o Lacombe, Marco Cuturi, and Steve Oudot. Large scale computation of means and clusters for persistence diagrams using optimal transport. Advances in Neural Information Processing Systems, 31, 2018.
+John M Lee. Introduction to Riemannian manifolds, volume 2. Springer, 2018.
+11
+
+
+Preprint.
+Elizaveta Levina and Peter Bickel. Maximum likelihood estimation of intrinsic dimension. Advances in neural information processing systems, 17, 2004.
+Yang Liu, Chuan Zhou, Shirui Pan, Jia Wu, Zhao Li, Hongyang Chen, and Peng Zhang. Curvdrop: A Ricci curvature based approach to prevent graph neural networks from over-smoothing and over-squashing. In Proceedings of the ACM Web Conference 2023, pp. 221–230, 2023.
+Leland McInnes, John Healy, and James Melville. Umap: Uniform manifold approximation and projection for dimension reduction. arXiv preprint arXiv:1802.03426, 2018.
+Khang Nguyen, Nong Minh Hieu, Vinh Duc Nguyen, Nhat Ho, Stanley Osher, and Tan Minh Nguyen. Revisiting over-smoothing and over-squashing using Ollivier-Ricci curvature. In International Conference on Machine Learning, pp. 25956–25979. PMLR, 2023.
+Chien-Chun Ni, Yu-Yao Lin, Feng Luo, and Jie Gao. Community detection on networks with Ricci flow. Scientific reports, 9(1):9984, 2019.
+Yann Ollivier. Ricci curvature of metric spaces. Comptes Rendus Mathematique, 345(11):643–646, 2007.
+Yann Ollivier. Ricci curvature of Markov chains on metric spaces. Journal of Functional Analysis, 256(3):810–864, 2009. ISSN 0022-1236. doi: https://doi.org/10.1016/j.jfa. 2008.11.001. URL https://www.sciencedirect.com/science/article/pii/ S002212360800493X.
+Karl Pearson. On lines and planes of closest fit to systems of points in space. The London, Edinburgh, and Dublin Philosophical Magazine and Journal of Science, 2(11):559–572, 1901. doi: 10. 1080/14786440109462720. URL https://doi.org/10.1080/14786440109462720.
+Victor V Prasolov. Differential Geometry, volume 8. Springer Nature, 2022.
+Jayson Sia, Edmond Jonckheere, and Paul Bogdan. Ollivier-Ricci curvature-based method to community detection in complex networks. Scientific reports, 9(1):9800, 2019.
+Joshua B. Tenenbaum, Vin de Silva, and John C. Langford. A global geometric framework for nonlinear dimensionality reduction. Science, 290(5500):2319–2323, 2000. doi: 10.1126/science.290. 5500.2319. URL https://www.science.org/doi/abs/10.1126/science.290. 5500.2319.
+The GUDHI Project. GUDHI User and Reference Manual. GUDHI Editorial Board, 3.1.1 edition, 2020. URL https://gudhi.inria.fr/doc/3.1.1/.
+Yu Tian, Zachary Lubberts, and Melanie Weber. Curvature-based clustering on graphs. arXiv preprint arXiv:2307.10155, 2023.
+Alex Tsun. Probability & statistics with applications to computing, 2020.
+Pim van der Hoorn, William J Cunningham, Gabor Lippner, Carlo Trugenberger, and Dmitri Krioukov. Ollivier-Ricci curvature convergence in random geometric graphs. Physical Review Research, 3(1):013211, 2021.
+Laurens Van der Maaten and Geoffrey Hinton. Visualizing data using t-SNE. Journal of machine learning research, 9(11), 2008.
+Tian Xia, Jintao Li, Yongdong Zhang, and Sheng Tang. A more topologically stable locally linear embedding algorithm based on R*-tree. In Pacific-Asia Conference on Knowledge Discovery and Data Mining, pp. 803–812. Springer, 2008.
+Richard Zemel and Miguel Carreira-Perpin ̃a ́n. Proximity graphs for clustering and manifold learning. In L. Saul, Y. Weiss, and L. Bottou (eds.), Advances in Neural Information Processing Systems, volume 17. MIT Press, 2004. URL https://proceedings.neurips.cc/paper_ files/paper/2004/file/dcda54e29207294d8e7e1b537338b1c0-Paper.pdf.
+Yubin Zhan, Jianping Yin, Xinwang Liu, and Guomin Zhang. Adaptive neighborhood select based on local linearity for nonlinear dimensionality reduction. In Advances in Computation and Intelligence: 4th International Symposium, ISICA 2009 Huangshi, China, Ocotober 23-25, 2009 Proceedings 4, pp. 337–348. Springer, 2009.
+12
+
+
+Preprint.
+A APPENDIX
+A.1 REPRODUCIBILITY STATEMENT
+Theoretical Results: We detail global assumptions for all theoretical results in Section 3. We also make a concerted effort to clarify all proof-specific assumptions in the Theorem, Lemma and Proposition statements.
+Experimental Results: To ensure the reproducibility of our experimental results we include the source code for ORC-MANL and the scripts for reproducing all experiments as supplemental material in our submission. Included in the experiment scripts are the parameters used; for clarity we describe key parameter choices throughout the body of the paper, and provide extra details in Appendix A.2.
+A.2 EXPERIMENTAL DETAILS
+For all experiments in Section 4.1, datapoints are sampled according to ρ defined in eq. (1) for each synthetic manifold M. To achieve this, we sample uniformly from the underlying m-dimensional manifold M (unless otherwise specified) driven by the m-dimensional volume form defined by the Euclidean metric. We then use rejection sampling to obtain isotropic Gaussian noise ξ ∼ N (0, I) such that ∥ξ∥2 ≤ τ . For all experiments detailed in Section 4.1, we use k-NN connectivity; while our theoretical analysis assumes ε-radius connectivity, ε-radius connectivity is more challenging to tune in practice. Since k-NN graphs are more commonplace in the applied literature, we opt to present results on k-NN graphs (unless otherwise specified).
+A.2.1 PRUNING
+Here we detail each of the pruning baselines that appear in Table 1.
+1. ORC ONLY: This baseline returns a graph G′ where edges with curvature less than −1 + 4(1 − δ) are removed, but no additional validation step is undertaken. Namely, Algorithm 1 is terminated at line 7 and the graph G′ is returned.
+2. BISECTION: This method was proposed by Xia et al. (2008) to address topological instability associated with the Isomap algorithm (Tenenbaum et al., 2000). For each edge (x, y), it performs a local search around the midpoint l = (x − y)/2. Namely, it searches in a bounding box QD
+i=1[li − ε′, li + ε′] for a neighboring point, where ε′ is the average distance
+of x and y to their kbis nearest neighbors. If a point exists in the bounding box, the edge is removed.
+3. MST: This method was proposed by Zemel & Carreira-Perpin ̃a ́n (2004) and simplified by Chao et al. (2006). In essence, this leverages the insight that shortcutting edges empirically exhibit longer edge length than their non-shortcutting counterparts (though neither paper presented any theoretical justification for such claims). The method builds a MinimumSpanning-Tree (MST) T of the original graph G with Kruskal’s algorithm (Kruskal, 1956). The edges in this MST are removed to obtain G′ = (V, E \ T ), from which one obtains another MST T ′. Finally, T and T ′ are combined to get G′′. If for any edge (x, y) in G the graph shortest path distance in G′′ is larger than some manually set threshold dMST, then it is removed.
+4. DENSITY: While similar in theme to BISECTION, DENSITY uses explicit kernel density estimation inspired by Chao et al. (2007). For this baseline, we estimate the density at the midpoint of all edges, and remove edges that exhibit especially low density (based on some manually tuned threshold ρmin).
+5. DISTANCE: This baseline simply removes the longest edges based on some manually tuned threshold ddist.
+We note that for manifolds with a single connected component, we estimate edge labels (shortcut versus non-shortcut) by checking whether the ratio of the manifold distance to the Euclidean distance is large for a denser noiseless sample. For reproducibility we include noise parameters used for manifold sampling in Table 2. We also include algorithm parameters for the baselines in Table 3. As
+13
+
+
+Preprint.
+mentioned earlier in the body of the paper, all ORC-MANL experiments use δ = 0.8 and λ = 0.01. Similarly, all ORC ONLY experiments use δ = 0.8 as well.
+Table 2: Manifold noise parameters τ and σ for each manifold used in the pruning evaluation (Figure 3).
+Mτ σ Concentric Circles 0.28 0.09 Mix. of Gaussians 0.45 0.18 Moons 0.19 0.20 S curve 0.52 0.28 Cassini 0.135 0.05 Torii 0.75 0.4 Hyperboloids 0.25 0.20 Hyp. and Parab. 0.48 0.40 Paraboloids 0.70 0.60 Swiss Roll 2.25 6.25
+Table 3: Algorithm parameters for each baseline and each manifold used in the pruning evaluation (Figure 3).
+M kbis dMST ρmin ddist
+Concentric Circles 10 0.5 0.125 0.15 Mix. of Gaussians 10 0.3 0.15 0.15 Moons 10 0.5 0.175 0.15 S curve 10 0.5 0.05 0.15 Cassini 10 0.5 0.20 0.09 Torii 10 1.5 0.0007 1.0 Hyperboloids 10 1.5 0.015 0.4 Hyp. and Parab. 10 0.75 0.015 0.4 Paraboloids 10 1.0 0.01 0.5 Swiss Roll 10 10 0.00005 3.0
+A.2.2 PERSISTENCE DISTANCES
+We compute distances between persistence diagrams using the approach presented in Lacombe et al. (2018). The p-Wasserstein distance is defined as
+dp(D1, D2) = min
+ζ ∈Γ(D1 ,D2 )
+X
+(x,y)∈ζ
+∥x − y∥p
+p+
+X
+s∈D1 ∪D2 \ζ
+∥s − π∆(s)∥p
+p
+!1
+p
+where D1 and D2 are persistence diagrams represented as a set of points in R ̄ 2>, Γ(D1, D2) is the set of all partial matchings between points in D1 and points in D2, and π∆(s) denotes the orthogonal projection of an unmatched point to the diagonal. We use The GUDHI Project (2020) to compute persistence distances with p = ∞.
+A.2.3 INTRINSIC DIMENSION ESTIMATION
+We use the maximum-likelihood based approach for estimating intrinsic dimension proposed in Levina & Bickel (2004). The method assumes the data points are generated from a homogeneous Poisson point process on a manifold. From there, they derive the maximum likelihood estimator for the intrinsic dimension m, with
+mˆ k(x) = 1
+k−1
+k−1
+X
+j=1
+log Tk(x)
+Tj (x)
+14
+
+
+Preprint.
+where Tj(x) represents the distance of x to its j-th nearest neighbor and k is a user-chosen parameter. For our experiments we extract nearest neighbors and nearest neighbor distances using the graph metric. We also use k = 200 and n = 4000 (where n is the number of points in the sample) for the experiments in Figure 6.
+A.2.4 SCALAR CURVATURE ESTIMATION
+Scalar curvature assigns a scalar quantity to each point of a Riemannian manifold. It is intimately related to the notion of sectional curvature through the equation S(x) = P
+i̸=j Sec(ei, ej), where Sec(·) is the sectional curvature and e1, . . . , ed form an orthonormal basis of the manifold’s tangent space at x. Note that for surfaces (manifolds with intrinsic dimension 2) the scalar curvature is simply twice the Gaussian curvature. We use the algorithm from Hickok & Blumberg (2023) to estimate S(x). This method leverages the following result, which relates scalar curvature of a m dimensional manifold M to the volume of geodesic balls relative to Euclidean geodesic balls. It states, Vol Br(x)) ⊂ M
+Vol Br(0)) ⊂ Rm = 1 − S(x)
+6(d + 2) r2 + O(r3)
+for sufficiently small r. The method first builds a nearest neighbor graph and uses the induced graph metric to estimate geodesic ball volumes at a range of scales. From there a point-wise estimate Sˆ of scalar curvature can be produced via regression over the volume ratios over some range [0, rmax]. In our experiments in Figure 6 we use n = 4000 points and rmax = 50 for the swiss roll and rmax = 5 for the adjacent spheres.
+A.3 PROOFS
+A.3.1 THEOREMS 3.1, 3.2 AND 3.3
+In this first section we will detail the proofs of the theorem statements put forth in Section 3. For clarity, recall the assumptions: we consider the setting where M is a compact m-dimensional smooth submanifold of RD without boundary. Let Tubτ (M) be the tubular neighborhood of M, and assume X ⊂ Tubτ (M) consists of n independent draws from the probability density function ρ : Tubτ (M) → R+,
+ρ(z) =
+
+
+
+1
+Ze
+−∥z−projM z∥22
+2σ2 ∥z − projM z∥2 ≤ τ
+0 o.w.
+where Z is a normalizing constant such that R
+Tubτ (M) ρ(z)dV integrates to 1. We are given the constant λ < 1. For the rest of the paper, suppose
+1. (Support criteria): 2τ < ε, 3τ < s0(M), 3τ < r0(M)
+2. (ε-radius criterion): ε < min
+np(s0(M) − τ )2 − τ 2, 2
+π (r0(M) − τ )√24λ, r0(M)
+o
+where s0(M) is the minimum branch separation of M and r0(M) is the minimum radius of curvature of M. We can now begin to dissect the argument for Theorem 3.1.
+Theorem 3.1 (Ollivier-Ricci Curvature of Shortcut Edges). Suppose that Xi is a point cloud sampled from ρ with parameters σi and τi and Gi is its nearest-neighbor graph. Also suppose that M
+satisfies the conditions above, and σi → 0+ and τi → 0+ as i → ∞. Then as i → ∞, we have κ(x, y) ≤ −1 for all shortcut edges (x, y) in Gi with probability approaching 1.
+This theorem establishes that in the limit of vanishing noise, the ORC of shortcut edges is necessarily upper bounded by −1. The theorem stitches together Lemmas A.3, A.4 and A.1. Here is how we will approach it.
+Simply put, one can show that all shortcut edges are necessarily close to a normal direction to the manifold at both endpoints; if this was not the case, the edge would likely intersect the manifold
+15
+
+
+Preprint.
+earlier and thus no longer bridge extremely distant neighborhoods. This concept is formalized and proven in Lemma A.3.
+Given that shortcut edges are close to normal, one can show that most of the measure of epsilon balls around the endpoints concentrates far from the opposing endpoint (assuming the pdf ρ described above). It follows that the neighborhoods of x and y will tend to concentrate far from each other. An example visualization of this phenomenon is provided in Figure 9.
+1⁄2
+M
+B2(x) B2(y)
+x
+y
+Figure 9: Visualizations of the ε-balls at the endpoints of a shortcut edge (x, y).
+This divergence between the neighborhoods of x and y leads to a large Wasserstein distance between the neighborhoods, implying more negative ORC. This fact is formalized and shown in Lemma A.1. With the high-level roadmap in place, we will proceed by proving Theorem 3.1.
+Proof of Theorem 3.1. Consider a sequence of point clouds {Xi}∞
+i=1 with n points each, where each point cloud was sampled from ρ (defined in eq. (1)) with parameters σi and τi. Also suppose σi → 0 and τi → 0 as i → ∞. Consider the i-th pointcloud in this sequence, and let xi and yi be any two points connected by a shortcut edge (if they exist).
+Since (xi, yi) is a shortcut edge, we can apply Lemma A.3 to find the vector vxi ∈ NprojM xi M
+such that the angle φxi between vxi and (yi − xi) is less than
+Φ(τi) = arccos (r0(M) − τi)(s0(M) − τi) − 1.27r0(M)τi
+r0(M)p(s0(M) − τi)2 − τ 2
+i
+< π/2 (2)
+and the angle θxi between (xi − projM xi) and vxi is less than π/2. In an identical manner, A.3 can be applied to find analogous quantities vyi , θyi and φyi . The fact that φxi and φyi are necessarily bounded by 2 formalizes the notion that shortcut edges are necessarily oriented close to normal with respect to the manifold at each endpoint.
+Now we would like to say something about the degree to which the neighborhoods of xi and yi are likely to overlap. To do so, we define the sets Uxi ⊂ Bε(xi) and Uyi ⊂ Bε(yi) such that for all a, b ∈ Uxi × Uyi , ∥a − b∥2 > ε. One particular instantiation of these sets is shown in Figure 10. For the analysis that follows we will consider this instantiation, namely the case where the boundary of Uxi is defined by a hyperplane orthogonal to (yi − xi) (and Uyi is defined analogously). In this instance, the sets Uxi and Uyi are simply hyperspherical caps.
+Now lets also define pσi (xi) := P[ a ∈ Uxi | a ∈ Bε(xi)] and pσi (yi) := P[ b ∈ Uyi | b ∈ Bε(yi)]. We can use Lemma A.4 to say
+lim
+σi→0+ pσi (xi) ≥
+R
+√
+ε2−∥xi−projM xi∥2
+2
+fxi (φxi ) Vol(Bm−1
+rxi (z)(0))dz
+Vol(Bm
+Rxi
+(0))
+and
+lim
+σi→0+ pσi (yi) ≥
+R
+√
+ε2−∥yi−projM yi∥2
+2
+fyi (φyi ) Vol(Bm−1
+ryi (z)(0))dz
+Vol(Bm
+Ryi
+(0))
+16
+
+
+Preprint.
+B2(x)
+xy
+2
+Ux Uy
+B2(y)
+Figure 10: Visualization of the sets Ux and Uy for an edge (x, y).
+where
+fxi (φxi ) = cot(φxi ) sec(φxi ) ε − ∥xi − yi∥2
+2 − ∥xi − projM xi∥2 cos(θxi )
+!
+and
+fyi (φyi ) = cot(φyi ) sec(φyi ) ε − ∥xi − yi∥2
+2 − ∥yi − projM yi∥2 cos(θyi )
+!
+.
+Note that Rxi =
+√
+ε2 − ∥xi − projM xi∥22 and
+rxi (z) =
+(pε2 − ∥xi − projM xi∥22 − z2 |z| ≤ pε2 − ∥xi − projM xi∥22 0 otherwise
+are defined in Lemma A.4, with analogous quantities defined for yi. Observe that the further the edge (xi, yi) is from normal with respect to either endpoint (as measured by φxi and φyi ), the smaller pσi (xi) and pσi (yi) are respectively. This follows from the fact that fxi and fyi are increasing functions of φxi and φyi respectively. This can be confirmed by a quick visual inspection of Figure 9 - the further from normal (x − y) is, the less probability density exists in Ux and Uy.
+Now we will show that fxi and fyi are increasing in φxi and φyi when in the interval (0, π/2] (which is always the case as shown in A.3). The derivative of cot(c)(a sec(c) − b) is (b − a cos(c))/ sin2(c). Note that the derivative is positive on (0, π/2] when a ≤ b. From eq. (37) in Lemma A.3 we know that
+∥xi − yi∥2 ≥
+p
+(s0(M) − τi)2 − ∥xi − projM xi∥2
+2 sin2(θi) − ∥xi − projM xi∥2 cos(θi).
+The right-hand side is bounded from below by ε−∥xi −projM xi∥2 cos(θi) due to assumption 2 and the fact that τi ≥ ∥xi − projM xi∥2. Thus b = ∥xi − projM xi∥2 cos(θi) > ε − ∥xi − yi∥2 = 2a, rendering the derivative positive. Since Φ(τi) is larger than all possible φxi and φyi we can say fxi (Φ(τi)) ≥ fxi (φxi ) and fyi (Φ(τi)) ≥ fyi (φyi ), allowing us to conclude that
+lim
+σi→0+ pσi (xi) ≥
+R
+√
+ε2−∥xi−projM xi∥2
+2
+fxi (Φ(τi)) Vol(Bm−1
+rxi (z)(0))dz
+Vol(Bm
+Rxi
+(0))
+17
+
+
+Preprint.
+where an analogous bound holds for limσi→0+ pσi (yi). Taking the limit as τi → 0+ yields
+lim
+τi→0+ lim
+σi→0+pσi (xi) (3)
+≥ lim
+τi →0+
+R
+√
+ε2−∥xi−projM xi∥2
+2
+fxi (Φ(τi)) Vol(Bm−1
+rxi (z)(0))dz
+Vol(Bm
+Rxi
+(0)) (4)
+= lim
+τi →0+
+R∞
+−∞ Vol(Bm−1
+rxi (z)(0)) · 1 z ∈
+h
+fxi (Φ(τi)), pε2 − ∥xi − projM xi∥22
+i
+dz
+Vol(Bm
+Rxi
+(0))
+(5)
+=
+R
+√
+ε2−∥xi−projM xi∥2
+2
+fxi (limτi→0+ Φ(τi)) Vol(Bm−1
+rxi (z)(0))dz
+Vol(Bm
+Rxi
+(0)) . (6)
+In the second line we can use the dominated convergence theorem to pull limτi→0+ into the limits of
+the integral, since the integrand is bounded above by the integrable function Vol(Bm−1
+ε (0)) · 1[z ∈ [−ε, ε]] and bounded below by 0 ∀ τi > 0. Now we can further evaluate
+lim
+τi→0+ Φ(τi) = Φ(0)
+= arccos r0(M)s0(M)
+r0(M)s0(M)
+= 0.
+This implies limτi→0+ fxi (Φ(τi)) = −∞ since fxi → −∞ as its argument approaches 0. Note
+fxi → −∞ as its argument approaches 0 because as c → 0+, a sec(c) − b cos(c) converges to a − b (which we have established is strictly negative) and cot(c) converges to +∞. Now, since rxi (z) in the integrand of 6 is 0 for values less than −pε2 − ∥xi − projM xi∥22, we can say that
+lim
+τi→0+ lim
+σi→0+ pσi (xi) ≥
+Z
+√
+ε2−∥xi−projM xi∥2
+2
+−
+√
+ε2−∥xi−projM xi∥2
+2
+Vol(Bm−1
+rxi (z)(0))dz
+Vol(Bm
+Rxi (0)) (7)
+=
+Vol(Bm
+Rxi
+(0))
+Vol(Bm
+Rxi
+(0)) (8)
+= 1. (9)
+Note that the same argument can be used to prove the same equality on pσi (yi) in the limit. Now we would like to use these results to make a statement about the number of neighbors that end up falling in either Uxi or Uyi for n i.i.d samples from ρ with parameters σi and τi (eq. (1)). Define the sets Sxi = {a | a ∈ N (xi) ∩ Uxi } and Syi = {b | b ∈ N (yi) ∩ Uyi }. Also let Nxi = |N (xi) \ yi| and Nyi = |N (yi) \ xi|. We can say,
+P
+h
+|Sxi | = Nxi
+i
+= pσi (xi)Nxi ≥ pσi (xi)n (10)
+since Nxi ≤ n. Through application of 9 we can conclude
+ili→m∞ P
+h
+|Sxi | = Nxi
+i
+= 1. (11)
+With the same argument, we can say
+P
+h
+|Syi | = Nyi
+i
+≥ pσi (yi)n (12)
+and thus,
+ili→m∞ P
+h
+|Syi | = Nyi
+i
+= 1. (13)
+18
+
+
+Preprint.
+Now we want to use 10 and 12 to bound P |Sxi | = Nxi , |Syi | = Nyi . Define αxi = 1[|Sxi | = Nxi ] and αyi = 1[|Syi | = Nyi ]. We can apply a union bound to say
+P αxi = 1, αyi = 1 ≥ 1 −
+X
+αxi ̸=1 ∨ αyi ̸=1
+P αxi , αyi
+≥1−
+X
+αxi ̸=1 ∨ αyi ̸=1
+min P[αxi ], P[αyi ]
+= 1 − min
+n
+P[αxi = 1], 1 − P[αyi = 1]
+o
+− min
+n
+1 − P[αxi = 1], P[αyi = 1]
+o
+− min
+n
+1 − P[αxi = 1], 1 − P[αyi = 1]
+o
+.
+Taking the limit and applying 11 and 13 yields
+ili→m∞ P αx = 1, αy = 1 = 1.
+This result crystallizes the notion that, in the limit of vanishing noise, the neighborhoods of the endpoints of shortcut edges tend to concentrate very far from each other. To restate formally, we have shown that P[|Sxi | = Nxi , |Syi | = Nyi ] approaches 1 in the limit.
+Now we will apply Lemma A.1 to control the ORC of the edge (xi, yi). The Lemma proves that |Syi | = δyi Nyi and |Sxi | = δxi Nxi implies κ(xi, yi) ≤ −1 + 2(2 − (δxi + δyi )). Combining everything using δxi = δyi = 1,
+P
+h
+κ(xi, yi) ≤ −1
+i
+≥P
+h
+αxi = 1, αyi = 1
+i
+and taking the limit,
+ili→m∞ P
+h
+κ(xi, yi) ≤ −1
+i
+= 1. (14)
+Since we have a finite number of edges and thus a finite number of shortcut edges, we can apply a union bound to say that Equation (14) holds for all edges as i → ∞.
+Thus we have a result indicating the convergence of the ORC of shortcut edges to at most −1 in the limit of vanishing noise. To be confident that ORC-MANL is truly effective, we would like to be able to say that under some conditions the ORC of non-shortcut edges tends to be less negative, or even positive. This motivates Theorem 3.2.
+Theorem 3.2 (Ollivier-Ricci Curvature of Non-Shortcut Edges). Let k be a positive integer. With high probability as the number of points n → ∞, every point has at least k neighbors that it is connected to by non-shortcut edges with ORC +1.
+This theorem states that, as the number of points increases, every point has at least k non-shortcut incident edges with ORC arbitrarily close to +1 almost surely. We will outline a high-level overview of the argument to prove this theorem before delving into the formal proof itself.
+First, one should observe that the probability that any point has at least some finite number of neighbors k (independent of n) within a ball of radius δ is increasing in n. An exact bound for this probability results directly from Proposition 4. One can then construct a sequence ni → ∞ and δi → 0 such that as i goes to infinity, each point has at least k neighbors within distance δi almost surely.
+From here, we want to consider the behavior of the ORC of edges connecting points at some distance δi as i tends to infinity (and thus as δi tends to 0). Proposition 5 and Lemma A.2 in combination allow us to show that as the distance between two points tends to 0, the ORC of the edge connecting them tends to +1 almost surely. From all of this it follows that as n tends to infinity, each point has many arbitrarily close (and thus non-shortcutting) neighbors connected by an edge with ORC +1 with probability approaching 1. This wraps up the proof sketch.
+19
+
+
+Preprint.
+Proof of Theorem 3.2. First we will invoke Proposition 4 to say that for all x ∈ Tubτ M,
+Pz∼ρ
+h
+∥z − x∥2 ≤ δ
+i
+≥ δDVol BD
+1 (0)
+2Z e− τ2
+2σ2
+= CδD
+This result indicates that for any point x in the tubular neighborhood, there is always a nonzero probability that there exists a neighbor at distance at most δ, for δ > 0. Now choose sequences {ni}∞
+i=1 and {δi}∞
+i=1 where ni = i and δi = (Ci)−1/(2D). Observe that ni → ∞, δi → 0 and
+ni C δ D
+i → ∞.
+Now we would like to evaluate the probability of the existence of at least k neighbors within radius δi for ni i.i.d. samples from ρ. We will use Nδi to denote the random variable representing number of neighbors within δi to some point x given ni i.i.d. draws from ρ. Observe that Nδi is distributed
+according to Bin(ni, CδD
+i ). Thus, we can apply a Chernoff bound to say, for 0 < γ < 1
+P[Nδi ≤ (1 − γ)niCδD
+i ] ≤ exp − γ2niCδD
+i
+2
+and thus,
+P[Nδi > (1 − γ)niCδD
+i ] > 1 − exp − γ2niCδD
+i
+2
+(Tsun, 2020). Replacing γ with 1 − k/(niCδD
+i ) we obtain
+P[Nδi > k] > 1 − exp − niCδD
+i (1 − k/(niCδD
+i ))2
+2 (15)
+and taking the limit as i → ∞,
+ili→m∞ P[Nδi > k] = 1 (16)
+since niCδD
+i → ∞.
+We have established that if the radius δi shrinks sufficiently slowly, the probability that any point has more than k neighbors within this decreasing radius approaches 1 as ni tends to infinity. Now we would like to use this result to make a statement about the ORC of edges connecting a point and its neighbors within distance δi. To do so, consider a point x and distances {δi}∞
+i=1 such that δi → 0. We can consider x as a static point in a sequence of nested point clouds, where each point cloud Xi is a union of the previous point cloud Xi−1 and one more point sampled from ρ. Also for each i consider the set of neighbors {yj
+i | yj
+i ∈ Xi, yj
+i ̸= x}j such that ∥x − yj
+i ∥2 ≤ δi; note that the earlier
+results indicate that |{yj
+i }j| > k with probability P[Nδi > k], as described by 15.
+Let Nx,yj
+i
+= |N (x) ∪ N (yj
+i ) \ {x, yj
+i }|, which denotes the set of all neighbors of x and yj
+i (excluding themselves). Now define Sx,yj
+i to be the neighbors of x and yj
+i that lay in Bε(x) ∩ Bε(yj
+i ).
+Finally, let px,yj
+i
+= Pa∼ρ a ∈ Bε(x) ∩ Bε(yj
+i ) a ∈ Bε(x) ∪ Bε(yj
+i ) . Observe that |Sx,yj
+i
+| is a ran
+dom variable distributed according to Bin(Nx,yj
+i
+, px,yj
+i
+) when Nx,yj
+i is fixed. Also note that Nx,yj
+i
+itself is a random variable with a binomial distribution with ni = i trials. Observe that it exhibits
+success probability p ≤ 2C′′εD := C′εD, which follows from a slight modification to the result of
+Proposition 4. Thus, E[Nx,yj
+i
+] ≥ iC′εD. Armed with this knowledge, define two more sequences
+k∗i = √i and γi = i−1/8. We will return to these definitions shortly. First, we will apply a Chernoff bound to say
+P
+h
+|Sx,yj
+i
+| ≤ (1 − γi)Nx,yj
+i
+px,yj
+i
+Nx,yj
+i
+=k
+i
+≤ exp −
+γ2
+i kpx,yj
+i
+2
+20
+
+
+Preprint.
+and thus,
+P
+h
+|Sx,yj
+i
+| ≤ (1 − γi)Nx,yj
+i
+px,yj
+i
+i
+≤
+i
+X
+k=0
+exp −
+γ2
+i kpx,yj
+i
+2P
+h
+Nx,yj
+i
+=k
+i
+(17)
+=
+X
+k ≤ ki∗
+exp −
+γ2
+i kpx,yj
+i
+2
+| {z }
+≤1
+P
+h
+Nx,yj
+i
+=k
+i
++
+X
+k>ki∗
+exp −
+γ2
+i kpx,yj
+i
+2
+| {z }
+≤exp −(γ2
+i ki∗px,yj
+i
+)/2
+P
+h
+Nx,yj
+i
+=k
+i
+| {z }
+≤1
+(18)
+≤P
+h
+Nx,yj
+i
+≤ ki∗
+i
++ exp −
+γ2
+i ki∗px,yj
+i
+2 . (19)
+We can apply one more Chernoff bound to bound the first term, resulting in
+P
+h
+|Sx,yj
+i
+| ≤ (1 − γi)Nx,yj
+i
+px,yj
+i
+i
+≤ exp −
+E[Nx,yj
+i
+](1 − ki∗/E[Nx,yj
+i
+])2
+2
++ exp −
+γ2
+i ki∗px,yj
+i
+2 . (20)
+We can apply Proposition 5 to say as i → ∞, px,yj
+i
+→ 1. Now since γi → 0, E[Nx,yj
+i
+] → ∞,
+ki∗/E[Nx,yj
+i
+] → 0 and γ2
+i ki∗ → ∞, we have
+ili→m∞ P
+h
+|Sx,yj
+i
+| < Nx,yj
+i
+i
+= 0 (21)
+and thus, since |Sx,yj
+i
+| ≤ Nx,yj
+i
+ili→m∞ P
+h
+|Sx,yj
+i
+| = Nx,yj
+i
+i
+= 1.
+Now we can invoke Lemma A.2 and Proposition 2 to say that |Sx,yj
+i
+| = Nx,yj
+i implies κ(x, yj
+i ) = 1. Putting it all together, we see that
+ili→m∞ P
+h
+κ(x, yj
+i) = 1
+i
+= 1. (22)
+Now let pj
+i = P[κ(x, yj
+i ) = 1]. Now we want to use this to bound the probability that, for a fixed i,
+a subset of size k of all Nδi neighbors have ORC of 1. To do so, let’s denote αj
+i = 1[κ(x, yj
+i ) = 1]. Instead of considering all combinations of subsets of size k, we will just consider a single one to create a lower bound. Namely, we will cherry pick the first k indices (unless Nδi < k). Now observe that we can apply a union bound to obtain
+P
+h
+κ(x, yj
+i ) = 1 ∀ j ∈ [min{k, Nδi }]
+i
+≥1−
+X
+{αj
+i }i
+j=1
+P
+j αj
+i <min{k,Nδi }
+P
+h
+α1
+i , . . . , αmin{k,Nδi }
+i
+i
+(23)
+where the second term on the right-hand side sums over all settings of {αj
+i } such that there ex
+ists at least one αj
+i taking on the value 0. Now we can use the fact that P[X1, . . . , Xn] ≤
+min{P[X1], . . . , P[Xn]} to say
+P
+h
+κ(x, yj
+i ) = 1 ∀ j ∈ [min{k, Nδi }]
+i
+≥
+1−
+X
+{αj
+i }i
+j=1
+P
+j αj
+i <min{k,Nδi }
+min
+j∈[min{k,Nδi }] P αj
+i . (24)
+21
+
+
+Preprint.
+Now we will take the limit as i → ∞ resulting in
+ili→m∞ P
+h
+κ(x, yj
+i ) = 1 ∀ j ∈ [min{k, Nδi }]
+i
+≥ 1 − ili→m∞
+X
+{αj
+i }i
+j=1
+P
+j αj
+i <min{k,Nδi }
+min
+j∈[min{k,Nδi }] P αj
+i . (25)
+Since limi→∞ P[Nδi > k] = 1 and since the summation is over a finite number of terms,
+ili→m∞ P
+h
+κ(x, yj
+i ) = 1 ∀ j ∈ [k]
+i
+≥1−
+X
+{αj
+i }i
+j=1
+P
+j αj
+i <k
+ili→m∞ min
+j∈[min{k,Nδi }] P αj
+i . (26)
+Note P[αj
+i = 1] = pj
+i and P[αj
+i = 0] = 1 − pj
+i . Observe that in the limit as i goes to infinity, these two expressions converge to 1 and 0 respectively due to eq. (22). Thus the limit can be pulled inside of the min function. Since we know that for each element of the sum there necessarily exists an αj
+i = 0, one of the arguments of the min function must be 0. Thus,
+ili→m∞ P
+h
+κ(x, yj
+i ) = 1 ∀ j ∈ [k]
+i
+= 1. (27)
+Note that for sufficiently large i, x and yj
+i cannot be shortcut edges as ∥x − yj
+i ∥2 < s0(M) which,
+in turn, implies dM(projM x, yj
+i ) ≤ πr0(M). Finally, we can succinctly state the conclusion by saying that if n grows sufficiently fast, every point has at least k non-shortcut neighbors such that the ORC is 1 with high probability. This completes the proof.
+Together, Theorems 3.1 and 3.2 establish that in the limit of vanishing noise and infinite points shortcut edges can be detected with complete accuracy. In practice though, we may see too much noise or too few samples to rely on ORC alone. Therefore it is of interest to us to add another validation step. We do so by looking at shortest path graph distances in a modified version of the original graph, one which has all especially negative curvature edges removed; we call this graph the ‘thresholded’ graph. Theorem 3.3 establishes that graph shortest paths between endpoints of what were shortcut edges in the original graph necessarily have a large graph distance in the thresholded graph. Figure 11 provides an intuitive visualization of this phenomenon.
+°G0
+°G
+Figure 11: Visualization of graph shortest paths between the endpoints of a shortcut edge (x, y). The path γG denotes the path through G (which is trivially a single hop), while γG′ denotes the path
+through the ORC thresholded graph, G′.
+Theorem 3.3 (Filtered Graph Distance). Suppose that Xi is a point cloud sampled from ρ with parameters σi and τi and Gi = (Vi, Ei) is its nearest neighbor graph. Also suppose that M satisfies
+the conditions above and σi → 0+ and τi → 0+ as i → ∞. Define the subgraph G′
+i = (Vi, E′
+i) where
+E′
+i=
+n
+(xi, yi) ∈ Ei κ(xi, yi) > −1
+o
+.
+22
+
+
+Preprint.
+Then as i → ∞ we have
+dG′ (x, y) > β π(π + 1)(1 − λ)
+2√24λ ε
+for all shortcut edges in Gi with probability approaching 1, where β ∈ [0, 1] (eq. (34)) is a random variable whose distribution is dependent on M and τi.
+The proof of the theorem adopts the following strategy. Geodesic distances through the manifold M can be bounded as a function of geodesic distances through the tubular neighborhood Tubτ M using Proposition 3. We can then pull from Bernstein et al. (2001), which relates graph geodesics to manifold geodesics, to bound graph distances through G′ as a function of manifold distances M. The theorem can be concisely stated as showing that in the limit of vanishing noise, graph distances in G′ between endpoints of (formerly) shortcut edges are necessarily very long.
+Proof of Theorem 3.3. Again suppose {Xi}∞
+i=1 is a sequence of point clouds of size n sampled from
+ρ defined in eq. (1) with parameters σi and τi with σi → 0+ and τi → 0+ as i → ∞. Also suppose Gi = (Vi, Ei) is the nearest neighbor graph built with parameter ε from the point cloud Xi. Consider the i-th pointcloud and nearest neighbor graph in this sequence, and let xi and yi be any two points connected by a shortcut edge (if they exist). Since (xi, yi) is a shortcut edge in Gi we have,
+dM projM xi, projM yi > (π + 1)r0(M).
+From Proposition 3, we know this implies
+dTub(xi, yi) ≥ r0(M) − τi
+r0(M) (π + 1)r0(M) (28)
+= (r0(M) − τi)(π + 1). (29)
+Now consider the ORC thresholded graph G′
+i = (Vi, E′
+i), with edges
+E′
+i = (v, v′) ∈ Ei κ(v, v′) > −1 .
+We can apply Theorem 3.1 to say that with high probability G′
+i has no shortcut edges. With that
+in mind, select a length minimizing path ai0, ai1, · · · , aip connecting xi to yi through the graph G′
+i. With high probability we have,
+dM(projM ai
+i, projM ai
+i+1) ≤ (π + 1)r0(M).
+It follows that dTub(ai
+i, ai
+i+1) ≤ (π + 1)r0(M) + 2τi, as M ⊂ Tubτi M; if this wasn’t true, the shortest path through the tubular neighborhood would instead take the path traversed by M through projM ai
+i, projM ai
+i+1. Now we can say,
+dTub(ai
+i, ai
+i+1) ≤ (π + 1)r0(M) + 2τi.
+Consider the p′ of the p − 1 hops along this path where
+dTub(ai
+i, ai
+i+1) ≤ π(r0(M) − τi).
+Note that from Proposition 1 we know that the minimum radius of curvature of geodesics in the tubular neighborhood is r0(M) − τi. Now we can invoke the first-order weakening of Lemma 3 from Bernstein et al. (2001) with r0 = r0(M) − τi to say
+2
+π dTub(ai
+i, ai
+i+1) ≤ ∥ai
+i − ai
+i+1∥2
+≤2
+π (r0(M) − τi)
+√
+24λ
+where the second line follows from assumption 2. Solving for λ we get
+λ≥ 1
+24
+dTub(ai
+i, ai
+i+1)
+r0(M) − τi
+2
+and therefore
+1−λ≤1− 1
+24
+dTub(ai
+i, ai
+i+1)
+r0(M) − τi
+2
+.
+23
+
+
+Preprint.
+Finally we can apply the weakened form of the same Lemma from Bernstein et al. (2001) to say
+(1 − λ)dTub(ai
+i, ai
+i+1) ≤ 1 − 1
+24
+dTub(ai
+i, ai
+i+1)
+r0(M) − τi
+2
+!
+dTub(ai
+i, ai
+i+1)
+≤ ∥ai
+i − ai
+i+1∥2.
+Now consider the other (p − 1) − p′ hops, where we know
+dTub(ai
+i, ai
+i+1) > π(r0(M) − τi).
+We can apply the definition of minimum branch separation to say that ∥ai
+i − ai
+i+1∥2 ≥ s0(Tubτi M). In general deriving an expression for the right-hand side in terms of r0(M) and s0(M) is impossible without more information about the embedding of M. Thus, we will proceed without breaking down s0(Tubτi M). We have,
+∥ai
+i − ai
+i+1∥2 ≥ s0(Tubτi M) (30)
+≥ s0(Tubτi M)
+(π + 1)r0(M) + 2τi
+dTubi (ai
+i, ai
+i+1). (31)
+Now we can combine the bounds on ∥ai
+i − ai
+i+1∥2 to say
+dG′
+i (xi, yi) > (1 − λ)
+X
+S
+dTub(ai
+i, ai
+i+1) +
+X
+L
+s0(Tubτi M)
+(π + 1)r0(M) + 2τi
+dTubi (ai
+i, ai
+i+1) (32)
+> (1 − λ)
+X
+S
+dTub(ai
+i, ai
+i+1) (33)
+where S is the set of all hops with tubular distance at most π(r0(M) − τi), and L is the set of all remaining hops. Defining
+β=
+P
+S dTub(ai
+i, ai
+i+1)
+dTub(xi, yi) (34)
+allows us to say
+dG′
+i (xi, yi) > β(1 − λ)dTub(xi, yi)
+≥ β(1 − λ)(r0(M) − τi)(π + 1)
+and seeing as we have stipulated that ε < 2
+π (r0(M) − τ )√24λ in assumption 2, we can say
+dG′
+i (xi, yi) > β π(π + 1)(1 − λ)
+2√24λ ε (35)
+with high probability.
+A.3.2 LEMMATA
+In this section, we will prove the lemmas used by Theorems 3.1, 3.2 and 3.3. Lemmas A.1 and A.2 simply bound (from above and below, respectively) the ORC of an edge based on the locations of each endpoints neighbors. Lemma A.1 considers the scenario where some subset of the neighborhoods of x and y are positioned in the sets Ux and Uy, respectively (where Ux and Uy are defined according to Figure 10). The large distance between Ux and y (and vice versa) allows one to lower bound the Wasserstein distance between μx and μy, and thus upper bound the ORC of (x, y).
+Lemma A.1. Let (x, y) be an edge in a nearest neighbor graph built from potentially noisy samples of M, suppose Ux and Uy are defined as in 10. Define Sx = {a | a ∈ N (x) ∩ Ux} and Sy = {b | b ∈ N (y) ∩ Uy}, and suppose that
+δx = |Sx|
+|N (x) \ {y}| , δy = |Sy|
+|N (y) \ {x}| .
+Then,
+κ(x, y) ≤ −1 + 2 2 − (δx + δy) .
+24
+
+
+Preprint.
+Proof. We are interested in bounding the ORC of the edge (x, y) from above. Recall that we have defined ORC to use the ε-weighted graph metric in Section 2.3. To bound the ORC we need to bound the Wasserstein distance between μx and μy, where μx is a uniform measure on the set N (x) \ {y} = {v ∈ V dG(x, v) ≤ ε, v ̸= y, v ̸= x} and μy is a uniform measure on the set N (y) \ {x} = {v ∈ V dG(y, v) ≤ ε, v ̸= x, v ̸= y}.
+Let’s define μˆx and μˆy as uniform probability measures over Sx and Sy respectively. We can bound the Wasserstein distance between μx and μy as
+W (μx, μy) ≥ W (μˆx, μˆy) − W (μˆx, μx) − W (μˆy, μy).
+Since ∥a − b∥2 > ε for all a ∈ Sx and for all b ∈ Sy, we know that dG(a, b) ≥ 2ε for all a ∈ Sx and for all b ∈ Sy. Thus, a lower bound on the first term follows,
+W (μˆx, μˆy) ≥ 2ε.
+Now we would like to bound W (μˆx, μx) from above. There is 1/|N (x) \ {y}| mass on each
+node a ∈ supp(μx), while there is 1/δx|N (x) \ {y}| mass on each a′ ∈ supp(μˆx). We can
+define a feasible transport plan that transports all excess mass on a′ ∈ supp(μˆx) to the nodes supp(μx) \ supp(μˆx). Since the Wasserstein distance minimizes over all possible transport plans, the Wasserstein cost for this transport plan will upper bound the true distance.
+The excess mass on any a′ ∈ supp(μˆx) is exactly
+1
+δx|N (x) \ {y}| − 1
+|N (x) \ {y}|
+which means the total mass that needs to be transported is
+δx|N (x) \ {y}| 1
+δx|N (x) \ {y}| − 1
+|N (x) \ {y}|
+!
+= 1 − δx
+We also know that from any a′ ∈ supp(μˆx) to any a ∈ supp(μx) there exists a length 2ε path
+through the node x. Therefore, dG(a, a′) ≤ 2ε. We can then conclude
+W (μˆx, μx) ≤ 2ε 1 − δx .
+With the same argument, the following bound can also be derived,
+W (μˆy, μy) ≤ 2ε 1 − δy .
+Putting it all together,
+W (μx, μy) ≥ 2ε − 2ε 2 − (δx + δy) .
+Solving for the ORC,
+κ(x, y) ≤ 1 − 2ε − 2ε 2 − (δx + δy)
+ε
+= −1 + 2 2 − (δx + δy) .
+Now we can adopt a similar argument to tackle Lemma A.2. Now we are interested in lower bounding the ORC based on the neighborhood structure. In this scenario, we replace the sets Ux and Uy with a Bε(x) ∩ Bε(y). Each neighbor of an endpoint (x) that is positioned in this set is necessarily a neighbor of the other (y). Therefore if many nodes are present in this set, then many of the neighbors of x and y are shared. An upper bound on the Wasserstein distance between μx and μy follows, which implies a lower bound on the ORC of the edge (x, y).
+25
+
+
+Preprint.
+Lemma A.2. Let (x, y) be an edge in a nearest neighbor graph built from potentially noisy samples of M, and define Sx,y = {a | a ∈ N (x) ∩ N (x)}. Suppose that
+δx = |Sx,y|
+|N (x) \ {y}| , δy = |Sx,y|
+|N (y) \ {x}| .
+Then,
+κ(x, y) ≥ 1 − 2 2 − (δx + δy) .
+Proof. We will adopt a very similar argument as that of the proof for Lemma A.1. We are interested in bounding the ORC of the edge (x, y) from below. Doing so involves bounding the Wasserstein distance between μx and μy, where μx is a uniform measure on the set N (x) \ {y} = {v ∈ V dG(x, v) ≤ ε, v ̸= y, v ̸= x} and μy is a uniform measure on the set N (y) \ {x} = {v ∈
+V dG(y, v) ≤ ε, v ̸= x, v ̸= y}. Again recall that we have defined ORC to use the ε-weighted graph metric in Section 2.3.
+Define μˆx,y to be the uniform probability measure over Sx,y. We can bound the Wasserstein distance between μx and μy as
+W (μx, μy) ≤ W (μx, μˆx,y) + W (μˆx,y, μy).
+Now we would like to bound W (μx, μˆx,y) from above. There is 1/|N (x) \ {y}| mass on each
+node a ∈ supp(μx), while there is 1/δx|N (x) \ {y}| mass on each a′ ∈ supp(μˆx,y). We can
+define a feasible transport plan that transports all excess mass on a′ ∈ supp(μˆx,y) to the nodes supp(μx) \ supp(μˆx,y). Since the Wasserstein distance minimizes over all possible transport plans, the Wasserstein cost for this transport plan will upper bound W (μx, μˆx,y).
+The excess mass on any a′ ∈ supp(μˆx) is exactly
+1
+δx|N (x) \ {y}| − 1
+|N (x) \ {y}|
+which means the total mass that needs to be transported is
+δx|N (x) \ {y}| 1
+δx|N (x) \ {y}| − 1
+|N (x) \ {y}|
+!
+= 1 − δx
+We also know that from any a′ ∈ supp(μˆx,y) to any a ∈ supp(μx) there exists a length 2ε path through the node x. Therefore, dG(a, b) ≤ 2ε. We can then conclude
+W (μx, μˆx,y) ≤ 2ε 1 − δx .
+With the same argument, the following bound can also be derived,
+W (μˆx,y, μy) ≤ 2ε 1 − δy .
+Putting it all together,
+W (μx, μy) ≤ 2ε 2 − (δx + δy) .
+Solving for the ORC,
+κ(x, y) ≥ 1 − 2ε 2 − (δx + δy)
+ε
+= 1 − 2 2 − (δx + δy) .
+Moving on, Lemma A.3 and Lemma A.4 constitute a majority of the theoretical work of this paper. Together, they show that most of the measure in the ε-ball of a point x connected by a shortcut edge to y tends to concentrate far from y. For context, Theorem 3.1 uses this fact in conjunction with Lemma A.1 to show that the ORC of shortcut edges is necessarily very negative.
+26
+
+
+Preprint.
+To set the stage, Lemma A.3 establishes two things. First, and most importantly, it shows that a shortcut edge is necessarily oriented close to a normal direction v to the manifold at its endpoints. This concept is rather intuitive; if shortcut edges were closer to tangential directions instead, then these edges would intersect with the manifold prematurely, no longer bridging distant neighborhoods and contradicting their status as shortcuts. The second property the lemma establishes is the fact that the residual of the projection (onto M) of an endpoint x of a shortcut edge must be within π/2 radians of the aforementioned normal direction v. Put simply, this means that the endpoints of a shortcut edge are necessarily displaced off the manifold in the direction of or orthogonal to the normal direction that the edge itself spans. This simply arises from the assumptions about the size of ε relative to the manifold embedding parameters r0(M) and s0(M). We show this second property holds as it simplifies some of the downstream calculations.
+Lemma A.3. If an edge (x, y) in a nearest neighbor graph built from potentially noisy samples of M is a shortcut edge then
+1. there exists a unit vector v ∈ NprojM xM (the normal space of M at projM x) such that
+the angle φ between v and (y − x) is smaller than
+arccos (r0(M) − τ )(s0(M) − τ ) − 1.27r0(M)τ
+r0(M)p(s0(M) − τ )2 − τ 2 < π/2. (36)
+2. the angle θ between v and (x − projM x) is at most π/2.
+Proof. Observe that the vector (y − x) can be written as αvT + βv, where vT is a unit vector ∈ TprojM xM, while v is a unit vector ∈ Nprojx MM. This vector v is in fact the unit vector in
+Nprojx MM that minimizes the angle φ to (y − x). Motivated by this, Figure 12 visualizes the 3
+dimensional subspace spanned by the vectors vT , v and (x − projM x). This visualization lays the conceptual foundation that the rest of the proof rests on.
+First, we will show (2) holds, as it is helpful in showing (1). To do so, we will show that the geometry of shortcutting edges implies a bound on ∥x − y∥2 as a function of θ. We will then show that this bound violates the assumptions on the size of ε for θ ≥ π/2.
+Since (x, y) is a shortcut edge, dM(projM x, projM y) > (π + 1)r0(M) > πr0(M). By the definition of minimum branch separation, we know then ∥ projM x − projM y∥2 ≥ s0(M). Now consider the triangle defined by the endpoints projM x, projM y and y. We can apply the triangle inequality to say
+∥ projM x − y∥2 ≥ ∥ projM x − projM y∥2 − ∥ projM y − y∥2
+≥ s0(M) − τ
+since τ ≥ ∥ projM y − y∥2. Now consider the triangle defined by the endpoints y, projM x and y′,
+where y′ is the orthogonal projection of y onto the subspace spanned by v and (y − x) centered at projM x (shown in Figure 12). Note that
+∥y′ − projM x∥2 ≥
+q
+∥ projM x − y∥22 − ∥x − projM x∥22 sin2(θ)
+≥
+q
+(s0(M) − τ )2 − ∥x − projM x∥22 sin2(θ).
+Finally, consider the triangle defined by the endpoints projM x, y′ and x′, where x′ is the orthogonal
+projection of x onto v. Observe that ∥x′ − projM x∥2 = ∥x − projM x∥2 cos(θ) and ∥x′ − y′∥2 = ∥x − y∥2. The second equivalence stems from the fact that the vectors v and vT were chosen
+specifically so that they can be linearly combined to get (y − x); it follows that x′ − y′ is the same as x − y. With that in mind, we can apply the triangle inequality again to say
+∥x − y∥2 ≥
+q
+(s0(M) − τ )2 − ∥x − projM x∥22 sin2(θ) − ∥x − projM x∥2 cos(θ). (37)
+Property (2) follows from the prescribed upper bound, ∥x − y∥2 ≤ p(s0(M) − τ )2 − τ 2 from assumption 2. Thus,
+p(s0(M) − τ )2 − τ 2 ≥
+q
+(s0(M) − τ )2 − ∥x − projM x∥22 sin2(θ) − ∥x − projM x∥2 cos(θ).
+27
+
+
+Preprint.
+μ
+Á
+projMx
+x y
+vT
+v
+y0
+x0
+y00
+Figure 12: A visualization of the plane spanned by the vectors (y − x) and v, and related quantities.
+Solving for θ,
+(s0(M) − τ )2 − τ 2 + 2∥x − projM x∥2 cos(θ)p(s0(M) − τ )2 − τ 2 + ∥x − projM x∥2
+2 cos2(θ)
+≥ (s0(M) − τ )2 − ∥x − projM x∥2
+2 sin2(θ)
+(s0(M) − τ )2 − τ 2 + 2∥x − projM x∥2 cos(θ)p(s0(M) − τ )2 − τ 2
+≥ (s0(M) − τ )2 − ∥x − projM x∥2
+2.
+Rearranging a little more,
+2∥x − projM x∥2 cos(θ)p(s0(M) − τ )2 − τ 2 ≥ τ 2 − ∥x − projM x∥2
+2
+cos(θ) ≥ τ 2 − ∥x − projM x∥22
+2∥x − projM x∥2
+p(s0(M) − τ )2 − τ 2
+thus,
+θ ≤ arccos τ 2 − ∥x − projM x∥22
+2∥x − projM x∥2
+p(s0(M) − τ )2 − τ 2
+≤ arccos(0)
+= π/2
+Since ∥x − projM x∥2 ≤ τ . This concludes the proof of (2).
+Now we will show (1). At a high level, we will show that if the angle φ is not smaller than the listed threshold, y must have a small Euclidean distance to a small neighborhood around x; for points in this neighborhood, the manifold distance to the projection of y is large. This leads to a contradiction stemming from a violation of the minimum branch separation of M.
+We will first show that φ < π/2 with a simple instantiation of the argument above. We will then proceed to refine the result to establish that φ is actually upper bounded by 36, a complicated function of manifold parameters.
+Regime 1: φ ∈ [π/2, π]. First we will show that for any φ in this range, we have a violation of minimum branch separation due to proximity between y and projM x. First we will derive
+∥ projM x − y′′∥2 (where y′′ is the projection of y onto the plane spanned by v and x − projM x,
+shown in Figure 13). Consider the triangle with endpoints projM x, y′′ and the projection of y′′ onto the v, vT plane. We can use the triangle inequality to get
+∥ projMx − y′′∥2
+=
+r
+∥x − projM x∥2 cos(θ) + ∥x − y∥2 cos(φ)
+2
++ ∥x − projM x∥22 sin2(θ)
+=
+q
+∥x − projM x∥22 + 2∥x − projM x∥2∥x − y∥2 cos(θ) cos(φ) + ∥x − y∥22 cos2(φ).
+28
+
+
+Preprint.
+Now we can solve for ∥ projM x − y∥2 by looking at the triangle with endpoints projM x, y and y′′ as follows,
+∥ projMx − y∥2
+=
+q
+∥ projM x − y′′∥22 + ∥x − y∥22 sin2(φ)
+=
+q
+∥x − projM x∥22 + 2∥x − projM x∥2∥x − y∥2 cos(θ) cos(φ) + ∥x − y∥22.
+Note that ∥ projM x − y∥2 is decreasing in φ for φ ∈ (0, π). Rearranging and solving for φ yields,
+φ = arccos ∥ projM x − y∥22 − ∥x − projM x∥22 − ∥x − y∥22
+2∥x − projM x∥2∥x − y∥2 cos(θ)
+!
+.
+Now let
+f (L) = arccos L2 − ∥x − projM x∥22 − ∥x − y∥22
+2∥x − projM x∥2∥x − y∥2 cos(θ)
+!
+.
+We will evaluate f (L) for L = s0(M) − τ . We will then show shortly that if L is less than s0(M) − τ , we have a contradiction. Since ∥ projM x − y∥2 is decreasing in φ, we know that for all φ > f (L), ∥ projM x − y∥2 < s0(M) − τ . Evaluating f at s0(M) − τ ,
+f (s0(M) − τ ) = arccos (s0(M) − τ )2 − ∥x − projM x∥22 − ∥x − y∥22
+2∥x − projM x∥2∥x − y∥2 cos(θ)
+!
+.
+Now let’s upper bound f (s0(M) − τ ) as a means to simplify. Since arccos is decreasing on (−1, 1)
+f (s0(M) − τ ) = arccos (s0(M) − τ )2 − ∥x − projM x∥22 − ∥x − y∥22
+2∥x − projM x∥2∥x − y∥2 cos(θ)
+!
+< arccos
+(s0(M) − τ )2 − τ 2 − p(s0(M) − τ )2 − τ 2 2
+2∥x − projM x∥2∥x − y∥2 cos(θ)
+!
+Assumption 2
+= arccos (s0(M) − τ )2 − τ 2 − (s0(M) − τ )2 + τ 2
+2∥x − projM x∥2∥x − y∥2 cos(θ)
+!
+= arccos(0)
+= π/2.
+Since f (s0(M) − τ ) < π/2, we can say that for all φ ≥ π/2 > f (s0(M) − τ ), ∥ projM x − y∥2 < s0(M) − τ . Observe that, since (x, y) is a shortcut edge dM(projM x, projM y) > (π + 1)r0(M) > πr0(M). From the definition of minimum branch separation, we know that this implies ∥ projM x − projM y∥2 ≥ s0(M). Now let’s apply the triangle inequality,
+∥ projM x − y∥2 ≥ ∥ projM x − projM y∥2 − ∥ projM y − y∥2
+≥ s0(M) − τ.
+Thus, for φ ≥ π/2 we have a contradiction stemming from a violation of minimum branch separation. We therefore know that φ cannot exist in the interval [π/2, π].
+Regime 2: φ ∈ [0, π/2). While the previous result gives us a bound on φ, we can sharpen it further. Since we are dealing with manifolds without boundary, we can use the exponential map expprojM x to send the tangent vector vT to a geodesic arc of M denoted γ. Again we will show that if φ is sufficiently large, then the distance from y to γ violates the minimum branch separation in the same manner as we saw in Regime 1.
+Consider the particular scenario where γ curls away from y maximally. We will approximate γ near projM x with its osculating circle C: a circle contained in the plane spanned by vT and (y − projM x) with the smallest possible radius of curvature, r0(M). This particular instantiation is shown in Figure 13. Note that C approximates a geodesic arc passing through projM x with initial velocity vT and curls away from y maximally. Thus the distance between all possible geodesic arcs
+29
+
+
+Preprint.
+r0(M)
+°
+projMx
+μ
+Á
+d
+x y
+vT
+v
+y0
+x0
+y00
+C
+Figure 13: A visualization of the plane spanned by the vectors (y − x) and v, and related quantities.
+passing through projM x with velocity vector vT is approximately bounded by the distance between C and y.
+Now we want to derive an expression for the distance between C and y; this distance will be denoted d. We will start by deriving ∥ projM x−y′′∥2 (where y′′ is the projection of y onto the plane spanned
+by v and x − projM x, shown in Figure 13). Consider the triangle defined by projM x, y′′ and the
+projection of y′′ onto the v, vT plane and apply the Pythagorean theorem to say
+∥ projMx − y′′∥2 (38)
+=
+r
+∥x − projM x∥2 cos(θ) + ∥x − y∥2 cos(φ)
+2
++ ∥x − projM x∥22 sin2(θ) (39)
+=
+q
+∥x − projM x∥22 + 2∥x − projM x∥2∥x − y∥2 cos(θ) cos(φ) + ∥x − y∥22 cos2(φ).
+(40)
+Now consider the triangle defined by the center of the osculating circle C, y′′ and y. We can solve for d + r0(M) as,
+d + r0(M) =
+r
+∥ projM x − y′′∥2 + r0(M)
+2
++ ∥x − y∥22 sin2(φ).
+Squaring both sides and plugging in eq. (40) yields the following for the right hand side,
+∥ projM x − y′′∥2 + r0(M)
+2
++ ∥x − y∥2
+2 sin2(φ) (41)
+= ∥ projM x − y′′∥2
+2 + 2r0(M)∥ projM x − y′′∥2 + r0(M)2 + ∥x − y∥2
+2 sin2(φ) (42)
+= ∥x − projM x∥2
+2 + 2∥x − projM x∥2∥x − y∥2 cos(θ) cos(φ) + ∥x − y∥2
+2 cos2(φ)
++ 2r0(M)
+·
+q
+∥x − projM x∥22 + 2∥x − projM x∥2∥x − y∥2 cos(θ) cos(φ) + ∥x − y∥22 cos2(φ)
++ r0(M)2 + ∥x − y∥2
+2 cos2(φ)
+(43)
+= ∥x − projM x∥2
+2 + 2∥x − projM x∥2∥x − y∥2 cos(θ) cos(φ) + ∥x − y∥2
+2 + r0(M)2
++ 2r0(M)
+q
+∥x − projM x∥22 + 2∥x − projM x∥2∥x − y∥2 cos(θ) cos(φ) + ∥x − y∥22 cos2(φ).
+(44)
+Observe that d + r0(M) 2 is decreasing in φ on the interval φ ∈ (0, π/2) since cos(θ) ≥ 0, cos(φ) is decreasing on (0, π) and cos2(φ) is decreasing on (0, π/2). To establish the contradiction we want to find the φ′ ∈ (0, π/2) such that d = s0(M) − τ ; from that, we know that for any φ > φ′,
+30
+
+
+Preprint.
+d < s0(M) − τ . Rearranging 44 slightly yields
+d + r0(M)
+2
+− ∥x − y∥2
+2 − r0(M)2
+| {z }
+c1
+= ∥x − projM x∥2
+2
+| {z }
+c2
++ 2∥x − projM x∥2∥x − y∥2 cos(θ)
+| {z }
+c3
+cos(φ)
++ 2r0(M)
+| {z }
+c4
+q
+∥x − projM x∥2
+2
+| {z }
+c2
++ 2∥x − projM x∥2∥x − y∥2 cos(θ)
+| {z }
+c3
+cos(φ) + ∥x − y∥2
+2
+| {z }
+c5
+cos2(φ).
+Using these intermediate terms and defining z = cos(φ), we see
+c1 = c2 + c3z + c4
+p
+c2 + c3z + c5z2.
+Rearranging to get a quadratic polynomial gives
+(c1 − c2) − c3z
+2
+= c2
+4 c2 + c3z + c5z2
+(c1 − c2)2 − 2c3(c1 − c2)z + c2
+3z2 = c2
+4c2 + c2
+4c3z + c2
+4c5z2
+− (c1 − c2)2 − c2
+4c2 + 2c3(c1 − c2) + c2
+4c3 z − c2
+3 − c2
+4c5 z2 = 0.
+Applying the quadratic formula,
+z=
+− 2c3(c1 − c2) + c2
+4c3 ±
+r
+2c3(c1 − c2) + c24c3
+2
++ 4 c24c5 − c23 (c1 − c2)2 − c24c2
+2 c2
+4c5 − c2
+3
+(45)
+Evaluating the denominator gives
+2 c2
+4c5 − c2
+3 = 2 −4∥x − projM x∥2
+2∥x − y∥2
+2 cos2(θ) + 4r0(M)2∥x − y∥2
+2 (46)
+= 8 −∥x − projM x∥2
+2∥x − y∥2
+2 cos2(θ) + r0(M)2∥x − y∥2
+2 (47)
+= 8∥x − y∥2
+2 r0(M)2 − ∥x − projM x∥2
+2 cos2(θ) . (48)
+Evaluating the first term of the numerator,
+2c3(c1 − c2)
+= 4∥x − projM x∥2∥x − y∥2 cos(θ)
+· d + r0(M) 2 − ∥x − y∥2
+2 − r0(M)2 − ∥x − projM x∥2
+2
+= 4∥x − projM x∥2∥x − y∥2 cos(θ) d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2,
+evaluating the second term of the numerator, c2
+4c3 = 8r0(M)2∥x − projM x∥2∥x − y∥2 cos(θ)
+and combining,
+2c3(c1 − c2) + c2
+4c3 = 4∥x − projM x∥2∥x − y∥2 cos(θ) d2 + 2dr0(M)
+− ∥x − y∥2
+2 − ∥x − projM x∥2
+2 + 2r0(M)2 (49)
+Now we will evaluate terms inside of the square root in (45). Note that the first term is (49) squared, while the second term includes two times (48). The remaining part of the second term is
+(c1 − c2)2 − c2
+4c2 = d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
+2
+− 4r0(M)2∥x − projM x∥2
+2. (50)
+31
+
+
+Preprint.
+Combining everything inside the square root yields,
+16∥x − projM x∥2
+2∥x − y∥2
+2 cos2(θ)
+·
+h
+d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2 + 2r0(M)2i2
+−
+h
+16∥x − y∥2
+2∥x − projM x∥2 cos2(θ) − 16∥x − y∥2
+2r0(M)2i
+·
+h
+d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
+2
+− 4r0(M)2∥x − projM x∥2
+2
+i
+= 16∥x − projM x∥2
+2∥x − y∥2
+2 cos2(θ) d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
+2
++ 64∥x − projM x∥2
+2∥x − y∥2
+2 cos2(θ)r0(M)2 d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
++ 64r0(M)4∥x − projM x∥2
+2∥x − y∥2
+2 cos2(θ)
+− 16∥x − projM x∥2
+2∥x − y∥2
+2 cos2(θ) d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
+2
++ 64∥x − y∥2
+2∥x − projM x∥4
+2 cos2(θ)r0(M)2
++ 16∥x − y∥2
+2r0(M)2 d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
+2
+− 64∥x − y∥2
+2r0(M)4∥x − projM x∥2
+2.
+Continuing to simplify yields
+16∥x − y∥2
+2r0(M)2 d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
+2
++ 4∥x − projM x∥2
+2 cos2(θ) d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
++ 4r0(M)2∥x − projM x∥2
+2 cos2(θ)
+− 4r0(M)2∥x − projM x∥2
+2
++ 4∥x − projM x∥4
+2 cos2(θ) . (51)
+Now we will complete the square in the large bracket of 51,
+d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
+2
++ 4∥x − projM x∥2
+2 cos2(θ) d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
++ 4 cos4(θ)∥x − projM x∥4
+2 − 4 cos4(θ)∥x − projM x∥4
+2
++ 4r0(M)2∥x − projM x∥2
+2 cos2(θ)
+− 4r0(M)2∥x − projM x∥2
+2
++ 4∥x − projM x∥4
+2 cos2(θ).
+(52)
+Now the first three terms and last four terms can be factored,
+d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2 + 2 cos2(θ)∥x − projM x∥2
+2
+2
+− 4 cos4(θ)∥x − projM x∥4
+2
++ 4r0(M)2∥x − projM x∥2
+2 cos2(θ)
+− 4r0(M)2∥x − projM x∥2
+2
++ 4∥x − projM x∥4
+2 cos2(θ).
+(53)
+32
+
+
+Preprint.
+Further simplifying,
+d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2 + 2 cos2(θ)∥x − projM x∥2
+2
+2
+− 4∥x − projM x∥2
+2
+· ∥x − projM x∥2
+2 cos4(θ) + r0(M)2 sin2(θ) − ∥x − projM x∥2
+2 cos2(θ)
+(54)
+= d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2 + 2 cos2(θ)∥x − projM x∥2
+2
+2
+− 4∥x − projM x∥2
+2 r0(M)2 sin2(θ) − ∥x − projM x∥2
+2 cos2(θ) sin2(θ)
+(55)
+= d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2 + 2 cos2(θ)∥x − projM x∥2
+2
+2
+| {z }
+:= a2
+− 4∥x − projM x∥2
+2 sin2(θ) r0(M)2 − ∥x − projM x∥2
+2 cos2(θ)
+| {z }
+:= b2
+(56)
+where the two intermediate steps leverage the fact that 1 − cos2(θ) = sin2(θ). The equation 45 has two roots, and one of the two will result in a term on the right-hand side of 45 that is positive (since the denominator is necessarily positive); we will consider this root. Recall that d is decreasing in φ on the interval φ ∈ (0, π/2). We want to find a φ′ such that for all φ > φ′, d < s0(M) − τ . It
+suffices then to find an upper bound for φ′, which implies finding a lower bound on cos(φ′).
+Let’s denote 56 with B, and recall that it represents the expression in the large bracket of 51. Also recall that 51 is a simplified version of the term in the radical of 45. We can express the square root
+of 51 with 4∥x − y∥2r0(M)√B. Observe that
+√B can be written as √a2 − b2 where a, b > 0.
+Since √a2 − b2 ≥ a − b for a ≥ b > 0, we can say
+4∥x − y∥2r0(M)
+√ B
+≥ 4∥x − y∥2r0(M) d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
++ 2 cos2(θ)∥x − projM x∥2
+2
+− 2∥x − projM x∥2 sin(θ)
+q
+r0(M)2 − ∥x − projM x∥22 cos2(θ) .
+(57)
+Note that the following steps will demonstrate a−b ≥ 0, justifying the previous step when evaluating at d = s0(M) − τ . Note that
+d2−∥x − y∥2
+2 − ∥x − projM x∥2
+2 = (s0(M) − τ )2 − ∥x − y∥2
+2 − ∥x − projM x∥2
+2 (58)
+≥ (s0(M) − τ )2 − (p(s0(M) − τ )2 − τ 2)2 − τ 2 (59)
+= 0. (60)
+Thus,
+a − b ≥ 2(s0(M) − τ )r0(M) + 2 cos2(θ)∥x − projM x∥2
+2
+− 2∥x − projM x∥2 sin(θ)
+q
+r0(M)2 − ∥x − projM x∥22 cos2(θ) (61)
+≥ 2(s0(M) − τ )r0(M) − 2τ r0(M). (62)
+Note that the last term is necessarily positive since we have stipulated that s0(M) > 3τ . In fact,
+a ≥ 2b, a fact that we can use to sharpen the bound √a2 − b2 ≥ a − b. When a ≥ 2b, √a2 − b2 ≥
+33
+
+
+Preprint.
+a − 0.27b, which can be verified easily by plugging in and bounding. Thus,
+4∥x − y∥2r0(M)
+√ B
+≥ 4∥x − y∥2r0(M) d2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
++ 2 cos2(θ)∥x − projM x∥2
+2
+− 0.54∥x − projM x∥2 sin(θ)
+q
+r0(M)2 − ∥x − projM x∥22 cos2(θ) .
+(63)
+Now we will evaluate a bound on one of the roots of 45 by combining 63, 49 and 48,
+z≥
+r0(M) − ∥x − projM x∥2 cos(θ) d2 + 2dr0(M) − ∥x − y∥22 − ∥x − projM x∥22
+2∥x − y∥2 r0(M)2 − ∥x − projM x∥22 cos2(θ)
++ −2r0(M)∥x − projM x∥2
+2∥x − y∥2 r0(M)2 − ∥x − projM x∥22 cos2(θ)
+· r0(M) cos(θ)−∥x−projM x∥2 cos2(θ)+0.27 sin(θ)
+q
+r0(M)2 − ∥x − projM x∥22 cos2(θ) .
+(64)
+Bounding the numerator of the second term from below (since the denominator is nonnegative),
+−2r0(M)∥x − projM x∥2 r0(M) cos(θ) − ∥x − projM x∥2 cos2(θ)
++ 0.27 sin(θ)
+q
+r0(M)2 − ∥x − projM x∥22 cos2(θ)
+≥ −2r0(M)τ r0(M) + 0.27r0(M)
+(65)
+= −2.54r0(M)2τ. (66)
+Now we will bound the numerator of the first term from below. We can apply the lower bound from 60 with d evaluated at s0(M) − τ to get
+r0(M) − ∥x − projM x∥2 cos(θ)
+(s0(M) − τ )2 + 2dr0(M) − ∥x − y∥2
+2 − ∥x − projM x∥2
+2
+(67)
+≥ (r0(M) − τ )(2(s0(M) − τ )r0(M)) (68)
+= 2(r0(M) − τ )(s0(M) − τ )r0(M). (69)
+Putting it all together, we get
+z ≥ 2(r0(M) − τ )(s0(M) − τ )r0(M) − 2.54r0(M)2τ
+2∥x − y∥2 r0(M)2 − ∥x − projM x∥22 cos2(θ)
+(70)
+= (r0(M) − τ )(s0(M) − τ )r0(M) − 1.27r0(M)2τ
+∥x − y∥2 r0(M)2 − ∥x − projM x∥22 cos2(θ)
+(71)
+Now we will show that the numerator is necessarily larger than zero, allowing us to further bound z by upper bounding the denominator. Note that the numerator is greater than zero if and only if
+(r0(M) − τ )(s0(M) − τ )r0(M) > 1.27r0(M)2τ
+⇐⇒ (r0(M) − τ )(s0(M) − τ )
+r0(M)τ > 1.27
+Note that (r0(M) − τ )/r0(M) > 2/3 since r0(M) > 3τ , and (s0(M) − τ )/τ > 2 since s0(M) > 3τ . Thus, the left-hand side of the equation above is larger than 4/3 which is larger than 1.27,
+34
+
+
+Preprint.
+rendering the statement true and the numerator positive. Now we can continue to bound z by upper bounding the denominator,
+z ≥ (r0(M) − τ )(s0(M) − τ )r0(M) − 1.27r0(M)2τ
+∥x − y∥2 r0(M)2 − ∥x − projM x∥22 cos2(θ)
+(72)
+> (r0(M) − τ )(s0(M) − τ )r0(M) − 1.27r0(M)2τ
+r0(M)2p(s0(M) − τ )2 − τ 2 (73)
+= (r0(M) − τ )(s0(M) − τ ) − 1.27r0(M)τ
+r0(M)p(s0(M) − τ )2 − τ 2 . (74)
+Finally, we can derive a bound on φ′ from 72 since z = arccos(φ′),
+φ′ < arccos (r0(M) − τ )(s0(M) − τ )r0(M) − 1.27r0(M)2τ
+r0(M)2p(s0(M) − τ )2 − τ 2 . (75)
+Note that the fact that the numerator and denominator are positive implies the right-hand side of 75 is necessarily < π/2. For all φ > φ′ we have d < s0(M) − τ . Thus it must also be true that for all φ larger than the right-hand side of 75, d < s0(M) − τ . however, it remains to show that this is in fact a violation of branch separation. Since the nearest point to y on C might not be (and likely is not) projM x, we need to show that the manifold distance between y and this point is large. For ease of notation, let C(ty) be the nearest point to y on C.
+First we need to bound the distance dM(projM x, C(ty)). Since C has radius of curvature r0(M), dM(projM x, C(ty)) can be expressed as
+dM(projM x, C(ty)) = r0(M) arctan ∥x − y∥2 sin(φ)
+∥ projM x − y′′∥2 + r0(M) . (76)
+This follows from Figure 13, as we are approximating the geodesic arc γ with C. The distance along C from projM x to C(ty) can be written as the angle swept out times the radius of curvature. Note that arctan(x) is an increasing function of x, and arctan(x) ≤ x for x ≥ 0. Since φ ∈ [0, π/2) the argument of arctan in 76 is necessarily non-negative, allowing us to bound it as follows
+dM(projM x, C(ty)) = r0(M) arctan ∥x − y∥2 sin(φ)
+∥ projM x − y′′∥2 + r0(M) (77)
+≤ r0(M) arctan ∥x − y∥2 sin(φ)
+r0(M) (78)
+≤ r0(M) · ∥x − y∥2 sin(φ)
+r0(M) (79)
+= ∥x − y∥2 sin(φ). (80)
+Now we can apply assumptions on ε to bound 80 as a function of manifold embedding parameters.
+dM(projM x, C(ty)) ≤ ∥x − y∥2 sin(φ) (81)
+≤ ε (82) < r0(M). (83)
+Now we can apply the triangle inequality,
+dM(C(ty), projM y) ≥ dM(projM x, projM y) − dM(C(ty), projM x) (84)
+> (π + 1)r0(M) − r0(M) (85)
+= πr0(M). (86)
+As before, we will apply the definition of minimum branch separation, which states that if dM(C(ty), projM y) is larger than πr0(M), then d = ∥C(ty) − projM y∥2 ≥ s0(M). Applying the triangle inequality one more time leads to the conclusion that ∥C(ty) − y∥2 ≥ s0(M) − τ . However, we see that when φ does not satisfy 75, d < s0(M) − τ and we have a contradiction.
+35
+
+
+Preprint.
+Lemma A.3 formalizes and proves the fact that shortcut edges are necessarily oriented close to a normal direction to M from the perspective of each endpoint. To leverage this result, we then need to be able to say that this orientation implies a concentration of measure away from the midpoint of all shortcuts. Figure 9 provides a visualization of this phenomenon, establishing intuition for why this is true.
+Concretely, Lemma A.4 derives the measure of the sets Ux and Bε(x) detailed in Figure 10 in the limit of vanishing noise. The expressions for the measures of these sets are obtained by integrating the probability density function ρ (detailed in eq. (1)) over each respective set. What results is an expression that is a function of φ, the angle between the edge (x, y) and the closest normal direction of M at x.
+Intuitively, the result matches what we would expect to see in the no noise (σ = 0) scenario. The m-dimensional Lebesgue measure of Ux when the center of Bε(x) is displaced at a distance ∥x − projM x∥2 from a m-dimensional manifold M would simply be (in the locally flat case) proportional to the volume of the intersection, which is a portion of a m dimensional ball of radius
+√
+ε2 − ∥x − projM x∥22. The conditional probability of a point being in Ux given Bε(x) would therefore be the ratio of the volume of this portion of a m dimensional ball to the full volume of the m dimensional ball. Figure 14 provides a visualization for a 2-dimensional manifold embedded in R3.
+v
+Ux
+3⁄4!0
+B2(x)
+M
+y
+x
+Figure 14: A visualization of v ∈ NprojM x, Ux and the edge (x, y) for a 2-dimensional manifold
+embedded in R3. Observe that the measure of Bε(x) \ Ux approaches the volume of the intersection of Bε(x) \ Ux and M as σ → 0. Similarly, the measure of Ux approaches the volume of the intersection of Ux and M as σ → 0. Both of these regions are shown as the 2-dimensional dark grey and matte blue shaded regions respectively.
+Lemma A.4. Suppose (x, y) is an edge in a nearest neighbor graph built from data consisting of samples from the probability density function defined by 1. Define v to be the vector in the normal space of M at projM x such that the angle φ between v and (y − x) is minimized. Also define
+f (φ) = cot(φ) sec(φ) ε − ∥x − y∥2
+2 − dv
+and,
+R=
+p
+ε2 − ∥x − projM x∥2
+2
+and finally,
+r(z) =
+(pε2 − ∥x − projM x∥22 − z2 |z| ≤ pε2 − ∥x − projM x∥22
+0 otherwise . (87)
+Then
+lim
+σ→0+ P[ a ∈ Ux | a ∈ Bε(x) ] ≥
+R
+√
+ε2−∥x−projM x∥2
+2
+f(φ) Vol(Bm−1
+r(z) (0))dz
+Vol(Bm
+R (0)) (88)
+where m is the dimension of M.
+36
+
+
+Preprint.
+Proof. Rewriting P[ a ∈ Ux | a ∈ Bε(x) ],
+P[ a ∈ Ux | a ∈ Bε(x) ] = P[ a ∈ Ux ]
+P[ a ∈ Bε(x) ] (89)
+= μ Ux
+μ Bε(x) (90)
+Since the probability density in Bε(x) is nonuniform, we need to integrate ρ over the regions we are interested in. To do so, we will integrate along v ∈ NprojM xM and use a locally flat approximation
+of M. Observe that (y − x) can be written as αvT + βv, where vT ∈ TprojM x, and v is the
+vector in NprojM xM that forms the smallest angle φ with the vector (y − x). Also note that the
+vector (x − projM x) is oriented normal to M at projM x as well. It can therefore be written as dvv + dxvN , where v is the vector defined previously and vN is some other vector in the normal space. It follows that dv = ∥x − projM x∥2 cos(θ) and dx = ∥x − projM x∥2 sin(θ), where θ is the angular displacement between (x − projM x) and v. A visualization of these quantities and vectors is provided in Figure 15.
+y
+x
+dx
+B2(x)
+μ
+Á
+projMx
+v
+vN
+vT
+dv
+M
+Figure 15: A visualization of quantities defined and used for Lemma A.4.
+All coordinates mentioned from here onwards specify displacements from the point projM x. Note that m orthogonal ambient directions are oriented tangent to M at projM x, while D − m directions are oriented normal to M at projM x. Since the probability density is constant in tangential directions, we will begin by evaluating the measure of the subspace spanned by the normal directions directly; thereafter we will integrate along the tangent directions.
+Let u1, u2, um+3, . . . , uD denote coordinates in an orthonormal basis of NprojM xM, where u1
+corresponds with direction v and u2 corresponds with direction vN . Now let z3, . . . , zm+2 denote coordinates in the m tangential directions. We choose to define these coordinates with these indices as it reflects the order in which we will integrate. This choice will become clear deeper into the proof.
+Observe that x’s only nonzero coordinates (as we have just defined them) are u1 and u2. Therefore the probability density ρ is symmetric about ui = 0 for i ∈ {m+3, . . . , D}. This arises from the fact that the u coordinates are the only coordinates in which the probability density varies - z coordinates have no effect (due to our locally flat approximation). Therefore, we will begin by evaluating the measure of the subspace of Bε(x) (centered at fixed coordinates u1, u2, z3, . . . , zm+2) spanned by normal directions um+3, . . . , uD. The probability density at any point in this subspace is simply a function of u coordinates,
+ρ(u1, u2, z3, . . . , zm+2, um+3, . . . , uD) = 1
+Z exp − u21 + u22 + PD
+i=d+3 u2
+i
+2σ2
+=1
+Z exp − u21 + u22
+2σ2 exp −
+PD
+i=d+3 u2
+i
+2σ2 .
+37
+
+
+Preprint.
+Observe that the point (u1, u2, z3, . . . , zm+2, 0, . . . , 0) is at the same distance from the boundary of the tubular neighborhood in any direction spanned by ui for i ∈ {m + 3, . . . , D}. While we do not yet have an exact expression for that distance, we can represent it as some function of (u1, u2, z3, . . . , zm+2), denoted r(u1, u2, z3, . . . , zm+2) = r. Put another way, if we consider the intersection of Tubτ M, Bε(x) and the subspace spanning um+3, . . . , uD centered at (u1, u2, z3, . . . , zm+2, 0, . . . , 0), it looks like a D − m − 2 dimensional ball of radius r.
+Thus, we can evaluate the measure of this subspace of Bε(x) centered at the point with coordinates (u1, u2, z3, . . . , zm+2, 0, . . . , 0) spanned by normal directions um+3, . . . , uD as
+1
+Z exp − u21 + u22
+2σ2
+Z
+um+3:D ∈ Br (0)
+exp −
+PD
+i=d+3 u2
+i
+2σ2 dV.
+Now we will manipulate the term in the integral so that it becomes equivalent to the CDF of a χ2 distribution with D − m − 2 degrees of freedom,
+1
+Z exp − u21 + u22
+2σ2
+Z
+um+3:D ∈ Br (0)
+exp −
+PD
+i=d+3 u2
+i
+2σ2 dV
+= 2π
+D−m−2 2
+Z exp − u21 + u22
+2σ2
+Z
+um+3:D ∈ Br (0)
+1
+2π
+D−m−2 2
+exp −
+PD
+i=d+3 u2
+i
+2σ2 dV
+= σD−m−2 2π
+D−m−2 2
+Z
+| {z }
+:= C
+exp − u21 + u22
+2σ2
+·
+Z
+wm+3:D ∈ Br/σ (0)
+1
+2π
+D−m−2 2
+exp −
+PD
+i=d+3 w2
+i
+2 dV
+| {z }
+Fχ2 r2
+σ2
+= C exp − u21 + u22
+2σ2 Fχ2
+r2
+σ2
+where the third to last line was obtained by applying the change of variables wi = ui/σ for i ∈ {m + 3, . . . , D}. Now we would like to integrate this expression over all remaining directions z3, . . . , zm+2 and u1, u2. To obtain appropriate limits of integration, its helpful to explicitly write out an expression for relevant parts of the sets Bε(x) and the local region of Tubτ M in terms of the defined coordinates. The sets can be described as
+Bε(x) = (u1, u2, z3, . . . , zm+2, um+3, . . . , uD) (u1 − dv)2 + (u2 − dx)2
++
+m+2
+X
+i=3
+z2
+i+
+D
+X
+i=d+3
+u2
+i ≤ ε2 (91)
+and
+S = (u1, u2, z3, . . . , zm+2, um+3, . . . , uD)
+X
+i∈{1,2,d+3,...,D}
+u2
+i ≤ τ2
+respectively, where S describes the local region of the tubular neighborhood (when M is approximated as flat). Naturally, we are interested in integrating over the intersection of these two regions. We will start with zm+2. Observe that the limits for zm+2 are necessarily symmetric - this follows from the fact that the point (u1, u2, z3, . . . , zm+1, 0, . . . , 0) is equidistant along zm+2 from the boundary of Bε(x) in both the positive and negative directions. This distance is precisely
+v u
+u
+tε2 − (u1 − dv)2 − (u2 − dx)2 −
+m+1
+X
+i=3
+z2
+i . (92)
+38
+
+
+Preprint.
+We do not concern ourselves with the boundary of Tubτ M in the tangential directions because we are employing a locally flat approximation. Now note that, for a point with coordinates (u1, u2, z3, . . . , zm+1, zm+2, 0, . . . , 0) the distance to the boundary of Bε(x) in any direction spanned by um+3, . . . , uD is a slight modification to 92
+v u
+u
+tε2 − (u1 − dv)2 − (u2 − dx)2 −
+m+2
+X
+i=3
+z2
+i . (93)
+Observe that this gives us part of our expression for r(u1, u2, z3, . . . , zm+2). In the normal directions, however, we are also concerned with the boundary of Tubτ M, which is necessarily at a distance q
+τ 2 − u21 − u22 (94)
+in any direction spanned by um+3, . . . , uD. Thus, the limits of integration for zm+2 directions must range from −1 times 92 to +1 times 92. The radius in the argument of Fχ2 must then be the minimum of eq. (93) and eq. (94). Now integrating out zm+2 yields
+μ
+h
+Bε(x) ∩ S
+(u1 ,u2 ,z3 ,...,zm+1 )
+i
+= C exp − u21 + u22
+2σ2
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+−
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+Fχ2
+min{ε2 − (u1 − dv)2 − (u2 − dx)2 − Pm+2
+i=3 z2
+i , τ 2 − u21 − u22}
+σ2 dzm+2 (95)
+where Bε(x)∩S
+(u1 ,u2 ,z3 ,...,zm+1 )
+denotes the subset of Bε(x)∩S when we fix all listed coordinates
+and allow the others to vary. Now we can apply the same argument to integrate out zm+1. A point with coordinates (u1, u2, z3, . . . , zd, 0, 0, . . . , 0) is at distance
+v u
+u
+tε2 − (u1 − dv)2 − (u2 − dx)2 −
+m
+X
+i=3
+z2
+i (96)
+from the boundary of Bε(x) in the ± zm+1 directions. Thus,
+μ
+h
+Bε(x) ∩ S
+(u1 ,u2 ,z3 ,...,zd )
+i
+=
+C exp − u21 + u22
+2σ2
+Z
+√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+−√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+−
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+Fχ2
+min{ε2 − (u1 − dv)2 − (u2 − dx)2 − Pm+2
+i=3 z2
+i , τ 2 − u21 − u22}
+σ2 dzm+2dzm+1. (97)
+Repeating this process for all remaining zi’s yields
+μ
+h
+Bε(x) ∩ S
+(u1 ,u2 )
+i
+= C exp − u21 + u22
+2σ2
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2
+−
+√
+ε2−(u1−dv )2−(u2−dx)2
+···
+Z
+√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+−√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+−
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+Fχ2
+min{ε2 − (u1 − dv)2 − (u2 − dx)2 − Pm+2
+i=3 z2
+i , τ 2 − u21 − u22} σ2
+dzm+2dzm+1 . . . dz3. (98)
+A point with coordinates (u1, 0, . . . , 0) is at distance
+pε2 − (u1 − dv)2 − dx (99)
+39
+
+
+Preprint.
+from the boundary of Bε(x) in the −u2 direction, while it is at distance
+pε2 − (u1 − dv)2 + dx (100)
+in the +u2 direction. This can be verified by inspecting Figure 15. Since u2 spans a normal direction, we must also consider the boundary of Tubτ M. Namely, the point (u1, 0, . . . , 0) is at distance
+q
+τ 2 − u21 (101)
+from the boundary of Tubτ M in the ± u2 direction. Therefore,
+μ
+h
+Bε(x) ∩ S
+(u1 )
+i
+=
+C
+Z min
+√
+τ 2−u2
+1,
+√
+ε2−(u1−dv )2+dx
+max −
+√
+τ 2−u2
+1 ,−
+√
+ε2−(u1−dv )2+dx
+exp − u21 + u22
+2σ2
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2
+−
+√
+ε2−(u1−dv )2−(u2−dx)2
+···
+Z
+√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+−√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+−
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+Fχ2
+min{ε2 − (u1 − dv)2 − (u2 − dx)2 − Pm+2
+i=3 z2
+i , τ 2 − u21 − u22} σ2
+dzm+2dzm+1 . . . dz3du2. (102)
+And finally since 2τ < ε we have,
+μ
+h
+Bε(x) ∩ S
+i
+=
+C
+Zτ
+−τ
+Z min
+√
+τ 2−u2
+1,
+√
+ε2−(u1−dv )2+dx
+max −
+√
+τ 2−u2
+1 ,−
+√
+ε2−(u1−dv )2+dx
+exp − u21 + u22
+2σ2
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2
+−
+√
+ε2−(u1−dv )2−(u2−dx)2
+···
+Z
+√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+−√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+−
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+Fχ2
+min{ε2 − (u1 − dv)2 − (u2 − dx)2 − Pm+2
+i=3 z2
+i , τ 2 − u21 − u22} σ2
+dzm+2dzm+1 . . . dz3du2du1. (103)
+To obtain an expression for μ[Bε(x)] we need one more component. Visual inspection of Figure 9 reveals that some of the measure of Bε(x) can come from a region of the manifold that is at a far intrinsic distance, but small Euclidean distance. This is a phenomenon we have not yet accounted for. To do so, we will provide a large overestimate of the measure it contributes (which in the end, will not affect the conclusion of the proof). Since it is hard to quantify the volume of this region in the general case, we know its volume is necessarily bounded by Vol(Bε(x)). It follows that its measure is upper bounded by the maximum probability density in the region times Vol(Bε(x)).
+To find the maximum probability density in this region, we need to reason about the minimum distance any point in this region can have to the manifold. Consider a point p in this region, and its corresponding nearest point on M, projM p. Since we have stipulated r0(M) > ε, any manifold geodesic path through projM x could not have left Bε(x) and re-entered it without travelling more than πr0(M) distance. Our locally flat approximation ensures that our expression for μ[Bε(x)] accounts for the volume traced out by all geodesic paths that pass through projM x before they leave Bε(x); thus the only measure we have not accounted for is associated with areas of M where a geodesic path through projM x left Bε(x) and later returned.
+Since we know the manifold distance from projM x to projM p exceeds πr0(M), we know ∥ projM x − projM p∥2 ≥ s0(M) from the definition of minimum branch separation. Using the
+40
+
+
+Preprint.
+triangle inequality and applying assumptions to bound ε and τ we can say
+∥p − projM p∥2 ≥ ∥ projM x − projM p∥2 − ∥x − projM x∥2 − ∥x − p∥2
+> s0(M) − τ − p(s0(M) − τ )2 − τ 2
+:= δ
+> 0.
+Thus, the measure of this distant region of Bε(x) is necessarily bounded above by
+Vol Bε(x) 1
+Z exp − δ2
+2σ2 .
+Thus, we can safely conclude that
+μ
+h
+Bε(x)
+i
+≤
+C
+Zτ
+−τ
+Z min
+√
+τ 2−u2
+1,
+√
+ε2−(u1−dv )2+dx
+max −
+√
+τ 2−u2
+1 ,−
+√
+ε2−(u1−dv )2+dx
+exp − u21 + u22
+2σ2
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2
+−
+√
+ε2−(u1−dv )2−(u2−dx)2
+···
+Z
+√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+−√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+−
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+Fχ2
+min{ε2 − (u1 − dv)2 − (u2 − dx)2 − Pm+2
+i=3 z2
+i , τ 2 − u21 − u22} σ2
+dzm+2dzm+1 . . . dz3du2du1 + Vol Bε(x) 1
+Z exp − δ2
+2σ2 . (104)
+Computing μ[Ux] involves changing the lower limit of integration for z3. In the u1, z3 plane the boundary of Ux is simply a line with slope tan(φ); the u1 intercept can be obtained with simple geometry, and is dv − sec(φ)( ε−∥x−y∥2
+2 ). It follows that the expression for the boundary can be
+rearranged as,
+z3 = cot(φ) u1 − dv + sec(φ) ε − ∥x − y∥2
+2.
+To understand this step we encourage the reader to refer back to Figure 10 to recall the definition of Ux. Moving forward, for the sake of simplicity we can also discard the second term in eq. (104) to obtain a lower bound on μ[Ux]. Therefore,
+μ
+h
+Ux
+i
+≤
+C
+Zτ
+−τ
+Z min
+√
+τ 2−u2
+1,
+√
+ε2−(u1−dv )2+dx
+max −
+√
+τ 2−u2
+1 ,−
+√
+ε2−(u1−dv )2+dx
+exp − u21 + u22
+2σ2
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2
+cot(φ) u1−dv +sec(φ) ε−∥x−y∥2
+2
+···
+Z
+√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+−√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+−
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+Fχ2
+min{ε2 − (u1 − dv)2 − (u2 − dx)2 − Pm+2
+i=3 z2
+i , τ 2 − u21 − u22} σ2
+dzm+2dzm+1 . . . dz3du2du1. (105)
+We are interested in evaluating the ratio of 105 and 104 in the limit of σ → 0+. Since 104 is the measure of a finite volume subset of RD with a nonempty intersection with the support of ρ, for all σ > 0 the quantity is nonzero. To make sure the limits converge to a nonzero value, we will multiply the top and bottom by 1
+2πσ2C . As we will also show, the ensures that the limit of the denominator
+converges to a nonzero value. Thus we can pull the limit into the fraction to say,
+lim
+σ→0+
+1
+2πσ2C μ[Ux] 1
+2πσ2C μ[Bε(x)] = limσ→0+ 1
+2πσ2C μ[Ux]
+limσ→0+ 1
+2πσ2C μ[Bε(x)] . (106)
+41
+
+
+Preprint.
+The denominator can be bounded with
+1
+2πσ2C μ
+h
+Bε(x)
+i
+≤
+Zτ
+−τ
+Z min
+√
+τ 2−u2
+1,
+√
+ε2−(u1−dv )2+dx
+max −
+√
+τ 2−u2
+1 ,−
+√
+ε2−(u1−dv )2+dx
+1
+2πσ2 exp − u21 + u22
+2σ2
+"Z
+√
+ε2−(u1−dv )2−(u2−dx)2
+−
+√
+ε2−(u1−dv )2−(u2−dx)2
+···
+Z
+√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+−√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+−
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+Fχ2
+min{ε2 − (u1 − dv)2 − (u2 − dx)2 − Pm+2
+i=3 z2
+i , τ 2 − u21 − u22} σ2
+dzm+2dzm+1 . . . dz3
+#
+du2du1 + 1
+2πσ2 Vol Bε(x) 1
+CZ exp − δ2
+2σ2 . (107)
+Defining everything in the bracket as g(u1, u2) and taking the limit, we get
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Bε(x)
+i
+≤ lim
+σ→0+
+Zτ
+−τ
+Z min
+√
+τ 2−u2
+1,
+√
+ε2−(u1−dv )2+dx
+max −
+√
+τ 2−u2
+1 ,−
+√
+ε2−(u1−dv )2+dx
+1
+2πσ2 exp − u21 + u22
+2σ2 g(u1, u2)du2du1
++ lim
+σ→0+
+1
+2πσ2 Vol Bε(x) 1
+CZ exp − δ2
+2σ2 . (108)
+The second term can be rewritten as,
+lim
+σ→0+
+Vol Bε(x)
+(2π)(D−m+2)/2 · σD−m exp − δ2
+2σ2 .
+Since δ is a constant, one can use repeated applications of L’Hopital’s rule to show that this term converges to 0 in the limit. Now we can focus on the first term of eq. (108),
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Bε(x)
+i
+≤ lim
+σ→0+
+Zτ
+−τ
+Z min
+√
+τ 2−u2
+1,
+√
+ε2−(u1−dv )2+dx
+max −
+√
+τ 2−u2
+1 ,−
+√
+ε2−(u1−dv )2+dx
+1
+2πσ2 exp − u21 + u22
+2σ2 g(u1, u2)du2du1.
+(109)
+Define the limits of integration for u2 as Llow(u1) and Lup(u1) respectively. Now we will rewrite the equation above, replacing the limits of integration with indicators
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Bε(x)
+i
+≤ lim
+σ→0+
+Z∞
+−∞
+Z∞
+−∞
+1
+2πσ2 exp − u21 + u22
+2σ2
+·1
+h
+u2 ∈ [Llow(u1), Lup(u1)], u1 ∈ [−τ, τ ]
+i
+g(u1, u2)du2du1. (110)
+Applying the change of variables w1 = u1/σ and w2 = u2/σ yields,
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Bε(x)
+i
+≤ lim
+σ→0+
+Z∞
+−∞
+Z∞
+−∞
+1
+2π exp − w12 + w22
+2
+·1
+"
+w2 ∈
+h Llow(σw1)
+σ , Lup(σw1)
+σ
+i
+, w1 ∈ [−τ /σ, τ /σ]
+#
+g(σw1, σw2)dw2dw1. (111)
+42
+
+
+Preprint.
+Observe that g as defined is simply an integral of a function bounded by 1 over a region bounded by Bε(x). Therefore, g must be no larger than Vol(Bε(x)). Clearly the function
+1
+2π exp − w12 + w22
+2 Vol(Bε(x))
+dominates the integrand of g; furthermore, this function is integrable as the double integral over w1 and w2 evaluates to Vol(Bε(x)). Therefore we can use it as our dominating function to invoke the dominated convergence theorem, allowing us to pull the limit into the integral,
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Bε(x)
+i
+≤
+Z∞
+−∞
+Z∞
+−∞
+1
+2π exp − w12 + w22
+2
+· lim
+σ→0+ 1
+"
+w2 ∈
+h Llow(σw1)
+σ , Lup(σw1)
+σ
+i
+, w1 ∈ [−τ /σ, τ /σ]
+#
+lim
+σ→0+ g(σw1, σw2)dw2dw1.
+(112)
+Note that Llow(0) is necessarily negative, as pε2 − d2v ≥ √ε2 − τ 2 ≥ √4τ 2 − τ 2 = τ √3 > dx. Therefore, the indicator function in the integrand converges pointwise to 1. Writing out the second term,
+lim
+σ→0+ g(σw1, σw2) = lim
+σ→0+
+Z
+√
+ε2−(σw1−dv )2−(σw2−dx)2
+−
+√
+ε2−(σw1−dv )2−(σw2−dx)2
+···
+Z
+√ε2−(σw1−dv )2−(σw2−dx)2−Pm
+i=3 z2
+i
+−√ε2−(σw1−dv )2−(σw2−dx)2−Pm
+i=3 z2
+i
+Z
+√
+ε2−(σw1−dv )2−(σw2−dx)2−Pm+1
+i=3 z2
+i
+−
+√
+ε2−(σw1−dv )2−(σw2−dx)2−Pm+1
+i=3 z2
+i
+Fχ2
+min{ε2 − (σw1 − dv)2 − (σw2 − dx)2 − Pm+2
+i=3 z2
+i , τ 2 − σw12 − σw22} σ2
+dzm+2dzm+1 . . . dz3. (113)
+We can pull all limits of integration into an indicator function, but for the sake of brevity we will not write it out. Note that this step is simply taken to illustrate the fact that we can invoke the dominated convergence theorem again. Observe then that for all σ > 0 such that the terms inside of the radicals are nonnegative, we are integrating a Chi-squared CDF (which is bounded above by 1) over Rm. However, the aforementioned indicator function is always bounded by an indicator over the set Bεm(0). Thus, we can choose 1[z3:d+2 ∈ Bεm(0)] as our integrable dominating function, allowing us to pull the limit into the integrals.
+We can evaluate the indicator function in the limit, and pull the indicators back into the limits of integration. Also observe that the integrand (the CDF of the Chi-squared distribution) converges to 1 as its argment converges to +∞. Thus,
+lim
+σ→0+ g(σw1, σw2) =
+Z
+√ε2−d2v −d2x
+−√ε2−d2v −d2x
+···
+Z
+√ε2−d2v −d2x−Pm
+i=3 z2
+i
+−√ε2−d2v −d2x−Pm
+i=3 z2
+i
+Z
+√
+ε2−d2v −d2x−Pm+1
+i=3 z2
+i
+−
+√
+ε2−d2v −d2x−Pm+1
+i=3 z2
+i
+dzm+2dzm+1 . . . dz3
+(114)
+= Vol Bm
+R (0) (115)
+43
+
+
+Preprint.
+where R =
+√
+ε2 − ∥x − projM x∥22 since d2v + d2x = ∥x − projM x∥22. Note Bm
+R (0) denotes an m-dimensional Euclidean ball of radius R. Plugging this into eq. (112),
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Bε(x)
+i
+≤
+Z∞
+−∞
+Z∞
+−∞
+1
+2π exp − w12 + w22
+2 · Vol Bm
+r (0) dw2dw1 (116)
+= Vol Bm
+r (0)
+Z∞
+−∞
+Z∞
+−∞
+1
+2π exp − w12 + w22
+2 dw2dw1 (117)
+= Vol Bm
+r (0) . (118)
+Now we want to evaluate 1
+2πσ2C μ[Ux] in the limit. Recall,
+1
+2πσ2C μ
+h
+Ux
+i
+≥
+Zτ
+−τ
+Z min
+√
+τ 2−u2
+1,
+√
+ε2−(u1−dv )2+dx
+max −
+√
+τ 2−u2
+1 ,−
+√
+ε2−(u1−dv )2+dx
+1
+2πσ2 exp − u21 + u22
+2σ2
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2
+cot(φ) u1−dv +sec(φ) ε−∥x−y∥2
+2
+"
+···
+Z
+√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+−√ε2−(u1−dv )2−(u2−dx)2−Pm
+i=3 z2
+i
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+−
+√
+ε2−(u1−dv )2−(u2−dx)2−Pm+1
+i=3 z2
+i
+Fχ2
+min{ε2 − (u1 − dv)2 − (u2 − dx)2 − Pm+2
+i=3 z2
+i , τ 2 − u21 − u22} σ2
+dzm+2dzm+1 . . .
+#
+dz3du2du1. (119)
+Define everything in the bracket to be g′(u1, u2, z3). Rewriting we have,
+1
+2πσ2C μ
+h
+Ux
+i
+≥
+Zτ
+−τ
+Z min
+√
+τ 2−u2
+1,
+√
+ε2−(u1−dv )2+dx
+max −
+√
+τ 2−u2
+1 ,−
+√
+ε2−(u1−dv )2+dx
+1
+2πσ2 exp − u21 + u22
+2σ2
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2
+cot(φ) u1−dv +sec(φ) ε−∥x−y∥2
+2
+g′(u1, u2, z3)dz3du2du1. (120)
+Taking the limit on both sides,
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Ux
+i
+≥
+lim
+σ→0+
+Zτ
+−τ
+Z min
+√
+τ 2−u2
+1,
+√
+ε2−(u1−dv )2+dx
+max −
+√
+τ 2−u2
+1 ,−
+√
+ε2−(u1−dv )2+dx
+1
+2πσ2 exp − u21 + u22
+2σ2
+·
+Z
+√
+ε2−(u1−dv )2−(u2−dx)2
+cot(φ) u1−dv +sec(φ) ε−∥x−y∥2
+2
+g′(u1, u2, z3)dz3du2du1. (121)
+We will use the same definitions for the limits of integration of u2 from 110, and further define
+Llow,z3 (u1, φ) = cot(φ) u1 − dv + sec(φ) ε − ∥x − y∥2
+2
+and
+Lup,z3 (u1, u2) = pε2 − (u1 − dv)2 − (u2 − dx)2.
+44
+
+
+Preprint.
+Converting the limits of integration to indicators,
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Ux
+i
+≥ lim
+σ→0+
+Z∞
+−∞
+Z∞
+−∞
+Z∞
+−∞
+1
+2πσ2 exp − u21 + u22
+2σ2 g′(u1, u2, z3)
+1
+"
+z3 ∈
+h
+Llow,z3 (u1, φ), Lup,z3 (u1, u2)
+i
+,
+u2 ∈
+h
+Llow(u1), Lup(u1)
+i
+, u1 ∈
+h
+−τ, τ
+i
+#
+dz3du2du1. (122)
+Now let’s apply the same change of variables w1 = u1/σ and w2 = u2/σ to get
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Ux
+i
+≥ lim
+σ→0+
+Z∞
+−∞
+Z∞
+−∞
+Z∞
+−∞
+1
+2π exp − w12 + w22
+2 g′(σw1, σw2, z3)
+·1
+"
+z3 ∈
+h
+Llow,z3 (σw1, φ), Lup,z3 (σw1, σw2)
+i
+,
+w2 ∈ Llow(σw1)
+σ , Lup(σw1)
+σ , w1 ∈
+h
+−τ /σ, τ /σ
+i
+#
+dz3dw2dw1. (123)
+Through a similar argument from 112, we can choose the function
+1
+2π exp − w12 + w22
+2 Vol(Bm−1
+ε (0))
+as our dominating function for the integrand. Now we can pull the limit inside the integrals,
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Ux
+i
+≥
+Z∞
+−∞
+Z∞
+−∞
+Z∞
+−∞
+1
+2π exp − w12 + w22
+2 lim
+σ→0+ g′(σw1, σw2, z3)
+lim
+σ→0+ 1
+"
+z3 ∈
+h
+Llow,z3 (σw1, φ), Lup,z3 (σw1, σw2)
+i
+,
+w2 ∈ Llow(σw1)
+σ , Lup(σw1)
+σ , w1 ∈
+h
+−τ /σ, τ /σ
+i
+#
+dz3dw2dw1. (124)
+Observe that the indicator converges to
+1
+"
+z3 ∈ cot(φ) sec(φ) ε − ∥x − y∥2
+2 − dv ,
+q
+ε2 − ∥x − projM x∥22
+#
+.
+Now we want to evaluate g′ in the limit,
+lim
+σ→0+ g′(σw1, σw2, z3) =
+lim
+σ→0+
+Z
+√
+ε2−(σw1−dv )2−(σw2−dx)2−z2
+3
+−
+√
+ε2−(σw1−dv )2−(σw2−dx)2−z2
+3
+···
+Z
+√
+ε2−(σw1−dv )2−(σw2−dx)2−Pm+1
+i=3 z2
+i
+−
+√
+ε2−(σw1−dv )2−(σw2−dx)2−Pm+1
+i=3 z2
+i
+Fχ2
+min{ε2 − (σw1 − dv)2 − (σw2 − dx)2 − Pm+2
+i=3 z2
+i , τ 2 − σw12 − σw22} σ2
+dzm+2 . . . dz4. (125)
+45
+
+
+Preprint.
+Again we can pull all limits of integration into an indicator function, but for the sake of brevity we will not write it out. Note that this step is simply taken to illustrate the fact that we can invoke the dominated convergence theorem again. Observe then that for all σ > 0 such that the terms inside of the radicals are nonnegative, we are integrating a Chi-squared CDF (which is bounded above by 1) over Rm−1. However, the aforementioned indicator function is always bounded by an indicator over the set Bm−1
+ε (0). Thus, we can choose 1[z3:d+2 ∈ Bm−1
+ε (0)] as our dominating function, which is clearly integrable. This allows us to apply the dominated convergence theorem to pull the limit into the integral.
+We can evaluate the indicator function in the limit, and pull the indicators back into the limits of integration. Also observe that the integrand (the CDF of the Chi-squared distribution) converges to 1 as its argment converges to +∞. Thus,
+lim
+σ→0+ g′(σw1, σw2, z3) =
+Z
+√
+ε2−d2v −d2x−z2
+3
+−
+√
+ε2−d2v −d2x−z2
+3
+···
+Z
+√
+ε2−d2v −d2x−Pm+1
+i=3 z2
+i
+−
+√
+ε2−d2v −d2x−Pm+1
+i=3 z2
+i
+dzm+2 . . . dz4 (126)
+= Vol Bm−1
+r(z3)(0) (127)
+where
+r(z3) =
+(pε2 − ∥x − projM x∥22 − z32 |z3| ≤ pε2 − ∥x − projM x∥22
+0 otherwise . (128)
+Plugging into 124, we have
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Ux
+i
+≥
+Z∞
+−∞
+Z∞
+−∞
+Z∞
+−∞
+1
+2π exp − w12 + w22
+2 Vol Bm−1
+r(z3)(0)
+1
+"
+z3 ∈ cot(φ) sec(φ) ε − ∥x − y∥2
+2 − dv ,
+q
+ε2 − ∥x − projM x∥22
+#
+dz3dw2dw1. (129)
+Pulling the indicator back into the limits of integration and rearranging, we get
+lim
+σ→0+
+1
+2πσ2C μ
+h
+Ux
+i
+≥
+Z∞
+−∞
+Z∞
+−∞
+Z
+√
+ε2−∥x−projM x∥2
+2
+cot(φ) sec(φ) ε−∥x−y∥2
+2 −dv
+1
+2π exp − w12 + w22
+2 Vol Bm−1
+r(z3)(0) dz3dw2dw1
+(130)
+=
+Z∞
+−∞
+Z∞
+−∞
+1
+2π exp − w12 + w22
+2 dw2dw1
+| {z }
+=1
+·
+Z
+√
+ε2−∥x−projM x∥2
+2
+cot(φ) sec(φ) ε−∥x−y∥2
+2 −dv
+Vol Bm−1
+r(z3)(0) dz3
+(131)
+=
+Z
+√
+ε2−∥x−projM x∥2
+2
+cot(φ) sec(φ) ε−∥x−y∥2
+2 −dv
+Vol Bm−1
+r(z3)(0) dz3. (132)
+Let
+f (φ) = cot(φ) sec(φ) ε − ∥x − y∥2
+2 − dv
+46
+
+
+Preprint.
+and redefine z3 to z. Now we can combine 132 and 118 to obtain the bound on 106, and thus bound 90:
+lim
+σ→0+ P[ a ∈ Ux | a ∈ Bε(x) ] ≥
+R
+√
+ε2−∥x−projM x∥2
+2
+f(φ) Vol(Bm−1
+r(z) (0))dz
+Vol(Bm
+R (0)) . (133)
+where R =
+√
+ε2 − ∥x − projM x∥22 and r(z) = √ε2 − ∥x − projM x∥22 − z2.
+A.3.3 PROPOSITIONS
+While the Lemmata represent a majority of the theoretical results of this work, the Theorems that stitch them together require one to show a few more properties. We will start by showing that the minimum radius of curvature of geodesic paths through the tubular neighborhood of a manifold M have a minimum radius of curvature r0(M) − τ , where r0(M) is the minimum radius of curvature of geodesics in M.
+Proposition 1. Suppose M is a compact submanifold of RD without boundary and with a minimum radius of curvature r0(M). Then Tubτ M has a minimum radius of curvature of r0(M) − τ .
+Proof. Note that the ambient curvature k of a path γ through RD can be written as k2 = kg2 + k2n, where kg denotes the geodesic curvature and kn denotes the normal curvature. Paths that are geodesic in some submanifold M necessarily have 0 geodesic curvature with respect to M; thus k = kn for such curves.
+Now consider a length-parameterized geodesic path γTub : [a, b] → Tubτ M. Since γTub is a geodesic of Tubτ M, we know that k(t) = kn(t) for all t ∈ [a, b]. Now let’s consider two cases:
+1. γTub(t) is at distance less than τ from M. In this case, the γTub(t) does not intersect with the boundary of Tubτ M; it follows that no directions normal to Tubτ M exist at this point, and the normal acceleration kn(t) must be 0. Therefore, k(t) = 0. This formalizes an intuitive concept - geodesics through Tubτ M are necessarily straight lines if they do not lie on the boundary of Tubτ M.
+2. γTub(t) is at distance exactly equal to τ from M. In this case, there exists a single normal direction to Tubτ M at γTub(t). It is simply the direction from γTub(t) to the nearest point on M (up to sign). Therefore, the only situation in which γTub has nonzero curvature is when it lies exactly on the boundary of Tubτ M; the curvature is simply the norm of γ ̈Tub(t), which is some vector necessarily normal to the boundary of Tubτ M at γTub(t).
+It follows that bounding the radius of curvature of geodesics through Tubτ M can be accomplished by considering geodesic paths restricted to the boundary of Tubτ M, as all other geodesics through Tubτ M have no curvature (and thus infinite radius of curvature).
+Now redefine γTub to be some geodesic segment that lies entirely on the surface of Tubτ M with nonzero curvature; suppose this segment starts at γTub(t1) and ends at γTub(t2). Choose n interme
+diate and overlapping time intervals {Ii}n
+i=1, Ii = [a1
+i , a2
+i ] where a1
+i < a2
+i , a1
+i+1 < a2
+i < a2
+i+1
+and a10 = t1, a2n = t2. Observe that Sn
+i=1 Ii = [t1, t2], so the set of interval spans [t1, t2]. Note that we choose for these intervals to be overlapping so we can avoid the case where curvature at the endpoints of sub-intervals is unaccounted for.
+Now we will analyze a single sub-segment of γTub defined by the image of Ij = [a1
+j , a2
+j ] under the map γTub. We encourage the reader to refer to Figure 16 for the remainder of the proof. As previously established, γ ̈Tub(t) is necessarily parallel to the vector from projM γTub(t) to γTub(t). Consider now the plane spanned by the vectors γ ̈Tub(t) and γ ̇Tub(t). Now consider the osculating circle O approximation of γTub near γTub(t) for some t ∈ Ij. Since Ij can be made arbitrarily small, O is an arbitrarily good approximation of γTub(t) for t ∈ Ij. Suppose O has some radius r.
+47
+
+
+Preprint.
+°Tub
+°ÄTub
+r0(M)
+¿
+_°Tub
+projM(°Tub)
+O
+O0
+Figure 16: A diagram depicting γTub, projM γTub, O and O′.
+Finally, consider the path in M defined by the image of γTub(t) for t ∈ Ij under the map projM γTub(t); colloquially this path is the projection of the subsegment of γTub onto M. Given that the osculating plane contains the vector γ ̈Tub(t) locally (for t ∈ Ij), and we have already established that γ ̈Tub(t) is parallel to the residual of the projection (projM γTub(t) − γTub(t)) then this projected path must also lie in the plane spanned by the vectors γ ̈Tub(t) and γ ̇Tub(t) for t ∈ Ij. Since we are considering the case where γTub(t) is at distance exactly equal to τ from M for all t, this
+projected path is then approximated with its own osculating circle O′ lying in this plane with radius r + τ , sharing the same center as O.
+Since the projected path is approximated by O′, its acceleration vector in a neighborhood near t must be parallel to γ ̈Tub(t); this implies that it is entirely orthogonal to M, making the path geodesic
+in M. Since it is geodesic in M, the radius of O′ for all segments of all possible geodesics γTub is no smaller than r0(M). Solving for the minimum possible radius of O yields r0(M) − τ .
+We will quickly show that there always exists a geodesic segment in the tubular neighborhood such that O′ as defined above achieves this minimum radius r0(M). Pick some geodesic segment in M called γM with a constant nonzero acceleration ∥γ ̈M∥2 = 1/r0(M). Note that γM can be made infinitesimally small such that the constant acceleration assumption is arbitrarily accurate. Also note that γ ̈M is necessarily oriented normal to M, as γM is a geodesic of M. Define another segment as follows,
+γTub(t) = γM(t) + τ γ ̈M(t)
+∥γ ̈M(t)∥2
+(134)
+where the domain of γTub(t) is the domain of γM(t). Observe that this segment necessarily lies on the boundary of the tubular neighborhood as it was displaced exactly τ from M in the direction γ ̈M(t), which lies normal to M. Also observe that we can approximate γM(t) with its osculating
+circle O′ arbitrarily well, where O′ has a radius r0(M). Since γ ̈M(t) and γM(t) lie in the osculating plane, γM(t) must as well (as we have defined it to be a linear combination of these two vectors). In fact, γTub(t) is approximated arbitrarily well by O, its osculating circle centered at the center of
+O′. This very much mirrors the scenario that we posed earlier in the proof, visualized in Figure 16.
+Since O and O′ lie in the same plane centered about the same point, γ ̈M(t) and γ ̈Tub(t) must be parallel. Since γ ̈M(t) lies normal to M, γ ̈Tub(t) must as well. By construction of γTub(t), γ ̈M(t) must be parallel to the residual of the projection of γTub(t) onto M; this follows from the uniqueness of projM stemming from the assumptions that τ < r0(M) and 2τ < s0(M) (detailed in assumptions 2 and 1). This residual is the unique direction normal to the tubular neighborhood at γTub(t), and we have just established that γ ̈M(t) (and thus γ ̈Tub(t)) is parallel to it. It follows that γTub(t) is a geodesic segment of Tubτ M, as its acceleration vector lies completely normal to Tubτ M. Its radius
+of curvature, r0(M) − τ , can be deduced from the difference in radii of O and O′.
+We can conclude that r, the radius of curvature of any geodesic path in the tubular neighborhood, always achieves a minimum at r = r0(M) − τ .
+48
+
+
+Preprint.
+Now we will move on to showing that the ORC (as we have defined it in Section 2.3) of any edge in an ε-weighted graph is necessarily restricted to the finite interval [−2, 1].
+Proposition 2. The ORC of any edge (x, y) in an ε-weighted graph satisfies −2 ≤ κ(x, y) ≤ 1.
+Proof. Observe that, under the current construction, the ε-weighted graph distance between a node a ∈ N (x) and b ∈ N (y) is bounded above and below,
+0 ≤ dG(a, b) ≤ 3ε.
+This implies the same bound on the Wasserstein distance between the measures μx and μy. This is clear when we rewrite the 1-Wasserstein distance as follows,
+W (μx, μy) = inf
+γ∈Π(μx,μy) Ea,b∼γ [dG(a, b)]
+where Π(μx, μy) denotes the set of all measures on V × V with marginals μx and μy. Thus,
+0 ≤ W (μx, μy) ≤ 3ε ,
+and because κ(x, y) = 1 − W (μx, μy)/ε, we have
+−2 ≤ κ(x, y) ≤ 1.
+Now we will prove a bound on geodesic distances through the tubular neighborhood as a function of manifold geodesic distances. This proposition is used in Theorem 3.3 to bound graph distances of shortcut edges in ORC thresholded graphs.
+Proposition 3. Let dTub(x, y) be the geodesic distance induced by the Euclidean metric from x ∈ Tubτ (M) to y ∈ Tubτ (M). Then,
+dTub(x, y)
+dM projM x, projM y ≥ r0(M) − τ
+r0(M) .
+Proof. Let γTub be the geodesic path through Tubτ M from x to y. Select P points {pi}P
+i=1 (a
+method for which will be described soon) along γTub and join the projection of successive points pi, pi+1 onto M by a segment γi,i+1
+proj with curvature r0(M). Let’s denote the segment of γTub between
+pi, pi+1 as γi,i+1
+Tub . Also suppose P is large enough such that the geodesic segment through M
+connecting the projections of pi and pi+1 can be arbitrarily well approximated by its osculating circle Oi,i+1. Observe that since M is smooth and we have required τ < s0(M)/2 and τ < r0(M) in assumptions 1, we have a unique projection. It follows that projM(x) ∀x ∈ Tubτ M is continuous.
+iii Imin
+projM(pi)
+pi μ
+° i;i+1
+min
+pi+1
+projM(pi+1)
+r0(M) ¡ ¿
+Figure 17: A diagram depicting pi, pi+1 and various related quantities.
+49
+
+
+Preprint.
+Note that
+dTub(x, y) = L(γTub) =
+P −1
+X
+i=1
+L(γi,i+1
+Tub )
+and
+dM(projM x, projM y) ≤
+P −1
+X
+i=1
+dM(projM pi, projM pi+1) ≤
+P −1
+X
+i=1
+L(γi,i+1
+proj ).
+The second inequality in the second statement requires explanation; observe that, since projM(·) is continuous one can choose a T such that for all ∆t < T
+∥ projM γTub(t + ∆t) − projM γTub(t)∥2 < s0(M)
+for all t ∈ dom(γTub). This gives us a principled way of choosing {pi}P
+i=1, where pi = γTub(ti),
+ti = Pi−1
+j=1(∆t)j. From the definition of minimum branch separation, we know that ∥ projM pi+1 − projM pi∥2 < s0(M) =⇒ dM(projM pi, projM pi+1) ≤ πr0(M). Now we will apply Lemma 3 from Bernstein et al. (2001) to say
+dM(projM pi, projM pi+1) ≤ 2r0(M) arcsin ∥ projM pi+1 − projM pi∥2
+2r0(M) (135)
+= L(γi,i+1
+proj ). (136)
+The second equality follows from the way we have defined L(γi,i+1
+proj ): an arc with a constant radius of curvature r0(M) from projM pi to projM pi+1. Application of some trigonometry yields the arc length.
+Now consider a single segment defined by pi and pi+1. Since we assume γi,i+1
+proj has curvature
+r0(M), it is approximated exactly by its osculating circle with radius r0(M). Let γi,i+1
+min be the
+straight-line path between the points at distance r0(M) − τ from the center of this osculating circle in the directions of projM pi and projM pi+1 respectively. A diagram is shown in Figure 17 for clarity.
+Observe that the length li,i+1
+min = L(γi,i+1
+min ) must be no larger than the length of any straight-line path
+connecting any a ∈ Tubτ M and b ∈ Tubτ M such that they project to projM pi and projM pi+1 respectively. In understanding this, it helps to note that the set of points a could lie in is a D − m (where m is the dimension of M) dimensional space created by intersecting the tubular neighborhood with the hyperplane that contains pi and the center of the osculating circle Oi,i+1 (defined earlier in the proof) and spans all manifold normal directions at pi. The set of points b could lie in has a similar form; just replace pi with pi+1. The only directions from pi and pi+1 (restricted to the described subspaces) that bring the points closer is the direction towards the center of the osculating circle Oi,i+1. Starting at pi and pi+1 and travelling in these respective directions until you hit the boundary of the tubular neighborhood will minimize the distance. This minimum distance bounds
+L(γi,i+1
+Tub ), and we can compute it as follows,
+L(γi,i+1
+Tub ) ≥ ∥a − b∥2 (137)
+= r−τ
+r ∥ projM pi − projM pi+1∥2 (138)
+where r is the radius of Oi,i+1. Since (x − a)/x is increasing for positive x and a, we have
+L(γi,i+1
+Tub ) ≥ r0(M) − τ
+r0(M) ∥ projM pi − projM pi+1∥2 (139)
+= li,i+1
+min . (140)
+since r ≤ r0(M). Thus, we know that L(γi,i+1
+Tub ) ≥ li,i+1
+min . Also note that li,i+1
+min can be written as a
+function of L(γi,i+1
+proj ) as follows: compute θ, the angle swept out by γi,i+1
+proj , θ = L(γi,i+1
+proj )/r0(M).
+Then observe that li,i+1
+min = 2(r0(M) − τ ) sin(θ/2) = 2(r0(M) − τ ) sin(L(γi,i+1
+proj )/2r0(M)).
+50
+
+
+Preprint.
+Finally, note that sin(x) ≈ x for small x which is a reasonable approximation for large P . Note that P can be made arbitrarily large as segments can be divided in half without shattering the requirement that ∥ projM pi+1 − projM pi∥2 < s0(M). Thus, li,i+1
+min ≈ 2(r0(M) − τ )L(γi,i+1
+proj )/2r0(M) =
+r0 (M)−τ
+r0(M) L(γi,i+1
+proj ). Putting it all together,
+dTub(x, y) =
+P −1
+X
+i=1
+L(γi,i+1
+Tub )
+≥
+P −1
+X
+i=1
+li,i+1
+min
+≈ r0(M) − τ
+r0(M)
+P −1
+X
+i=1
+L(γi,i+1
+proj )
+≥ r0(M) − τ
+r0(M)
+P −1
+X
+i=1
+dM(projM pi, projM pi+1)
+≥ r0(M) − τ
+r0(M) dM(projM x, projM y).
+Now we will bound the measure of an arbitrary D-dimensional ball centered at a point in the tubular neighborhood, a result which will be used in Theorem 3.2.
+Proposition 4. Suppose ρ is the probability density function defined in 1 for a manifold M embedded in RD. Then for r0(M) ≫ δ
+Pz∼ρ
+h
+∥z − x∥2 ≤ δ
+i
+≥ δDVol B1(0)
+2Z · e− τ2
+2σ2 . (141)
+Proof. We can rewrite the left-hand side of 141 as
+Pz∼ρ
+h
+∥z − x∥2 ≤ δ
+i
+=μ
+h
+z ∥z − x∥2 ≤ δ
+i
+≥1
+2 Vol Bδ(0) · min
+∥z−x∥2≤δ, z∈Tubτ M
+ρ(z)
+=1
+2 δDVol B1(0) · min
+∥z−x∥2≤δ, z∈Tubτ M
+ρ(z)
+The second line follows from the fact that a δ-ball centered exactly on the surface of the tubular neighborhood Tubτ M is approximately cut it half; while curvature of M may slightly reduce this volume, considering r0(M) ≫ δ makes this a reasonable approximation. Now it remains to bound the minimum probability density. We can do this by simply choosing the minimum value ρ takes on in the tubular neighborhood,
+min
+z∈Tubτ M ρ(z) = 1
+Z e− τ2
+2σ2 (142)
+Combining everything,
+Pz∼ρ
+h
+∥z − x∥2 ≤ δ
+i
+≥ δDVol B1(0)
+2Z · e− τ2
+2σ2 . (143)
+Finally, we will show that the probability that the neighborhoods of two points overlap completly approaches 1 as the points converge to each other. This proposition is also used in Theorem 3.2. Proposition 5. Suppose {xi}∞
+i=1 and {yi}∞
+i=1 are sequences of points in a series of point clouds sampled i.i.d. according to the probability density function ρ defined by 1. Also suppose that limi→∞ ∥xi − yi∥2 = 0. Then
+ili→m∞ Pa∼ρ
+h
+a ∈ Bε(xi) ∩ Bε(yi) a ∈ Bε(xi) ∪ Bε(yi)
+i
+= 1.
+51
+
+
+Preprint.
+Proof. Our proof will use a similar argument to that of Lemma A.4. First we will rearrange to put the term of interest in a friendlier form,
+Pa∼ρ
+h
+a ∈ Bε(x) ∩ Bε(y) a ∈ Bε(x) ∪ Bε(y)
+i
+(144)
+=
+μ Bε(x) ∩ Bε(y)
+μ Bε(x) ∪ Bε(y)
+(145)
+=
+μ Bε(x) ∩ Bε(y)
+μ Bε(x) + μ Bε(y) − μ Bε(x) ∩ Bε(y)
+. (146)
+Computing each of these terms involves integrating ρ (defined by 1) over the set of interest. We define Sx = Bε(x), Sy = Bε(y) and Sx,y = Bε(x) ∩ Bε(y). Evaluating the measures, we have
+μ Bε(x) =
+Z
+z∈Sx
+ρ(z)dV (147)
+=
+Z
+RD
+ρ(z) · χSx (z)dV (148)
+and
+μ Bε(y) =
+Z
+z∈Sy
+ρ(z)dV (149)
+=
+Z
+RD
+ρ(z) · χSy (z)dV (150)
+where χA(z) is an indicator function, defined as
+χA(z) = 1 if z ∈ A
+0 if z ∈/ A .
+The measure of the intersection of the two epsilon balls can also be described with
+μ Bε(x) ∩ Bε(y) =
+Z
+z∈Sx,y
+ρ(z)dV (151)
+=
+Z
+RD
+ρ(z) · χSx,y (z)dV. (152)
+Now suppose we have two sequences, {xi}∞
+i=1 and {yi}∞
+i=1 where limi→∞ xi = x, limi→∞ yi = y, and limi→∞ ∥xi − yi∥2 = 0. Now define Sx,i = Bε(xi), Sy,i = Bε(yi) and Si = Bε(xi) ∩ Bε(yi).
+We will show that limi→∞ χSx,i (z) = limi→∞ χSy,i (z) pointwise, from which it will follow that χSi will converge to the same function pointwise. Define χ(z) := limi→∞ χSy,i (z). Now we’ll show that limi→∞ χSx,i (z) = χ(z). This involves showing that for all a ∈ RD we have limi→∞ χSx,i (a) = χ(a). Consider two cases:
+• χ(a) = 1. Since xi → x and ∥xi − yi∥2 → 0, we have xi → y. Since χ(a) = 1, we know that for sufficiently large i, ∥a − yi∥2 ≤ ε, so it follows that ∥a − y∥2 ≤ ε. Since xi → y, it must be true that ∥a − xi∥2 ≤ ε for sufficiently large i. Thus for sufficiently large i, χSx,i (a) = χ(a) = 1.
+• χ(a) = 0. This implies ∥a − yi∥2 > ε for sufficiently large i. Since ∥xi − yi∥2 → 0 we must also have that ∥a − xi∥2 > ε for sufficiently large i as well. Thus for sufficiently large i we have χSx,i (a) = χ(a) = 0.
+Therefore limi→∞ χSx,i (z) = limi→∞ χSy,i (z) = χ(z). It then follows that the indicator function on intersection of the two epsilon balls (denoted Sxi,yi ) must also converge pointwise to χ(z). Namely, limi→∞ χSxi,yi (z) = χ(z).
+52
+
+
+Preprint.
+Now we want to use these results to evaluate 146 in the limit. As we will show, the denominator converges to a nonzero value, and thus the limit can be taken into the numerator and denominator as follows,
+ili→m∞ Pa∼ρ
+h
+a ∈ Bε(xi) ∩ Bε(yi) a ∈ Bε(xi) ∪ Bε(yi)
+i
+(153)
+= ili→m∞
+μ Bε(xi) ∩ Bε(yi)
+μ Bε(xi) + μ Bε(yi) − μ Bε(xi) ∩ Bε(yi)
+(154)
+=
+ili→m∞ μ Bε(xi) ∩ Bε(yi)
+ili→m∞ μ Bε(xi) + μ Bε(yi) − μ Bε(xi) ∩ Bε(yi)
+.
+(155) Let’s consider the numerator first. Rewriting using 152, we have
+ili→m∞ μ Bε(xi) ∩ Bε(yi) = ili→m∞
+Z
+RD
+ρ(z) · χSxi,yi (z)dV.
+Observe that |ρ(z)χSxi,yi (z)| ≤ ρ(z) for all i; ρ(z) is integrable as it represents a probability density
+function over RD. Thus, we can invoke the dominated convergence theorem to pull the limit inside of the integral to obtain,
+ili→m∞ μ Bε(xi) ∩ Bε(yi) =
+Z
+RD
+ili→m∞ ρ(z) · χSxi,yi (z)dV
+=
+Z
+RD
+ρ(z) · χ(z)dV.
+Now let’s evaluate μ(Bε(xi)) in the limit. We can invoke the dominated convergence theorem again for both to pull the limit inside of the integral as before,
+ili→m∞ μ Bε(xi) = ili→m∞
+Z
+RD
+ρ(z) · χSxi (z)dV
+=
+Z
+RD
+ili→m∞ ρ(z) · χSxi (z)dV
+=
+Z
+RD
+ρ(z) · χ(z)dV.
+And finally the same steps can be taken to find that limi→∞ μ Bε(yi) = R
+RD ρ(z) · χ(z)dV .
+Stitching it all together, we have
+ili→m∞ Pa∼ρ
+h
+a ∈ Bε(xi) ∩ Bε(yi) a ∈ Bε(xi) ∪ Bε(yi)
+i
+=
+ili→m∞ μ Bε(xi) ∩ Bε(yi)
+ili→m∞ μ Bε(xi) + μ Bε(yi) − μ Bε(xi) ∩ Bε(yi)
+=
+Z
+RD
+ρ(z) · χ(z)dV
+Z
+RD
+ρ(z) · χ(z)dV +
+Z
+RD
+ρ(z) · χ(z)dV −
+Z
+RD
+ρ(z) · χ(z)dV
+=
+Z
+RD
+ρ(z) · χ(z)dV
+Z
+RD
+ρ(z) · χ(z)dV
+= 1.
+53
+
+
+Preprint.
+A.4 ADDITIONAL EXPERIMENTS
+A.4.1 MANIFOLD LEARNING: T-SNE EMBEDDINGS
+Here we show additional runs of t-SNE (Van der Maaten & Hinton, 2008) on noisy samples from the swiss roll and the swiss hole. These experiments supplement those that are presented in Figure 4. We find that t-SNE embeddings are inconsistent between runs for this particular task, so to ensure full transparency we show results on three different samples in Figure 18.
+Trial 1 Trial 2
+None
+Original Data
+Trial 3 Trial 1 Trial 2 Trial 3
+Figure 18: Embeddings produced by t-SNE (Van der Maaten & Hinton, 2008) on three different sets of noisy samples from the swiss roll (left) and swiss hole (right).
+A.4.2 CLUSTERING
+None
+Concentric Circles
+Concentric
+Hyperboloids Moons Quadratics
+ARI: 1.00
+ARI: 0.36
+ARI: 1.00
+ARI: 8.2e-4
+ARI: 1.00
+ARI: 6.9e-3
+ARI: 1.00
+ARI: 0.99
+Figure 19: Spectral clustering applied to several synthetic manifolds, with adjusted Rand index (ARI) shown. Nearest neighbor graphs in the top row were pruned by ORC-MANL, while the nearest neighbor graphs on the bottom row were not.
+We further evaluate ORC-MANL pruned graphs on spectral clustering, a canonical algorithm for finding communities of arbitrary shape (Bach & Jordan, 2003). The algorithm embeds the data using the eigenvectors of the graph Laplacian, and proceeds by running the k-means algorithm on the embedding (Hartigan & Wong, 1979). On this task we expect ORC-MANL to help very much: if the underlying manifold exhibits several connected components, ORC-MANL pruning should
+54
+
+
+Preprint.
+reveal them, resulting in an easy task for spectral clustering. Unsurprisingly, we find that holds true, as ORC-MANL improves spectral clustering as measured by the adjusted Rand index (ARI) (Hubert & Arabie, 1985). A higher ARI indicates a better alignment with base truth clustering, with the best possible score being 1. We test on noisy manifolds exhibiting two underlying connected components, where visualization of the results is shown in Figure 19. We find that ORC-MANL ensures perfect ARI across examples, while the unpruned graphs result in a trivial clustering that is not representative of the underlying structure of the data. We do not include t-SNE or UMAP embeddings as they require finite pairwise distances, which does not hold in the case where pruning (correctly) results in more than one connected component.
+A.4.3 REAL DATA: UMAP AND TSNE
+Here we include UMAP (McInnes et al., 2018) and t-SNE (Van der Maaten & Hinton, 2008) embeddings the of scRNAseq data of brain cells in mice that was analyzed in Section 4.2.
+Figure 20 shows embeddings of scRNAseq data from 10000 Anterolateral Motor Cortex (ALM) brain cells in mice. Unlike the embeddings produced by Isomap (Tenenbaum et al., 2000) shown in Figure 7, we find that UMAP and t-SNE do poorly with and without ORC-MANL pruning as measured by the extent to which neuronal (consisting of labels “Inhibitory” and “Excitatory”) and non-neuronal cell communities are preserved.
+None None
+Figure 20: UMAP (McInnes et al., 2018) and t-SNE (Van der Maaten & Hinton, 2008) embeddings of scRNAseq data from 10000 Anterolateral Motor Cortex (ALM) brain cells in mice with base truth cell-type annotation with and without ORC-MANL pruning. Data available from Abdelaal et al. (2019) and the Allen Brain Institute.
+A.4.4 MANIFOLD CURVATURE
+Ollivier-Ricci Curvature
+Figure 21: Empirical distribution of ORC for 2000 points sampled each from the Bolza surface, the flat torus and the unit 2-sphere using k-NN connectivity (left) and ε-radius connectivity (right). The Bolza surface has scalar curvature −2, the flat torus has scalar curvature 0 while the sphere has scalar curvature +2. Note that for 2-dimensional surfaces such as these, the scalar curvature is simply twice the Gaussian curvature.
+55
+
+
+Preprint.
+Theoretical and empirical results from van der Hoorn et al. (2021) indicate that under noiseless and uniform sampling, a specific instantiation of ORC converges to the Ricci curvature of the underlying manifold from which the data was sampled (up to a constant of proportionality). This result could be a point of concern for ORC-MANL, as it would suggest variable performance as a function of manifold curvature. To quell any concern, in Figure 21 we plot the distribution of ORC values (computed with the formulation described in Section 2.3) for nearest neighbor graphs where points were sampled noiselessly from three different manifolds of varying curvature: the Bolza surface (scalar curvature −2), the flat torus (scalar curvature 0) and the unit sphere (scalar curvature +2). Note that for surfaces such as these, the scalar curvature is simply twice the Ricci curvature.
+In this experiment, we find minimal variation in the distribution of ORC values for the three manifolds. While this does not suggest invariance to curvature in general, we consider this to be an indication that for the regimes we expect to encounter in practice, underlying manifold curvature should not be a significant cause for concern.
+A.4.5 EMPIRICAL CONVERGENCE: THE SWISS ROLL
+Non-Shortcut Shortcut
+Ollivier-Ricci Curvature
+Thresholded graph distance,
+Figure 22: Plot of ORC versus thresholded graph distance dG′ for all edges in an unpruned nearest neighbor graph of the noisy 3D swiss roll. Dotted lines indicate theory-derived thresholds on ORC and thresholded-graph distance respectively. Note that we use δ = 0.8, λ = 0.01 and ε = 3.
+Figure 22 plots the ORC versus thresholded graph distance for all edges in a nearest neighbor graph built from noisy samples from the swiss roll. The figure also plots the thresholds indicated from the theoretical results detailed in Section 3. In this example, we see that all shortcut edges have ORC below −1 + 4(1 − δ), though some non-shortcut edges fall under this threshold too. But the figure also illustrates that all shortcut edges exceed the thresholded graph distance, while no non-shortcut edges do.
+56

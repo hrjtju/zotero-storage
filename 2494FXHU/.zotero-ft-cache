@@ -1,0 +1,583 @@
+A bi-objective optimization method to minimize the makespan and energy consumption on parallel SLM machines
+Junjie Lin1, Chunlong Yu2*, Jianfeng Lu3
+
+2023 IEEE 19th International Conference on Automation Science and Engineering (CASE) | 979-8-3503-2069-5/23/$31.00 ©2023 IEEE | DOI: 10.1109/CASE56687.2023.10260369
+
+Abstract— The scheduling problem in additive manufacturing system has attracted attentions in recent years. Most concern the productivity objective, only a few have considered the scheduling impact on machine energy consumption and hence, the potential of energy-saving without sacrificing productivity is still not clear. To investigate this, we address the bi-objective scheduling problem in parallel selective laser melting (SLM) machines to minimize the total energy consumption and makespan. The nesting and scheduling decisions are jointly considered. We present a mixed integer linear programming model, and propose an epsilon constraint approach to obtain the Pareto-optimal front. The properties of the problem are investigated by numerical experiments, and some insights are provided. Keywords: 3D printing, multi-objective scheduling, energy saving, makespan
+I. INTRODUCTION
+As additive manufacturing (AM) has been widely applied, the scheduling in AM production has become increasingly important (Che et al., 2021). Recent studies have explored the nesting, i.e., parts are placed in a limited build platform without overlap, and scheduling problem in AM systems to minimize the makespan. Kucukkoc et al. (2018) proposed mathematical models for single-machine and multi-machine environments. Zhang et al. (2020) considered the parallel machines scheduling problem with irregular part shapes and proposed a genetic algorithm. Alicastro et al. (2021) considered a nesting and scheduling problem of unrelated parallel machines, and proposed a local search algorithm enhanced by a reinforcement learning mechanism for neighborhood selection.
+However, additive manufacturing has been recognized as an energy-intensive technology, especially in large-scale parts and mass production. The formation of multiple thin layers from raw materials requires a considerable amount of energy, and thus the energy consumption per unit volume of material is often much higher than conventional manufacturing techniques (Yoon et al., 2014). This aspect raises concerns about the potential negative environmental impacts and therefore, reducing energy consumption is becoming one of the most important goals driving the adoption of additive manufacturing in key industries (Karimi et al., 2021).
+Some studies focus on energy-aware scheduling. Paul et al. (2012) optimized the build orientation of the parts and layer thickness to reduce energy consumption for selective laser sintering (SLS). Karimi et al. (2021) proposed a mix integer
+
+linear programming (MILP) model that adjusts process parameters at different printing stages and controls the starting time of each job. The model succeeds to reduce the peak power and thus the electricity cost. Piili et al. (2015) discovered that a multiple-parts build can lead to an energy reduction of 8192% compared to a single-part build. The reason is that the parts assigned to one batch can share the recoat time and heating/cooling time. Oh et al. (2020) found that the part orientation policy has impact on the batch height and the total number of batches, which, consequently, can have an impact on the energy consumption. In summary, many studies have focused on reducing the energy consumption and costs by scheduling or adjusting process parameters. Few have paid attention to the energy-saving potential brought by part nesting and build orientation selection, which are quite important for the printing efficiency and energy consumption. There is also a lack of investigation on how the energy consumption and makespan will compromise when different nesting and scheduling strategies are applied. Therefore, there rises an interesting question: would it be possible to save energy without delaying too much the maximum completion time?
+In this study, we consider the nesting and scheduling problem in unrelated parallel selective laser melting (SLM) machines with the objective of minimizing the total energy consumption and makespan. The decisions of build orientation selection, part-to-batch allocation, nesting and batch-tomachine assignment are to be optimized. The contributions of this study are as follows:
+1. We formulate the bi-objective nesting and scheduling problem for parallel selective laser melting (SLM) machines, and provide an efficient MILP model.
+2. An ε -constraint approach is proposed to obtain the Pareto front, with which the trade-off between the makespan and energy consumption is clearly illustrated. Some managerial insights are provided.
+The remaining of the paper is organized as follows. Section II describes the problem. Section III describes the energy consumption model. Section IV proposes the mathematical model. Section V introduces the ε-constraint method. Section VI reports the results, and Section VII concludes the paper.
+II. PROBLEMS DESCRIPTION
+A set of parts 𝐽𝐽 = {1, … , 𝑛𝑛} are to be printed in a group of
+
+*Resrach supported by Shanghai Pujiang Program (21PJ1413300), Tongji University “Fundamental Research Funds for the Central Universities”, and Tongji University “Innovative Design and Intelligent Manufacturing Discipline Group” Project (F2206)
+1Junjie Lin is with the School of Mechanical Engineering, Tongji University, Shanghai, 201804, P.R. China.
+
+2Chunlong Yu is with the School of Mechanical Engineering, Tongji University, Shanghai, 201804, P.R. China (e-mail:
+chunlong_yu@tongji.edu.cn). 3Jianfeng Lu is with the CIMS Research Center, Tongji University,
+Shanghai, 201804, P.R. China.
+
+Authorized licensed use limited to: TONGJI UNIVERSITY. Downloaded on October 21,2023 at 07:27:46 UTC from IEEE Xplore. Restrictions apply.
+
+Build orientation selection, part-to-batch assignment, and nesting
+
+Part 1 Part 2 Part 3 Part 4
+
+Batch1 P·1
+Batch2 P2 P5 P3
+
+Part 5 Part 6
+
+Batch3 P4 P6
+
+Batch scheduling
+
+SLM Machines List of batches
+
+M1
+
+Batch 1 Batch 2
+
+·
+
+M2
+
+Batch 3
+
+Figure 1. The nesting and scheduling problem for parallel SLM machines
+parallel SLM machines 𝐼𝐼 = {1, . . . , 𝑚𝑚}. Each part 𝑗𝑗 ∈ 𝐽𝐽 has a volume 𝑣𝑣𝑗𝑗, a surface area 𝑠𝑠𝑗𝑗, and a set of alternative build orientations 𝐾𝐾𝑗𝑗. Each build orientation 𝑘𝑘 ∈ 𝐾𝐾𝑗𝑗 is characterized by four parameters �ℎ𝑗𝑗𝑗𝑗, 𝑙𝑙𝑗𝑗𝑗𝑗, 𝑤𝑤𝑗𝑗𝑗𝑗, 𝑠𝑠𝑗𝑗𝑗𝑗� . These parameters represent the height, length, and width of the minimum bounding box of the part, as well as the volume of the supporting structure, respectively. A machine can process a batch of parts simultaneously. The capacity of each machine, say 𝑖𝑖, is determined by the dimensions of a cuboid with length 𝐿𝐿𝑖𝑖, width 𝑊𝑊𝑖𝑖, and height 𝐻𝐻𝑖𝑖. As depicted in Figure 1, the parts are initially allocated into batches. This process involves selecting one from several optional build orientations for the parts and arranging them on the build platform without stacking to avoid any overlapping, which can be regarded as a 2D nesting problem (Lodi et al., 2002). The parts should be positioned parallel to the length or width of the platform and are allowed to rotate by 90° around the Z-axis. Subsequently, the batches are scheduled on machines. The objective is to derive a schedule that simultaneously minimizes the total energy consumption and makespan.
+
+III. ENERGY CONSUMPTION MODEL
+Typically, a SLM machine consists of eleven subsystems represented by F={bs,ht,wc,co,lsb,lfc,lvh,lss,rm,ev,gp}, where bs is the basic system, ht is the heater, wc is the water circulation system, 𝑐𝑐𝑐𝑐 is the water cooling unit, lsb is the laser unit for scanning border, lfc is the laser unit for filling contour, lvh is the laser unit for volume hatching, lss is the laser unit for scanning supporting structure, rm is the recoater motor, ev is the electric values, gp is the gas circulation pump motor. The process of printing a batch can be divided into seven subprocesses represented by 𝐿𝐿={ph,sb,fc,vh,ss,rc,co}, where ph is the preheating, sb is the scanning border, fc is the filling contour, vh is volume hatching, ss is the building of support structure, rc is the recoating, co is the cooling. The energy consumption for printing a single batch is calculated as:
+
+𝐸𝐸𝑖𝑖𝑖𝑖 = ∑𝑓𝑓𝑓𝑓𝑓𝑓 ∑𝑙𝑙𝑙𝑙𝑙𝑙 𝑝𝑝𝑓𝑓𝑓𝑓𝜑𝜑𝑓𝑓𝑓𝑓𝑓𝑓𝑇𝑇𝑙𝑙𝑙𝑙𝑙𝑙, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+
+(1)
+
+where 𝐸𝐸𝑖𝑖𝑖𝑖 is the energy consumption of the 𝑏𝑏 -th batch of machine i, 𝑝𝑝𝑓𝑓𝑓𝑓 is the power of subsystem 𝑓𝑓 of machine i, 𝑇𝑇𝑙𝑙𝑙𝑙𝑏𝑏 is the processing time of subprocess 𝑙𝑙 in the b-th batch of machine i, 𝜑𝜑𝑓𝑓𝑓𝑓𝑓𝑓 ∈ [0,1] is a factor describing the working state of subsystem 𝑓𝑓 in subprocess 𝑙𝑙 of machine i. To decide the values of 𝜑𝜑𝑓𝑓𝑓𝑓𝑓𝑓 for the subsystems, measurements are often
+
+required. See Lv et al. (2021) for details of the measurement procedure.
+IV. MATHEMATICAL PROGRAMMING MODEL
+In this section, we propose a MILP model for the defined problem and several means to improve the model efficiency.
+A. Nesting and Scheduling Model
+The MILP model is given as follows. The sets are:
+𝐽𝐽: set of parts 𝐼𝐼: set of machines 𝐹𝐹: set of subsystems 𝐿𝐿: set of subprocesses 𝐾𝐾𝑗𝑗 : set of alternative build orientations of part j B: set of available batches on machine
+The parameters are: 𝑣𝑣𝑗𝑗: volume of part j 𝑎𝑎𝑗𝑗: surface area of the part j 𝐷𝐷: the distance from part to the border of the platform 𝑑𝑑: the distance from part to part 𝑈𝑈𝑖𝑖: recoating speed of machine i 𝐿𝐿𝑖𝑖, 𝑊𝑊𝑖𝑖, 𝐻𝐻𝑖𝑖: length, width and height of the build platform ℎ𝑗𝑗𝑗𝑗, 𝑙𝑙𝑗𝑗𝑗𝑗, 𝑤𝑤𝑗𝑗𝑗𝑗, 𝑠𝑠𝑗𝑗𝑗𝑗: height, length, width and supporting structure volume of the k-th orientation of part j 𝑛𝑛𝑖𝑖 : number of the lasers of machine i 𝑣𝑣𝑖𝑖𝑖𝑖: speed for scanning border of machine i 𝑣𝑣𝑖𝑖𝑖𝑖: speed for filling contour of machine i 𝑣𝑣𝑝𝑝̇ 𝑝𝑝: build-up rate for the part of machine i 𝑣𝑣𝑠𝑠̇ 𝑠𝑠: build-up rate for the support of machine i ∆y: layer thickness 𝑝𝑝𝑓𝑓𝑓𝑓: power of the subsystem f of machine i 𝑇𝑇𝑇𝑇𝑇𝑇𝑖𝑖: the time spent in the preheating subprocess 𝑇𝑇𝑇𝑇𝑇𝑇𝑖𝑖: the time spent in the cooling subprocess 𝜑𝜑𝑓𝑓𝑓𝑓𝑓𝑓 : the power coefficient of the subsystem f in the subprocess 𝑙𝑙 of machine i
+The decision variables are: 𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗: equals 1 if part j is assigned to the 𝑏𝑏-th batch of machine i, 0 otherwise 𝑌𝑌𝑗𝑗𝑗𝑗: equals 1 if part j selects the k-th optional build orientation, 0 otherwise �𝑥𝑥𝑗𝑗, 𝑦𝑦𝑗𝑗� ： coordinates of the left-bottom point of part j’s projection on the platform 𝑜𝑜𝑗𝑗: equals 1 if part j is placed such that its length is parallel to that of the platform, 0 otherwise
+The auxiliary variables are: 𝑍𝑍𝑖𝑖𝑖𝑖 : equals 1 if the b-th batch of machine i is formed, 0 otherwise 𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′: equals 1 if part 𝑗𝑗’s right-top point is placed to the left of part 𝑗𝑗′’s left-bottom point in the same batch, 0 otherwise; 𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′: equals 1 if part 𝑗𝑗’s right-top point is placed below part 𝑗𝑗′’s left-bottom point in the same batch, 0 otherwise 𝐻𝐻𝑖𝑖𝑖𝑖: height of the b-th batch of machine i 𝐸𝐸𝑖𝑖𝑖𝑖: the energy consumption of the b-th batch of machine i 𝑇𝑇𝑙𝑙𝑙𝑙𝑏𝑏: the processing time of subprocess l in the b-th batch of machine i
+
+Authorized licensed use limited to: TONGJI UNIVERSITY. Downloaded on October 21,2023 at 07:27:46 UTC from IEEE Xplore. Restrictions apply.
+
+𝑃𝑃𝑖𝑖𝑖𝑖: processing time of the b-th batch on machine i 𝐶𝐶𝑖𝑖𝑖𝑖: completion time of the b-th batch on machine i 𝐶𝐶𝑚𝑚𝑚𝑚𝑚𝑚: the makespan of the producing system
+𝑀𝑀：a large number
+
+In the model, the auxiliary variables 𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′、𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′、𝑃𝑃𝑃𝑃𝑗𝑗′𝑗𝑗、 𝑃𝑃𝑃𝑃𝑗𝑗′𝑗𝑗 together describe the position relationship of part j and 𝑗𝑗′.
+The nesting and scheduling problem of the SLM machines is formulated as:
+
+� 𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗 ≤ 𝑀𝑀𝑍𝑍𝑖𝑖𝑖𝑖, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖 , 𝑖𝑖 ∈ 𝐼𝐼
+
+(2)
+
+𝑗𝑗∈𝐽𝐽
+
+� � 𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗 = 1, ∀𝑗𝑗 ∈ 𝐽𝐽
+
+(3)
+
+𝑖𝑖∈𝐼𝐼 𝑏𝑏∈𝐵𝐵𝑖𝑖
+
+� 𝑌𝑌𝑗𝑗𝑗𝑗 = 1, ∀𝑗𝑗 ∈ 𝐽𝐽
+
+(4)
+
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+
+��𝑎𝑎𝑗𝑗𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗�/(𝑛𝑛𝑖𝑖𝑣𝑣𝑖𝑖𝑖𝑖∆𝑦𝑦) ≤ 𝑇𝑇𝑠𝑠𝑠𝑠,𝑖𝑖𝑖𝑖, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+
+(5)
+
+𝑗𝑗∈𝐽𝐽
+
+��𝑎𝑎𝑗𝑗𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗�/(𝑛𝑛𝑖𝑖𝑣𝑣𝑖𝑖𝑖𝑖∆𝑦𝑦) ≤ 𝑇𝑇𝑓𝑓𝑓𝑓,𝑖𝑖𝑖𝑖, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+
+(6)
+
+𝑗𝑗∈𝐽𝐽
+
+��𝑣𝑣𝑗𝑗𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗�/�𝑣𝑣𝑝𝑝̇ 𝑝𝑝� ≤ 𝑇𝑇𝑣𝑣ℎ,𝑖𝑖𝑖𝑖, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+
+(7)
+
+𝑗𝑗∈𝐽𝐽
+
+� �𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗 � 𝑠𝑠𝑗𝑗𝑗𝑗𝑌𝑌𝑗𝑗𝑗𝑗� /(𝑣𝑣𝑠𝑠̇ 𝑠𝑠) ≤ 𝑇𝑇𝑠𝑠𝑠𝑠,𝑖𝑖𝑖𝑖, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼 (8)
+
+𝑗𝑗∈𝐽𝐽
+
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+
+𝑇𝑇𝑝𝑝ℎ,𝑖𝑖𝑖𝑖 = 𝑇𝑇𝑇𝑇𝑇𝑇𝑖𝑖, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+
+𝑇𝑇𝑐𝑐𝑐𝑐,𝑖𝑖𝑖𝑖 = 𝑇𝑇𝑇𝑇𝑇𝑇𝑖𝑖, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+
+(9) (10)
+
+𝐻𝐻𝑖𝑖𝑖𝑖 ≥ � 𝑌𝑌𝑗𝑗𝑗𝑗ℎ𝑗𝑗𝑗𝑗 − 𝑀𝑀�1 − 𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗�,
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑗𝑗 ∈ 𝐽𝐽, 𝑖𝑖 ∈ 𝐼𝐼 𝐻𝐻𝑖𝑖𝑖𝑖𝑈𝑈/∆𝑦𝑦 ≤ 𝑇𝑇𝑟𝑟𝑟𝑟,𝑖𝑖𝑖𝑖, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+
+(11) (12)
+
+𝐸𝐸𝑖𝑖𝑖𝑖 ≥ � � 𝑝𝑝𝑓𝑓𝑓𝑓𝜑𝜑𝑓𝑓𝑓𝑓𝑓𝑓𝑇𝑇𝑙𝑙𝑙𝑙𝑙𝑙, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+
+(13)
+
+𝑓𝑓∈𝐹𝐹 𝑙𝑙∈𝐿𝐿
+𝐻𝐻𝑖𝑖𝑖𝑖 ≤ 𝐻𝐻𝑖𝑖, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+
+(14)
+
+𝑥𝑥𝑗𝑗 + � 𝑌𝑌𝑗𝑗𝑗𝑗𝑙𝑙𝑗𝑗𝑗𝑗 ≤ 𝐿𝐿𝑖𝑖 + 𝑀𝑀�1 − 𝑂𝑂𝑗𝑗� + 𝑀𝑀(1 − � 𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗), ∀𝑗𝑗
+
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+∈ 𝐽𝐽, 𝑖𝑖 ∈ 𝐼𝐼
+
+𝑏𝑏∈𝐵𝐵𝑖𝑖
+(15)
+
+𝑥𝑥𝑗𝑗 + � 𝑌𝑌𝑗𝑗𝑗𝑗𝑤𝑤𝑗𝑗𝑗𝑗 ≤ 𝐿𝐿𝑖𝑖 + 𝑀𝑀𝑀𝑀𝑗𝑗 + 𝑀𝑀(1 − � 𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗), ∀𝑗𝑗 ∈ 𝐽𝐽, 𝑖𝑖
+
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+∈ 𝐼𝐼
+
+𝑏𝑏∈𝐵𝐵𝑖𝑖
+
+(16)
+
+𝑦𝑦𝑗𝑗 + � 𝑌𝑌𝑗𝑗𝑗𝑗𝑤𝑤𝑗𝑗𝑗𝑗 ≤ 𝑊𝑊𝑖𝑖 + 𝑀𝑀�1 − 𝑂𝑂𝑗𝑗� + 𝑀𝑀(1 − � 𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗), ∀𝑗𝑗
+
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+∈ 𝐽𝐽, 𝑖𝑖 ∈ 𝐼𝐼
+
+𝑏𝑏∈𝐵𝐵𝑖𝑖
+(17)
+
+𝑦𝑦𝑗𝑗 + � 𝑌𝑌𝑗𝑗𝑗𝑗𝑙𝑙𝑗𝑗𝑗𝑗 ≤ 𝑊𝑊𝑖𝑖 + 𝑀𝑀𝑂𝑂𝑗𝑗 + 𝑀𝑀(1 − � 𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗), ∀𝑗𝑗 ∈ 𝐽𝐽, i
+
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+∈ 𝐼𝐼
+
+𝑏𝑏∈𝐵𝐵𝑖𝑖
+
+(18)
+
+𝑥𝑥𝑗𝑗 + � 𝑌𝑌𝑗𝑗𝑗𝑗𝑙𝑙𝑗𝑗𝑗𝑗 + 𝑑𝑑 ≤ 𝑥𝑥𝑗𝑗′ + 𝑀𝑀�1 − 𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′� + 𝑀𝑀�1 − 𝑂𝑂𝑗𝑗�,
+
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+
+∀𝑗𝑗, 𝑗𝑗′ ∈ 𝐽𝐽
+
+(19)
+
+𝑥𝑥𝑗𝑗 + � 𝑌𝑌𝑗𝑗𝑗𝑗𝑤𝑤𝑗𝑗𝑗𝑗 + 𝑑𝑑 ≤ 𝑥𝑥𝑗𝑗′ + 𝑀𝑀�1 − 𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′� + 𝑀𝑀𝑂𝑂𝑗𝑗, ∀𝑗𝑗, 𝑗𝑗′
+
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+∈ 𝐽𝐽
+
+(20)
+
+𝑦𝑦𝑗𝑗 + � 𝑌𝑌𝑗𝑗𝑗𝑗𝑤𝑤𝑗𝑗𝑗𝑗 + 𝑑𝑑 ≤ 𝑥𝑥𝑗𝑗′ + 𝑀𝑀�1 − 𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′� + 𝑀𝑀�1 − 𝑂𝑂𝑗𝑗�,
+
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+
+∀𝑗𝑗, 𝑗𝑗′ ∈ 𝐽𝐽
+
+(21)
+
+𝑦𝑦𝑗𝑗 + � 𝑌𝑌𝑗𝑗𝑗𝑗𝑙𝑙𝑗𝑗𝑗𝑗 + 𝑑𝑑 ≤ 𝑥𝑥𝑗𝑗′ + 𝑀𝑀�1 − 𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′ � + +𝑀𝑀𝑂𝑂𝑗𝑗, ∀𝑗𝑗, 𝑗𝑗′
+
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+
+∈ 𝐽𝐽
+
+(22)
+
+𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′ + 𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′ + 𝑃𝑃𝑃𝑃𝑗𝑗′𝑗𝑗 + 𝑃𝑃𝑃𝑃𝑗𝑗′𝑗𝑗 ≥ 𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗 + 𝑋𝑋𝑗𝑗′𝑖𝑖𝑖𝑖 − 1, ∀𝑗𝑗, 𝑗𝑗′
+
+∈ 𝐽𝐽, 𝑗𝑗 < 𝑗𝑗′, 𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖
+
+(23)
+
+𝑃𝑃𝑖𝑖𝑖𝑖 ≥ ∑𝑙𝑙∈𝐿𝐿 𝑇𝑇𝑙𝑙𝑙𝑙𝑙𝑙, ∀ i∈ I, b∈ 𝐵𝐵𝑖𝑖
+
+(24)
+
+𝐶𝐶𝑖𝑖0 = 𝑃𝑃𝑖𝑖0, ∀𝑖𝑖 ∈ 𝐼𝐼
+
+(25)
+
+𝐶𝐶𝑖𝑖𝑖𝑖 ≥ 𝐶𝐶𝑖𝑖(𝑏𝑏−1) + 𝑃𝑃𝑖𝑖𝑖𝑖 , ∀𝑖𝑖 ∈ 𝐼𝐼, 𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖
+
+(26)
+
+𝐶𝐶𝑚𝑚𝑚𝑚𝑚𝑚 ≥ 𝐶𝐶𝑖𝑖𝑖𝑖, ∀𝑖𝑖 ∈ 𝐼𝐼, 𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖 𝑍𝑍𝑖𝑖𝑖𝑖 ∈ {0,1}, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼 𝑇𝑇𝑙𝑙𝑙𝑙𝑙𝑙 ≥ 0, ∀𝑙𝑙 ∈ 𝐿𝐿, 𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗 ∈ {0,1}, ∀𝑗𝑗 ∈ 𝐽𝐽,b∈ 𝐵𝐵𝑖𝑖
+
+(27) (28) (29) (30)
+
+𝑌𝑌𝑗𝑗𝑗𝑗 ∈ {0,1}, ∀𝑗𝑗 ∈ 𝐽𝐽,k∈𝐾𝐾𝑗𝑗 𝑃𝑃𝑖𝑖𝑖𝑖, 𝐶𝐶𝑖𝑖𝑖𝑖, 𝐻𝐻𝑖𝑖𝑖𝑖 ≥ 0 , ∀𝑏𝑏 ∈ 𝐵𝐵, 𝑖𝑖 ∈ 𝐼𝐼
+𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′, 𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′∈{0,1},∀𝑗𝑗, 𝑗𝑗′ ∈ 𝐽𝐽
+
+(31) (32) (33)
+
+𝑥𝑥𝑗𝑗, 𝑦𝑦𝑗𝑗 ≥ 0, ∀𝑗𝑗 ∈ 𝐽𝐽
+
+(34)
+
+𝑜𝑜𝑗𝑗 ∈ {0,1}, ∀𝑗𝑗 ∈ 𝐽𝐽
+
+(35)
+
+Constraints (2) ensure that batches cannot be assigned to without forming, Constraints (3) specify that a part is assigned to only one batch, Constraints (4) guarantee that a part selects only one build orientation, Constraints (5) calculate the laser scans time to border for the batch, Constraints (6) calculate the time for the laser to fill contour of the batch, Constraints (7) calculate the time for the laser to hatch volume of the batch, Constraints (8) calculate the time for the laser to build support structure, Constraints (9) define the preheating time, Constraints (10) define the cooling time, Constraints (11) define the height of the batch, Constraints (12) calculate the recoating time of the batch, Constraints (13) calculate the energy consumption of the batch, Constraints (14) guarantee that the height of the batch is less than the height of the machine, Constraints (15)-(18) ensure that the parts do not exceed the machine boundary, Constraints (19)-(22) ensure that the parts assigned to the same batch do not overlap. More specifically, when 𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′ equal to 1, part j is placed on the left side of part j', the right edge of part j does not exceed the left edge of part j'; when 𝑃𝑃𝑃𝑃𝑗𝑗𝑗𝑗′ equal to 0, the constraint is released. Constraints (21) and (22) establish the similar position relationships in vertical direction. Constraints (23) guarantee that when part j and part j' are assigned to the same batch, i.e., 𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗, 𝑋𝑋𝑗𝑗′𝑖𝑖𝑖𝑖 equal to 1, there is at least one active positioning relationship. Constraints (24) calculate the processing time of the batch. Constraints (26) calculate the batch completion time. Constraints (27) define the makespan.
+
+The first objective is the makespan, and the MILP is:
+
+MILP-C: 𝑚𝑚𝑚𝑚𝑚𝑚 𝐶𝐶𝑚𝑚𝑚𝑚𝑚𝑚
+
+(36)
+
+s.t. (2) – (35)
+
+The second objective is the total energy consumption, i.e.,
+
+Authorized licensed use limited to: TONGJI UNIVERSITY. Downloaded on October 21,2023 at 07:27:46 UTC from IEEE Xplore. Restrictions apply.
+
+TABLE I.
+
+THE BIG-M VALUES IN DIFFERENT CONSTRAINTS
+
+Constrains (2) (11) (15)(18) (16)(17) (19) (20) (21) (22) (39)
+
+Big-M value 𝑀𝑀 = |𝐽𝐽|
+𝑀𝑀 = 𝑚𝑚𝑚𝑚𝑚𝑚𝑗𝑗∈𝐽𝐽,𝑘𝑘∈𝐾𝐾𝑗𝑗 ℎ𝑗𝑗𝑗𝑗 𝑀𝑀 = 𝑚𝑚𝑚𝑚𝑚𝑚𝑗𝑗∈𝐽𝐽,𝑘𝑘∈𝐾𝐾𝑗𝑗 𝑙𝑙𝑗𝑗𝑗𝑗 𝑀𝑀 = 𝑚𝑚𝑚𝑚𝑚𝑚𝑗𝑗∈𝐽𝐽,𝑘𝑘∈𝐾𝐾𝑗𝑗 𝑤𝑤𝑗𝑗𝑗𝑗 𝑀𝑀 = 𝑚𝑚𝑚𝑚𝑚𝑚𝑗𝑗∈𝐽𝐽,𝑘𝑘∈𝐾𝐾𝑗𝑗 𝑙𝑙𝑗𝑗𝑗𝑗 + 𝑚𝑚𝑚𝑚𝑚𝑚𝑖𝑖∈𝐼𝐼 𝐿𝐿𝑖𝑖 𝑀𝑀 = 𝑚𝑚𝑚𝑚𝑚𝑚𝑗𝑗∈𝐽𝐽,𝑘𝑘∈𝐾𝐾𝑗𝑗 𝑤𝑤𝑗𝑗𝑗𝑗 + 𝑚𝑚𝑚𝑚𝑚𝑚𝑖𝑖∈𝐼𝐼 𝐿𝐿𝑖𝑖 𝑀𝑀 = 𝑚𝑚𝑚𝑚𝑚𝑚𝑗𝑗∈𝐽𝐽,𝑘𝑘∈𝐾𝐾𝑗𝑗 𝑤𝑤𝑗𝑗𝑗𝑗 + 𝑚𝑚𝑚𝑚𝑚𝑚𝑖𝑖∈𝐼𝐼 𝑊𝑊𝑖𝑖 𝑀𝑀 = 𝑚𝑚𝑚𝑚𝑚𝑚𝑗𝑗∈𝐽𝐽,𝑘𝑘∈𝐾𝐾𝑗𝑗 𝑙𝑙𝑗𝑗𝑗𝑗 + 𝑚𝑚𝑚𝑚𝑚𝑚𝑖𝑖∈𝐼𝐼 𝑊𝑊𝑖𝑖 𝑀𝑀 = 𝑚𝑚𝑎𝑎𝑎𝑎𝑗𝑗∈𝐽𝐽,𝑘𝑘∈𝐾𝐾𝑗𝑗 𝑠𝑠𝑗𝑗𝑗𝑗
+
+MILP-E: 𝑚𝑚𝑚𝑚𝑚𝑚 ∑𝑖𝑖∈𝐼𝐼 ∑𝑏𝑏∈𝐵𝐵𝑖𝑖 𝐸𝐸𝑖𝑖𝑖𝑖 s.t. (2) – (35)
+
+(37)
+
+B. Model Improvements
+We improve the model as follows. First, the constraints are introduced to break the symmetry of batches:
+
+𝑍𝑍𝑖𝑖(𝑏𝑏−1) ≤ 𝑍𝑍𝑖𝑖𝑖𝑖, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼.
+
+(38)
+
+Second, to linearize (8), we introduce an auxiliary variable, denoted as 𝑒𝑒𝑗𝑗𝑗𝑗𝑗𝑗, which represents the support structure volume of part 𝑗𝑗 printed on the b-th batch of machine i, and replace Constraints (8) with the followings:
+
+𝑒𝑒𝑗𝑗𝑗𝑗𝑗𝑗 ≥ � 𝑌𝑌𝑗𝑗𝑗𝑗𝑠𝑠𝑗𝑗𝑗𝑗 − 𝑀𝑀�1 − 𝑋𝑋𝑗𝑗𝑗𝑗𝑗𝑗�, ∀𝑗𝑗 ∈ 𝐽𝐽, 𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+𝑘𝑘∈𝐾𝐾𝑗𝑗
+∑𝑗𝑗∈𝐽𝐽(𝑒𝑒𝑗𝑗𝑖𝑖𝑏𝑏)/ 𝑣𝑣𝑠𝑠̇ 𝚤𝚤 ≤ 𝑇𝑇𝑠𝑠𝑠𝑠,𝑖𝑖𝑏𝑏, ∀𝑏𝑏 ∈ 𝐵𝐵𝑖𝑖, 𝑖𝑖 ∈ 𝐼𝐼
+
+(39) (40)
+
+Finally, to further improve the solution efficiency of the model, we define the upper bounds of the big-M values in different constraints, as reported in Table I.
+
+V. METHODOLOGY
+The epsilon-constraint method is a well-established approach in the field of multi-objective optimization that enables the generation of the Pareto front. This method involves designating one objective function as the primary
+
+Algorithm 1: Bi-objective Epsilon-Constraint Method
+
+Input: the parts with different build orientation need to
+
+be nested and scheduled, increment value δ
+
+Output: Pareto-optimal solution set 𝑃𝑃
+
+1 Obtain 𝑥𝑥𝐶∗𝐶 by solving model MILP-C; Obtain 𝑥𝑥𝐸∗𝐸 by solving model MILP-E;
+Let 𝐶𝐶1, 𝐶𝐶2 be the makespan given by solving MILP-
+C and MILP-E;
+
+2 ε ← 𝐶𝐶1; 𝑃𝑃 ← {𝑥𝑥𝐶∗𝐶, 𝑥𝑥𝐸∗𝐸};
+
+3 while ε ≤ 𝑪𝑪𝟐𝟐 ;
+
+3
+
+Obtain 𝑥𝑥ε∗ by solving the model MILP-BI;
+
+4
+
+𝑷𝑷 = 𝑷𝑷 ∪ {𝑥𝑥ε∗ };
+
+5
+
+ε =ε +δ;
+
+5 end while
+
+6 Remove the dominated solutions in 𝑃𝑃;
+
+optimization criterion, while treating the remaining objectives as constraints. By systematically varying the constraint bounds, different elements of the Pareto front can be obtained (Heimes et al. 1971). In our model, we choose the makespan as the constraint, so we add the following constraint into the MILP-E model:
+
+𝐶𝐶𝑚𝑚𝑚𝑚𝑚𝑚 ≤ ε
+
+(41)
+
+resulting in a new model called MILP-BI. The pseudo-code
+
+of our method is shown in Algorithm 1.
+
+VI. NUMERICAL RESULTS
+A. Experiment Setup
+Our instances can be found in the website(https://github.com/gitljj/Instance-model.git). All the part information such as volume, surface area, supporting structure, width, length and height are abstracted from the part STL file by the Materialise Magics Software. We apply the energy consumption model proposed by Lv et al. (2021) and use the same machine parameters.
+
+Instance
+in_10_2_1 in_10_2_5 in_10_3_1 in_10_3_5 in_15_2_1 in_15_2_5 in_15_3_1 in_15_3_5 in_20_2_1 in_20_2_5 in_20_3_1 in_20_3_5 in_30_2_1 in_30_2_5 in_30_3_1 in_30_3_5 in_50_2_1 in_50_2_5 in_50_3_1 in_50_3_5
+
+Energy[MJ]
+251.32 251.26 315.37 312.68 373.69 369.34 432.09 427.79 473.00 456.59 527.97 515.85 629.55 624.39 657.21 634.22 1153.16 1176.82 1152.90 1157.54
+
+TABLE II.
+
+MILP-C
+
+Cmax[h] MIP Gap
+
+11.04
+
+0.00%
+
+11.04
+
+0.00%
+
+9.86
+
+0.00%
+
+9.80
+
+0.00%
+
+14.81
+
+0.00%
+
+14.69
+
+0.00%
+
+12.15
+
+0.00%
+
+12.06
+
+0.00%
+
+18.12
+
+0.00%
+
+17.67
+
+0.00%
+
+14.24
+
+0.00%
+
+14.00
+
+0.00%
+
+23.94
+
+7.05%
+
+24.34
+
+12.59%
+
+16.89
+
+0.00%
+
+16.49
+
+0.50%
+
+44.86
+
+21.86%
+
+47.09
+
+35.97%
+
+29.91
+
+18.76%
+
+31.29
+
+38.14%
+
+THE RESULTS ON IDENTICAL PARALLEL MACHINES
+
+𝑻𝑻𝒓𝒓𝒓𝒓𝒓𝒓[s] 0.25 0.34 0.42 0.95 2.42 5.22 2.19 6.22 0.69 6.05 4.52 12.67 1800.00 1800.00 1800.00 196.99 1800.00 1800.00 1800.00 1800.00
+
+Energy[MJ]
+201.84 198.75 201.84 198.76 350.32 331.93 350.32 330.43 465.42 444.42 465.42 444.58 630.02 631.86 634.04 614.05 1086.85 1150.33 1086.85 1094.23
+
+MILP-E
+
+Cmax[h] MIP Gap
+
+15.24
+
+0.00%
+
+16.19
+
+0.00%
+
+16.24
+
+0.00%
+
+16.19
+
+0.00%
+
+21.56
+
+0.00%
+
+25.12
+
+3.50%
+
+27.08
+
+0.00%
+
+25.03
+
+4.44%
+
+24.37
+
+1.76%
+
+21.78
+
+11.74%
+
+24.37
+
+9.00%
+
+21.41
+
+11.77%
+
+29.11
+
+12.74%
+
+32.32
+
+19.69%
+
+20.32
+
+12.81%
+
+22.57
+
+17.83%
+
+41.10
+
+17.77%
+
+53.82
+
+31.14%
+
+32.96
+
+17.83%
+
+34.45
+
+27.58%
+
+𝑻𝑻𝒓𝒓𝒓𝒓𝒓𝒓[s] 0.12 0.49 0.13 0.74 56.18 1800 61.79 1800 1800 1800 1800 1800 1800.00 1800.00 1800.00 1800.00 1800.00 1800.00 1800.00 1800.00
+
+Makespan difference
+38.02% 46.64% 64.67% 65.16% 45.56% 70.99% 122.96% 107.49% 34.46% 23.28% 71.08% 52.95% 21.57% 32.80% 20.33% 36.87% -8.39% 14.29% 10.19% 10.10%
+
+Energy difference
+24.51% 26.42% 56.25% 57.32% 6.67% 11.27% 23.34% 29.46% 1.63% 2.74% 13.44% 16.03% -0.07% -1.18% 3.65% 3.29% 6.10% 2.30% 6.08% 5.79%
+
+Authorized licensed use limited to: TONGJI UNIVERSITY. Downloaded on October 21,2023 at 07:27:46 UTC from IEEE Xplore. Restrictions apply.
+
+Figure 2. Pareto front obtained by Algorithm 1 for the test instances. Solid circles represent optimal solutions, and hollow circles represent solutions with a MIP Gap. Note that in some cases a solution given by a certain subproblem dominates all others due to their lacks of optimality.
+
+1) Identical Parallel Machines We create 5*2*2=20 different test instances with the
+following factors and levels: number of parts{10,15,20,30,50}, number of identical parallel machines{2,3}, numbers of alternative build orientations -{1,5}. The models are solved by Gurobi solver (ver. 9.5.2) in a computer with Intel i7-12700H CPU (2.1GHz), given a maximum CPU time of 1800 seconds.
+The results are reported in Table II, where, e.g., in_20_2_1 represents the instance of 20 parts, 2 identical machines, and each part has one alternative build orientation. Makespan difference is calculated by (makespan from MILP-E − makespan from MILP-C)/ makespan from MILP-C. While the Energy Difference is calculated similarly. From the table, we observe some abnormal data, i.e., the makespan of MILP-C is worse than that of MILP-E, and the energy consumption of MILP-E is worse than that of MILP-C. This happens in large instances and is due to the large MIP Gaps. From the optimal solutions, we can summarize some conclusions.
+1. There exists a considerable trade-off between the makespan and energy consumption objectives.
+2. The #build orientation plays a role. The instances with five build orientations result in better performance than their solo orientation counterparts. In 50-part instances, the advantage of having five orientations decreases due to the increased difficulty in solving the instances.
+Figure 2 shows the Pareto fronts. The potential of savingenergy by increasing makespan is clearly shown. For example, in instance in_10_3_5, suppose the parts are due at 12-th hour, the decision maker can choose to save more than 50[MJ] (about 1/6 of the total) by increasing the makespan by 4 hours. In the case of optimal solutions, as the number of part increases, the benefit of having five orientations becomes much greater, which indicates the importance of having multiple orientations in large-scale instances. It should be noted that in the instances of 50 parts, the overall results with five build orientations are not superior to those of one build orientation due to the increasing gap obtained by the solver, which also highlights the necessity of developing algorithms to handle large-scale problems. As demonstrated in Figure 3, the schedules
+
+corresponding to the optimal makespan and energy consumption are quite different. To minimize the makespan, the parts are assigned to two machines in such a way to balance their completion times. Conversely, to optimize the energy consumption, the model tries to allocate the parts to the batches so that the total batch height, i.e., the total #layers, is minimized. As in Figure 4, the total batch height by the MILPE is lower than that of the MILP-C. Indeed, the energy consumption of a batch, according to Lv et al. (2021), is primarily related to the #layers, the total volume of the parts, supporting structure and total surface area. Notably, in cases
+Figure 3. Optimal schedules for in_20_2_1. Here, 𝑏𝑏(𝑖𝑖, 𝑏𝑏) represents the 𝑏𝑏th batch on machine 𝑖𝑖
+Figure 4. Part height distribution of instance in_20_2_1
+
+Authorized licensed use limited to: TONGJI UNIVERSITY. Downloaded on October 21,2023 at 07:27:46 UTC from IEEE Xplore. Restrictions apply.
+
+Magics batch 1
+
+Magics batch 2
+
+MILP-E batch 1
+
+MILP-E batch 2
+
+Figure 7. Part placement by Magics and MILP-E on in_20_2_1
+
+Figure 5. Optimal schedules for in_20_2_1(UR)
+Figure 6. Algorithm 1 vs Magics on 20-part-2-mac and 30-part-2-mac
+where the orientations of parts are fixed, the batch height is the sole factor that impacts the energy consumption. This explains the obtained part-to-batch allocations.
+2) Unrelated Parallel Machines To test our model on unrelated parallel machines, we modified the instance in_20_2_1 as follows. The preheating time and recoating time of machine 1 are 2115s and 8 s/layer, while these for machine 2 are 1928s and 11s/layer, respectively. All other machine parameters are identical. This new instance is named “in_20_2_1(UR)”. It is observed from Figure 5 that all batches are allocated to machine 1 on which the recoating time is less, as a penalty, machine 2 is left idle and the makespan is much larger.
+3) Comparison to Industrial Software We compare the results of Algorithm 1 to Magics on in_20_2_1, in_20_2_5, in_30_2_1 and in_30_2_5. The Magics solutions is generated as follows. Firstly, the build orientations of the parts are fixed to the one with the lowest Zaxis height. Then, the parts are batched by using the automatic nesting function of Magics. Finally, the batches are allocated to the machines in such a way that the makespan is minimized. This divide-and-conqueror methodology, i.e., parts are firstly grouped to form batches (nesting), then, the batches are assigned and sequenced on the AM machines (scheduling), inevitably leads to potential gap from the optimal joint decisions (Yu et al., 2022). Our research tackles the joint nesting-scheduling problems. As shown in Figure 6, the Magics approach is dominated by the fronts given by Algorithm 1. This reveals the need to tackle the nesting and scheduling simultaneously to get better solutions. Moreover, when there are more alternative build orientations, Algorithm 1 tends to find better schedules. Figure 7 showcases the part placement results obtained from Magics and MILP-E on in_20_2_1. While Magics demonstrates batches with relatively balanced space utilization, MILP-E effectively assigns parts with similar heights to the same batch, resulting in a reduction in the total number of layers required and overall energy consumption.
+
+VII. CONCLUSION
+In this study, we investigate the nesting and scheduling problem on parallel SLM machines to minimize the energy consumption and makespan. We consider the 2D nesting subproblem when packing the parts into batches as well as the fact that a part can have multiple optional build orientations. We propose a mathematical programming model and several improvements to strengthen the model. As shown by the numerical results, the trade-off between makespan and energy consumption is clear. There is still room for better solutions by increasing the efficiency of the model. Future works will focus on developing efficient solution approaches such as matheuristics and metaheuristics to tackle large-scale problems.
+REFERENCES
+[1] Kucukkoc, I. (2019). MILP models to minimise makespan in additive manufacturing machine scheduling problems. Computers & Operations Research, 105, 58-67.
+[2] Che, Y., Hu, K., Zhang, Z., & Lim, A. (2021). Machine scheduling with orientation selection and two-dimensional packing for additive manufacturing. Computers & Operations Research, 130, 105245.
+[3] Yoon, H. S., Lee, J. Y., Kim, H. S., Kim, M. S., Kim, E. S., Shin, Y.J., & Ahn, S. H. (2014). A comparison of energy consumption in bulk forming, subtractive, and additive processes: Review and case study. International Journal of Precision Engineering and Manufacturing-Green Technology, 1, 261-279.
+[4] Karimi, S., Kwon, S., & Ning, F. (2021). Energy-aware production scheduling for additive manufacturing. Journal of Cleaner Production, 278, 123183.
+[5] Zhang, J., Yao, X., & Li, Y. (2020). Improved evolutionary algorithm for parallel batch processing machine scheduling in additive manufacturing. International Journal of Production Research, 58(8), 2263-2282.
+[6] Paul, R., & Anand, S. (2012). Process energy analysis and optimization in selective laser sintering. Journal of manufacturing systems, 31(4), 429-437
+[7] Alicastro, M., Ferone, D., Festa, P., Fugaro, S., & Pastore, T. (2021). A reinforcement learning iterated local search for makespan minimization in additive manufacturing machine scheduling problems. Computers & Operations Research, 131, 105272.
+[8] Lv, J., Peng, T., Zhang, Y., & Wang, Y. (2021). A novel method to forecast energy consumption of selective laser melting processes. International journal of production research, 59(8), 2375-2391.
+[9] Haimes, Y. (1971). On a bicriterion formulation of the problems of integrated system identification and system optimization. IEEE transactions on systems, man, and cybernetics, (3), 296-297.
+[10] Yu, C., Matta, A., Semeraro, Q., & Lin, J. (2022). Mathematical Models for Minimizing Total Tardiness on Parallel Additive Manufacturing Machines. IFAC-PapersOnLine, 55(10), 1521-1526.
+[11] Piili, H., Happonen, A., Väistö, T., Venkataramanan, V., Partanen, J., & Salminen, A. (2015). Cost estimation of laser additive manufacturing of stainless steel. Physics Procedia, 78, 388-396.
+[12] Oh, Y., Zhou, C., & Behdad, S. (2020). The impact of build orientation policies on the completion time in two-dimensional irregular packing for additive manufacturing. International Journal of Production Research, 58(21), 6601-6615.
+[13] Lodi, A., Martello, S., & Vigo, D. (2002). Recent advances on twodimensional bin packing problems. Discrete Applied Mathematics, 123(1-3), 379-396.
+
+Authorized licensed use limited to: TONGJI UNIVERSITY. Downloaded on October 21,2023 at 07:27:46 UTC from IEEE Xplore. Restrictions apply.
+

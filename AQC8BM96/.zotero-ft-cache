@@ -1,0 +1,1790 @@
+arXiv:1403.1228v1 [q-bio.MN] 5 Mar 2014
+Topological implications of negative curvature for biological and social networks
+Re ́ka Albert∗
+Department of Physics, Pennsylvania State University, University Park, PA 16802
+Bhaskar DasGupta† and Nasim Mobasheri‡
+Department of Computer Science, University of Illinois at Chicago, Chicago, IL 60607 (Dated: March 6, 2014)
+Network measures that reflect the most salient properties of complex large-scale networks are in high demand in the network research community. In this paper we adapt a combinatorial measure of negative curvature (also called hyperbolicity) to parameterized finite networks, and show that a variety of biological and social networks are hyperbolic. This hyperbolicity property has strong implications on the higher-order connectivity and other topological properties of these networks. Specifically, we derive and prove bounds on the distance among shortest or approximately shortest paths in hyperbolic networks. We describe two implications of these bounds to cross-talk in biological networks, and to the existence of central, influential neighborhoods in both biological and social networks.
+PACS numbers: 87.18.Mp,87.18.Cf,87.18.Vf,89.75.Hc,02.10.Ox Keywords: Hyperbolicity, Networks, Crosstalk, Influential nodes
+I. INTRODUCTION
+For a large variety of complex systems, ranging from the World-Wide Web to metabolic networks, representation as a parameterized network and graph theoretical analysis of this network have led to many useful insights [1, 2]. In addition to established network measures such as the average degree, clustering coefficient or diameter, complex network researchers have proposed and evaluated a number novel network measures [3–6]. In this article we consider a combinatorial measure of negative curvature (also called hyperbolicity) of parameterized finite networks and the implications of negative curvature on the higher-order connectivity and topological properties of these networks. There are many ways in which the (positive or negative) curvature of a continuous surface or other similar spaces can be defined depending on whether the measure is to reflect the local or global properties of the underlying space. The specific notion of negative curvature that we use is an adoption of the hyperbolicity measure for a infinite metric space with bounded local geometry as originally proposed by Gromov [7] using a so-called “4-point condition”. We adopt this measure for parameterized finite discrete metric spaces induced by a network via all-pairs shortest paths and apply it to biological and social networks. Recently, there has been a surge of empirical works measuring and analyzing the hyperbolicity of networks defined in this manner, and many real-world networks were observed to be hyperbolic in this sense. For example, preferential attachment networks were shown to be scaled hyperbolic in [8, 9], networks of high power transceivers in a wireless sensor network were empirically observed to have a tendency to be hyperbolic in [10], communication networks at
+∗ ralbert@phys.psu.edu; www.phys.psu.edu/ ̃ralbert † dasgupta@cs.uic.edu; www.cs.uic.edu/ ̃dasgupta; Author to whom correspondence should be sent. ‡ nmobas2@uic.edu
+the IP layer and at other levels were empirically observed to be hyperbolic in [11, 12], extreme congestion at a very limited number of nodes in a very large traffic network was shown in [13] to be caused due to hyperbolicity of the network together with minimum length routing, and the authors in [14] showed how to efficiently map the topology of the Internet to a hyperbolic space. Gromov’s hyperbolicity measure adopted on a shortestpath metric of networks can also be visualized as a measure of the “closeness” of the original network topology to a tree topology [15]. Another popular measure used in both the bioinformatics and theoretical computer science literature is the treewidth measure first introduced by Robertson and Seymour [16]. Many NP-hard problems on general networks admit efficient polynomial-time solutions if restricted to classes of networks with bounded treewidth [17], just as several routing-related problems or the diameter estimation problem become easier if the network has small hyperbolicity [18–21]. However, as observed in [15], the two measures are quite different in nature: “the treewidth is more related to the least number of nodes whose removal changes the connectivity of the graph in a significant manner whereas the hyperbolicity measure is related to comparing the geodesics of the given network with that of a tree”. Other related research works on hyperbolic networks include estimating the distortion necessary to map hyperbolic metrics to tree metrics [22] and studying the algorithmic aspects of several combinatorial problems on points in a hyperbolic space [23].
+II. HYPERBOLICITY-RELATED DEFINITIONS AND MEASURES
+Let G = (V, E) be a connected undirected graph of n ≥ 4 nodes. We will use the following notations:
+•u P
+! v denotes a path P ≡ (u = u0, u1, . . . , uk−1, uk = v) from node u to node v and l(P) denotes the length (number of edges) of such a path.
+
+
+2
+• ui
+P
+! u j denotes the sub-path (ui, ui+1, . . . , u j
+) of P from ui to u j.
+•u s
+! v denotes a shortest path from node u to node v of
+length du,v = l(u s
+! v).
+We introduce the hyperbolicity measures via the 4-node condition as originally proposed by Gromov. Consider a quadruple of distinct nodes1 u1, u2, u3, u4, and let π = (π1, π2, π3, π4) be a permutation of {1, 2, 3, 4} denoting a rearrangement of the indices of nodes such that
+S u1,u2,u3,u4 = duπ1 ,uπ2 + duπ3 ,uπ4
+≤ Mu1,u2,u3,u4 = duπ1 ,uπ3 + duπ2 ,uπ4
+≤ Lu1,u2,u3,u4 = duπ1 ,uπ4 + duπ2 ,uπ3
+and let δu+1,u2,u3,u4 = Lu1,u2,u3,u4 −Mu1,u2,u3,u4
+2 . Considering all combi
+nations of four nodes in a graph one can define a worst-case hyperbolicity[7] as
+δ+
+worst(G) = max
+u1 ,u2 ,u3 ,u4
+{ δ+
+u1 ,u2 ,u3 ,u4
+}
+and an average hyperbolicity as
+δ+
+ave(G) = (n1
+4
+)
+∑
+u1 ,u2 ,u3 ,u4
+δ+
+u1 ,u2 ,u3 ,u4
+Note that δa+ve(G) is the expected value of δu+1,u2,u3,u4 when the
+four nodes u1, u2, u3, u4 are picked independently and uni
+formly at random from the set of all nodes. Both δ+worst(G)
+and δa+ve(G) can be trivially computed in O(n4) time for any
+graph G. A graph G is called δ-hyperbolic if δ+
+worst(G) ≤ δ. If δ is a
+small constant independent of the parameters of the graph, a δ-hyperbolic graph is simply called a hyperbolic graph. It is easy to see that if G is a tree then δ+worst(G) = δa+ve(G) = 0.
+Thus all trees are hyperbolic graphs. The hyperbolicity measure δ+worst considered in this paper
+for a metric space was originally used by Gromov in the context of group theory [7] by observing that many results concerning the fundamental group of a Riemann surface hold true in a more general context. δ+worst is trivially infinite in the stan
+dard (unbounded) Euclidean space. Intuitively, a metric space has a finite value of δ+worst if it behaves metrically in the large
+scale as a negatively curved Riemannian manifold, and thus the value of δ+worst can be related to the standard scalar cur
+vature of a Hyperbolic manifold. For example, a simply connected complete Riemannian manifold whose sectional curva
+ture is below α < 0 has a value of δ+worst that is O
+(( √−α )−1)
+(see [24]).
+1 If two or more nodes among u1, u2, u3, u4 are identical, then δu+1,u2,u3,u4 = 0
+due to the metric’s triangle inequality; thus it suffices to assume that the four nodes are distinct.
+In this paper we first show that a variety of biological and social networks are hyperbolic. We formulate and prove bounds on the existence of path-chords and on the distance among shortest or approximately shortest paths in hyperbolic networks. We determine the implications of these bounds on regulatory networks, i.e., directed networks whose edges correspond to regulation or influence. This category includes all the biological networks that we study in this paper. We also discuss the implications of our results on the region of influence of nodes in social networks. Some of the proofs of our theoretical results are adaptation of corresponding arguments in the continuous hyperbolic space. All the proofs are presented in the appendix for the sake of completeness.
+III. RESULTS AND DISCUSSION
+Subsection A examines in detail the hyperbolicity of an assorted list of diverse biological and social networks. The remaining subsections of this section, namely subsections BE, state our findings on the implications of hyperbolicity of a network on various topological properties of the network. For subsections D, E, we first state our findings as applicable for biological or social networks, followed by a summary of formal mathematical results that led to such findings. Because the precise bounds on topological features of a network as a function of hyperbolicty measures are quite mathematically involved, we discuss these bounds in a somewhat simplified form in subsections B–E, leaving the precise bounds as theorems and proofs in the appendix.
+A. Hyperbolicity of Real Networks
+We analyzed twenty well-known biological and social networks. The 11 biological networks shown in Table I include 3 transcriptional regulatory, 5 signalling, 1 metabolic, 1 immune response and 1 oriented protein-protein interaction networks. Similarly, the 9 social networks shown in Table II range from interactions in dolphin communities to the social network of jazz musicians. The hyperbolicity of the biological and directed social networks was computed by ignoring the direction of edges. The hyperbolicity values were calculated by writing codes in C using standard algorithmic procedures. As shown on Table I and Table II, the hyperbolicity values of almost all networks are small. If D = maxu,v
+{du,v
+} is the diameter of the graph, then it is easy to see that δ+worst(G) ≤ D/2,
+and thus small diameter indeed implies a small value of worstcase hyperbolicity. As can be seen on Table I and Table II,
+δ+
+worst(G) varies with respect to its worst-case bound of D/2
+from 25% of D/2 to no more than 89% of D/2, and there does not seem to be a systematic dependence of δ+worst(G) on the
+number of nodes (which ranges from 18 to 786), edges (from 42 to 2742), or on the value of the diameter D. For all the networks δa+ve(G) is one or two orders of magni
+tude smaller than δ+
+worst(G). Intuitively, this suggests that the
+value of δ+worst(G) may be a rare deviation from typical values
+
+
+3
+TABLE I. Hyperbolicity and diameter values for biological networks.
+Network id reference Average
+degree δa+ve(G) δ+worst(G) D δ+worst(G)
+D/2 1. E. coli transcriptional [25] 1.45 0.132 2 10 0.400 2. Mammalian Signaling [26] 2.04 0.013 3 11 0.545 3. E. Coli transcriptional ♯♯♯ 1.30 0.043 2 13 0.308 4. T LGL signaling [27] 2.32 0.297 2 7 0.571 5. S. cerevisiae transcriptional [28] 1.56 0.004 3 15 0.400 6. C. elegans Metabolic [29] 4.50 0.010 1.5 7 0.429 7. Drosophila segment polarity [30] 1.69 0.676 4 9 0.889 8. ABA signaling [31] 1.60 0.302 2 7 0.571 9. Immune Response Network [32] 2.33 0.286 1.5 4 0.750 10. T Cell Receptor Signalling [33] 1.46 0.323 3 13 0.462 11. Oriented yeast PPI [34] 3.11 0.001 2 6 0.667 ♯♯♯ [25, updated version] see www.weizmann.ac.il/mcb/UriAlon/Papers/networkMotifs/coli1 1Inter st.txt
+TABLE II. Hyperbolicity and diameter values for social networks.
+Network id reference Average
+degree δ+
+ave(G) δ+
+worst(G) D δ+
+worst(G) D/2 1. Dolphins social network [35] 5.16 0.262 2 8 0.750 2. American College Football [36] 10.64 0.312 2 5 0.800 3. Zachary Karate Club [37] 4.58 0.170 1 5 0.400 4. Books about US Politics ‡‡‡ 8.41 0.247 2 7 0.571 5. Sawmill communication [38] 3.44 0.162 1 8 0.250 6. Jazz musician [39] 27.69 0.140 1.5 6 0.500 7. Visiting ties in San Juan [40] 3.84 0.422 3 9 0.667 8. World Soccer data, 1998 ††† 3.37 0.270 2.5 12 0.286 9. Les Miserable [41] 6.51 0.278 2 14 0.417 ‡‡‡ V. Krebs, www.orgnet.com,
+††† Dagstuhl seminar: Link Analysis and Visualization, Dagstuhl 1-6, 2001; vlado.fmf.uni-lj.si/pub/networks/data/sport/football.htm
+TABLE III. [42] Various scaled Gromov hyperbolicities.
+Name Notation μu1,u2,u3,u4 ε Method for
+determining ε diameter-scaled
+hyperbolicity δD Du1,u2,u3,u4 0.2929 empirical
+L-scaled
+hyperbolicity δL Lu1,u2,u3,u4
+√2−1
+2 √2
+≈ 0.1464 mathematical
+(L + M + S )-scaled
+hyperbolicity δL+M+S
+Lu1 ,u2 ,u3 ,u4
++ Mu1,u2 ,u3,u4
++ S u1,u2,u3,u4
+0.0607 mathematical
+of δu+1,u2,u3,u4 that one would obtain for most combinations of
+nodes {u1, u2, u3, u4}. We additionally performed the following rigorous tests for hyperbolicity of our networks.
+1. Checking hyperbolicity via the scaled hyperbolicity approach
+An approach for testing hyperbolicity for finite graphs was introduced and used via “scaled” Gromov hyperbolicity in [9, 11] for hyperbolicity defined via thin triangles and in [42] for for hyperbolicity defined via the four-point condition as used in this paper. The basic idea is to “scale” the values of δu+1,u2,u3,u4 by a suitable scaling factor, say μu1,u2,u3,u4 , such that
+there exists a constant 0 < ε < 1 with the following property:
+• the maximum achievable value of δu+1,u2,u3,u4
+μu1,u2,u3,u4 is ε in the
+standard hyperbolic space or in the Euclidean space, and
+•
+δu+1 ,u2 ,u3 ,u4
+μu1,u2,u3,u4 goes beyond ε in positively curved spaces.
+We use the notation Du1,u2,u3,u4 = max
+i, j∈{1,2,3,4}
+{dui ,u j
+} to indicate
+the diameter of the subset of four nodes u1, u2, u3 and u4. By using theoretical or empirical calculations, the authors in [42] provide the bounds shown in Table III.
+We adapt the criterion proposed by Jonckheere, Lohsoonthorn and Ariaei [42] to designate a given finite graph as hyperbolic by requiring a significant percentage of all possible subset of four nodes to satisfy the ε bound. More formally, suppose that G has t connected components containing
+n1, n2, . . . , nt nodes, respectively (∑tj=1 n j = n). Let 0 < η < 1
+be a sufficiently high value indicating the confidence level in declaring the graph G to be hyperbolic. Then, we call our given graph G to be (scaled) hyperbolic if and only if
+∆Y(G) =
+number of subset of four nodes {ui, uj, uk, ul
+}
+such that δuYi,u j,uk,ul > ε
+number of all possible combinations of four nodes that contribute to hyperbolicity
+=
+number of subset of four nodes {ui, uj, uk, ul
+}
+such that δuYi,u j,uk,ul > ε
+∑
+1≤ j≤t : n j>3
+(n j 4
+) <1−η
+The values of ∆Y(G) for our networks are shown in Table IV and Table V. It can be seen that, for all scaled hyperbolicity measures and for all networks, the value of 1 − η is very close to zero. We next tested the statistical significance of the ∆Y(G) values by computing the statistical significance values (commonly called p-values) of these ∆Y(G) values for each network G with respect to a null hypothesis model of the networks. We use a standard method used in the network science literature (e.g., see [5, 25]) for such purpose. For each network G, we generated 100 randomized versions of the network using a Markov-chain algorithm [43] by swapping the endpoints of randomly selected pairs of edges until 20% of the edges was
+changed. We computed the values of ∆Y (Grand1
+), ∆Y (Grand2
+),
+. . . , ∆Y (Grand100
+). We then used an (unpaired) one-sample student’s t-test to determine the probability that ∆Y(G) be
+longs to the same distribution as ∆Y (Grand1
+), ∆Y (Grand2
+), . . . ,
+∆Y (Grand100
+).
+The p-values, tabulated in Table VI and Table VII, clearly show that all social networks and all except two biological net
+
+
+4
+TABLE IV. ∆Y(G) values for biological networks for Y ∈ {D, L, L + M + S }.
+Network id ∆D(G) ∆L(G) ∆L+M+S(G)
+1. E. coli transcriptional 0.0014 0.0018 0.0015 2. Mammalian Signaling 0.0021 0.0018 0.0022 3. E. Coli transcriptional 0.0006 0.0006 0.0007 4. T LGL signaling 0.0228 0.0221 0.0318 5. S. cerevisiae transcriptional 0.0031 0.0032 0.0033 6. C. elegans Metabolic 0.0020 0.0018 0.0019 7. Drosophila segment polarity 0.0374 0.0558 0.0750 8. ABA signaling 0.0343 0.0285 0.0425 9. Immune Response Network 0.0461 0.0552 0.0781 10. T Cell Receptor Signalling 0.0034 0.0045 0.0056 11. Oriented yeast PPI 0.0013 0.0009 0.0012 maximum 0.0461 0.0558 0.0781
+TABLE V. ∆Y(G) values for social networks for Y ∈ {D, L, L + M + S }.
+Network id ∆D(G) ∆L(G) ∆L+M+S(G)
+1. Dolphins social network 0.0115 0.0120 0.0168 2. American College Football 0.0435 0.0395 0.0577 3. Zachary Karate Club 0.0195 0.0249 0.0284 4. Books about US Politics 0.0106 0.0074 0.0116 5. Sawmill communication 0.0069 0.0068 0.0085 6. Jazz musician 0.0097 0.0117 0.0124 7. Visiting ties in San Juan 0.0221 0.0242 0.0275 8. World Soccer data, 1998 0.0145 0.0155 0.0212 9. Les Miserable 0.0032 0.0034 0.0049 maximum 0.0435 0.0395 0.0577
+TABLE VI. p-values for the ∆Y(G) values for biological networks for Y ∈ {D, L, L + M + S }. In general, a p-value less than 0.05 (shown in boldface) is considered to be statistically significant, and a p-value above 0.05 is considered to be not statistically significant.
+Network id
+1. E. coli
+2.
+Mammalian
+Signaling
+3. E. Coli
+transcriptional
+4. T LGL
+signaling
+5.
+S. cerevisiae
+transcriptional
+6.
+C. elegans
+Metabolic
+7.
+Drosophila segment polarity
+8. ABA
+signaling
+9.
+Immune Response Network
+10.
+T Cell Receptor Signalling
+11.
+Oriented yeast PPI
+valpues
+∆D 0.0018 < 0.0001 < 0.0001 < 0.0001 0.3321 < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001
+∆L < 0.0001 < 0.0001 < 0.0001 0.011 0.3434 < 0.0001 < 0.0001 0.9145 < 0.0001 < 0.0001 < 0.0001
+∆L+M+S 0.5226 < 0.0001 < 0.0001 < 0.0001 0.3424 < 0.0001 < 0.0001 0.3342 < 0.0001 < 0.0001 < 0.0001
+path-chord
+v
+u4
+u5
+u3
+u0
+u2
+u1
+FIG. 1. Path-chord of a cycle C = (u0.u1, u2, u3, u4, u5, u0).
+works can be classified as hyperbolic in a statistically significant manner, implying that the topologies of these networks are close to a “tree topology”. Indeed, for biological networks, the assumption of chain-like or tree-like topology is frequently made in the traditional molecular biology literature [44]. Independent current observations also provide evidence of tree-like topologies for various biological networks, e.g., the average in/out degree of transcriptional regulatory networks [25, 45] and of a mammalian signal transduction network [26] is close to 1, so cycles are very rare.
+B. Hyperbolicity and crosstalk in regulatory networks
+Let C = (u0, u1, . . . , uk−1, u0) be a cycle of k ≥ 4 nodes. A
+path-chord of C is defined to be a path ui
+P
+! u j between two distinct nodes ui, u j ∈ C such that the length of P is less than (i− j) (mod k) (see Fig. 1). A path-chord of length 1 is simply called a chord. We find that large cycles without a path-chord imply large lower bounds on hyperbolicity (see Theorem 1 in Section A of the appendix). In particular, G does not have a cycle of more than 4 δ+worst(G) nodes that does not have a path-chord.
+Thus, for example, if δ+worst(G) < 1 then G has no chordless
+cycle, i.e., G is a chordal graph. The intuition behind the proof of Theorem 1 is that if G contains a long cycle without a path-chord then we can select four almost equidistant nodes on the cycle and these nodes give a large hyperbolicity value. This general result has the following implications for regulatory networks:
+• If a node regulates itself through a long feedback loop (e.g., of length at least 6 if δ+worst(G) = 3/2) then this loop
+must have a path-chord. Thus it follows that there exists a shorter feedback cycle through the same node.
+• A chord or short path-chord can be interpreted as
+
+
+5
+TABLE VII. p-values for the ∆Y(G) values for social networks for Y ∈ {D, L, L + M + S }. In general, a p-value less than 0.05 (shown in boldface) is considered to be statistically significant, and a p-value above 0.05 is considered to be not statistically significant.
+Network id
+1.
+Dolphins social network
+2.
+American College Football
+3.
+Zachary Karate Club
+4.
+Books about US Politics
+5.
+Sawmill
+communication
+6. Jazz
+musician
+7.
+Visiting ties
+in San Juan
+8.
+World Soccer
+data, 1998
+9. Les
+Miserable
+valpues
+∆D < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001
+∆L < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001 0.0779 < 0.0001 < 0.0001
+∆L+M+S < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001 < 0.0001
+crosstalk between two paths between a pair of nodes. With this interpretation, the following conclusion follows. If one node in a regulatory network regulates another node through two sufficiently long paths, then there must be a crosstalk path between these two paths. For example, assuming δ+worst(G) = 3/2, there must be a
+crosstalk path if the sum of lengths of the two paths is at least 6. In general, the number of crosstalk paths between two paths increases at least linearly with the total length of the two paths. The general conclusion that can be drawn is that independent linear pathways that connect a signal to the same output node (e.g., transcription factor) are rare, and if multiple pathways exist then they are interconnected through cross-talks.
+C. Shortest-path triangles and crosstalk paths in regulatory networks
+(a) Result related to triplets of shortest paths Originally, the hyperbolicity measure was introduced for infinite continuous metric spaces with negative curvature via the concept of the “thin” and “slim” triangles (e.g., see [46]). For finite discrete metric spaces as induced by an undirected graph, one can analogously define a shortest-path triangle (or, simply a triangle) ∆{u0,u1,u2} as a set of three distinct nodes u0, u1, u2 with a set of three shortest paths P∆ (u0, u1), P∆ (u0, u2), P∆ (u1, u2) between u0 and u1, u0 and u2, and u1 and u2, respectively. As illustrated on Fig. 2, in hyperbolic networks we are guaranteed to find short paths2 between the nodes that make up P∆ (u0, u1), P∆ (u0, u2), P∆ (u1, u2). This is formally stated in Theorem 3 in Section B of the appendix. Moreover, as Corollary 4 (in Section B of the appendix) states, we can have a small Hausdorff distance between these shortest paths. This result is a proper generalization of our previous result on pathcords. Indeed, in the special case when u1 and u2 are the same node the triangle becomes a shortest-path cycle involving the shortest paths between u0 and u1 and the short-cord result is obtained.
+2 By a short path here, we mean a path whose length is at most a constant times δ+
+∆{u0,u1,u2} (note that δ+
+∆{u0,u1,u2} ≤ δ+worst(G)).
+u0 u2
+u1
+dv,
+v
+′
+d
+v,v′
+d
+v,v′
+∀ v in one path ∃ v′ in the other path such that
+dv,v′ ≤ max
+{
+6 δ+
+∆{u0,u1,u2} , 2
+}
+≤ max
+{
+6 δ+
+worst(G), 2
+}
+FIG. 2. An informal and simplified pictorial illustration of the claims in Section III C(a).
+A proof of Theorem 3 is obtained by appropriate modification of a known similar bound for infinite continuous metric spaces. The implications of this result for regulatory networks can be summarized as follows:
+If we consider a feedback loop (cycle) or feedforward loop formed by the shortest paths among three nodes, we can expect short cross-talk paths between these shortest paths. Consequently, the feedback or feed-forward loop will be nested with “additional” feed-back or feed-forward loops in which one of the paths will be slightly longer.
+The above finding is empirically supported by the observation that network motifs (e.g., feed-forward or feed-back loops composed of three nodes and three edges) are often nested [47].
+(b) Results related to the distance between two exact or approximate shortest paths between the same pair of nodes It is reasonable to assume that, when up- or down-regulation
+
+
+6
+u0 u1
+v
+shortest path P1
+P2
+v′
+dv,v′
+FIG. 3. An informal and simplified pictorial illustration of the claims in Section III C(b).
+of a target node is mediated by two or more short paths 3 starting from the same regulator node, additional very long paths between the same regulator and target node do not contribute significantly to the target node’s regulation. We refer to the short paths as relevant, and to the long paths as irrelevant. Then, our finding can be summarized by saying that:
+almost all relevant paths between two nodes have crosstalk paths between each other.
+Formal Justifications and Intuitions (see Theorem 5 and Corollary 6 in Section C and Theorem 7 and Corollary 8 in Section D of the appendix)
+We use the following two quantifications of “approximately” short paths:
+• A path u0
+P
+! uk = (u0, u1, . . . , uk
+) is μ-approximate
+short provided l(ui
+P
+!uj
+) ≤ μ dui,uj for all 0 ≤ i < j ≤ k,
+• A path u0
+P
+! uk is ε-additive-approximate short provided l (P) ≤ du0,uk + ε.
+A mathematical justification for the claim then is provided by two separate theorems and their corollaries:
+• Let P1 and P2 be a shortest path and an arbitrary path, respectively, between two nodes u0 and u1. Then, Theorem 5 and Corollary 6 implies that, for every node v on P1, there exists a node v′ on P2 such that dv,v′ depends
+linearly on δ+worst(G), only logarithmically on the length
+of P2 and does not depend on the size or any other parameter of the network.
+To obtain this type of bound, one needs to apply Theorem 3 on u0, u1 and the middle node of the path P2 and then use the same approach recursively on a part of the path P2 containing at most ⌈(P2)/2⌉ edges. The depth of the level of recursion provides the logarithmic factor in the bound.
+3 Here by short paths we mean either a shortest path or an approximately shortest path whose length is not too much above the length of a shortest path, i.e., a μ-approximate short path or a ε-additive-approximate short path, as defined in the subsequent “Formal Justifications and Intuitions” subsection, for small μ or small ε, respectively.
+r
+α
+α
+Q
+very
+long
+path
+u0
+u1
+u2
+u3
+u4
+FIG. 4. An informal and simplified pictorial illustration of claim (⋆) in Section III D. As the nodes u3 and u4 move further away from the center node u0, the shortest path between them bends more towards u0 and any path between them that does not involve a node in the ball ∪r′≤r Br′ (u0) is long enough.
+• If P1 and P2 are two short paths between u0 and u1 then Theorem 7 and Corollary 8 imply that the Hausdorff distance between P1 and P2 depends on δ+worst(G) only
+and does not depend on the size or any other parameter of the network.
+Intuitively, Theorem 7 and Corollary 8 can be thought of as generalizing and improving the bound in Theorem 5 for approximately short paths.
+D. Identifying essential edges in the regulation between two nodes
+For a given ξ > 0 and a node u, let Bξ (u) = { v | du,v = ξ } denote the “boundary of the ξ-neighborhood” of u, i.e., the set of all nodes at a distance of precisely ξ from u. Our two findings in the present context are as stated in (I) and (II) below.
+(I) Identifying relevant paths between a source and a target node Suppose that we pick a node v and consider the strict ξ-neighborhood of v
+N+
+ξ (v) =
+⋃
+r≤ξ
+Br′ (v) \ {u | degree of u is one }
+(i.e., the set of all nodes, excluding nodes of degree 1, that are at a distance at most ξ from u) for a sufficiently large ξ. Consider two nodes u1 and u2 on the boundary of this neighborhood, i.e., at a distance ξ from v. Then, the following holds:
+(⋆) the relevant (short) regulatory paths between u1 and u2 do not leave the neighborhood, i.e., all the edges in the relevant regulatory paths are in the neighborhood.
+
+
+7
+usource utarget
+ucentral
+sh
+ortpath
+sho
+rtpath
+sh
+ortpath sho
+rt
+path
+ve
+rylon
+g
+path
+FIG. 5. An informal and simplified pictorial illustration of claim (⋆⋆) in Section III D. Knocking out the nodes in a small neighborhood of ucentral cuts off all relevant (short) regulation between usource and utarget.
+Thus, only the edges inside the neighborhood are relevant to the regulation among this pair of nodes. This result can be adapted to find the most relevant paths between the input node usource and output node utarget of a signal transduction network. In many situations, for example when the signal transduction network is inferred from undirected protein-protein interaction data, a large number of paths can potentially be included in the signal transduction network as the protein-protein interaction network has a large connected component with a small average path length [47]. There is usually no prior knowledge on which of the existing paths are relevant to the signal transduction network. A hyperbolicitybased method is to first find a central node ucentral which is at equal distance between usource and utarget, and is on the shortest, or close to shortest, path between usource and utarget. Then one constructs the neighborhood around ucentral such that usource and utarget are on the boundary of this neighborhood. Applying this result, the paths relevant to the signal transduction network are inside the neighborhood, and the paths that go out of the neighborhood are irrelevant. See Fig. 4 for a pictorial illustration of this implication.
+(II) Finding essential nodes Again, consider an input node usource and output node utarget of a signal transduction network, and let ucentral be a central node which is on the shortest path between them and at approximately equal distance between usource and utarget. Our results show that4
+(⋆⋆) if one constructs a small ξ-neighbourhood
+around ucentral with ξ = O (δ+worst(G)), then all
+relevant (short or approximately short) paths between usource and utarget must include a node in this ξ-neighborhood. Therefore, “knocking out” the nodes in this ξ-neighborhood cuts off all relevant regulatory paths between usource and utarget.
+See Fig. 5 for a pictorial illustration of this implication. Note that the size ξ of the neighborhood depends only on δ+worst(G)
+4 O and Ω are the standard notations used in analyzing asymptotic upper and lower bounds in the computer science literature: given two functions f (n) and g(n) of a variable n, f (n) = O(g(n)) (respectively, f (n) = Ω(g(n)) provided there exists two constants n0, c > 0 such that f (n) ≤ c g(n) (respectively, f (n) ≥ c g(n)) for n ≥ n0.
+which, as our empirical results indicate, is usually a small constant for real networks.
+Formal Justifications and Intuitions for (⋆) and (⋆⋆) (see Theorem 10 and Corollary 11 in Section E of the appendix)
+Suppose that we are given the following:
+• three integers κ ≥ 4, α > 0,
+r > (κ
+2 − 1) (6 δ+worst(G) + 2),
+• five nodes u0, u1, u2, u3, u4 such that
+– u1, u2 ∈ Br (u0) with du1,u2 ≥ κ
+2
+(6 δ+worst(G) + 2),
+– du1,u4 = du2,u3 = α.
+Then, (⋆) and (⋆⋆) are implied by following type of asymptotic bounds provided by Theorem 10 and Corollary 11:
+For a suitable positive value λ = O(δ+worst(G) ), if
+du1,u4 = du2,u3 = α > λ then one of the following is true for any path Q between u3 and u4 that does not involve a node in ∪r′≤rBr′ (u0):
+• Q does not exist (i.e., l(Q) ≥ n), or
+• Q is much longer than a shortest path between the two nodes, i.e., if Q is a μ-approximate short path or a ε-additive-approximate short path then μ or ε is large.
+A pessimistic estimate shows that a value of λ that is about 6 δ+worst(G) + 2 suffices. As we sub
+sequently observe, for real networks the bound is much better, about λ ≈ δ+worst(G).
+Empirical evaluation of (⋆)
+We empirically investigated the claim in (⋆) on relevant paths passing through a neighborhood of a central node for the following two biological networks:
+Network 1:: E. coli transcriptional, and
+Network 4:: T-LGL signaling.
+For each network we selected a few biologically relevant source-target pairs. For each such pair usource and utarget, we found the shortest path(s) between them. For each such shortest path, a central node ucentral was identified. We then considered the ξ-neighborhood of ucentral such that both both usource and utarget are on the boundary of the neighborhood, and for each such neighborhood we determined what percentage of shortest or approximately short path (with one or two extra edges compared to shortest paths) between usource and utarget had all edges in this neighborhood. The results, tabulated in Table VIII, support (⋆).
+Empirical evaluation of (⋆⋆)
+We empirically investigated the size ξ of the neighborhood in claim (⋆⋆) for the same two biological networks and the same combinations of source, target and central nodes as in
+
+
+8
+TABLE VIII. Effect of the prescribed neighborhood in claim (⋆) on all edges in relevant paths.
+SP : shortest path between usource and utarget
+SP+1 : paths between usource and utarget with one extra edge than SP (1-additive-approximate short path) SP+2 : paths between usource and utarget with two extra edges than SP (2-additive-approximate short path) N+
+ξ (u central) : strict ξ = du source , u target neighborhood of ucentral
+n : size (number of nodes) of the network
+N+
+ξ (u central)/n : fraction of strict ξ = du source , u target neighborhood of ucentral with respect to the size of the network
+Network
+name usource utarget du source , u target ucentral
+N+
+ξ (u central)
+n
+% of SP with every edge in the neighborhood of claim (⋆)
+% of SP+1 with every edge in the neighborhood of claim (⋆)
+% of SP+2 with every edge in the neighborhood of claim (⋆)
+Network 1: E. coli
+transcriptional
+fliAZY arcA 4 CaiF 0.20 100% 100% 18%
+crp 0.27 100% 100% 70% fecA aspA 6 crp 0.43 100% 100% 100%
+sodA 0.28 100% 100% 62%
+Network 4: T-LGL signaling
+IL15 Apoptosis 4 GZMB 0.37 100% 66% 40%
+PDGF Apoptosis 6
+IL2, NKFB 0.72,0.59 100% 100% 100% Ceramide 0.60 80% 64% 36% MCL1 0.59 80% 88% 93% stimuli Apoptosis 4 GZMB 0.37 100% 100% 100%
+TABLE IX. The effect of the size of the neighborhood in mediating short paths. SP : shortest path between usource and utarget
+SP+1: paths between usource and utarget with one extra edge than SP (1-additive-approximate short path) SP+2: paths between usource and utarget with two extra edges than SP (2-additive-approximate short path)
+Network
+name usource utarget du source , u target ucentral % of SP with a node
+in ξ-neighborhood
+% of SP+1 with a node in ξ-neighborhood
+% of SP+2 with a node in ξ-neighborhood Network 1: E. coli
+transcriptional
+δ+
+worst(G) = 2
+fliAZY arcA 4 CaiF ξ = 1 100% ξ = 1 71% ξ = 1 59%
+crp ξ = 1 100% ξ = 1 100% ξ = 1 100% fecA aspA 6 crp ξ = 1 100% ξ = 1 100% ξ = 1 100%
+sodA ξ = 1 100% ξ = 1 100% ξ = 1 100%
+Network 4: T-LGL signaling δ+worst(G) = 2
+IL15 apoptosis 4 GZMB ξ = 1 100% ξ = 1 100% ξ = 1 100%
+PDGF apoptosis 6
+IL2 ξ = 1 80% ξ = 1 82% ξ = 1 93%
+ξ = 2 100% ξ = 2 100% ξ = 2 100% NFKB ξ = 1 80% ξ = 1 86% ξ = 1 76%
+ξ = 2 100% ξ = 2 100% ξ = 2 100% Ceramide ξ = 1 40% ξ = 1 23% ξ = 1 40%
+ξ = 2 100% ξ = 2 100% ξ = 2 100% MCL1 ξ = 1 60% ξ = 1 47% ξ = 1 73%
+ξ = 2 100% ξ = 2 100% ξ = 2 100% Stimuli apoptosis 4 GZMB ξ = 1 100% ξ = 1 100% ξ = 1 100%
+claim (⋆). We considered the ξ-neighborhood of ucentral for ξ = 1, 2, . . . , and for each such neighborhood we determined what percentage of shortest or approximately short path (with one or two extra edges compared to shortest paths) between usource and utarget involved a node in this neighborhood (not counting usource and utarget). The results, tabulated in Table IX,
+show that removing the nodes in a ξ ≤ δ+worst(G) neighborhood
+around the central nodes disrupts all the relevant paths of the selected networks. As δ+worst(G) is a small constant for all of
+our biological networks, this implies that the central node and its neighbors within a small distance are the essential nodes in the signal propagation between usource and utarget.
+E. Effect of hyperbolicity on structural holes in social networks
+For a node u ∈ V, let Nbr(u) = { v | {u, v} ∈ E } be the set of neighbors of (i.e., nodes adjacent to) u. To quantify the useful information in a social network, Ron Burt in [48] defined a measure of the structural holes of a network. For an undirected unweighted connected graph G = (V, E) and a node u ∈ V with degree larger than 1, this measure Mu of the structural hole at u is defined as [48, 49]:
+
+
+9
+ρ=1
+λ=2
+u Bρ
+y
+v
+(a)
+ρ=1
+λ=2
+u Bρ
+y
+v
+(b)
+FIG. 6. Illustration of weak and strong domination. (a) v, y is weakly (ρ, λ)-dominated by u since only one shortest path between v and y intersects Bρ(u). (b) v, y is strongly (ρ, λ)-dominated by u since all the shortest path between v and y intersect Bρ(u).
+Mu
+d=e=f
+∑
+v∈V
+
+au,v + av,u
+mx,aux
+{ au,x + ax,u
+} [ 1−
+∑
+yy,∈uV,v
+
+au,y + ay,u
+∑
+x,u
+(au,x + ax,u
+)
+
+
+av,y + ay,v
+mz,ayx
+{av,z + az,v
+}
+
+
+
+where ap,q =
+{ 1, if {p, q} ∈ E
+0, otherwise are the entries in the standard
+adjacency matrix of G. By observing that ap,q = aq,p and
+mx,aux
+{au,x + ax,u
+} = mz,ayx
+{av,z + az,v
+} = 2, the above equation for
+Mu can be simplified to
+Mu = ∣∣∣ Nbr(u) ∣∣∣ −
+∑
+v,y ∈ Nbr(u)
+av,y
+∣∣∣ Nbr(u) ∣∣∣ (1)
+Thus high-degree nodes whose neighbors are not connected to each other have high Mu values. For an intuitive interpretation and generalization of (1), the following definition of weak and strong dominance will prove useful (cf. dominating set problem for graphs [50] and point domination problems in geometry [51]). A pair of distinct nodes v, y is weakly (ρ, λ)dominated (respectively, strongly (ρ, λ)-dominated) by a node u provided (see Fig. 6):
+(a) ρ < du,v, du,y ≤ ρ + λ, and
+(b) for at least one shortest path P (respectively, for every shortest path P) between v and y, P contains a node z such that du,z ≤ ρ.
+Let {v, y} ≺ ρ,λ
+weak u (respectively, {v, y} ≺ ρ,λ
+strong u)
+=
+
+1, if v, y is weakly (respectively, strongly)
+(ρ, λ)-dominated by u 0, otherwise
+Since B1(u) = ⋃
+0 < j ≤ 1 B j(u) = Nbr(u), it follows that
+Mu = ∣∣∣ ∪0 < j ≤ 1B j(u) ∣∣∣ −
+∑
+v,y ∈ ⋃
+0 < j ≤ 1 B j(u)
+(1 − {v, y} ≺ 0,1
+weak u)
+∣∣∣ ∪0 < j ≤ 1B j(u) ∣∣∣
+λ
+u
+Bρ(u) ρ
+v1
+y1
+v2
+y2
+FIG. 7. Visual illustration: either all the shortest paths are completely inside or all the shortest paths are completely outside of Bρ+λ(u).
+=E
+
+number of pairs of nodes v, y such that v, y is weakly (0, 1)-dominated by u
+∣∣∣∣∣∣∣∣
+v is selected uniformly ran
+domly from ⋃
+0 < j ≤ 1 B j(u)
+
+≥E
+
+number of pairs of nodes v, y such that v, y is strongly (0, 1)-dominated by u
+∣∣∣∣∣∣∣∣
+v is selected uniformly ran
+domly from ⋃
+0 < j ≤ 1 B j(u)
+
+and a generalization of Mu is given by (replacing 0, 1 by ρ, λ):
+Mu,ρ,λ = ∣∣∣ ∪ρ < j ≤ λB j(u) ∣∣∣ −
+∑
+v,y ∈ ⋃
+ρ < j ≤ λ B j(u)
+(1 − {v, y} ≺ ρ,λ
+weak u)
+∣∣∣ ⋃
+ρ < j ≤ λ B j(u) ∣∣∣
+=E
+
+number of pairs of nodes v, y such that v, y is weakly (ρ, λ)-dominated by u
+∣∣∣∣∣∣
+v is selected uniformly randomly from ∪ρ < j ≤ λB j(u)
+
+≥E
+
+number of pairs of nodes v, y such that v, y is strongly (ρ, λ)-dominated by u
+∣∣∣∣∣∣
+v is selected uniformly randomly from ∪ρ < j ≤ λB j(u)
+
+When the graph is hyperbolic (i.e., δ+worst(G) is a constant),
+for moderately large λ, weak and strong dominance are essentially identical and therefore weak domination has a much stronger implication. Recall that n denotes the number of nodes in the graph G. Our finding can be succinctly summarized as (see Fig. 7 for a visual illustration):
+(⋆⋆⋆) If λ ≥ (6 δ+
+worst(G) + 2) log2 n then, as
+suming v is selected uniformly randomly from ∪ρ < j ≤ λB j(u) for any node u, the expected number of pair of nodes v, y that are weakly (ρ, λ)dominated by u is precisely the same as the expected number of pair of nodes that are strongly (ρ, λ)-dominated by u.
+A mathematical justification for the claim (⋆⋆⋆) is provided by Lemma 12 in Section F of the appendix.
+An implication of (⋆⋆⋆)
+
+
+10
+λ2
+λ1
+u
+Bρ(u)
+ρ
+FIG. 8. For hyperbolic graphs, the further we move from the central (black) node, the more a shortest path bends inward towards the central node.
+TABLE X. Weak domination leads to strong domination for social networks. u is the index of the central node and
+ν = n2
+n1
+=
+∣∣∣∣
+{(v, y) ∈ Bρ+λ(u) ∣∣∣ {v, y} ≺ ρ,λ
+strong u = 1} ∣∣∣∣
+∣∣∣∣
+{(v, y) ∈ Bρ+λ(u) ∣∣∣ {v, y} ≺ ρ,λ
+weak u = 1} ∣∣∣∣
+Network name u ρ λ ∣∣∣ Bρ+λ(u) ∣∣∣ ν
+Network 1: Dolphin social network 14 4 1 5 80%
+37 4 1 3 100%
+Network 4: Books about US politics 8 4 1 4 83%
+3 3 1 5 90%
+Network 7: Visiting ties in San Juan 34 4 1 4 50%
+9 3 1 5 90%
+If λ ≥ (6 δ+worst(G) + 2) log2 n and Mu,ρ,λ ≈
+∣∣∣ Bρ+λ(u) ∣∣∣, then almost all pairs of nodes are strongly (ρ, λ)-dominated by u, i.e., for almost all pairs of nodes v, y ∈ Bρ+λ(u), every shortest path between v and y contains a node in Bρ(u).
+A visual illustration of this implication is in Fig. 8 showing that as λ increases the shortest paths tend to bend more and more towards the central node u for a hyperbolic network.
+Empirical verification of (⋆⋆⋆)
+We empirically investigated the claim in (⋆⋆⋆) for the following three social networks from Table II:
+Network 1: Dolphin social network,
+Network 4: Books about US politics, and
+Network 7: Visiting ties in San Juan.
+For each network we selected a (central) node u such that there are sufficiently many nodes in the boundary of the ξneighborhood Bξ (u) of u for an appropriate ξ = ρ + λ. We then set λ to a very small value of 1, and calculated the following quantities.
+• We computed the number n1 of all pairs of nodes from Bξ (u) that are weakly (ρ, λ)-dominated by u.
+• We computed the number n2 of all pairs of nodes from Bξ (u) that are strongly (ρ, λ)-dominated by u.
+Table X tabulates the ratio ν = n2/n1, and shows that a large percentage of the pair of nodes that were weakly dominated were also strongly dominated by u.
+IV. CONCLUSION
+In this paper we demonstrated a number of interesting properties of the shortest and approximately shortest paths in hyperbolic networks. We established the relevance of these results in the context of biological and social networks by empirically finding that a variety of such networks have closeto-tree-like topologies. Our results have important implications to a general class of directed networks which we refer to as regulatory networks. For example, our results imply that cross-talk edges or paths are frequent in these networks. Based on our theoretical results we proposed methodologies to determine relevant paths between a source and a target node in a signal transduction network, and to identify the most important nodes that mediate these paths. Our investigation shows that the hyperbolicity measure captures nontrivial topological properties that is not fully reflected in other network measures, and therefore the hyperbolicity measure should be more widely used.
+Appendix A: Theorem 1
+Theorem 1 Suppose that G has a cycle of k ≥ 4 nodes which has no path-chord. Then, δ+worst(G) ≥ ⌈k/4⌉.
+Proof. In our proofs we will use the consequences of the 4-node condition when the 4 nodes are chosen in a specific manner as stated below in Lemma 2.
+u0 u2
+u1
+v = u0,1
+u0,2
+u1,2 = v′
+FIG. 9. Case 1 of Theorem 3: v = u0,1, v′ = u1,2.
+
+
+11
+Lemma 2 Let u0, u1, u2, u3 be four nodes such that u3 is on a shortest path between u1 and u2. Suppose also that all the inter-node distances are strictly positive except for du1,u3 and
+du1,u3 =
+⌈ du1,u2 +du0,u1 −du0,u2 2
+⌉
+. Then,
+⌈ du0,u1 + du0,u2 + du1,u2
+2
+⌉
+≤ du0,u3 + du1,u2
+≤
+⌈ du0,u1 + du0,u2 + du1,u2
+2
+⌉
++ 2 δ+
+u0 ,u1 ,u2 ,u3
+Proof. Note that due to triangle inequality 0 ≤
+⌈ du1,u2 +du0,u1 −du0,u2 2
+⌉
+≤ du1,u2 and thus node u3 always exists.
+First, consider the case when 0 < du1,u3 < du1,u2. Consider the three quantities involved in the 4-node condition for the nodes u0, u1, u2, u3, namely the quantities du0,u3 +du1,u2 , du0,u2 + du1,u3 and du0,u1 + du2,u3 . Note that
+2 (du0,u3 + du1,u2
+) = (du0,u3 + du1,u3
+) + (du0,u3 + du2,u3
+) + du1,u2
+≥ du0,u1 + du0,u2 + du1,u2
+⇒ du0,u3 + du1,u2 ≥
+⌈ du0,u1 + du0,u2 + du1,u2
+2
+⌉
+du0,u2 + du1,u3 = du0,u2 +
+⌊ du1,u2 + du0,u1 − du0,u2
+2
+⌋
+=
+⌊ du0,u1 + du0,u2 + du1,u2
+2
+⌋
+du0,u1 + du2,u3 = du0,u1 +
+⌈ du1,u2 + du0,u2 − du0,u1
+2
+⌉
+=
+⌈ du0,u1 + du0,u2 + du1,u2
+2
+⌉
+Thus, du0,u3 + du1,u2 ≥ max { du0,u2 + du1,u3 , du0,u1 + du2,u3
+} and using the definition of δu+0,u1,u2,u3 we have
+⌈ du0,u1 + du0,u2 + du1,u2
+2
+⌉
+≤ du0,u3 + du1,u2
+≤
+⌈ du0,u1 + du0,u2 + du1,u2
+2
+⌉
++ 2 δ+
+u0 ,u1 ,u2 ,u3
+Next, consider the case when du1,u3 = 0. This implies
+du0,u1 + du1,u3 = du0,u1 + du1,u2 = du0,u2
+= du0,u1 + du0,u2 + du1,u2
+2≤
+⌈ du0,u1 + du0,u2 + du1,u2
+2
+⌉
+Finally, consider the case when du1,u3 = du1,u2 . This implies
+du1,u2 − du1,u2 + du0,u1 − du0,u2
+2 <1
+≡ du0,u2 + du1,u2 = du0,u1 + 2 − 2 ε for some 0 < ε ≤ 1
+Thus, it easily follows that
+du0,u3 +du1,u2 = du0,u2 +du1,u2 = du0,u2 + du1,u2 + du0,u1 + 2 − 2 ε
+2
+= du0,u2 + du1,u2 + du0,u1
+2 +1−ε
+⇒ du0,u3 + du1,u2 ≤
+⌈ du0,u1 + du0,u2 + du1,u2
+2
+⌉
+❑
+We can now prove Theorem 1 as follows. Let C =
+(u0, u1, . . . , uk−1, u0
+) be the cycle of k = 4r + r′ nodes for some integers r and 0 ≤ r′ < 4. Consider the four nodes
+u0, ur+⌈r′/2⌉, u2r+⌊ ( r′+⌈r′/2⌉ ) / 2 ⌋ and u3r+r′ . Since C has no path
+chord, we have du0,ur+⌈r′/2⌉ = r + ⌈r′/2⌉, du0,u2r+⌊( r′+⌈r′/2⌉ ) / 2 ⌋ =
+2r +
+⌊ r′+⌈r′/2⌉ 2
+⌋
+dur+⌈r′/2⌉,u3r+r′ = 2r + r′ − ⌈r′/2⌉ ≤ 2r + ⌈r′/2⌉,
+du0,u3r+r′ = r and u2r+⌊ ( r′+⌈r′/2⌉ ) / 2 ⌋ is on a shortest path be
+tween ur and u3r+r′. Thus, applying the bound of Lemma 2, we get
+δ+
+worst(G) ≥ δ+
+u0, ur+⌈r′/2⌉, u2r+⌊ ( r′+⌈r′/2⌉ ) / 2 ⌋, u3r+r′
+≥
+du0,u 2r+
+
+r′ +⌈2r′/2⌉
+
++ dur+⌈ r′
+2 ⌉,u3r+r −
+
+du0,ur+⌈ r′
+2 ⌉ +dur+⌈ r′
+2 ⌉,u3r+r′ +du3r+r ,u0
+2
+
+2
+=
+4r +
+⌊ r′+⌈r′/2⌉ 2
+⌋
+− r′ + ⌈r′/2⌉ −
+⌈ 4r + r′ 2
+⌉
+2 = r+
+⌊ r′+⌈r′/2⌉ 2
+⌋
+− r′
+2 ≥ r − 1/4 ⇒ δ+
+worst(G) ≥ r = ⌈k/4⌉
+❑
+Appendix B: Theorem 3 and Corollary 4
+The Gromov product nodes u0,1, u0,2, u1,2 of a shortest-path
+triangle ∆{u0,u1,u2} are three nodes satisfying the following5:
+• u0,1, u0,2 and u1,2 are located on the paths P∆ (u0, u1), P∆ (u0, u2) and P∆ (u1, u2), respectively, and
+• the distances of these three nodes from u0, u1 and u2 satisfy the following constraints:
+du0,u0,1 + du1,u0,1 = du0,u1 , du0,u0,2 + du2,u0,2 = du0,u2
+du1,u1,2 + du2,u1,2 = du1,u2 , du1,u0,1 = du1,u1,2
+du0,u0,1 = du0,u0,2 =
+⌊ du0,u1 + du0,u2 − du1,u2
+2
+⌋
+5 To simplify exposition, we assume that du0,u1 + du1,u2 + du0,u2 is an even
+number. Otherwise, the definition will require minor changes.
+
+
+12
+u0 u2
+u1
+u0,1= u1,0
+v
+u0,2= u2,0
+u1,2= u2,1
+v′
+du1,u0,1
+du0,u0,1
+dv,v
+′
+du1,v′ = du1,v
+d
+u0,u0,1 =
+⌊ du0,u1 + du0,u2 − du1,u2
+2
+⌋
+d
+u1,u0,1 =
+⌈ du1,u2 + du1,u0 − du2,u0
+2
+⌉
+d
+u1,u0,1 = du1,u1,2 du0,u0,1 = du0,u0,2 du2,u0,2 = du2,u1,2
+δ+
+∆{u0,u1,u2} ≤ δ+
+worst(G) dv,v′ ≤ max
+{
+6 δ+
+∆{u0,u1,u2} , 2
+}
+FIG. 10. A pictorial illustration of the claim in Theorem 3.
+It is not difficult to see that a set of such three nodes always exists. For convenience, the nodes u1,0, u2,0 and u2,1 are assumed to be the same as the nodes u0,1, u0,2 and u1,2, respectively.
+Theorem 3 (see Fig. 10 for a visual illustration) For a shortest-path triangle ∆{u0,u1,u2} and for 0 ≤ i ≤ 2, let v and
+v′ be two nodes on the paths ui
+P∆(ui,ui+2 (mod 3))
+! ui, i+2 (mod 3)
+and ui
+P∆(ui,ui+1 (mod 3))
+! ui, i+1 (mod 3), respectively, such that dui,v = dui,v′ . Then,
+dv,v′ ≤ 6 δ+
+∆{u0,u1,u2} + 2
+where δ+
+∆{u0,u1,u2} ≤ δ+worst(G) is the largest worst-case hyperbol
+icity among all combinations of four nodes in the three shortest paths defining the triangle.
+Corollary 4 (Hausdorff distance between shortest paths) Suppose that P1 and P2 are two shortest paths between two nodes u0 and u1. Then, the Hausdorff distance dH (P1, P2) between these two paths can be bounded as:
+dH (P1, P2) d=ef max
+{
+max
+v1 ∈ P1
+min
+v2 ∈ P2
+{ dv1,v2
+}, max
+v2 ∈ P2
+min
+v1 ∈ P1
+{ dv1,v2
+}}
+≤ 6 δ+
+∆{u0,u1,u2} + 2
+where u2 is any node on the path P2.
+Proof of Theorem 3. To simplify exposition, we assume that du0,u1 +du1,u2 +du0,u2 is even and prove a slightly improve bound
+of dv,v′ ≤ 6 δ+
+∆{u0,u1,u2} + 1. It is easy to modify the proof to show
+that dv,v′ ≤ 6 δ+
+∆{u0,u1,u2} + 2 if du0,u1 + du1,u2 + du0,u2 is odd.
+We will prove the result for i = 1 only; similar arguments will hold for i = 0 and i = 2. If du1,u0,1 = 0 then v = v′ = u1 and the claim holds trivially, Thus, we assume that du1,u0,1 > 0.
+Case 1: v = u0,1 and v′ = u1,2. In this case we need to
+prove that du0,1,u1,2 ≤ 6 δ+
+∆{u0,u1,u2} + 1 (see Fig. 9). Assume that
+du0,1,u1,2 > 0 since otherwise the claim is trivially true. Using Lemma 2 for the four nodes u0, u1, u2, u1,2, we get
+du0,u1,2 + du1,u2 ≤
+⌈ du0,u1 + du1,u2 + du0,u2
+2
+⌉
++ 2 δ+
+u0,u1,u2,u1,2 (B1)
+Now, we note that
+du1,u2 + du0,u0,2 = du1,u2 +
+⌊ du0,u1 + du0,u2 − du1,u2
+2
+⌋
+=
+⌊ du0,u1 + du0,u2 + du1,u2
+2
+⌋
+(B2)
+which in turn implies
+∣∣∣ du0,u1,2 − du0,u0,2
+∣∣∣ =
+∣∣∣∣
+(du0,u1,2 + du1,u2
+) − (du1,u2 + du0,u0,2
+) ∣∣∣∣
+≤
+∣∣∣∣∣∣
+⌈ du0,u1 + du1,u2 + du0,u2
+2
+⌉
++ 2 δ+
+u0 ,u1 ,u2 ,u1,2
+} {{ } (by inequality (B1))
+−
+⌊ du0,u1 + du0,u2 + du1,u2
+2
+⌋
+} {{ } (by equality (B2))
+∣∣∣∣∣∣
+≤ 2 δ+
+u0,u1,u2,u1,2 + 1 (B3)
+In a similar manner, we can prove the following analog of inequality (B3):
+∣∣∣ du2,u0,1 − du2,u0,2
+∣∣∣ ≤ 2 δ+
+u0,u1,u2,u0,1 (B4)
+Using inequalities (B3) and (B4), it follows that
+∣∣∣∣
+(du0,u1,2 + du2,u0,1
+) − du0,u2
+∣∣∣∣
+=
+∣∣∣∣
+(du0,u1,2 + du2,u0,1
+) − (du0,u0,2 + du2,u0,2
+) ∣∣∣∣
+=
+∣∣∣∣
+(du0,u1,2 − du0,u0,2
+) + (du2,u0,1 − du2,u0,2
+) ∣∣∣∣
+≤ ∣∣∣ du0,u1,2 − du0,u0,2
+∣∣∣ + ∣∣∣ du2,u0,1 − du2,u0,2
+∣∣∣
+≤ 2 δ+
+u0,u1,u2,u1,2 + 2 δ+
+u0,u1,u2,u0,1 + 1 (B5)
+Now, consider the three quantities involved in the 4-node condition for the nodes u0, u2, u0,1, u1,2, namely the quantities:
+du0,u2 + du0,1,u1,2 , du0,u1,2 + du0,1,u2 and du0,u0,1 + du2,u1,2 . Note that
+du0,u0,1+ du2,u1,2 = du0,u0,2+ du2,u0,2 = du0,u2 < du0,u2+ du0,1,u1,2 (B6)
+If du0,u1,2 + du0,1,u2 ≤ du0,u0,1 + du2,u1,2 then by the definition of
+δu+0,u2,u0,1,u1,2 we have
+du0,1,u1,2 = (du0,u2 + du0,1,u1,2
+) − du0,u2
+= (du0,u2 + du0,1,u1,2
+) − (du0,u0,1 + du2,u1,2
+) ≤ 2 δ+
+u0 ,u2 ,u0,1 ,u1,2
+Otherwise, du0,u1,2 + du0,1,u2 > du0,u0,1 + du2,u1,2 and then again by
+the definition of 2 δu+0,u2,u0,1,u1,2 we have
+∣∣∣ du0,u1,2 + du0,1,u2 − du0,u2 − du0,1,u1,2
+∣∣∣ ≤ 2 δ+
+u0 ,u2 ,u0,1 ,u1,2
+
+
+13
+u0 u2 = v14
+u1 = v1
+u0,1
+v
+u1,2 = v10
+v′ = v6
+v13
+v12
+v11
+v7 v8
+v9
+v5
+v4
+v3
+v2
+FIG. 11. Case 2 of Theorem 3: v , u0,1, v′ , u1,2.
+and now using inequality (B5) gives
+du0,1,u1,2 = (du0,u1,2 +du2,u0,1 −du0,u2
+)−(du0,u1,2 +du0,1,u2 −du0,u2 −du0,1,u1,2
+)
+≤
+∣∣∣∣du0,u1,2 + du2,u0,1 − du0,u2
+∣∣∣∣ +
+∣∣∣∣du0,u1,2 + du0,1,u2 − du0,u2 − du0,1,u1,2
+∣∣∣∣
+≤ 2 δ+
+u0,u1,u2,u1,2 +2 δ+
+u0,u1,u2,u0,1 +2 δ+
+u0,u2,u0,1,u1,2 +1 ≤ 6 δ+
+∆{u0,u1,u2} +1
+Case 2: v , u0,1 and v′ , u1,2. The claim trivially holds
+if dv,v′ ≤ 1, thus we assume that dv,v′ > 1. Let (v1 =
+u1, v2 = u3, v3, . . . , vh = v′, . . . , vs = u1,2, . . . , vr = u2
+)
+be the ordered sequence of nodes in the given shortest path from u1 to u2 (see Fig. 11). Consider the sequence of shortest-path triangles ∆{u0,u1,v2}, ∆{u0,u1,v3}, . . . , ∆{u0,u1,vr}, where each such triangle ∆{u0,u1,vj} is obtained by taking the shortest path P∆ (u0, u1), the sub-path P∆
+(u1, v j
+) of the shortest path P∆ (u1, u2), from u1 to v j, and a shortest path u0
+s
+! v j from u0 to v j. Let v1, j be the Gromov product node on the side (shortest path) P∆
+(u1, v j
+) for the shortest-path triangle ∆{u0,u1,vj}.
+We claim that if v1, j = vp and v1, j+1 = vq then q is either
+p or p + 1. Indeed, if du1,vp =
+⌊ du0,u1 +du1,u j −du0,v j 2
+⌋
+and du1,vq =
+⌊ du0,u1 +du1,u j+1 −du0,v j+1 2
+⌋
+then
+du1,vq −du1,vp =
+⌊ du0,u1 + du1,v j+1 − du0,v j+1
+2
+⌋ −
+⌊ du0,u1 + du1,v j − du0,v j
+2
+⌋
+≤
+
+du0,u1 + (1 + du1,vj
+) − (du0,vj+1 − 1)
+2
+−
+⌊ du0,u1 + du1,v j − du0,v j
+2
+⌋
+=
+⌊ du0,u1 + du1,v j − du0,v j
+2 +1
+⌋ −
+⌊ du0,u1 + du1,v j − du0,v j
+2
+⌋
+≤1
+and a similar proof of du1,vq − du1,vp ≤ 1 can be obtained if
+du1,vp =
+⌈ du0,u1 +du1,u j −du0,v j 2
+⌉
+and du1,vq =
+⌈ du0,u1 +du1,u j+1 −du0,v j+1 2
+⌉ .
+Thus, the ordered sequence of nodes v1,1, v1,2, . . . , v1,r cover the ordered sequence of nodes v2, v3, . . . , vs in a consecutive manner without skipping over any node. Since v1,1 is either v1 or v2, and v1,r = vs = u1,2, there must be an index t such that
+v1,t = v′ = vh. Since du1,v = du1,v′ , v and v′ are the two Gromov product nodes for the shortest-path triangle ∆{u0,u1,vt} and thus
+u0 u1
+v
+shortest path P1
+P2
+v′
+dv,v′
+dv,v′ ≤ min
+{(
+6 δ+
+worst(G) + 1
+)(
+⌊ log2 l (P2) ⌋ − 1
+)
+,
+⌊ du0,u1
+2
+⌋}
+FIG. 12. Illustration of the bound in Theorem 5.
+applying Case 1.1 on ∆{u0,u1,vt} we have dv,v′ ≤ 6 δ+
+∆{u0,u1,u2} + 1.
+❑
+Appendix C: Theorem 5 and Corollary 6
+Theorem 5 (see Fig. 12 for a visual illustration) Let P1 ≡
+u0
+s
+! u1 and P2 be a shortest path and an arbitrary path, respectively, between two nodes u0 and u1. Then, for every
+node v on P1, there exists a node v′ on P2 such that
+dv,v′ ≤ min
+{ (6 δ+worst(G) + 2) ( ⌊ log2 l (P2) ⌋ − 1) ,
+⌊ du0,u1 2
+⌋}
+= O( δ+worst(G) log l (P2) )
+Since l (P2) ≤ n, the above bound also implies that
+dv,v′ ≤ (6 δ+
+worst(G) + 2) ( ⌊ log2 n ⌋ − 1) = O( δ+
+worst(G) log n)
+Corollary 6 Suppose that there exists a node v on the shortest path between u0 and u1 such that minv′∈P2
+{dv,v′
+} ≥ γ. Then,
+l (P2) ≥ 2
+γ
+6 δ+worst(G)+2 + 1
+− 1 = Ω(2γ / δ+
+worst(G) ).
+Proof of Theorem 5. First, note that by selecting v′ to be one of u0 or u1 appropriately we have dv,v′ ≤ ⌊du0,u1/2⌋. Now, assume that l (P2) > 2. Let u2 be the node on the path P2
+such that l(u0
+P2
+! u2
+) = ⌈ l(P2)/2 ⌉. and consider the shortestpath triangle ∆{u0,u1,u2}. By Theorem 3 there exists a node v′ either on a shortest path between u0 and u2 or on a shortest
+path between u1 and u2 such that dv,v′ ≤ 6 δ+worst(G) + 2. We
+move from v to v′ and recursively solve the problem of finding a shortest path from v′ to a node on a part of the path P2 containing at most ⌈(P2)/2⌉ edges. Let D(y) denote the minimum distance from v to a node in a path of length y between u0 and u1. Thus, the worst-case recurrence for D(y) is given by
+D(y) ≤ D ( ⌈ y
+2
+⌉ ) + 6 δ+worst(G) + 2, if y > 2
+D(2) = 1
+A solution to the above recurrence satisfies D (l (P2) ) ≤
+(6 δ+worst(G) + 2) ( ⌈ log2 l (P2) ⌉ − 1). ❑
+
+
+14
+Appendix D: Theorem 7 and Corollary 8
+For easy of display of long mathematical equations, we will denote δ+worst(G) simply as δ+.
+Theorem 7 Let P1 and P2 be a shortest path and another
+path, respectively, between two nodes. Define ηP1,P2 as
+η P1,P2
+=
+(
+6 δ+ + 2
+)
+log2
+((
+6μ + 2
+)(
+6 δ+ + 2
+)
+log2
+[ (6 δ+ + 2) (3 μ + 1) μ
+]
++μ
+)
+= O (δ+ log ( μ δ+ ) ) , if P2 is μ-approximate short
+η P1,P2
+=
+(
+6 δ+ + 2
+)
+log2
+( 8
+(
+6 δ+ + 2
+)
+log2
+[
+(6 δ+ + 2) (4 + 2ε)
+]
++1+ ε
+2
+)
+= O (δ+ log ( ε + δ+ log ε ) ) , if P2 is ε-additive-approximate short
+Then, the following statements are true.
+(a) For every node v on P1, there exists a node v′ on P2 such
+that dv,v′ ≤ ⌊ηP1,P2
+⌋.
+(b) For every node v′ on P2, there exists a node v on P1 such
+that dv,v′ ≤ ζP1,P2 where
+ζP1,P2 =
+
+min
+{ ⌊( μ + 1 ) ηP1,P2 + μ
+2
+⌋ ,
+⌊ μ du0,u1
+2
+⌋}
+= O (μ δ+ log ( μ δ+ ) ) , if P2 is μ-approximate short
+min
+{⌊
+2 ηP1,P2 + 1 + ε
+2
+⌋ ,
+⌊ du0,u1 + ε
+2
+⌋}
+= O (ε + δ+ log ( ε + δ+ log ε ) ) ,
+if P2 is ε-additive-approximate short
+Corollary 8 (Hausdorff distance between approximate short paths) Suppose that P1 and P2 are two paths between two nodes. Then, the Hausdorff distance dH (P1, P2) between these two paths can be bounded as follows:
+dH (P1, P2) d=ef max
+{
+max
+v1 ∈ P1
+min
+v2 ∈ P2
+{ dv1,v2
+}, max
+v2 ∈ P2
+min
+v1 ∈ P1
+{ dv1,v2
+}}
+≤η
+P1, u0
+s
+! u1
++ζ
+P2, u0
+s
+! u1
+Corollary 9 Suppose that there exists a node v on the shortest path between u0 and u1 such that min v′ ∈ P2
+{dv,v′
+} ≥ γ. Then, the following is true.
+• If P2 is a μ-approximate short path then
+μ> 2
+γ 6 δ++1
+12 γ − ( 24 + o(1) ) ( 6 δ+ + 1 ) − 1
+3 ⇒ μ=Ω
+ 2γ/δ+
+γ
+
+• If P2 is a ε-additive-approximate short path then
+ε> 2 γ
+6 δ+ +1
+(48 δ+ + 17
+2
+) − log2 (48 δ+ + 8)
+⇒ ε=Ω
+ 2γ/δ+
+δ+ − log δ+
+
+In particular, assuming real world networks have small constant values of δ+, the asymptotic dependence of μ and ε on γ can be summarized as:
+both μ and ε are Ω (2 c γ ) for some constant 0 < c < 1
+Proof of Theorem 7. Let P1 and P2 be a shortest path and another path, respectively, between two nodes u0 and u1. Note that any “sub-path” of a μ-approximate short
+path is also a μ-approximately short path, i.e., ui
+P
+! u j is also a μ-approximate short path, and similarly any sub-path of a ε-additive-approximate short path is also a ε-additiveapproximate short path. μ-approximate shortest paths also restrict the “span” of a path-chord of the path, i.e., if
+(u0, u1, . . . , uk
+) is a μ-approximate short path and {ui, u j
+}∈E then | j − i | ≤ μ.
+(a) Let v and v′ be two nodes on P1 and P2, respectively, such
+that α = dv,v′ = max
+v′′ ∈P1
+min
+v′′′ ∈P2
+{dv′′,v′′′
+}. Let vl ∈ u0
+P!1 v and
+vr ∈ u1
+P1
+! v be two nodes defined by
+dvl,v = 2 α + 1, if du0,v > 2 α + 1
+du0,v, otherwise
+dvr,v = 2 α + 1, if du1,v > 2 α + 1
+du1,v, otherwise
+By definition of α, there exists two nodes v ̃l and v ̃r on the path
+P2 such that dvl,v ̃l , dvr,v ̃r ≤ α. Consider the P3 = v ̃l
+P!2 v ̃r that is the part of path P2 from v ̃l to v ̃r. Note that
+dv ̃l,v ̃r ≤ dv ̃l,vl + dvl,vr + dvr,v ̃r ≤ 6 α + 2
+Thus, we arrive at the following inequalities
+l (P3) ≤
+(6 α + 2) μ, if P2 is μ-approximate short 6 α + 2 + ε, if P2 is ε-additive-approximate short
+Now consider the path P4 = vl
+s
+! v ̃l
+P!2 v ̃r
+s
+! vr obtained by taking a shortest path from vl to v ̃l followed by the path P3 followed by a shortest path from vr to v ̃r. Note that
+l (P4) ≤
+
+(6 α + 2) μ + 2 α, if P2 is μ-approximate short
+6 α + 2 + ε + 2 α = 8 α + 2 + ε,
+if P2 is ε-additive-approximate short
+We claim that min v ̃∈ P4 {dv,v ̃} = α. Indeed, if v ̃ ∈ P3 then, by definition of α, min v ̃ {dv,v ̃} = α. Otherwise, if v ̃ ∈ vl
+s
+! v ̃l, then by triangle inequality dvl,v ≤ dv,v ̃ + d v ̃,vl ⇒ dv,v ̃ ≥ 2 α + 1 − d v ̃,vl > α. Similarly, if v ̃ ∈ v ̃r
+s
+! vr, then by triangle inequality
+dvr,v ≤ dv,v ̃ + d v ̃,vr ⇒ dv,v ̃ ≥ 2 α + 1 − d v ̃,vr > α. Since vl
+P!1 vr is a shortest path between vl and vr and v is a node on this
+path, by Theorem 5, α ≤ (6 δ+ + 2) ( ⌊ log2 l (P4) ⌋ − 1). Thus,
+
+
+15
+we have the following inequalities:
+• If P2 is a μ-approximate short path then
+l (P4)
+≤ (6 α + 2) μ + 2 α
+= (6 μ + 2) α + 2 μ
+≤ (6 μ + 2) (6 δ+ + 2) (log2 l (P4) − 1) + 2 μ
+≤ (6 μ + 2) (6 δ+ + 2) (log2
+((6 μ + 2) α + 2 μ) − 1) + 2 μ
+⇒ α ≤ (6 δ+ + 2) (log2
+((3 μ + 1) α + μ) )
+(D1)
+• If P2 is a ε-additive-approximate short path then
+l (P4) ≤ 8 α + 2 + ε
+≤ 8 (6 δ+ + 2) (log2 l (P4) − 1) + 2 + ε
+≤ 8 (6 δ+ + 2) (log2 (8 α + 2 + ε) − 1) + 2 + ε ⇒ 8α+2+ε
+≤ 8 (6 δ+ + 2) (log2 (8 α + 2 + ε) − 1) + 2 + ε
+≡ α ≤ (6 δ+ + 2) (log2
+(4 α + 1 + ε
+2
+))
+(D2)
+Both (D1) and (D2) are of the form α ≤ a log2
+(b α + c) ≡ 2
+α/a ≤ b α + c where
+a = 6 δ+ + 2 ≥ 1 for both (D1) and (D2)
+b=
+{ 3 μ + 1 ≥ 4 for (D1)
+4 for (D2) c =
+{ μ ≥ 1 for (D1)
+1+ ε
+2 ≥ 1 for (D2)
+Thus, α is at most z0 where z0 is the largest positive integer value of z that satisfies the equation:
+2z/a ≤ b z + c
+In the sequel, we will use the fact that log2
+(x y + 1) ≥ log2
+(x+
+y) for x, y ≥ 1. This holds since
+x ≥ 1 & y ≥ 1 ⇒ y (x − 1) ≥ x − 1 ≡ x y + 1 ≥ x + y
+We claim that z0 ≤ η = a log2
+(2 a b log2
+(a b c) + c). This is
+verified by showing that 2η/a ≥ b η + c as follows:
+2
+η/a = 2log2
+(2 a b log2
+(a b c) +c)
+= 2 a b log2
+(a b c) + c
+b η + c = a b (log2
+(2 a b log2
+(a b c) + c) ) + c
+2
+η/a > b η + c ≡ 2 a b log2
+(a b c) + c ≥ a b (log2
+(2 a b log2
+(a b c) + c) ) + c ≡ 2 log2
+(a b c) ≥ log2
+(2 a b log2
+(a b c) + c) ⇐ 2 log2
+(a b c) ≥ log2
+(2 a b c log2
+(a b c) + 1) since 2 a b log2
+(a b c) ≥ 1 and c ≥ 1
+≡ (a b c)2 ≥ 2 a b c log2
+(a b c) + 1 ⇐ a b c ≥ log2
+(a b c) + 1
+and the very last inequality holds since a b c ≥ 4. Thus, we arrive at the at the following bounds:
+• If P2 is a μ-approximate short path then
+η=
+(
+6 δ+ + 2
+)
+log2
+((
+6μ+2
+)(
+6 δ+ + 2
+)
+log2
+[ (6 δ+ + 2) (3 μ + 1) μ
+]
++μ
+)
+• If P2 is a ε-additive-approximate short path then
+η=
+(
+6 δ+ + 2
+)
+log2
+( 8
+(
+6 δ+ + 2
+)
+log2
+[ (6 δ+ + 2) (4 + 2ε)
+]
++1+ ε
+2
+)
+(b) Let the ordered sequence of nodes in the path P3 = v1
+P2 !
+v′1 be a (length) maximal sequence of nodes such that:
+∀ v′ ∈ P3 : min
+v ∈ P1
+{ dv,v′
+} > ZP1,P2
+Consider the following set of nodes belonging to the two paths
+u0
+P2
+! v1 and v′1
+P2
+! u1:
+Sl = ⋃ {
+v′ ∈ u0
+P!2 v1
+∣∣∣ ∃ v ∈ P1 : dv,v′ = minv′′ ∈ P2
+{ dv,v′′
+}}
+Sr = ⋃ {
+v′ ∈ v′1
+P2
+! u1
+∣∣∣ ∃ v ∈ P1 : dv,v′ = minv′′ ∈ P2
+{ dv,v′′
+}}
+Since u0 ∈ Sl and u1 ∈ Sr, it follows that Sl , ∅ and Sr , ∅. Note that
+⋃{
+v ∈ u0
+P1
+! u1
+∣∣∣ ∃ v′ ∈ Sl ∪ Sr : dv,v′ = min
+v′′ ∈ P2
+{ dv,v′′
+}}
+=
+⋃
+v ∈ u0
+P!1 u1
+{v}
+Thus, there exists two adjacent nodes v4 and v′4 on P1 such
+that both dv4,v3 and dv′4,v′3 is at most ZP1,P2 . Using triangle
+inequality it follows that
+dv3,v′3 ≤ dv3,v4 + dv4,v′4 + dv′4,v′3 = 2 ZP1,P2 + 1
+giving the following bounds
+l
+( v3
+P2
+! v′3
+) ≤
+
+μ dv3,v′3 ≤ 2 μ ZP1,P2 + μ,
+if P2 is μ-approximate short
+dv3,v′3 + ε ≤ 2 ZP1,P2 + 1 + ε,
+if P2 is ε-additive-approximate short
+For any node v′ on P3, we can always use the following path to reach a node on P1:
+• if dv′,v3 ≤ dv′,v′3 then we take the path v′ P!2 v3
+s
+! v4
+of length at most
+⌊l
+( v3
+P!2 v′3
+)
+2
+⌋
++ ZP1,P2 to reach the node
+v = v4 on P1;
+• otherwise we take the path v′ P2
+! v′3
+s
+! v′4 of length at
+most
+⌊l
+( v3
+P!2 v′3
+)
+2
+⌋
++ ZP1,P2 to reach the node v = v′4 on P1.
+This gives the following worst-case bounds for dv,v′:
+dv,v′ ≤
+
+⌊( μ + 1 ) ZP1,P2 + μ
+2
+⌋ , if P2 is μ-approximate short
+⌊2 ZP1,P2 + 1+ε
+2
+⌋ , if P2 is ε-additive-approximate short
+❑
+
+
+16
+r+α
+u0
+r
+u1
+u2
+u3
+u4
+u3,4
+α
+α
+γ
+Q
+very
+long
+path
+FIG. 13. Illustration of the claims in Theorem 10 and Corollary 11.
+Appendix E: Theorem 10 and Corollary 11
+Theorem 10 (see Fig. 13 for a visual illustration) Suppose that we are given the following:
+• three integers κ ≥ 4, α > 0, r > ( κ
+2 − 1) (6 δ+worst(G) + 2), • five nodes u0, u1, u2, u3, u4 such that
+• u1, u2 ∈ Br (u0) with du1,u2 ≥ κ
+2
+(6 δ+
+worst(G) + 2),
+• du1,u4 = du2,u3 = α.
+Then, the following statements are true for any shortest path P between u3 and u4:
+(a) there exists a node v on P such that
+du0,v ≤ r −
+( 3κ − 2 12
+) (6 δ+
+worst(G) + 2) = r − O(κ δ+
+worst(G))
+(b) l (P) ≥ ( 3κ−2
+6
+) (6 δ+worst(G) + 2)+2 α = Ω (κ δ+worst(G) + α).
+Corollary 11 (see Fig. 13 for a visual illustration) Consider any path Q between u3 and u4 that does not involve a node in ∪r′≤rBr′ (u0). Then, the following statements hold:
+(i): l (Q) ≥ 2
+α
+6 δ+worst(G)+2 + κ
+4+5
+6 − 1 = 2Ω
+(α
+δ+worst(G) + κ
+)
+. In particular, if δ+
+worst(G) is a constant then l (Q) =
+2Ω (α + κ) and thus l (Q) increases at least exponentially with both α and κ.
+(ii): if Q is a μ-approximate short path then
+μ≥ 2
+α
+6 δ+worst(G)+2 + κ
+4−1
+6
+12 α + (3 κ − 26 − o(1) ) (6 δ+worst(G) + 2) − 1
+3 =Ω
+
+2Θ
+( α
+δ+worst(G) + κ
+)
+α + κ δ+
+worst(G)
+
+In particular, if δ+worst(G) is a constant then μ =
+Ω ( 2 Θ (α+κ)
+α+κ
+) and thus μ increases at least exponentially with both α and κ.
+(iii): if Q is a ε-additive-approximate short path then
+ε> 2
+α
+6 δ+worst(G)+2 + κ
+4−1
+6
+48 δ+worst(G) + 17
+2
+− log2
+(48 δ+
+worst(G) + 16)
+In particular, if δ+
+worst(G) is a constant then ε =
+Ω (2 Θ (α+κ)) and thus ε increases at least exponentially with both α and κ.
+1. Proof of Theorem 10
+Consider the shortest-path triangle ∆{u0,u3,u4} and let u0,3, u0,4 and u3,4 be the Gromov product nodes of ∆{u0,u3,u4} on the sides (shortest paths) u0 to u3, u0 to u4 and u3 to u4, respectively. Thus, du0,u0,3 = du0,u0,4 , and β = du3,u3,4 =
+⌊ du0,u3 +du3,u4 −du0,u4 2
+⌋ =
+⌊ du3,u4 2
+⌋
+since du0,u3 = du0,u4 = r + α.
+We first claim that du0,u0,3 < r = du0,u2 . Suppose for the sake of contradiction that du0,u0,3 = du0,u0,4 ≥ r. Then, by Theorem 3
+we get du1,u2 ≤ 6 δ+worst(G)+2 which contradicts the assumption
+that du1,u2 ≥ κ
+2
+(6 δ+worst(G) + 2) since κ ≥ 4.
+Thus, assume that du0,u0,3 = du0,u0,4 = r − x for some integer
+x > 0. By Theorem 3, du0,3,u0,4 ≤ 6 δ+worst(G) + 2. Let du0,3,u0,4 =
+6 δ+worst(G) + 2 − y for some integer 0 < y ≤ 6 δ+worst(G) + 2 and
+du1,u2 = κ
+2
+(6 δ+worst(G) + 2) + z for some integer z ≥ 0. Con
+sider the 4-node condition for the four nodes u1, u2, u0,3, u0,4. The three relevant quantities for comparison are:
+q‖ = du1,u2 + du0,3,u0,4 = ( κ
+2 + 1) (6 δ+worst(G) + 1) + z − y
+q= = du0,3,u2 + du0,4,u1 = (du0,u2 − du0,u0,3
+) + (du0,u1 − du0,u0,4
+) = 2x
+q = du0,3,u1 + du0,4,u2 ≤ (du0,3,u0,4 + du0,4,u1
+) + (du0,3,u0,4 + du0,3,u2
+)
+= 12 δ+worst(G) + 4 − 2y + 2x
+We now show that x > ( 3κ−2
+12
+) (6 δ+worst(G) + 2). We have the following cases.
+• Assume that q ≤ min {q‖, q=
+}. This implies
+∣∣∣q‖ − q=
+∣∣∣ ≤ 2 δ+worst(G)
+≡
+∣∣∣∣
+(κ
+2 + 1) (6 δ+worst(G) + 2) + z − y − 2x
+∣∣∣∣ ≤ 2 δ+worst(G)
+⇒ x≥
+(κ
+2 + 1) (6 δ+worst(G) + 2) + z − y − 2 δ+worst(G)
+2
+≥ ( 3κ−2
+12
+) (6 δ+worst(G) + 2) + 1
+6
+• Otherwise, assume that q= ≤ min {q‖, q }. This implies
+∣∣∣q‖ − q ∣∣∣ ≤ 2 δ+worst(G)
+⇒ q ≥ q‖ − 2 δ+worst(G)
+⇒ du0,3,u1 + du0,4,u2 ≥ ( κ
+2 + 1) (6 δ+worst(G) + 2) + z − y − 2 δ+worst(G)
+⇒ (du0,3,u0,4 + du0,4,u1
+) + (du0,3,u0,4 + du0,3,u2
+) ≥ du0,3,u1 + du0,4,u2
+≥ (κ
+2 + 1) (6 δ+worst(G) + 2) + z − y − 2 δ+worst(G)
+⇒ 2x + 2 (6 δ+worst(G) + 2 − y )
+≥ (κ
+2 + 1) (6 δ+worst(G) + 2) + z − y − 2 δ+worst(G)
+⇒ x ≥ ( 3κ−2
+12
+) (6 δ+worst(G) + 2) + 1
+6
+
+
+17
+• Otherwise, assume that q‖ ≤ min {q=, q }. This implies
+∣∣∣q= − q ∣∣∣ ≤ 2 δ+worst(G)
+≡ ∣∣∣ 2x − (du0,3,u1 + du0,4,u2
+) ∣∣∣ ≤ 2 δ+worst(G)
+⇒ 2x ≥ du0,3,u1 + du0,4,u2 − 2 δ+worst(G)
+≥ (du1,u2 − du0,4,u1
+) + (du1,u2 − du0,3,u1
+) − 2 δ+worst(G)
+≡ 2x ≥ κ (6 δ+worst(G) + 2) + 2z − 2x − 2 δ+worst(G)
+⇒ x ≥ ( 3κ−2
+12
+) (6 δ+worst(G) + 2) + δ+worst(G)
+2 +1
+6
+Using Theorem 3, it now follows that
+du0,u3,4 ≤ du0,u0,3 + du0,3,u0,4 ≤ (r − x) + (6 δ+
+worst(G) + 2)
+<r−
+( 3κ − 2 12
+) (6 δ+
+worst(G) + 2)
+This proves part (a) with u3,4 being the node in question. To prove part (b), note that
+|P| = 2 β ≥ 2(r + α) − 2du0,u3,4 ≥ 2α +
+( 3κ − 2 6
+) (6 δ+
+worst(G) + 2)
+2. Proof of Corollary 11
+Consider such a path Q and consider the node u3,4 on the shortest path between u3 and u4. Since every node of Q is at a distance strictly larger than r + α from u0, by Theorem 10 the following holds for every node v ∈ Q
+du3,4,v ≥ (r+α)−du0,u3,4 = (r+α)−
+(
+r−
+( 3κ − 2 12
+) (6 δ+
+worst(G) + 2))
+=α+
+( 3κ − 2 12
+) (6 δ+
+worst(G) + 2)
+Thus, by Corollary 6 (with γ = α + ( 3κ−2
+12
+) (6 δ+worst(G) + 2) ),
+we get
+l (Q) ≥ 2
+γ
+6 δ+worst(G)+2 +1
+−1=2
+α
+6 δ+worst(G)+2 + κ
+4+5
+6 −1
+If Q is a μ-approximate short path, then by Corollary 9:
+μ> 2
+γ
+6 δ+worst(G)+2
+12 γ − ( 24 + o(1) ) ( 6 δ+worst(G) + 2 ) − 1
+3
+=2
+α
+6 δ+worst(G)+2 + κ
+4−1
+6
+12 α + (3 κ − 26 − o(1) ) (6 δ+worst(G) + 2) − 1
+3
+If Q is a ε-additive-approximate short path, then by Corollary 9:
+ε> 2
+γ
+6 δ+worst(G)+2
+48 δ+worst(G) + 17
+2
+− log2
+(48 δ+
+worst(G) + 16)
+=2
+α
+6 δ+worst(G)+2 + κ
+4−1
+6
+48 δ+worst(G) + 17
+2
+− log2
+(48 δ+
+worst(G) + 16)
+Appendix F: Lemma 12
+Lemma 12 (equivalence of strong and weak domination; see
+Fig. 7 for a visual illustration) If λ ≥ (6 δ+
+worst(G) + 2) log2 n
+then
+Mu,ρ,λ
+d=e=f E
+
+number of pairs of nodes v, y such that v, y is weakly (ρ, λ)-dominated by u
+∣∣∣∣∣∣∣∣
+v is selected uniformly randomly from ∪ρ < j ≤ λB j(u)
+
+=== E
+
+number of pairs of nodes v, y such that v, y is strongly (ρ, λ)-dominated by u
+∣∣∣∣∣∣∣∣
+v is selected uniformly randomly from ∪ρ < j ≤ λB j(u)
+
+Proof. Suppose that v, y is weakly (ρ, λ)-dominated by u, i.e.,
+there exists a shortest path v P
+! y between v, y ∈ Bρ+λ(u) such
+that for some node v′ ∈ v P
+! y we have v′ ∈ Bρ(u). Let v Q
+!y be any other path between v and y that does not contain a node from Bρ(u). Then, by Corollary 11(i) (with κ = 4) we have
+l (Q) ≥ 2
+λ
+6 δ+worst(G)+2 + 11
+6 − 1 ≥ 2log2 n+ 11
+6 −1>n−1
+which contradicts the obvious bound l (Q) < n. Thus, no such path Q exists and v, y is strongly (ρ, λ)-dominated by u. ❑
+ACKNOWLEDGMENTS
+B. DasGupta and N. Mobasheri were supported by NSF grants IIS-1160995. R. Albert was supported by NSF grants IIS-1161007 and PHY-1205840.
+[1] M. E. J. Newman, Networks: An Introduction (Oxford University Press, 2010).
+[2] R. Albert, A.-L. Barab ́asi, Statistical mechanics of complex networks. Reviews in Modern Physics 74, 47-97 (2002).
+
+
+18
+[3] V. Colizza, A. Flammini, M. A. Serrano, A. Vespignani, Detecting rich-club ordering in complex networks. Nature Physics 2, 110-115 (2006). [4] V. Latora, M. Marchior, A measure of centrality based on network efficiency. New Journal of Physics 9, 188 (2007). [5] R. Albert, B. DasGupta, A. Gitter, G. G ̈ursoy, R. Hegde, P. Pal, G. S. Sivanathan, E. Sontag, A New Computationally Efficient Measure of Topological Redundancy of Biological and Social Networks. Physical Review E 84(3), 036117 (2011). [6] D. S. Bassett, N. F. Wymbs, M. A. Porter, P. J. Mucha, J. M. Carlson, S. T. Grafton, Dynamic reconfiguration of human brain networks during learning. Proc Natl Acad Sci USA 108(18), 7641-7646 (2011). [7] M. Gromov, Hyperbolic groups. Essays in group theory 8, 75263 (1987). [8] E. A. Jonckheere, P. Lohsoonthorn, Geometry of network security. Proceedings of the American Control Conference 2, 976981 (IEEE Press, 2004). [9] E. Jonckheere, P. Lohsoonthorn, F. Bonahon, Scaled Gromov hyperbolic graphs. Journal of Graph Theory 57(2), 157-180 (2007). [10] F. Ariaei, M. Lou, E. Jonckeere, B. Krishnamachari, M. Zuniga, Curvature of sensor network: clustering coefficient. EURASIP Journal on Wireless Communications and Networking, 213185 (2008). [11] D. Narayan, I. Saniee, Large-scale curvature of networks. Physical Review E 84, 066108 (2011).
+[12] F. Papadopoulos, D. Krioukov, M. Boguna, A. Vahdat, Greedy Forwarding in Dynamic Scale-Free Networks Embedded in Hyperbolic Metric Spaces. Proceedings of the IEEE Conference on Computer Communications, 1-9 (IEEE Press, 2010).
+[13] E. Jonckheerea, M. Loua, F. Bonahona, Y. Baryshnikova, Euclidean versus hyperbolic congestion in idealized versus experimental networks. Internet Mathematics 7(1), 1-27 (2011). [14] M. Bogun, F. Papadopoulos, D. Krioukov, Sustaining the Internet with hyperbolic mapping, Nature Communications 1(62) (2010). [15] F. de Montgolfier, M. Soto, L. Viennot, Treewidth and Hyperbolicity of the Internet. Proceedings of the 10th IEEE International Symposium on Networking Computing and Applications, 2532 (IEEE Press, 2011). [16] N. Robertson, P. D. Seymour, Graph minors. i. excluding a forest. Journal of Combinatorial Theory Series B 35(1), 39-61 (1983). [17] H. L. Bodlaender, Dynamic programming on graphs with bounded treewidth, in Lecture Notes in Computer Science 317, T. Lepist ̈o, A. Salomaa, Eds (Springer Berlin Heidelberg, 1988) pp. 105-118. [18] V. Chepoi, B. Estellon, Packing and covering δ-hyperbolic spaces by balls, in Lecture Notes in Computer Science 4627, M. Charikar, K. Jansen, O. Reingold, J. D. P. Rolim, Eds (Springer, 2007), pp. 59-73. [19] V. Chepoi, F. F. Dragan, B. Estellon, M. Habib, Y. Vax`es. Diameters, centers, and approximating trees of δ-hyperbolic geodesic spaces and graphs. Proceedings of the 24th Annual Symposium on Computational geometry, 59-68 (ACM Press, New York, 2008). [20] V. Chepoi, F. F. Dragan, B. Estellon, M. Habib, Y. Vax`es, Y. Xiang, Additive spanners and distance and routing labeling schemes for δ-hyperbolic graphs. Algorithmica 62(3-4), 713732 (2012). [21] C. Gavoille, O. Ly, Distance labeling in hyperbolic graphs, in Lecture Notes in Computer Science 3827, X. Deng, D.-Z. Du, Eds (Springer Berlin Heidelberg, 2005) pp. 1071-1079.
+[22] I. Abraham, M. Balakrishnan, F. Kuhn, D. Malkhi, V. Ramasubramanian, K. Talwar, Reconstructing approximate tree metrics. Proceedings of the 26th annual ACM symposium on Principles of distributed computing, 43-52 (ACM Press, New York, 2007). [23] R. Krauthgamer, J. R. Lee, Algorithms on negatively curved spaces. Proceedings of the 47th Annual IEEE Symposium on Foundations of Computer Science, 119-132 (IEEE Press, 2006). [24] J. Roe, Index Theory, Coarse Geometry, and Topology of Manifolds. Conference Board of the Mathematical Sciences Regional Conference Series 90 (American Mathematical Society, 1996). [25] S. S. Shen-Orr, R. Milo, S. Mangan, U. Alon, Network motifs in the transcriptional regulation network of Escherichia coli. Nature Genetics 31, 64-68 (2002).
+[26] A. Ma’ayan, S. L. Jenkins, S. Neves, A. Hasseldine, E. Grace, B. Dubin-Thaler, N. J. Eungdamrong, G. Weng, P. T. Ram, J. Jeremy Rice, A. Kershenbaum, G. A. Stolovitzky, R. D. Blitzer, R. Iyengar, Formation of regulatory patterns during signal propagation in a mammalian cellular network. Science, 309 (5737), 1078-1083 (2005). [27] R. Zhang, M. V. Shah, J. Yang, S. B. Nyland, X. Liu, J. K. Yun, R. Albert, T. P. Loughran, Network model of survival signaling in large granular lymphocyte leukemia. Proc Natl Acad Sci USA 105 (42), 16308-16313 (2008). [28] R. Milo, S. Shen-Orr, S. Itzkovitz, N. Kashtan, D. U. Alon, Network motifs: simple building blocks of complex networks. Science 298, 824-827 (2002). [29] H. Jeong, B. Tombor, R. Albert, Z. N. Oltvai, A.-L. Barabasi, The large-scale organization of metabolic networks. Nature 407, 651-654 (2000). [30] G. von Dassow, E. Meir, E.M. Munro, G.M. Odell, The segment polarity network is a robust developmental module. Nature 406, 188-192 (2000). [31] S. Li, S. M. Assmann, R. Albert, Predicting essential components of signal transduction networks: a dynamic model of guard cell abscisic acid signaling. PLoS Biology 4(10), e312 (2006). [32] J. Thakar, M. Pilione, G. Kirimanjeswara, E. T. Harvill, R. Albert, Modeling Systems-Level Regulation of Host Immune Responses. PLoS Computational Biology 3(6), e109 (2007).
+[33] J. Saez-Rodriguez, L. Simeoni, J. A. Lindquist, R. Hemenway, U. Bommhardt, B. Arndt, U.-U. Haus, R. Weismantel, E. D. Gilles, S. Klamt, B. Schraven, A logical model provides insights into T cell receptor signaling. PLoS Computational Biology 3(8), e163 (2007). [34] A. Gitter, J. Klein-Seetharaman, A. Gupta, Z. Bar-Joseph, Discovering pathways by orienting edges in protein interaction networks. Nucleic Acids Research 39(4), e22 (2011).
+[35] D. Lusseau, K. Schneider, O. J. Boisseau, P. Haase, E. Slooten, S. M. Dawson, The bottlenose dolphin community of Doubtful Sound features a large proportion of long-lasting associations. Behavioral Ecology and Sociobiology 54(4), 396-405 (2003). [36] M. Girvan, M. E. J. Newman, Community structure in social and biological networks. Proc Natl Acad Sci USA 99(12), 7821-7826 (2002). [37] W. W. Zachary, An information flow model for conflict and fission in small groups. Journal of Anthropological Research 33, 452-473 (1977). [38] J. H. Michael, J. G. Massey, Modeling the communication network in a sawmill. Forest Products Journal 47, 25-30 (1997). [39] P. Gleiser, L. Danon, Community structure in Jazz. Advances in Complex Systems 6(4), 565-573 (2003).
+
+
+19
+[40] C. P. Loomis, J. O. Morales, R. A. Clifford, O. E. Leonard, Turrialba: Social Systems and the Introduction of Change (The Free Press, Glencoe, IL, 1953), p. 45 and 78.
+[41] D. E. Knuth, The Stanford GraphBase: A Platform for Combinatorial Computing (Addison-Wesley, Reading, MA, 1993). [42] E. Jonckheere, P. Lohsoonthorn, F. Ariaei, Scaled Gromov Four-Point Condition for Network Graph Curvature Computation. Internet Mathematics 7(3), 137-177 (2011). [43] R. Kannan, P. Tetali, S. Vempala, Markov-chain algorithms for generating bipartite graphs and tournaments. Random Structures and Algorithms 14, 293-308 (1999). [44] B. Alberts, Molecular biology of the cell (New York: Garland Publishers, 1994). [45] T. I. Lee, N. J. Rinaldi, F. Robert, D. T. Odom, Z. Bar-Joseph, G. K. Gerber, N. M. Hannett, C. T. Harbison, C. M. Thompson, I. Simon, J. Zeitlinger, E. G. Jennings, H. L. Murray, D. B. Gordon, B. Ren, J. J. Wyrick, J.-B. Tagne, T. L. Volkert, E. Fraenkel, D. K. Gifford, R. A. Young, Transcriptional regulatory networks in Saccharomyces cerevisiae. Science 298(5594), 799-804 (2002). [46] M. R. Bridson, A. Haefliger, Metric Spaces of Non-Positive Curvature (Springer, 1999). [47] R. Albert, Scale-free networks in cell biology. Journal of Cell Science 118, 4947-4957 (2005).
+[48] R. S. Burt, Structural Holes: The Social Structure of Competition (Harvard University Press, 1995). [49] S. P. Borgatti, Structural Holes: Unpacking Burt’s Redundancy Measures. Connections, 20(1), 35-38 (1997).
+[50] M. R. Garey, D. S. Johnson, Computers and Intractability – A Guide to the Theory of NP-Completeness (W. H. Freeman & Co., 1979). [51] P. Gupta, R. Janardan, M. Smid, B. DasGupta, The rectangle enclosure and point-dominance problems revisited. International Journal of Computational Geometry & Applications 7(5), 437-455 (1997).
+
+
+20
+Supplemental Information
+
+
+21
+TABLE XI. Details of 11 biological networks studied
+name brief description # nodes # edges reference
+1. E. coli transcriptional
+E. coli transcriptional regulatory network of direct regulatory interactions between transcription factors and the genes or operons they regulate
+311 451 [25]
+2. Mammalian signaling Mammalian network of signaling pathways and
+cellular machines in the hippocampal CA1 neuron 512 1047 [26]
+3. E. coli transcriptional
+E. coli transcriptional regulatory network of direct regulatory interactions between transcription factors and the genes or operons they regulate
+418 544 ♯♯♯
+4. T-LGL signaling Signaling network inside cytotoxic T cells in the context of
+the disease T cell large granular lymphocyte leukemia 58 135 [27]
+5. S. cerevisiae transcriptional
+S. cerevisiae transcriptional regulatory network showing interactions between transcription factor proteins and genes
+690 1082 [28]
+6. C. elegans metabolic The network of biochemical reactions in C. elegans metabolism 453 2040 [29]
+7. Drosophila segment polarity (6 cells)
+1-dimensional 6-cell version of the gene regulatory network among products of the segment polarity gene family that plays an important role in the embryonic development of Drosophila melanogaster
+78 132 [30]
+8. ABA signaling Guard cell signal transduction network for
+abscisic acid (ABA) induced stomatal closure in plants 55 88 [31] 9. Immune response network
+Network of interactions among immune cells and pathogens
+in the mammalian immune response against two bacterial species 18 42 [32] 10. T cell receptor signaling
+Network for T cell activation mechanisms after engagement
+of the TCR, the CD4/CD8 co-receptors and CD28. 94 138 [33] 11. Oriented yeast PPI An oriented version of an unweighted PPI network constructed
+from S. cerevisiae interactions in the BioGRID database 786 2445 [34]
+♯♯♯ Updated version of the network in [25]; see www.weizmann.ac.il/mcb/UriAlon/Papers/networkMotifs/coli1_1Inter_st.txt.
+
+
+22
+TABLE XII. Details of 9 social networks studied
+name brief description type # nodes # edges reference
+1. Dolphin social network
+Social network of frequent associations between 62 dolphins in a community living off Doubtful Sound in New Zealand
+undirected,
+unweighted 62 160 [35]
+2. American College Football
+Network of American football games between Division IA colleges during the regular Fall 2000 season
+undirected,
+unweighted 115 612 [36]
+3. Zachary Karate Club
+Network of friendships between 34 members of a karate club at a US university in the 1970s
+undirected,
+unweighted 34 78 [37]
+4. Books about US politics
+Network of books about US politics published around the time of the 2004 presidential election and sold by the online bookseller amazon.com; edges between books represent frequent copurchasing of books by the same buyers.
+undirected,
+unweighted 105 442 ‡‡‡
+5. Sawmill communication network
+A communication network within a small enterprise: a sawmill. All employees were asked to indicate the frequency with which they discussed work matters with each of their colleagues on a five-point scale ranging from less than once a week to several times a day. Two employees were linked in the network if they rated their contact as three or more.
+undirected,
+unweighted 36 62 [38]
+6. Jazz Musician
+network A social network of Jazz musicians undirected,
+unweighted 198 2742 [39]
+7. Visiting ties in San Juan
+Network for visiting relations between families living in farms in the neighborhood San Juan Sur, Costa Rica, 1948
+undirected,
+unweighted 75 144 [40]
+8. World Soccer Data, Paris 1998
+Members of the 22 soccer teams which participated in the World Championship in Paris in 1998 had contracts in 35 countries. Counts of which team exports how many players to which country are used to generate this network.
+directed,
+weighted 35 118 †††
+9. Les Miserables
+Network of co-appearances of characters in Victor Hugo’s novel “Les Miserables”. Nodes represent characters as indicated by the labels and edges connect any pair of characters that appear in the same chapter of the book. The weights on the edges are the number of such coappearances.
+undirected,
+weighted 77 251 [41]
+‡‡‡ V. Krebs, unpublished manuscript, found on Krebs’ website www.orgnet.com.
+††† Dagstuhl seminar: Link Analysis and Visualization, Dagstuhl 1-6, 2001.
+(see http://vlado.fmf.uni-lj.si/pub/networks/data/sport/football.htm)
+
+
+23
+Biological details of source, target and central nodes (usource, utarget and ucentral) used in Table VIII and Table IX
+NETWORK 1: E. COLI TRANSCRIPTIONAL
+Node name Node type Details
+fliAZY usource Contains fliA gene (sigma factor), fliZ (possible cell-density responsive regulator of sigma) and fliY
+(periplasmic cystine-binding protein)
+fecA usource Ferric citrate, outer membrane receptor
+arcA utarget Aerobic respiration control, transcriptional dual regulator
+aspA utarget Component of aspartate ammonia-lyase
+crp ucentral Component of CRP transcriptional dual regulator (DNA-binding transcriptional dual regulator)
+CaiF ucentral DNA-binding transcriptional activator
+sodA ucentral Component of superoxide dismutases that catalyzes the dismutation of superoxide into oxygen and
+hydrogen peroxide
+NETWORK 4: T-LGL SIGNALING NETWORK
+Node name Node type Details
+PDGF usource Platelet-derived growth factor is one of the numerous growth factors, or proteins that regulates cell
+growth and division.
+IL15 usource Interleukin 15 is a cytokine.
+Stimuli usource Antigen Stimulation
+apoptosis utarget process of programmed cell death
+IL2 ucentral Interleukin 2 is a cytokine signaling molecule in the immune system
+Ceramide ucentral A waxy lipid molecule within the cell membrane which can participate in variety of cellular signaling
+like proliferation and apoptosis
+GZMB ucentral A serine proteases that is released within cytotoxic T cells and natural killer cells to induce apoptosis within virus-infected cells, thus destroying them
+NFKB ucentral nuclear factor kappa-light-chain-enhancer of activated B cells, a protein complex that controls the
+transcription of DNA
+MCL1 ucentral Induced myeloid leukemia cell differentiation protein Mcl-1

@@ -1,0 +1,2035 @@
+arXiv:2003.03070v1 [math.PR] 6 Mar 2020
+SCIENCE CHINA Mathematics CrossMark
+doi: 10.1007/s11425-000-0000-0
+©c Science China Press and Springer-Verlag Berlin Heidelberg 2019 math.scichina.com link.springer.com
+. ARTICLES .
+The Graph Limit of The Minimizer of The Onsager-Machlup Functional and Its Computation
+Qiang Du1, Tiejun Li2,∗, Xiaoguang Li3 & Weiqing Ren4
+1Department of Applied Physics and Applied Mathematics, Columbia University, New York, NY 10027, USA; 2LMAM and School of Mathematical Sciences, Peking University, Beijing 100871, P.R.China; 3Beijing Computational Science Research Center, Beijing, 100193, China, MOE-LCSM, School of Mathematics and Statistics, Hunan Normal University, Changsha, Hunan 410081 , P. R. China; 4Department of Mathematics, National University of Singapore, Singapore 119076, Singapore
+Email: qd2125@columbia.edu, tieli@pku.edu.cn, lixiaoguang@hunnu.edu.cn, matrw@nus.edu.sg
+Received January 1, 2017; accepted January 1, 2017
+Abstract The Onsager-Machlup (OM) functional is well-known for characterizing the most probable transition path of a diffusion process with non-vanishing noise. However, it suffers from a notorious issue that the functional is unbounded below when the specified transition time T goes to infinity. This hinders the interpretation of the results obtained by minimizing the OM functional. We provide a new perspective on this issue. Under mild conditions, we show that although the infimum of the OM functional becomes unbounded when T goes to infinity, the sequence of minimizers does contain convergent subsequences on the space of curves. The graph limit of this minimizing subsequence is an extremal of the abbreviated action functional, which is related to the OM functional via the Maupertuis principle with an optimal energy. We further propose an energy-climbing geometric minimization algorithm (EGMA) which identifies the optimal energy and the graph limit of the transition path simultaneously. This algorithm is successfully applied to several typical examples in rare event studies. Some interesting comparisons with the Freidlin-Wentzell action functional are also made.
+Keywords Onsager-Machlup functional, Freidlin-Wentzell functional, graph limit, geometric minimization, Maupertuis principle
+MSC(2010) 14Axx, 32Bxx
+Citation: Qiang Du, Tiejun Li, Xiaoguang Li, Weiqing Ren. The Graph Limit of The Minimizer of The OnsagerMachlup Functional and Its Computation. Sci China Math, 2017, 60, doi: 10.1007/s11425-000-0000-0
+1 Introduction
+Consider a stochastic dynamics modeled by the stochastic differential equation (SDE)
+dXt = b(Xt) dt + √2ε dWt, (1.1)
+where Xt, b ∈ Rd, Wt = (Wt1, Wt2, . . . , Wtd) is the standard d-dimensional Wiener process with EWti = 0 and E(WtiWsj) = δij · min(t, s) for i, j = 1, . . . , d and t, s ∈ R+. Due to the presence of the noise, the system makes transitions from one metastable state to another; when ε is small, however, these transitions
+* Corresponding author
+
+
+ 2 Qiang Du et al. Sci China Math
+happen on a time scale which is much longer than the relaxation time scale of the system. These rare but important transition events are very common in different fields of science, and their study has attracted much attention in recent years [2–4, 14, 21, 32]. One major object in the study of such rare events is to understand the transition mechanism, which can be characterized by the most probable path (MPP), i.e. the transition path with a dominant probability, connecting an initial state xs and a terminal state xf in the configuration space. How to characterize and compute these transition paths is a fundamental problem in the study of rare events [9,10,13,22,30,34,37,40] and also the focus of this paper. In particular, we study the transition path at finite noise provided by the Onsager-Machlup functional and its graph limit as the prescribed transition time goes to infinity. In the zero noise limit, i.e. ε → 0, it is well-known from the large deviation theory that the MPP from xs to xf is given by the solution to the double minimization problem [11, 22]
+SFW(xs, xf ) = inf
+T >0 inf
+ψ(0)=xs,ψ(T )=xf
+STFW[ψ], (1.2)
+where ψ(t) is an absolutely continuous function on [0, T ] and STFW[ψ] is the Freidlin-Wentzell (FW) action functional
+STFW[ψ] =
+∫T
+0
+1
+2 |ψ ̇ − b(ψ)|2 dt. (1.3)
+Here ψ ̇ denotes the time derivative of ψ. It is known that the infimum is achieved when T = ∞ if the MPP connecting xs and xf passes through a stationary point of the deterministic dynamics x ̇ = b(x). The quasi-potential SFW(xs, xf ) = infT infψ STFW[ψ] characterizes, in the zero-noise limit, the transition rate, the invariant distribution of the stochastic dynamics and so forth. To avoid the difficulty caused by the infinite transition time, an alternative approach, which uses the arclength parameterization, has been proposed for the computation of the MPP on the space of curves [22]. For finite ε > 0, the Onsager-Machlup (OM) functional has been proposed in the literature to find the MPP [8, 16, 17, 25, 30, 35]. The OM functional is given by
+STOM[ψ] =
+∫T
+0
+L(ψ, ψ ̇) dt (1.4)
+if ψ is absolutely continuous on [0, T ], and takes the infinite value otherwise. Here the OM Lagrangian is given by
+L(x, y) = 1
+2 |y − b(x)|2 + ε∇ · b(x) = 1
+2 |y|2 − b(x) · y − U (x), (1.5)
+where U (x), the so-called path potential [30], is given by
+U (x) = −ε∇ · b(x) − 1
+2 |b(x)|2 . (1.6)
+The OM functional was first introduced by Onsager and Machlup for SDEs with linear drift b(x) = −γx and constant diffusion by means of path integrals [29]. Indeed, their original formulation does not contain the term ε∇ · b(x) in (1.5) as this is only a constant in the case of linear drift. It was later generalized to cases with nonlinear drift and non-constant diffusion terms based on either physical arguments [20] or more rigorous mathematical derivations [18, 23, 33, 36]. It was also argued in [9] that, in the scalar case with a constant diffusion, the MPP is given by the minimizer of the OM functional. Indeed, as shown in [18, 23, 33], the OM functional arises from the limiting probability of a δ-ball problem, i.e.
+P
+(
+sup
+06t6T
+|Xt − ψ(t)| 6 δ
+)
+∼ C exp
+(
+− 2ελT
+δ2
+)
+exp
+(
+−1
+2ε STOM[ψ]
+)
+(1.7)
+as δ → 0+. Here ε > 0 is fixed, C is a positive constant and λ is the leading eigenvalue of the operator −1
+2 ∆ with zero boundary condition on the domain |x| 6 1. The first exponential term on the right hand
+side of (1.7) can be also identified as the probability P(sup06t6T |√2εWt| 6 δ). Equation (1.7) shows that the minimizer of the OM functional characterizes the MPP under a suitable rescaling as δ → 0 while
+
+
+ Qiang Du et al. Sci China Math 3
+ε > 0 is fixed. This methodology has been used to find the MPP in many practical problems, such as in the study of transition pathways of phage-λ switching [35], conformation changes of polymer systems [16, 17], protein folding pathways [25], and the maximum posteriori estimator [8], etc. Although both the FW and OM functionals are widely used in applications, the connection between them is not fully understood. In practice, making the choice between the FW and OM functionals is often still a dilemma. The minimization of the two functionals gives different results and the minimizer of the OM functional is even dependent on the choice of the transition time T . Understanding the relations between the FW and OM functionals is thus an interesting mathematical problem. One formal connection between these two is that the FW functional can be obtained from the OM functional by simply setting ε = 0, therefore, they are likely equivalent in the zero-noise limit under certain conditions. Another formal connection can be made via the path integral approach. With the Girsanov theorem, we have
+EF [Xt] = E
+(
+F [Wt] exp ( − 1
+2
+∫T
+0
+|b(Wt)|2 dt +
+∫T
+0
+b(Wt) dWt
+))
+(1.8)
+for Brownian functional F [X], where we take ε = 1/2 for simplicity and Xt is the solution of the SDE (1.1). In the path integral, we formally represent the Wiener measure using the density p(x) =
+Z−1 exp (− 1
+2
+∫T
+0 |x ̇ |2 dt). Then the path weight for {Xt}t∈[0,T ] will be given by the exponential of the FW or OM functional respectively, depending on whether Ito or Stratonovich version of the stochastic integral
+∫T
+0 b(Wt) dWt being interpreted as ∫ T
+0 b(x) · x ̇ dt in path integrals. There have been some investigations on the relationship between the FW and OM functionals. For example, in [31] it was shown that the OM functional Γ-converges to a functional completely characterized by the FW functional when T = ε−1 and ε → 0; in [30], the numerical studies showed that in general the OM functional does not have a lower bound as T → ∞, and the minimizer of the OM functional with ε > 0 exhibits quite different behavior compared to that of the FW functional. Accepting the assertion that the minimizer of OM functional characterizes the MPP for the SDEs (1.1) when ε is finite, in this paper, we analyze the behaviour of the minimizer as the prescribed transition time T goes to infinity. This is meaningful since the transition time between metastable states is usually exponentially large in O(1/ε) as suggested by the Arrhenius law. In particular, we will focus on the graph limit of the OM minimizers on the space of curves. As we will show, the minimization problem with T = ∞ is not a well-posed problem. However, we can study the graph limit of the OM minimizers as T goes to infinity, and this graph limit indeed gives a simpler description about the MPP of the OM functional with finite but sufficiently large T . This fact is clearly demonstrated in the example shown in 2, in which the path with a sharp corner has a simpler structure but still well characterizes the transition path one would obtain with a sufficiently large T . In this sense, the graph limit can be viewed as a good description of the MPP of the OM functional when T is finite but sufficiently large. This situation draws an analogy with the shock solution of hyperbolic conservation laws where the discontinuous shock solution with vanishing viscosity provides a simpler description for the solution to the corresponding parabolic system with small viscosity [6]. A natural procedure to investigate this graph limit is to first find the minimizer with a fixed T , then let T go to infinity. However, this procedure based on the original OM functional is neither effective nor transparent for the characterization of the graph limit due to the time parametrization of the path. To avoid this difficulty, we directly study the limit of the minimizers on the space of curves in which the path is parametrized by the normalized arclength. This gives more direct physical intuition and indeed the time parameterization can be recovered from this geometric path afterwards. Specifically, using a similar idea employed in [22] we reformulate the double minimization problem in a geometric fashion and look for the extremal of the action functional
+SˆE[φ] =
+∫1
+0
+√2E − 2U (φ) |φ′| − b(φ) · φ′ dα (1.9)
+with a proper energy E, where φ ∈ C[0, 1] is the geometric path with an arclength type of parameterization, and φ′ is the derivative of φ with respect to α ∈ [0, 1] (see details in Theorems 3.9 and 3.10).
+
+
+ 4 Qiang Du et al. Sci China Math
+The functional SˆE[φ] is referred to as the geometric OM functional. Numerically, this approach was also pursued in [15, 35], but no theory was developed there on the choice of the energy E beforehand. This point will be made clear in this work through rigorous analysis. We now summarize the main contributions of this paper. First, we demonstrate that the cause of the singularity arising from minimizing STOM[ψT ] when T → ∞ can be explicitly identified by separating the OM functional into two parts: a regular part containing the geometric OM functional (1.9), and a singular part given by −E(T )T . It is this singular part that drives the OM functional to −∞ as T → ∞. The graph limit of the minimizer of the OM functional can be identified from the regular part, i.e. the geometric OM functional (1.9). This observation is crucial for the subsequent theoretical studies. Secondly, we prove that, up to a subsequence, the graph of the minimizer of the OM functional uniformly converges to φ⋆ as Tk → ∞, and the corresponding transition energy Ek converges to E⋆ = maxx U (x) for gradient dynamics with b(x) = −∇V (x). Furthermore, we prove that the limit φ⋆ is an extremal of the geometric OM functional (1.9) with the energy E = E⋆. Thirdly, we propose an iterative numerical method to identify the graph limit φ⋆ and at the same time, to compute the critical energy E⋆. We also analyze the convergence of the semi-discretized numerical scheme and apply the numerical method to several typical model problems in rare event studies. On the technical side, proving the compactness of the graph minimizers is highly nontrivial and represents the main challenge in the analysis. To the best of our knowledge, both the theoretical results and the numerical method are new and should be beneficial to future studies in understanding FW-OM connections and calculus of variations with similar issues. The rest of the paper is organized as follows. In Section 2, we introduce the notations and assumptions that are used in the later analysis. In Section 3, we theoretically study the graph limit of the minimizer of the OM functional by first transforming the minimization of the OM functional with respect to ψ and T into a geometric minimization problem on the space of curves through the Maupertuis principle. We then show the subsequence convergence of the graph minimizers and the convergence of the corresponding transition energy. In Section 4, we compare the minimizers of the FW and OM functionals for some simple but enlightening examples. In Section 5, we propose an iterative energy-climbing geometric minimization algorithm (EGMA) and discuss its convergence property. In Section 6, we apply the numerical method to some typical model problems and compare them with the FW minimizers. Some concluding remarks are made in Section 7. The technical details about the BV compactness of the derivative of {φk}, are provided in the Appendix.
+2 Assumptions and preliminary setup
+Before proceeding to the analysis of the OM functional, we first introduce some notations and assumptions. Our analysis will focus on gradient systems with the drift function b(x) = −∇V (x) for some potential energy V (x) ∈ C7(Rd), although some results can be readily extended to the non-gradient case. In the special gradient flow case, the path potential U (x), which plays an important role in the analysis of the OM functional, is given by
+U (x) = ε∆V (x) − 1
+2 |∇V (x)|2 . (2.1)
+We have U (x) ∈ C5 by the smoothness assumption on V . We further assume that the potentials V and U satisfy the following properties:
+Assumption 2.1. There exists a local minimizer xm of V (x), such that ∇V (xm) = 0, ∇2V (xm) is strictly positive definite.
+Assumption 2.2. The maximum points of U (x) are contained in a bounded domain.
+Assumption 2.3. For any E ∈ R, the level set LE = {x ∈ Rd|U (x) = E} can be decomposed into a finite number of closed and connected subsets, i.e.
+LE =
+N ⋃
+k=1
+Bk, (2.2)
+
+
+ Qiang Du et al. Sci China Math 5
+where the subsets Bk are closed and connected, and Bj ∩ Bk = ∅ if j 6= k.
+When ε = 0, the path potential reduces to U (x) = − 1
+2 |∇V |2 6 0, which attains its maximum iff ∇V (x) = 0, i.e. the stationary states of the deterministic dynamics x ̇ = −∇V (x). Assumption 2.2 requires that all points satisfying ∇V (x) = 0 lie in a bounded region. This is a usual assumption when dealing with the FW functional. When ε is finite but not very large, this requirement is not restrictive either. Indeed this is true in most previous studies on the OM functional. For the FW functional, the point x⋆ is called a critical point if ∇V (x⋆) = 0. In the following, we generalize this concept to the OM functional.
+Definition 2.4. x⋆ ∈ Rd is called a critical point of the OM functional if
+U (x⋆) = max
+y∈Rd U (y). (2.3)
+Denoting the set of critical points by Λ, we make the following mild assumptions on them.
+Assumption 2.5. Λ is discrete and has no accumulation points.
+Assumption 2.6. ∇2U (x) has no zero eigenvalue for every x ∈ Λ.
+Let C[0, T ] denote the set of continuous functions on [0, T ] equipped with the norm ‖f ‖ = supt∈[0,T ] |f (t)|. Define
+C
+xf
+xs [0, T ] = {ψ ∈ C[0, T ]| ψ(0) = xs, ψ(T ) = xf
+}.
+Moreover, let C ̄[0, T ], C ̄xf
+xs [0, T ] be the set of corresponding absolutely continuous functions. We further define
+C ̄ xs ,xf
+M [0, T ] = {ψ ∈ C ̄xf
+xs [0, T ]| |ψ ̇| 6 M a.e.} (2.4)
+and
+C ̄ xs ,xf
+M,E [0, T ] = {ψ ∈ C ̄xs,xf
+M [0, T ]|U (ψ(t)) 6 E, t ∈ [0, T ]} (2.5)
+for M > 0.
+Lemma 2.7 (Compactness of C ̄M and C ̄M,E). (1) For any M > 0, xs, xf ∈ Rd, the set C ̄xs,xf
+M [0, T ] is compact in C[0, T ].
+(2) For any M > 0, E ∈ R, xs, xf ∈ Rd, the set C ̄xs,xf
+M,E [0, T ] is compact in C[0, T ].
+Proof. The first statement is the same as Lemma 2.5 in [22], which is a standard application of Arzela`
+Ascoli theorem. The second statement is true since U is continuous and C ̄xs,xf
+M,E is a closed subset of
+C ̄ xs ,xf
+M.
+Hereafter, we will neglect the super- or sub-scripts xs and xf to simplify the notations when we do not emphasize the dependence on the initial and terminal states. It is also evident that the function spaces defined above and the compactness lemma are also applicable to functions on the interval [0, 1], which is the case when we study the geometric minimizer on the space of curves. With a slight abuse of notation, we will use C ̄M (C ̄M,E) for C ̄M [0, T ] (C ̄M,E [0, T ]) or C ̄M [0, 1] (C ̄M,E[0, 1]) in later text when the domain is not specifically emphasized. For every function f ∈ C ̄[0, T ], we denote its graph by
+γ(f ) = {f (t)|t ∈ [0, T ]}.
+For any two functions f1 ∈ C ̄[0, T1] and f2 ∈ C ̄[0, T2] with possibly different parameterizations, we use the Fr ́echet distance to measure the distance between their graphs γ(f1) and γ(f2):
+ρ(f1, f2) = inf
+ti:[0,1]→[0,Ti],i=1,2 max
+α∈[0,1] |f1 ◦ t1(α) − f2 ◦ t2(α)| , (2.6)
+where the infimum is taken over all monotonically increasing, continuous and surjective reparametrizations t1 and t2. It is easy to check that ρ(f1, f2) = 0 if the two functions have the same graph.
+
+
+ 6 Qiang Du et al. Sci China Math
+Given the initial and final states xs, xf , we aim at solving the double minimization problem
+inf
+T >0 inf
+ψ ∈C ̄ xf
+xs [0,T ]
+{
+STOM[ψ] =
+∫T
+0
+(1
+2 |ψ ̇ + ∇V (ψ)|2 − ε∆V (ψ)
+)
+dt
+}
+. (2.7)
+Note that
+STOM[ψ] =
+∫T
+0
+(1
+2 |ψ ̇|2 + ∇V · ψ ̇ − U (ψ)
+)
+dt
+=
+∫T
+0
+(1
+2 |ψ ̇|2 − U (ψ)
+)
+dt + V (xf ) − V (xs).
+Since V (xf ) − V (xs) is a constant when xs and xf are given, we will ignore this constant and use the resulting simplified functional in place of STOM[ψ]. With a slight abuse of notation, we still use STOM[ψ] to denote the simplified functional and call it the OM functional:
+STOM[ψ] =
+∫T
+0
+L(ψ, ψ ̇) dt, (2.8)
+where the Lagrangian L(x, y) is given by
+L(x, y) = 1
+2 |y|2 − U (x). (2.9)
+In the following, we assume that for any fixed T > 0, the minimizer of STOM[ψ] is unique and has a uniformly bounded finite length. We state it precisely as follows.
+Assumption 2.8. For any given xs, xf ∈ Rd and T > 0, STOM[ψ] has a unique minimizer ψT .
+Assumption 2.9. For any given xs, xf ∈ Rd and T > 0, there exists a constant M = M (xs, xf ) > 0 such that the minimizer ψT of STOM[ψ] satisfies
+∫T
+0
+|ψ ̇T | dt 6 M.
+Corollary 2.10. Under the Assumption 2.9, ψT is uniformly bounded in C[0, T ] for any T > 0.
+Proof. We have
+|ψT (t)| =
+∣∣∣ψT (0) +
+∫t
+0
+ψ ̇T (s) ds
+∣∣∣ 6 |xs| +
+∫t
+0
+|ψ ̇T | ds 6 |xs| + M. (2.10)
+The boundedness of ψT also implies the boundedness of f (ψT ) for any continuous function f .
+3 Graph limit of the OM minimizer
+In this section, we study the minimizers of the OM functional and their graph limit. First, we consider the problem of minimizing the OM functional with the transition time T fixed. Then we transform the minimization problem to a geometric one in which the path is parameterized by the normalized arc-length using the Maupertuis principle. This is followed by the analysis of the minimization problem with respect to the transition time T . The last part of this section is concerned with the graph limit of the minimizers and its governing equation.
+3.1 Minimizing STOM[ψ] for a fixed time T
+We first consider the minimization of STOM[ψ] over the set of absolutely continuous functions connecting given initial and final states. For a fixed T > 0, this is a standard variational problem. The following proposition gives the regularity result of the minimizer and its governing equation.
+
+
+ Qiang Du et al. Sci China Math 7
+Proposition 3.1. Assume that V ∈ C7(Rd). For any T > 0, the functional STOM[ψ] is lower
+semicontinuous in C ̄xf
+xs [0, T ], thus attains its minimum in C ̄xs,xf
+M [0, T ]. Moreover, under the Assumption
+2.9, the minimizer ψT ∈ C6[0, T ] and satisfies the Euler-Lagrange equation
+DL = ∂L
+∂x (ψT , ψ ̇T ) − d
+dt
+∂L
+∂y (ψT , ψ ̇T ) = 0, (3.1)
+i.e. {ψ ̈T + ∇U (ψT ) = 0,
+ψT (0) = xs, ψT (T ) = xf . (3.2)
+This proposition ensures the existence and smoothness of the minimizer in a proper function space. Its proof can be found in [19] (Proposition 4 in page 42).
+Remark 3.2. For general systems with a drift b(x), the minimizer ψT satisfies the Euler-Lagrange equation ψ ̈T + (∇bT − ∇b) · ψ ̇T + ∇U (ψT ) = 0, (3.3)
+where (∇b)ij = ∂bi/∂xj.
+It is a classical result that the energy of the system is conserved along the path ψT , i.e.
+1
+2 |ψ ̇T |2 + U (ψT ) ≡ E, ∀t ∈ [0, T ]. (3.4)
+With the Assumption 2.8, the constant E is uniquely determined by the initial and terminal states xs, xf and the transition time T . For fixed xs and xf , E is a function of T only. In this case, E and T are connected by the equation:
+T=
+∫
+γ(ψT )
+| dψT |
+√2KE(T )(ψT ) , (3.5)
+where KE(ψ) = E − U (ψ) is the kinetic energy, γ(ψT ) is the graph of ψT .
+3.2 Maupertuis principle
+In many cases, we are mainly interested in the graph of the transition path in the configuration space rather than how it is parameterized by time t. It is well known that the Maupertuis variational principle, which is equivalent to the Hamilton’s variational principle, is more convenient for such representations [1, 24].
+Theorem 3.3 (Maupertuis Principle). Up to a reparameterization of the path, the minimizer of variational problem
+inf
+ψ∈C ̄ xf
+xs [0,T ]
+STOM[ψ] (3.6)
+is an extremal of the functional
+S0[ψ] =
+∫
+γ(ψ)
+p(ψ, ψ ̇) · dψ (3.7)
+subject to the constraint H(ψ, p) ≡ E(T ), where H is the corresponding Hamiltonian
+H(x, p) = 1
+2 |p|2 + U (x), (3.8)
+and p(ψ, ψ ̇) = ∂L
+∂y (ψ, ψ ̇) = ψ ̇ is the momentum.
+The functional S0[ψ] is called the abbreviated action functional or effective functional [24,25,35]. Note that the value of S0 does not depend on how γ(ψ) is parameterized. A convenient way is to parameterize it using the normalized arclength. The curve with this parameterization is denoted by φ(α), which is an element of C ̄[0, 1], such that φ(0) = xs, φ(1) = xf and |φ′(α)| ≡ const for α ∈ [0, 1]. For the Hamiltonian
+
+
+ 8 Qiang Du et al. Sci China Math
+(3.8) under the constraint H(φ, p) ≡ E and using the normalized arclength parameterization for the curve, the abbreviated action functional becomes
+SˆE[φ] =
+{∫ 1
+0
+√2KE(φ) |φ′| dα, if φ ∈ C ̄[0, 1], U (φ) 6 E for α ∈ [0, 1],
++∞, otherwise. (3.9)
+More specifically, suppose the minimizer of STOM[ψ] is ψT , we define the new parameter α = l(t) as
+l(t) = 1
+L
+∫t
+0
+|ψ ̇T (s)| ds, where L =
+∫T
+0
+|ψ ̇T | dt. (3.10)
+Let l−1(α) = inf{t ∈ [0, T ]|l(t) > α} ∈ [0, T ], then by the Maupertuis principle,
+φE(T )(α) = ψT (l−1(α))
+is an extremal of SˆE(T )[φ]. Note that l ̇(t) = L−1|ψ ̇T | and ψT ∈ C2[0, T ]. We have that l−1(α) is also
+twice differentiable when |ψ ̇T | 6= 0 and
+∣∣∣∣
+dφE dα
+∣∣∣∣ = |ψ ̇T | dt
+dα = L.
+If ψT satisfies the Assumption 2.9, φE ∈ C ̄M [0, 1] with M > L. By the equation(3.4), |ψ ̇T | = 0 iff E(T ) = U (ψT (t)), so φE (α) is twice differentiable where U (φE(α)) < E. We emphasize that even when ψT is the minimizer of STOM[ψ], φE(T ) need not to be a minimizer of
+SˆE(T )[φ] but only an extremal. An illustrative example will be discussed in Section 4.2.
+Denote the Lagrangian of SˆE[φ] by
+LE(x, y) = √2KE(x) |y| . (3.11)
+When y 6= 0, ∂LE/∂y is well-defined. The extremal of SˆE[φ], denoted by φE , satisfies the Euler-Lagrange equation in a weak form
+∫1
+0
+∂LE
+∂y · Φ′ dα +
+∫1
+0
+∂LE
+∂x · Φ dα = 0, ∀Φ ∈ C0∞[0, 1]. (3.12)
+Using the specific form of LE, we get
+∫1
+0
+√2KE(φ) φ′
+|φ′| · Φ′ dα −
+∫1
+0
+|φ′| ∇U (φ) · Φ
+√2KE(φ) dα = 0. (3.13)
+When U (φE ) < E, φE ∈ C2, we have the strong form of the Euler-Lagrange equation
+2KE(φ)φ′′ + |φ′|2 (I − τˆ ⊗ τˆ) · ∇U (φ) = 0, α ∈ (0, 1), (3.14)
+φ(0) = xs, φ(1) = xf and (|φ′|)′ = 0, (3.15)
+where τˆ = φ′/ |φ′| and U (φ) < E. Moreover, Eq. (3.5) can be written as
+T=
+∫1
+0
+|φ′E(T )|
+√2KE(T )(φE(T )) dα, (3.16)
+and the infimum of the OM functional STOM[ψ] is given by
+STOM[ψT ] =
+∫T
+0
+(1
+2 |ψ ̇T |2 − U (ψT )
+)
+dt
+=
+∫T
+0
+|ψ ̇T |2 dt − E(T )T
+
+
+ Qiang Du et al. Sci China Math 9
+=
+∫T
+0
+√
+2KE(T )(ψT )|ψ ̇T | dt − E(T )T
+=SˆE(T )[φE(T )] − E(T )T. (3.17)
+The connection between STOM[ψT ] and SˆE(T )[φE(T )] in (3.17) is essential for later analysis.
+Remark 3.4. The above results can be generalized to non-gradient systems. For a general system with a drift b, we have the Lagrangian L(x, y) = 1
+2 |y|2 − b(x) · y − U (x) and the corresponding Hamiltonian
+H(x, p) = 1
+2 |p + b(x)|2 + U (x). The Maupertuis principle also holds with the geometric functional
+SˆE[φ] =
+{∫ 1
+0 (√2KE(φ) |φ′| − b · φ′) dα, if φ ∈ C ̄[0, 1] and U (φ) 6 E,
++∞, otherwise. (3.18)
+With the Lagrangian LE(x, y) = √2KE(x) |y| − b(x) · y, Eqs. (3.12), (3.16) and (3.17) still hold. The strong form of the Euler-Lagrange equation is
+2KE(φ)φ′′ + √2KE(φ)(∇bT − ∇b)φ′ + |φ′|2 (I − τˆ ⊗ τˆ) · ∇U (φ) = 0 (3.19)
+with the constraint |φ′| = const and U (φ) < E.
+3.3 Minimization when T goes to infinity
+Given ψT , the minimizer of STOM[ψ], the value of STOM[ψT ] can be viewed as a function of T . As we will
+see below, taking the limit of STOM[ψT ] as T → ∞ is equivalent to minimizing the OM functional with respect to ψ followed by the minimization with respect to T > 0. We will follow the double minimization approach, which provides insights to the numerical results obtained in [30] and also facilitates comparisons with FW functional. The double minimization problem (2.7) reduces to a minimization with respect to T : S(xs, xf ) = infT STOM[ψT ]. We have:
+Proposition 3.5.
+∂SˆE[φE ]
+∂E = T, ∂STOM[ψT ]
+∂T = −E(T ).
+This is a classical result in the Hamilton-Jacobi theory. One may refer to [19] for a rigorous proof. A formal derivation is as follows.
+∂ SˆE [φE ]
+∂E =
+∫1
+0
+|φ′E | dα
+√2KE(φE ) +
+∫1
+0
+DLE(φE, φ′E ) ∂φE
+∂E dα. (3.20)
+Since φE is an extremal of SˆE(T )[φ], we have DLE(φE , φ′E) = 0, thus ∂SˆE[φE]
+∂E = T . Furthermore, by Eq. (3.17),
+∂STOM[ψT ]
+∂T = ∂SˆE[φE ]
+∂E
+∂E
+∂T − E(T ) − T ∂E
+∂T = −E(T ).
+Next we show that E(T ) > 0 when T is sufficiently large. Then it follows from Proposition 3.5 that STOM[ψT ] is a decreasing function of T when T is sufficiently large.
+Lemma 3.6.
+lim inf
+T →+∞ E(T ) > max
+x∈Rd U (x) > 0.
+Proof. By Assumption 2.1, we have maxx∈Rd U (x) > U (xm) = ε∆V (xm) > 0. Denote Em = lim infT →+∞ E(T ), Emax = maxx∈Rd U (x), then there exists a sequence Tk → +∞ such that Ek = E(Tk) → Em.
+We will prove the result by contradiction. If ∆E = Emax − Em > 0, we have Emax − Ek > 3
+4 ∆E > 0
+when k is large enough. Denote the minimizer of STOkM[ψ] by ψk, and the corresponding extremal of
+SˆEk [φ] that has the same graph as ψk by φk. We have
+U (φk) 6 Ek < Emax − 3
+4 ∆E
+
+
+ 10 Qiang Du et al. Sci China Math
+for any sufficiently large k. This implies that φk(α) ∈/ S = {x|Emax − ∆E/2 < U (x) 6 Emax} for any
+α ∈ [0, 1]. Let us choose a point xc from the set S. For Tk sufficiently large, let ψ ̃1(t) ∈ C ̄xs,xc
+M [0, Tk/2]
+be the minimizer of STOkM/2[ψ] with ψ(0) = xs, ψ(Tk/2) = xc. The energy conservation (3.4) yields
+∣∣ψ ̇ ̃1
+∣∣2 + 2U (ψ ̃1) ≡ 2E ̃1
+for some constant E ̃1. Clearly, E ̃1 > U (xc) > Emax − ∆E/2. By the Maupertuis principle, there exists
+an extremal φ ̃1 ∈ C ̄M [0, 1] of SˆE ̃1 [φ] which has the same graph as ψ ̃1. Eq. (3.17) gives
+STOkM/2[ψ ̃1] = SˆE ̃1 [φ ̃1] − 1
+2 E ̃1Tk.
+Similarly, let ψ ̃2 ∈ C ̄xc,xf
+M [0, Tk/2] be the minimizer of STOkM/2[ψ] with ψ(0) = xc and ψ(Tk/2) = xf .
+The energy along ψ ̃2 satisfies E ̃2 > Emax − ∆E/2. Let φ ̃2 be the corresponding extremal of SˆE ̃2[φ] which
+has the same graph as ψ ̃2. We have
+STOkM/2 [ψ ̃2] = SˆE ̃2 [φ ̃2] − 1
+2 E ̃2Tk.
+Define ψˆ ∈ C ̄M [0, Tk] as
+ψˆ(t) =
+{ψ ̃1(t), if 0 6 t 6 1
+2 Tk,
+ψ ̃2(t − 1
+2 Tk), if 1
+2 Tk 6 t 6 Tk. (3.21)
+We have
+STOkM[ψˆ] − STOkM[ψk] =SˆE ̃1 [φ ̃1] + SˆE ̃2 [φ ̃2] − SˆEk [φk] − 1
+2 (E ̃1 + E ̃2 − 2Ek)Tk
+6
+∫1
+0
+√
+2E ̃1 − 2U (φ ̃1) |φ ̃′1| dα +
+∫1
+0
+√
+2E ̃2 − 2U (φ ̃2) |φ ̃′2| dα
+−
+∫1
+0
+√2Ek − 2U (φk) |φ′k| dα − 1
+4 ∆ETk.
+(3.22)
+Since φ ̃1, φ ̃2, φk ∈ C ̄M [0, 1], SˆE ̃1[φ ̃1], SˆE ̃2[φ ̃2] and SˆEk [φk] are all uniformly bounded. Thus
+STk [ψˆ] − STk [ψk] 6 C − 1
+4 ∆ETk < 0
+when Tk is sufficiently large, where C is a generic constant. This contradicts with the assumption that ψk is the minimizer of STk [ψ].
+Proposition 3.5 and Lemma 3.6 show that STOM[ψT ] is a decreasing function of T with a positive
+decreasing rate when T is sufficiently large. Thus STOM[ψT ] → −∞ as T → +∞. Next we show that the
+infimum of STOM[ψT ] occurs only when T → +∞.
+Proposition 3.7. STOM[ψT ] assumes its infimum only when T → +∞. Moreover, we have
+inf
+T >0 inf
+ψ ∈C ̄ xf
+xs [0,T ]
+STOM[ψ] = lim
+T →+∞ inf
+ψ∈C ̄ xf
+xs [0,T ]
+STOM[ψ] = −∞.
+Proof. By the mean value theorem and Assumption 2.9, we derive from Eq. (3.16) that
+|xs − xf |
+√2KE(ψT (tc)) 6 T =
+∫T
+0 |ψ ̇T | dt
+√2KE(ψT (tc)) 6 M
+√2KE(ψT (tc)) (3.23)
+where KE(ψT (tc)) = E(T ) − U (ψT (tc)) for some tc ∈ [0, T ]. Thus
+U (ψT (tc)) + |xs − xf |2
+2T 2 6 E(T ) 6 U (ψT (tc)) + M 2
+2T 2 . (3.24)
+
+
+ Qiang Du et al. Sci China Math 11
+Since {ψT } is uniformly bounded, {U (ψT )} is also uniformly bounded by a constant MU . Inequality (3.24) implies E(T ) → +∞ when T → 0+. By Proposition 3.5, STOM[ψT ] is decreasing in a neighborhood
+of T = 0. So there exists Tm > 0, such that STOM[ψT ] cannot attain its infimum in T ∈ [0, Tm]. By Lemma 3.6, there exists TM > 0 such that when T > TM , E(T ) > 1
+2 Emax > 0. For T ∈ [Tm, TM ], (3.24) implies the uniform boundedness of E(T ). Denote the upper bound by ME, lower bound mE. For
+any path φ ∈ C ̄M,E[0, 1], φ is uniformly bounded. We have
+SˆE(T )[φE ] 6 M √2ME + 2MU ,
+which yields
+−M √2ME + MU − METm 6 STOM[ψT ] 6 M √2ME + MU − mETM .
+So STOM[ψT ] is bounded in [Tm, TM ]. When T > TM , STOM[ψT ] is a decreasing function of T . So
+inf
+T >TM
+inψf STOM[ψ] = lim
+T →+∞ inψf STOM[ψ] 6 lim
+T →+∞ M √2ME + 2MU − 1
+2 EmaxT = −∞.
+Combining with previous facts we obtain
+inf
+T >0 inψf STOM[ψ] = lim
+T →+∞ inψf STOM[ψ] = −∞.
+Proposition 3.7 shows that the infimum of the OM functional is always negative infinity. This can be viewed as a special case of the so-called Man ́e potential [5, 28]. The Man ́e potential has a positive Man ́e critical value. This critical value is given by Emax = maxx∈Rd U (x) for the OM functional. It can be shown that for any C below the critical value (e.g. C = 0 as in the current case), one has infT infψ STOM[ψ] + CT = −∞. In this sense, we can also call SˆE[φ] the renormalized OM functional since it removes the divergence term −E(T )T as T → ∞.
+Remark 3.8. Propositions 3.5 and 3.7 can be generalized to non-gradient case with slight modifications.
+3.4 The Graph limit of minimizers of OM functionals
+Proposition 3.7 shows that it is inappropriate to define the minimizer (T ⋆, ψT ⋆ ) of the original functional STOM[ψ] with time parameterization. However, this limit process could be meaningful if we inspect the transition path sequence in the configuration space instead of using the time coordinate. Next we will study the graph limit of OM minimizers as T → +∞. We have shown using the Maupertuis principle that for any T > 0, the minimizer ψT can be mapped to φ ∈ C[0, 1] by a reparameterization such that γ(ψT ) = γ(φ). Moreover, φ is an extremal of SˆE[φ] with E = E(T ). In the following, we show that there exist a proper energy parameter E⋆, a path φ⋆ which is an extremal of SˆE⋆ [φ] and a subsequence of the minimizer {ψTk }, such that ρ(ψTk , φ⋆) → 0 when k → ∞.
+Theorem 3.9. Let {Tk}k∞=1 be a positive sequence such that Tk → +∞ when k → ∞. Let ψk be the
+minimizer of the OM functional STOkM[ψ], Ek = E(Tk), and φk be the extremal of SˆEk [φ] which has the same graph as ψk. We have
+(1) There exists a subsequence {φkl } which uniformly converges to φ⋆ ∈ C ̄xs,xf
+M [0, 1].
+(2) The subsequence {Ekl } converges to E⋆ = maxx U (x) and φ⋆ ∈ C ̄M,E⋆ [0, 1].
+(3) φ⋆ passes through a critical point at some αc ∈ [0, 1].
+(4) ρ(ψkl , φ⋆) → 0 when l → +∞.
+
+
+ 12 Qiang Du et al. Sci China Math
+(5) For any δ > 0, the integral ∫ αc+δ
+αc −δ
+|φ⋆′| dα
+√2E⋆ − 2U (φ⋆)
+diverges. In particular,
+T⋆ =
+∫1
+0
+|φ⋆′| dα
+√2E⋆ − 2U (φ⋆) = +∞.
+Proof. (1)-(2)-(3). Denote Uk = maxα U (φk(α)). Eq. (3.16) gives
+Tk =
+∫1
+0
+|φ′k| dα
+√2Ek − 2U (φk) 6 M
+√2Ek − 2Uk
+. (3.25)
+So we have
+Uk 6 Ek 6 Uk + M 2
+2Tk2
+. (3.26)
+By Assumption 2.9, {Ek} is uniformly bounded by a constant ME and φk ∈ C ̄M,ME . From Lemma
+2.7, there exists a subsequence {kl} such that Ekl → E⋆ and φkl → φ⋆ ∈ C ̄M,ME . To show φ⋆ ∈ C ̄M,E⋆, we note that 0 6 Ekl − U (φkl ) → E⋆ − U (φ⋆) when l → ∞,
+which means maxα U (φ⋆(α)) 6 E⋆. Next we show E⋆ = maxα U (φ⋆(α)). Otherwise E⋆ − maxα∈[0,1] U (φ⋆(α)) = m > 0. Since Ekl → E⋆ and φkl → φ⋆ uniformly, we have |Ekl − E⋆| < δ0, |U (φ⋆) − U (φkl )| < δ0 for any positive δ0 when l is sufficiently large. Choose δ0 < m/4, we obtain
+Ekl − U (φkl ) = (Ekl − E⋆) + (E⋆ − U (φ⋆)) + (U (φ⋆) − U (φkl )) > m − 2δ0 > 0. (3.27)
+Since Ekl − U (φkl ) → E⋆ − U (φ⋆), it follows from the dominate convergence theorem that
++∞ = lli→m∞ Tkl = lli→m∞
+∫1
+0
+∣∣φ′kl
+∣∣ dα
+√2Ekl − 2U (φk)
+6 lli→m∞ M
+∫1
+0
+dα
+√2Ekl − 2U (φk) = M
+∫1
+0
+lli→m∞
+dα
+√2Ekl − 2U (φk)
+6M
+∫1
+0
+dα
+√2m = √M2m ,
+(3.28)
+which is a contradiction. Thus E⋆ = maxα∈[0,1] U (φ⋆(α)). By Lemma 3.6, we have
+max
+x∈Rd U (x) 6 lim inf
+T →+∞ E(T ) 6 E⋆ = max
+α∈[0,1] U (φ⋆(α)) 6 max
+x∈Rd U (x).
+So we have E⋆ = maxx∈Rd U (x) = maxα∈[0,1] U (φ⋆(α)). It follows that there must exist an αc ∈ [0, 1], such that U (φ⋆(αc)) = maxx∈Rd U (x). Thus xc = φ⋆(αc) is a critical point. (4). Since ψkl has the same graph as φkl , we have
+ρ(ψkl , φ⋆) = ρ(φkl , φ⋆) 6 max
+α∈[0,1] |φkl (α) − φ⋆(α)| → 0, l → +∞.
+(5). By Taylor expansion of U (φ⋆) near xc, we get
+E⋆ − U (φ⋆(α)) = − 1
+2 [φ⋆(α) − φ⋆(αc)]T∇2U (xc)[φ⋆(α) − φ⋆(αc)] (3.29)
++ o(|φ⋆(α) − φ⋆(αc)|2).
+
+
+ Qiang Du et al. Sci China Math 13
+By Assumption 2.6, we obtain
+E⋆ − U (φ⋆(α)) 6 μM
+2 |φ⋆(α) − φ⋆(αc)|2 + o(|α − αc|)2 6 C |α − αc|2
+for some constant C > 0 in a neighborhood of αc, where μM is the largest eigenvalue of −∇2U (xc). The integral ∫ αc+δ
+αc −δ
+|φ⋆′| dα
+√2E⋆ − 2U (φ⋆) >
+∫ αc+δ
+αc −δ
+|xs − xf | dα
+√2C |α − αc| = +∞.
+This ends the proof of the last statement.
+Theorem 3.9 shows that, up to a subsequence, the limiting transition energy E⋆ and the graph limit of the OM minimizer φ⋆ are well-defined. Next we show that the graph limit φ⋆ is an extremal of SˆE⋆ [φ].
+Theorem 3.10. φ⋆ is an extremal of SˆE⋆[φ] passing through a critical point with E⋆ = maxx∈Rd U (x).
+The proof of Theorem 3.10 relies on the following result, whose proof is rather technical thus will be carried out in the Appendix.
+Proposition 3.11. There exists a subsequence {φkl } such that φ′kl → φ⋆′ almost everywhere.
+Proof of Theorem 3.10. By Theorem 3.9 and Proposition 3.11, there exists a subsequence {φkl } which satisfies (1) φkl → φ⋆ uniformly; (2) φ′kl → φ⋆′a.e.; (3) Ekl → E⋆.
+Since φkl is an extremal of SˆEkl [φ], it satisfies the Euler-Lagrange equation (3.13). We have
+lli→m∞
+∫1
+0
+
+√
+2KEkl (φkl ) φ′kl · Φ′
+∣∣φ′kl
+∣∣ −
+∣∣φ′kl
+∣∣ ∇U (φkl ) · Φ
+√
+2KEkl (φkl )
+
+ dα = 0, ∀Φ ∈ C0∞[0, 1]. (3.30)
+From φkl ∈ C ̄M [0, 1], we have
+√
+2KEkl (φkl ) 6 M1 for some constant M1, thus
+√
+2KEkl (φkl )
+∣∣φ′kl · Φ′∣∣
+∣∣φ′kl
+∣∣ 6 M1 |Φ′| .
+It follows from the dominated convergence theorem that
+lli→m∞
+∫1
+0
+√
+2KEkl (φkl ) φ′kl · Φ′
+∣∣φ′kl
+∣∣ dα =
+∫1
+0
+√2KE⋆ (φ⋆) φ⋆′ · Φ′
+|φ⋆′| dα. (3.31)
+By Theorem 3.9, φ⋆ passes through a critical point xc at α = αc. The Taylor expansion (3.29) shows
+E⋆ − U (φ⋆(α)) > μm
+2 |φ⋆(α) − φ⋆(αc)|2 + o(|φ⋆(α) − φ⋆(αc)|2),
+where μm is the smallest eigenvalue of −∇2U (xc). By Assumption 2.6, there is a constant C1 > 0 such
+that E⋆ − U (φ⋆) > C1 |φ⋆(α) − φ⋆(αc)|2 in a neighborhood of αc. Furthermore, we have
+|∇U (φ⋆)| = ∣∣∇2U (xc)(φ⋆(α) − φ⋆(αc))∣∣ + o(|φ⋆(α) − φ⋆(αc)|)
+6 μM |φ⋆(α) − φ⋆(αc)| + o(|φ⋆(α) − φ⋆(αc)|).
+There exists a constant C2 > 0 such that |∇U (φ⋆) · Φ| 6 C2 |Φ| |φ⋆(α) − φ⋆(αc)|. Combining the above
+results, we obtain
+∇U (φ⋆) · Φ
+√2E⋆ − 2U (φ⋆) 6 C |Φ| ,
+where the right-hand side is a bounded function. For any l > 0 and given Φ(α), define
+Gkl (α) = ∇U (φkl ) · Φ
+√2Ekl − 2U (φkl ) and G⋆(α) = ∇U (φ⋆) · Φ
+√2E⋆ − 2U (φ⋆) .
+
+
+ 14 Qiang Du et al. Sci China Math
+We know that Gkl → G⋆ and G⋆ is bounded by a constant C0 > 0. For any n > C0, let Gkl,n = min{n, Gkl }. We have
+lim
+n→+∞ Gkl,n = Gkl , lim
+l→+∞ Gkl,n = G⋆ uniformly for n > C0.
+For a fixed n, Gkl,n is bounded. By the dominated convergence theorem,
+lim
+l→+∞
+∫1
+0
+Gkl,n(α) dα =
+∫1
+0
+G⋆(α) dα.
+Since when l → ∞, Gkl,n → G⋆ uniformly, we have
+lim
+l→+∞
+∫1
+0
+∇U (φkl ) · Φ
+√2Ek − 2U (φk) dα = lim
+l→+∞ lim
+n→+∞
+∫1
+0
+Gkl,n dα
+= lim
+n→+∞ lim
+l→+∞
+∫1
+0
+Gkl,n dα
+=
+∫1
+0
+G⋆(α) dα =
+∫1
+0
+∇U (φ⋆) · Φ
+√2E⋆ − 2U (φ⋆) dα.
+(3.32)
+Because |φ′k| is constant and ∣∣φ′kl
+∣∣ → |φ⋆′|, together with (3.30) and (3.31), we see that φ⋆ satisfies the Euler-Lagrange equation (3.13) with energy parameter E = E⋆. Thus φ⋆ is an extremal of SˆE⋆ [φ].
+Remark 3.12. The weak convergence argument for φ′k is not enough to prove the theorem due to the
+existence of the term |φ′k|. Although we have the uniform L∞ bound for both, which guarantees φ′k → f
+and |φ′k| → g, we do not have g = |f | in general.
+Theorem 3.10 shows that the graph limit of minimizers of STOM[ψ] can be found by solving the Euler
+Lagrange equation of SˆE[φ] with the energy E⋆ = maxx U (x). The extremal of SˆE⋆[φ] always exists, but may not be unique. Theorem 3.9 shows that it takes infinite time for MPP to pass through a critical point. In general, the time that the MPP spends in any interval is characterized by the function
+λ⋆ =
+√2E⋆ − 2U (φ⋆)
+|φ⋆′| . (3.33)
+Proposition 3.13. Let [α1, α2] ⊂ [0, 1] be an interval such that λ⋆(α) > 0 for any α ∈ [α1, α2]. Then
+the time that the MPP φ⋆ takes to go from x1 = φ⋆(α1) to x2 = φ⋆(α2) is ∆T = ∫ α2
+α1 λ⋆−1 dα.
+Proof. By Theorem 3.9 and Proposition 3.11, we may assume φk → φ⋆, φ′k → φ⋆′ without loss of generality. For any Tk, the relation between φk and the minimizer ψk of STk [ψ] is
+φk(α) = ψk(l−1
+k (α)), where lk(t) = L−1
+k
+∫t
+0
+|ψ ̇k| dt, Lk =
+∫ Tk
+0
+|ψ ̇k| dt. (3.34)
+We have ψk(t) = φk(lk(t)). Eq. (3.4) shows that the time spent by φk from x1k = φk(α1) to x2k = φk(α2) is
+∆Tk =
+∫ t2
+t1
+|ψ ̇k| dt
+√2Ek − 2U (ψk) =
+∫ α2
+α1
+|φ′k| dα
+√2Ek − 2U (φk) , (3.35)
+where t1 = l−1
+k (α1), t2 = l−1
+k (α2). Let k → ∞. We obtain
+∆T = kli→m∞ ∆Tk = kli→m∞
+∫ α2
+α1
+|φ′k| dα
+√2Ek − 2U (φk) =
+∫ α2
+α1
+dα
+λ⋆ . (3.36)
+
+
+ Qiang Du et al. Sci China Math 15
+Proposition 3.13 and Theorem 3.9 show that λ⋆(α) characterizes the time that the MPP spends at any point α. It takes longer time to pass through points with smaller values of λ⋆. Since |φ⋆′| is a constant, the local minima of λ⋆ correspond to the local maxima of U (φ⋆) along the MPP. These states will be referred to as the λ-critical state. Note that it does not need to take infinite time to pass through such states.
+Remark 3.14. Theorem 3.9 can be readily generalized to non-gradient systems. However, the proof of Proposition 3.11 highly relies on the gradient nature of the system.
+4 Comparison with the Freidlin-Wentzell functional
+In this section, we make comparisons between the double minimization problems of the OM and FW functionals. We first summarize the differences between these two problems and then give an illustrative example.
+4.1 Differences between the FW and OM functionals
+When ε = 0, the OM functional reduces to the FW functional. The double minimization problem of the FW functional, which is stated as
+SFW(xs, xf ) = inf
+T >0 inf
+ψ∈C ̄ xf
+xs [0,T ]
+STFW [ψ ],
+was studied in [22, 26, 39]. The main results are summarized as follows:
+(1) The infimum occurs at some T = T ⋆. The MPP may not pass through any critical point. T ⋆ = +∞ if and only if the MPP passes through a critical point.
+(2) SFW(xs, xf ), which is called the local quasi-potential starting from xs if xs is a steady state, is positive and finite in general.
+(3) The corresponding energy parameter E(T ⋆) = 0 regardless of the value of T ⋆ (finite or infinite). The value of SFW(xs, xf ) can be obtained by minimizing the geometric functional Sˆ0[φ], i.e.
+SFW(xs, xf ) = inf
+φ∈C ̄ xf
+xs
+Sˆ0[φ].
+We note that for a prescribed value of T , the corresponding energy E may assume non-zero value.
+(4) Under Assumption 2.9, the minimizer of STFW[ψ] has a subsequence that converges to the minimizer
+of Sˆ0[φ] as T → T ⋆ in the sense that ρ(ψT , φ0) → 0, where φ0 is the minimizer of Sˆ0[φ].
+Our results in previous sections generalize the above conclusions for the FW functional to the OM functional. In Proposition 3.7, we showed that the double minimization of the OM functional always occurs at T ⋆ = +∞. Even when neither xs nor xf is critical, the minimizer must pass through a critical point. The corresponding value of the OM functional SOM(xs, xf ) is always −∞ when ε > 0. This implies that we cannot define an analog of the quasi-potential as in the Freidlin-Wentzell theory via the minimization of the OM functional. In spite of that, we can still study the graph limit of the minimizers of STOM[ψ] in the configuration space with the help of the Maupertuis principle. Theorem 3.9 showed
+that the corresponding energy parameter E(T ) converges to E⋆ = maxx∈Rd U (x). The minimizer of
+STOM[ψ] has a subsequence that converges to an extremal of SˆE⋆[φ]. However, the extremal may not be a
+minimizer of SˆE⋆ [φ]. Note that when ε → 0, maxx∈Rd U (x) → 0, then formally E(T ) → 0 as T → +∞, which is consistent with the Freidlin-Wentzell theory. The convergence from the OM functional to the FW functional was rigorously studied using the Γ-convergence technique in [31]. In summary, the main differences between the double minimization of the FW and OM functionals are: (1) SFW(xs, xf ) is finite while SOM(xs, xf ) is −∞; (2) The minimizer of the FW functional has the
+
+
+ 16 Qiang Du et al. Sci China Math
+energy E⋆ = 0 while the minimizer of the OM functional has a positive energy; (3) The graph limit of the minimizer of the OM functional is an extremal rather than a minimizer of SˆE⋆[φ]. The second point implies that in the numerical methods, one has to identify the MPP together with the unknown energy E⋆ at the same time. This is pursued in Section 5.
+4.2 An illustrative example
+In this section, we present a simple but informative example to illustrate the main results derived earlier for the OM and FW functionals. We consider a 2-D diffusion process with drift b(x) = −∇V (x), where V (x) = 1
+2 |x|2 is a quadratic potential. The path potential U (x) = 2ε − 1
+2 |x|2 has only one critical point xc = 0, which is also the steady state of the dynamics x ̇ = −∇V (x). For any pair of states xs, xf and fixed T > 0, the Euler-Lagrange equation of the OM functional is given by ψ ̈T (t) − ψT (t) = 0, t ∈ (0, T ) (4.1)
+with the boundary conditions ψT (0) = xs and ψT (T ) = xf . The solution of Eq. (4.1) is given by
+ψT (t) = Aet + Be−t, (4.2)
+where the vectors A and B are given by
+A = (eT − e−T )−1(xf − xse−T ), B = (eT − e−T )−1(xseT − xf ). (4.3)
+They can be viewed as functions of T . Because ∇2
+yL = I is positive definite, ψT satisfies strict LegendreHadamard condition. So ψT is the unique minimizer of STOM[ψ]. Since ψT is independent of ε, it is also
+the minimizer of the FW functional STFW[ψ]. Along the path ψT , the conservation of energy (3.4) gives
+1
+2 |ψ ̇T |2 + U (ψT ) = 2ε − 2A · B,
+thus the energy E = E(T ) = 2ε − 2A · B. The value of STOM[ψT ] can be also calculated as
+STOM[ψT ] =
+∫T
+0
+(1
+2 |ψ ̇T |2 + ψT · ψ ̇T + 1
+2 |ψT |2 )
+dt − 2εT (4.4)
+=1
+2 |xf |2 − 1
+2 |xs|2 − 2εT + 1
+2 |A|2 (e2T − 1) + 1
+2 |B|2 (1 − e−2T ).
+It is straightforward to check that
+∂STOM[ψT ]
+∂T = 2A · B − 2ε = −E(T ). (4.5)
+In what follows we consider two special choices of xs and xf . Let xs = (R1 cos θ1, R1 sin θ1) and xf = (R2 cos θ2, R2 sin θ2). We first consider the case where θ1 = θ2 = 0 and R2 > R1 > 0, i.e. the two states xs and xf are on the positive x-axis on the x-y plane, and the initial state xs is closer to the origin. In the second case, we set R1 = R2 > 0 and 0 < θ1 < θ2 < π/2 where the two states xs and xf are on the same countor line of the energy V (x). In both cases, we examine the minimizers of the OM and FW functionals in detail.
+Case 1: θ1 = θ2 = 0 and R2 > R1 > 0
+Let xs = (xs, 0) and xf = (xf , 0), where 0 < xs < xf . In this case, the vectors A = (A, 0), B = (B, 0) in (4.2), thus this is essentially a one-dimensional transition on the x-axis. For simplicity we will use ψT to denote the x coordinate of the transition path only.
+
+
+ Qiang Du et al. Sci China Math 17
+Figure 1 (left panel) shows the graph of ∂STOM[ψT ]/∂T = 2AB − 2ε (or −E(T )) versus T . Denote the
+two zeros of ∂STOM[ψT ]/∂T by Tmin and Tmax, respectively. Then it is easily seen that STOM[ψT ] attains a local minimum at T = Tmin and a local maximum at T = Tmax. As T → +∞, it follows from (4.3) that ∂STOM[ψT ]/∂T → −2ε. Thus for sufficiently large T , we have
+∂STOM[ψT ]
+∂T < −ε < 0,
+and consequently, limT →∞ STOM[ψT ] = −∞, which agrees with the results in Proposition 3.7. Next we examine the transition path ψT and its graph in the configuration space in detail. Note that
+we have A > 0 for any T > 0 and ψ ̇T = Aet − Be−t. To see whether there exists t ∈ [0, T ] such that
+ψ ̇(t) < 0, we define
+f (T ) = B
+A = xseT − xf
+xf − xse−T .
+Since f (T ) is an increasing function for T > 0, there exist unique Tb > Ta > 0 such that f (Ta) = 0 and f (Tb) = 1. A straightforward calculation shows that ∂STOM[ψT ]/∂T attains the maximum at T = Tb as shown in Figure 1. We consider the following two cases:
+1) T 6 Tb. In this case, B 6 A. Thus ψ ̇T > 0 for all t ∈ [0, T ], which implies the system moves from the initial state xs towards the final state xf along the path ψT (t). The graph of the path is simply the line segment connecting xs and xf . Using the normalized arc-length as the parameterization, the path can be expressed as φE(α) = xs + Lα, (4.6)
+where 0 6 α 6 1 and L = xf − xs. Note that although different choices of T correspond to different minimizers ψT , they have the same graph in the configuration space.
+2) T > Tb. In this case, we have B > A and there exists a unique t⋆ = ln √B/A ∈ [0, T ] such that
+ψ ̇T (t⋆) = 0. Furthermore we have ψ ̇T < 0 when t ∈ [0, t⋆) and ψ ̇T > 0 when t ∈ (t⋆, T ]. It follows that, along the transition path, the system moves towards the origin until t = t⋆ then it turns back and moves
+towards the final state xf . The turning point is given by xc = ψT (t⋆) = 2√AB < xs. The mapping from ψT on [0, T ] to φE on [0, 1] is done as follows. We define the normalized arc-length parameterization as
+α = l(t) =
+{L−1(xs − ψT (t)), 0 6 t 6 t⋆
+L−1(xs − 2xc + ψT (t)), t⋆ 6 t 6 T, (4.7)
+where L is the arc-length of the path
+L=
+∫T
+0
+|ψ ̇T | dt = −
+∫ t⋆
+0
+ψ ̇T dt +
+∫T
+t⋆
+ψ ̇T dt = xf + xs − 2xc.
+Then ψT (t) is mapped to
+φE(α) =
+{xs − Lα, 0 6 α 6 α⋆
+2xc − xs + Lα, α⋆ 6 α 6 1, (4.8)
+where α⋆ = l(t⋆) = L−1(xs − xc). The graph φE in (4.8) depends on T . In particular, the turning point xc is a function of T ,
+xc = 2√AB = (2xsxf cosh T − xs2 − xf2 )1/2/ sinh T.
+It is easilly seen that as T → +∞, xc → 0, i.e. the turning point converges to the critical point. This shows that the graph limit of the MPP will pass through a critical point even when xs and xf are not at the steady state of x ̇ = −∇V (x). Furthermore, the energy E(T ) → E⋆ = 2ε as T → +∞. In this limit, φE converges to
+φE⋆ (α) =
+{xs − Lα, 0 6 α 6 (xf + xs)−1xs,
+Lα − xs, (xf + xs)−1xs 6 α 6 1. (4.9)
+
+
+ 18 Qiang Du et al. Sci China Math
+-0.4
+-0.3
+-0.2
+-0.1
+0
+0.1
+0.2
+0.3
+0.4
+T ST
+OM[ T]
+T
+T min
+Tb Tmax
+-2
+Ta
+-0.2
+-0.1
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+T ST
+FW [ T]
+T
+Tb
+Ta
+Figure 1 The plot of ∂ST [ψT ]/∂T (or −E(T )) versus T for the Onsager-Machlup functional (left panel) and the FreidlinWentzell (right panel), where xs = 1, xf = 2, ε = 0.1. Ta < Tb satisfy f (Ta) = 0, f (Tb) = 1. Tmin and Tmax are two zeros of ∂SOM
+T [ψT ]/∂T .
+The geometric functional corresponding to E⋆ = 2ε is given by
+SˆE⋆ [φ] =
+∫1
+0
+|φ| |φ′| dα.
+The corresponding strong form of the Euler-Lagrange equation is
+|φ|2φ′′ + (φ · φ′)φ′ − |φ′|2φ = 0. (4.10)
+It is easy to see that the graph limit φE⋆ with the turning point xc = 0 is a weak solution of (4.10), thus an extremal of the functional SˆE⋆ [φ]. This verifies the result obtained in Theorem 3.10. To further check
+whether φE⋆ is the global minimizer of SˆE⋆ [φ], we compare it with the following function
+φ ̃(α) = xs + L ̃α, α ∈ [0, 1],
+where L ̃ = xf − xs. This is the graph of the path obtained when T 6 Tb. A direct calculation yields
+SˆE⋆ [φ ̃] = 1
+2 (xf2 − xs2).
+In comparison,
+SˆE⋆ [φE⋆ ] = 1
+2 (xf2 + xs2) > SˆE⋆[φ ̃].
+Thus φE⋆ is only an extremal of SˆE⋆ [φ], but not its global minimizer. Next we compare the results obtained above for the OM functional with the FW functional. For the FW functional, since ε = 0, we have ∂STFW[ψT ]/∂T = 2AB. The right panel of Figure 1 shows the graph
+of ∂STFW[ψT ]/∂T versus T . The only zero of ∂STFW[ψT ]/∂T = 0 occurs at T = Ta, at which STFW[ψT ] attains the global minimum. The graph of the corresponding transition path is the one in (4.6), which has the action
+STFaW[ψTa ] = xf2 − xs2 = 2V (xf ) − 2V (xs).
+In comparison, when T → ∞, the graph of the transition path converges to the one given in (4.9) with the action
+lim
+T →+∞ STFW[ψT ] = xf2 = 2V (xf ) − 2V (0),
+which is obviously larger than STFaW[ψTa ].
+
+
+ Qiang Du et al. Sci China Math 19
+Figure 2 (Color Online). The minimizer of the FW and OM functionals from xs to xf , where R = 3, θ1 = π/12, θ2 = 5π/12, ε = 0.1. Yellow curve: the minimizer of the FW functional. Red line: the minimizer of the OM functional. The background colors show the contour of V (x).
+Case 2: R1 = R2 = R > 0 and 0 < θ1 < θ2 < π/2
+In this case, we illustrate the different transition behaviors modeled by the OM and FW functionals between the two states xs = (R cos θ1, R sin θ1), xf = (R cos θ2, R sin θ2). The two states lie on the same contour line of V (x) with V (xs) = V (xf ) = R2/2. Let us consider the OM functional first. As in case 1, the fact that
+∂STOM[ψT ]
+∂T = −E → −2ε < 0
+as T → +∞ implies that the infimum of STOM[ψT ] occurs when T → +∞. To examine if the transition path passes through the origin, we consider the distance of the minimizer ψT to the origin. For any given
+T , we have
+d
+dt |ψT |2 = 2 |A|2 e2t − 2 |B|2 e−2t.
+The solution of d|ψT |2/ dt = 0 is t⋆ = ln(|B|/|A|)/2 > 0. In addition, we have d2|ψT |2/ dt2 > 0 for all t, therefore, |ψT | attains its minimum at t = t⋆, i.e. ψT (t⋆) is the state along the path which is the closest to the origin. This shortest distance is given by
+|ψT |2min = |ψT |2(t⋆) = 2|A||B| + 2A · B, (4.11)
+which converges to 0 as T → ∞. Therefore, the graph limit of the transition path passes through the critical point x = 0. A typical path is shown in Figure 2. For the FW functional, the minimum of STFW[ψT ] is attained at T = Tc, the solution to ∂STFW[ψT ]/∂T = 0, or explicitly,
+Tc = cosh−1
+(1
+cos(θ2 − θ1)
+) .
+The corresponding action is given by STFcW[ψTc ] = 4R2 sin(θ2 − θ1). The shortest distance from the path ψTc to the origin can be computed using (4.11), which yields
+|ψTc |2
+min = R2 cos(θ2 − θ1) 6 R2.
+This shows that the minimizer of the FW functional, ψTc, has a positive distance from the origin, and the distance is smaller than R. A typical graph of the transition path is shown in Figure 2. Note that it is not along the contour of V (x).
+
+
+ 20 Qiang Du et al. Sci China Math
+5 Numerical method
+Based on the insights gained from the theoretical analysis in previous sections, we design an energyclimbing geometric minimization method to compute the graph limit of the minimizer of the OM functional when T goes to infinity. The graph limit of the minimizer satisfies the Euler-Lagrange equation (3.14), with the kinetic energy KE = E − U (φ) and E = maxα U (φ(α)). This is a highly nonlinear equation. We propose to use the following steepest decent like dynamics to find the solution:
+∂φ
+∂s = 2K(s, α)φ′′ + |φ′|2 (I − τˆ ⊗ τˆ) · ∇U (φ) + λτˆ, α ∈ (0, 1), s > 0
+φ(s, 0) = xs, φ(s, 1) = xf , and (|φ′|)′ = 0 (5.1)
+with initial condition φ(0, α) = φ0(α), where λ is a Lagrange multiplier to ensure the constraint (|φ′|)′ = 0, and K(s, α) := E(s) − U (φ(s, α)) and E(s) := mαax U (φ(s, α)). (5.2)
+Here s denotes the artificial relaxation time. The well-posedness and long time behavior of Eq. (5.1) is not well-understood yet due to the nonlinearity and degeneracy of K(s, α) at αc = argmaxα U (φ). We will leave this problem to our future studies. Nevertheless, provided the dynamical system (5.1) reaches a steady state as s → ∞, the steady-state solution solves (3.14), thus gives the graph limit of the minimizer of the OM functional. We use (5.1) to construct numerical schemes. We first semi-discretize Eq. (5.1) with respect to the relaxation time s. Using an explicit time-stepping with stepsize δs, we get
+φn+1 = φn + δs
+(
+2Kn(α)(φn)′′ + |(φn)′|2 (I − τˆn ⊗ τˆn) · ∇U (φn)
+)
++ λn+1τˆn+1, (5.3)
+where φn(α) is the numerical approximation of φ(nδs, α) and
+Kn(α) := En − U (φn), En := mαax U (φn(α)). (5.4)
+The scheme (5.3) is equivalent to first obtain φ ̃n+1 by
+φ ̃n+1 = φn + δs
+(
+2Kn(α)(φn)′′ + |(φn)′|2 (I − τˆn ⊗ τˆn) · ∇U (φn)
+)
+, (5.5)
+then get φn+1 by reparameterizing φ ̃n+1 with equi-arclength condition. For a given φ0, the scheme (5.3) generates a sequence of paths {φn} and the corresponding energy {En}. We have the following theorem concerning the properties of the above numerical scheme.
+Proposition 5.1. Suppose φ0(α) ∈ C∞[0, 1], U (x) ∈ C∞(Rd), then φn(α) ∈ C∞[0, 1]. When δs is sufficiently small, the sequence {En} generated using (5.3) is nondecreasing. Moreover, if φn converges to a steady state φ⋆, then En → Ec, and φ⋆ solves the Euler-Lagrange equation (3.14) with E = Ec. Here, Ec = U (φ⋆(α⋆)) for some α⋆ ∈ [0, 1]. x⋆ = φ⋆(α⋆) satisfies the condition ∇U (x⋆) = 0.
+Proof. Because φ0 and U are smooth, we have φ1 ∈ C∞ from (5.3). The fact that φn ∈ C∞ can be deduced by induction. Let αn = inf{α ∈ [0, 1]|U (φn(α)) = maxα U (φn(α))}. We have En = U (φn(αn)). We first assume αn ∈ (0, 1). If ∇U (φn(αn)) = 0, then there exists βn ∈ (0, 1) such that φn+1(βn) = φ ̃n+1(αn) = φn(αn) by (5.3) and (5.5). So En+1 > U (φn+1(βn)) = En. If ∇U (φn(αn)) 6= 0, we have
+En+1 − En > U (φ ̃n+1(αn)) − U (φn(αn))
+= ∇U (φn(αn)) · (φ ̃n+1(αn) − φn(αn)) + O(∣∣φ ̃n+1(αn) − φn(αn)∣∣2). (5.6)
+
+
+ Qiang Du et al. Sci China Math 21
+When α = αn, ∇U · (φn)′ = 0. According to scheme (5.5), φ ̃n+1(αn) − φn(αn) = δs |(φn)′|2 ∇U (φn(αn)),
+∣∣φ ̃n+1(αn) − φn(αn)∣∣ = O(δs). From (5.6), we have
+En+1 − En > |(φn)′|2 |∇U (φn(αn))|2 δs + O(δs2) > 0 (5.7)
+when δs2 is sufficiently small. So {Ek} is nondecreasing. If αn = 0, En+1 = max U (φn+1(α)) > U (φn+1(0)) = U (xs) = U (φn(0)) = En. So En+1 > En still holds. The case αn = 1 is similar. In all, we have shown that {Ek} is nondecreasing. If the scheme reaches a steady state φ⋆, then En converges to some Ec by the definition En = maxα U (φn(α)) and the assumption that φn converges. The limit φ⋆ solves
+2KEc(φ⋆)(φ⋆)′′ + |(φ⋆)′|2 (I − τˆ ⊗ τˆ) · ∇U (φ⋆) + λτˆ = 0, (5.8)
+subject to the constraint (|(φ⋆)′|)′ = 0, where
+KEc(φ⋆) := Ec − U (φ⋆), Ec := mαax U (φ⋆(α)).
+Take inner product of both sides of (5.8) with τˆ, we get the Lagrange multiplier λ(α) ≡ 0 and thus φ⋆ solves Eq. (3.14) with E = Ec. Let α⋆ = arg mαax U (φ⋆(α)). From (5.8), we have ∇U (φ⋆(α⋆)) =
+(τˆ · ∇U (φ⋆(α⋆)))τˆ = 0.
+Remark 5.2. A careful inspection of the proof shows that the properties on En and φ⋆ hold also for non-gradient systems as long as the path has second order differentiability.
+Let us re-examine the iteration at α = αn. Since En = U (φn(αn)), we have ∇U · (φn)′ = 0, and
+the iteration in (5.5) reduces to φ ̃n+1(αn) = φn(αn) + δs |(φn)′|2 ∇U (φn(αn)). This can be viewed
+as a steepest ascent method to find the maximum of U (x) with step size δs |(φn)′|2. The convergence result shows that φn(αn) converges to a point with ∇U = 0. So the iteration (5.3) can be considered as a combination of a relaxation method to solve the Euler-Lagrange equation and the steepest ascent method to find the maximum of U (x) . In practical computations, the path φn is discretized into a collection of discrete states, φjn = φn(jh),
+where h = 1/N and j = 0, 1, · · · , N , and the spatial derivatives of φn are discretized using the central difference formula. This gives the following algorithm:
+It is worth noting that the explicit numerical scheme in the above algorithm can be replaced by a semi-implicit scheme, in which the spatial derivative φ′′ is evaluated at (n + 1)δs:
+φ′j′ ≈ D2φ ̃n+1
+j = (φ ̃n+1
+j+1 − 2φ ̃n+1
+j + φ ̃n+1
+j−1 )/h2.
+This will be a more stable scheme in practice. At each step, this semi-implicit scheme requires solving a tri-diagonal linear system, but allows a relatively large time stepsize. Such linear systems can be solved by fast algorithms, e.g. the Thomas algorithm, whose computational cost is comparable to the cost of the explicit scheme. The purpose of step (4) in EGMA is to redistribute the discrete images so that they are equally spaced along the path. This can be done using interpolation techniques as introduced in the string method [10, 12]. One simple strategy that uses the linear interpolation is illustrated as follows.
+The stopping criterion in EGMA is based on the rate of change of φn. In the computations below, we set the tolerance T OL = 10−6.
+Remark 5.3. EGMA can also be applied to non-gradient type of systems by solving the following semi-discrete scheme
+φn+1 =φn + δs
+(
+2Kn(φn)(φn)′′ + √2Kn(φn)(∇bT − ∇b) · (φn)′
+
+
+ 22 Qiang Du et al. Sci China Math
+Algorithm 1 Energy climbing geometric minimization algorithm (EGMA)
+(1) Given φj0 = φ0(jh) for j = 0, 1, . . . N and h = 1/N . Set n = 0.
+(2) For path φjn, let En = maxj U (φjn) and compute
+Dφjn = (φjn+1 − φjn−1)/(2h),
+D2φjn = (φjn+1 − 2φjn + φjn−1)/h2,
+for j = 1, 2, . . . N − 1.
+(3) Let φ ̃n+1
+0 = xs, φ ̃n+1
+N = xf . Then compute
+φ ̃n+1
+j =φjn + δs
+[
+(2En − 2U )D2φjn + ∣∣Dφjn
+∣∣2 ∇U − (∇U · Dφjn)Dφjn
+]
+for j = 1, 2, . . . , N − 1. Here U and ∇U are both evaluated at φjn.
+(4) Compute φn+1
+j by interpolating {φ ̃n+1
+j } based on the equi-arclength constraint.
+(5) Terminate the iteration if |φn+1 − φn|/δs < T OL, where T OL is a prescribed tolerance.
+(6) Set n := n + 1 and goto step 2.
+Algorithm 2 Equal-arclength reparametrization
+(1) Let L(0) = 0 and
+L(j) =
+j ∑
+m=1
+∣∣φ ̃n+1
+j − φ ̃n+1
+j−1
+∣∣ , j = 1, 2, . . . , N.
+(2) Compute the equally spaced arc-length parameter l(j) = jL(N )/N for j = 0, 1, . . . , N .
+(3) For each j = 1, 2, . . . , N − 1, find i ∈ {0, 1, . . . , N − 1} such that L(i) < l(j) 6 L(i + 1), then compute φn+1
+j as follows:
+φn+1
+j = φ ̃n+1
+i + (l(j) − L(i)) φ ̃n+1
+i+1 − φ ̃n+1
+i
+∣∣φ ̃n+1
+i+1 − φ ̃n+1
+i
+∣∣ .
+
+
+ Qiang Du et al. Sci China Math 23
+Figure 3 (Color Online). The heat plot of V (x, y) and two transition paths when ε = 0 (the FW theory). The blue and red lines correspond to the direct and circular transition paths, respectively. The green dots correspond to the minima (a and b) and saddle points (s1 and s2) of V (x, y). The two saddle points s1 and s2 have the same energy when γ ≈ 12.16. The background color indicates the value of V , where the yellow color corresponds to small values of V , and blue color corresponds to large values of V .
++ |(φn)′|2 (I − τˆn ⊗ τˆn) · ∇U (φn)
+)
++ λn+1τˆn+1, (5.9)
+where Kn is defined in (5.4). We remark that in this semi-discrete scheme, the smoothness of φn does not guarantee the smoothness of φn+1. However, this does not introduce any difficulty in applying the full discretization scheme of (5.9) in numerical computations.
+6 Numerical examples
+We apply the numerical method to three examples: an example in 2D, the re-arrangement of seven-atom cluster, and the Maier-Stein model. In these examples, we use
+λ(α) =
+√2E − 2U (φ(α)) |φ′|
+as the indicator of λ-critical states. Here, φ(α) is the path we get after iteration, E = maxα U (φ). The local minima of λ(α) are λ-critical states. When ε = 0, metastable states and transition states are all λ-critical states(λ(α) = 0 at these states). As proved in proposition 3.13, the transition spent longer time at these states than others.
+6.1 A 2D example
+We consider the potential V in two-dimensional space:
+V (x, y) = 4(x2 + y2 − 1)2y2 − exp(−4((x − 1)2 + y2)) − exp(−4((x + 1)2 + y2))
++ exp(8(x − 1.5)) + exp(−8(x − 1.5)) + exp(γ(y + 0.25)) + 0.2 exp(−8x2).
+The potential V (x, y) has two minima at a and b, and two saddle points at s1 and s2, as shown in Figure 3. For a properly chosen γ(γ ≈ 12.16), the two saddle points have the same potential energy. The FW functional (i.e. when ε = 0) has two minima for the transition between a and b, one being a straight line through s1 and the other a circular path through s2. The two paths have the same action, and they are also the minimum energy paths for the potential V . Notice that when ε = 0, all critical points of V , i.e. the states x with ∇V (x) = 0, are critical points (maxima) of U . When ε > 0 but small, the local/global maxima of U are still in the neighborhood of
+
+
+ 24 Qiang Du et al. Sci China Math
+-1.5 -1 -0.5 0 0.5 1 1.5
+-0.2
+0
+0.2
+0.4
+0.6
+0.8
+1
+1.2
+0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+0
+0.2
+0.4
+0.6
+0.8
+1
+1.2 ( ) for direct path ( ) for circular path
+Figure 4 (Color Online). Left panel: Two solutions of the Euler-Lagrange equation (3.14) with ε = 0.05. The blue straight line passes through local maxima of U (x, y) close to the minima of V . The red circular line passes through the global maxima of U that are close to the upper saddle of V . The background is the heat plot of U , in which the yellow color corresponds to large values of U , and blue color corresponds to small values of U , which is opposite to Figure 3. The blue circles indicate the minima and saddle points of V , and the green diamonds are local maxima of U . Right panel: The indicator λ(α) of two paths. The blue and red curves correspond to the straight and circular paths, respectively. The indicator λ = 0 corresponds to the states with U (φ) = Ec.
+-1.5 -1 -0.5 0 0.5 1 1.5
+-0.2
+0
+0.2
+0.4
+0.6
+0.8
+1
+1.2
+0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+0
+0.2
+0.4
+0.6
+0.8
+1
+1.2
+1.4
+1.6
+1.8
+2
+( ) for circular path
+Figure 5 (Color Online). Left panel: The circular transition path when ε = 0.5. The path passes through two critical points that are away from the upper saddle point of V . The background is the heat plot of U . Right panel: The indicator λ(α). The zeros of λ corresponds to two critical points.
+the critical points of V . For example, as shown in Figure 4, U attains the maxima near the minima, the saddle points and the maxima of V when ε = 0.05. Among these maxima of U , the one near s2 is the global maximum, thus the critical point of U .
+For ε = 0.05, we solved (5.1) for the transition path between a and b using EGMA. Using different initial path in the iteration, we obtained two paths connecting a and b: one passing through the three local maxima of U near a, s1 and b, respectively, and the other passing through the global maxima of U near s2. Both satisfies the Euler-Lagrange equation (3.14), thus are extremals of SˆE[φ]. However, the two paths have different energy: Ec ≈ 1.0849 for the first one and Ec ≈ 1.5516 for the second one. These energy values are also the maximum of U along the corresponding path. From the analysis in previous sections, the path passing through the global maximum of U is the graph limit of the minimizers of STOM[ψ] as T → ∞.
+When ε is relatively large, on the other hand, U may have a different landscape. For example, when ε = 0.5, the critical point of U near s2 disappears and two new critical points appear slightly far away from this saddle point. Figure 5 shows that the converged path passes through these two critical points with energy Ec ≈ 23.9939. This result shows that with a finite ε, the OM functional may give quite different λ-critical states compared with the transition states for the zero noise limit.
+
+
+ Qiang Du et al. Sci China Math 25
+0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+Figure 6 (Color Online). The indicator λ(α) for the MPP and the corresponding λ-critical states when ε = 0 (i.e. the FW functional). The λ-critical states are the states where λ attains local minima.
+6.2 Rearrangement of a seven-atom cluster
+In this example, we consider the rearrangement of a cluster consisting of seven atoms. This problem was studied in [7, 10, 30] using different approaches. The positions of the atoms are denoted by x(i) ∈ R2, i = 1, 2, . . . 7. The state of the system in the configuration space is represented by a vector x = (x(1), . . . x(7)) ∈ R14. The interactions between the atoms are modeled by the Lennard-Jones potential:
+V (x) = 2δ ∑
+i6=j
+(σ
+rij
+)12
+−
+(σ
+rij
+)6
+, (6.1)
+where δ, σ > 0, rij = |x(i) − x(j)| is the distance between x(i) and x(j). The global minimum of this potential corresponds to the configuration in which an atom is surrounded by the other six in a hexagonal shape. We compute the pathway along which the central atom (colored in white in Figs Figure 6-Figure 9) migrates to the surface using EGMA with different values of ε. We use N = 192 points to discretize the path, and take δ = σ = 1 in the potential. We first show the transition path and transition states inferred by the FW theory, i.e. the case when ε = 0, in Figure 6. The curve in Figure 6 shows the indicator λ. As shown in the FW theory [22], the metastable states and transition states along the transition path are given by the points with λ(α) = 0. They are all λ-critical states. We plot the configuration of each λ-critical state in Figure 6. These λcritical states are also the minima or saddle points of V and they are the same as those obtained in the earlier work [7, 10]. Figure 7 shows the indicator λ(α) along the path obtained with ε = 0.01. As we have mentioned, each local minimum of λ corresponds to a λ-critical state. These states have different interpretations. The initial and final states, which correspond to the case where one atom is surrounded by the other six, are the minimum of λ. This means that they are more stable than the other three λ-critical states. Similarly, the symmetric state (observe with a small tilt angle) in the middle of the path is more stable than another two asymmetric ones aside. Because ε is quite small here, the λ-critical state we get are similar as those obtained by FW theory. We also applied EGMA to the cases ε = 0.1 and ε = 1, and the numerical results are shown in Figs. Figure 8 and Figure 9, respectively. In Figure 8, we observe similar transition pattern as in the case ε = 0.01. Although the critical points of U that the path goes through are slightly perturbed from the initial and final states, their configurations are qualitatively indistinguishable from those states. The symmetric state in the middle remains to be a λ-critical state as a local minimum of the indicator λ. In the case ε = 1 (shown in Fig, Figure 9)), the two asymmetric states inside replace the initial and final states as the critical states. Furthermore, the middle symmetric state is no longer a λ-critical state.
+
+
+ 26 Qiang Du et al. Sci China Math
+0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+Figure 7 (Color Online). The indicator λ(α) for the MPP and the corresponding λ-critical states when ε = 0.01. The transition behavior resembles the case when ε = 0.
+0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+0
+0.5
+1
+1.5
+2
+2.5
+Figure 8 (Color Online). The indicator λ(α) for the MPP and the corresponding λ-critical states when ε = 0.1. The qualitative behavior remains unchanged compared with the case ε = 0.01.
+During the transition, the atoms have slight overlapping due to strong noise perturbations. Similar phenomena was also observed in [30].
+6.3 The Maier-Stein model
+In this example, we apply the numerical method to a non-gradient system. The Maier-Stein model is a standard non-gradient diffusion process that has been carefully studied [27]. The drift term b in Eq. (1.1) is
+b(x, y) =
+[x − x3 − βxy2
+−(1 + x2)y
+]
+, (6.2)
+where β > 0 is a parameter. The system is of the gradient type only when β = 1. For any β > 0, the deterministic dynamics x ̇ = b(x) has two stable fixed points at (±1, 0) and one saddle point at (0, 0). The path potential U (x, y) is given by
+U (x, y) = 4εx2 + εβy2 − 1
+2
+[(x − x3 − βxy2)2 + (1 + x2)2y2]. (6.3)
+In the limit ε → 0, Maier and Stein studied the transition path from (−1, 0) to (1, 0) for various β, and found two transition patterns [27]. When β < 4, the path is the line segment connecting (−1, 0) and (1, 0), while when β > 4, the path is composed of two parts: one from (−1, 0) to (0, 0) following the curved heteroclinic orbit and the other from (0, 0) to (0, 1) following the line segment.
+
+
+ Qiang Du et al. Sci China Math 27
+0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+0
+5
+10
+15
+20
+25
+Figure 9 (Color Online). The indicator λ(α) for the MPP and the corresponding λ-critical states when ε = 1. The two asymmetric states shown in the figure replace the initial and final states as the critical states. The atoms slightly overlap due to the strong noise.
+Figure 10 (Color Online). The MPP of the OM functional for the Maier-Stein model, where xs = (−1, 0), xf = (1, 0) and ε = 0.1. Left panel: β = 3.4. Right panel: β = 3.5. Blue circles are fixed points of x ̇ = b(x). Green diamonds are local maximum points of U (x). The background is the heat map of U (x).
+Using EGMA, we can study the same transition for ε > 0. Figure 10 shows the numerical results for ε = 0.1. We also obtain two types of transition paths. However, the critical value of β that separates the two pattens is lowered to a value between 3.4 and 3.5. More interestingly, as predicted by the theoretical result, the paths now pass through a critical point (xc, 0) which is located to the left of (−1, 0).
+The critical point (xc, 0) can be calculated explicitly as xc2 = (2 + √1 + 24ε)/3. The corresponding energy is given by Ec = U (xc, 0). This helps us study the convergence property of our EGMA. We set ε = 0.1, δs = 0.01, β = 10 and run 500 iterations with different spatial resolution N . We compute the difference between Ec and En in each iteration step. The convergence history of the energy in the first 100 iterations is shown in the upper part of Table 1 when N = 1000. We observe that En increases monotonically towards Ec. A quantitative fitting shows that |En − Ec| ≈ O(n−2) + eN , where eN is the difference of the limit of En, denoted by E⋆N , and Ec. The error eN is mainly determined by the spatial
+resolution N , which is also shown in Table 1. A fitting shows that |E⋆N − Ec| ≈ O(h2.314). This suggests approximately second order convergence of the energy parameter with second order spatial discretization. We will leave the rigorous convergence analysis to the future study. From Eq. (6.3) we have
+U (0, y) = (εβ − 1
+2 )y2,
+which shows that U (x, y) is unbound along the y-axis when εβ > 1
+2 . This violates the Assumption 2.2. In
+
+
+ 28 Qiang Du et al. Sci China Math
+Table 1 Upper part: Convergence of energy parameter with respect to the iteration number n. Lower part: Convergence of the limit energy with respect to the spatial resolution N .
+IterNum n 10 20 30 50 100
+Ec − En 2.1 × 10−3 3.9 × 10−4 1.5 × 10−4 8.1 × 10−5 6.2 × 10−5
+SpatialRes N 100 1000 2000 4000 5000
+Ec − E⋆N 6.0 × 10−5 2.0 × 10−5 3.0 × 10−6 1.2 × 10−7 5.3 × 10−9
+Figure 11 (Color Online). Divergence of the y-component of φn(α) in the iterations when εβ > 1
+2 . Here we choose ε = 1, β = 10.
+principle this is beyond our theoretical framework. But it is still interesting to apply EGMA in this case. Based on the result in Proposition 3.6, the energy parameter E will tend to infinity while the path may diverge along y-axis. The numerical results confirm this conjecture, although the current theory does not cover this case. The divergent curves are shown in Figure 11.
+7 Conclusion and discussion
+In this paper, we studied the minimization problem of the OM functional STOM[ψ] when T tends to
+infinity. Under mild conditions, we rigorously showed that the infimum of STOM[ψ] over ψ and T is always −∞ and it occurs only when T → +∞. Moreover, we proved that when T → +∞, the minimizer of STOM[ψ] has convergent subsequence in the configuration space. With the help of Maupertuis principle, the problem of finding the graph limit of the minimizers of the OM functional is translated into that of finding an extremal of SˆE[φ] with the energy E⋆ = maxx U (x), where U is the path potential. Based on these theoretical results, we designed an efficient algorithm (EGMA) to find the energy E⋆ and solve the Euler-Lagrange equation simultaneously. This algorithm can be viewed as a nontrivial extension of the geometric minimum action method (gMAM), which was proposed for the double minimization problem of the FW functional at zero temperature [22]. In gMAM, the energy E is fixed at zero, and the
+corresponding optimal transition time T = ∫ 1
+0 (2E − 2U (φ))− 1
+2 |φ′| dα can be either finite or infinite. We note that the method can be extended to the case of non-zero E, which corresponds to a prescribed value for the transition time. In EGMA, the energy changes step by step to ensure that the time T always goes to infinity. This algorithm was successfully applied to several typical rare event examples. Although the rigorous proof of the convergence of the algorithm is still absent, our numerical examples in Sections 6.1 and 6.2 demonstrated that it converges to an extremal of SˆE⋆ [φ] in practice. Some possible extensions and unsolved problems arise naturally based on the theoretical analysis of the current paper. Below we list some of them.
+
+
+ Qiang Du et al. Sci China Math 29
+(i) As mentioned in the remarks, the conclusions that infT infψ STOM[ψ] = −∞ and the minimizer of
+STOM[ψ] has convergent subsequence in the configuration space can be generalized to non-gradient
+systems with drift b(x) under suitable assumptions. However, the proof of the key result that φ⋆ is an extremal of SˆE⋆ [φ] relies on the gradient form of b(x). Indeed, the proof of Lemma A.1 holds because the value of SˆE[φ] is non-negative. Besides, we used an analog of Hartman-Grobman theorem to transfer the uniform BV property of φ′k for linearized problem to the non-linear case in the neighborhood of the critical point xc. This approach requires that (xc, 0) is a hyperbolic fixed point of the first order system (A.6). For non-gradient case, the first order system (A.6) becomes
+Ψ ̇ 1 = Ψ2,
+Ψ ̇ 2 = −∇2U (Ψ1) − (∇bT(Ψ1) − ∇b(Ψ1))Ψ2. (7.1)
+The point (xc, 0) is still a fixed point. However, the eigenvalues of the Jacobian of (7.1) at (xc, 0) have non-zero imaginary past. To study the behavior of φ′k near the critical point, we might need more delicate study of the dynamics (7.1) on center manifold and more advanced result on linearization. So how to extend Theorem 3.10 to the non-gradient case remains an interesting issue.
+(ii) Presumably, the Freidlin-Wentzell functional can be viewed as a limit of Onsager-Machlup functional when ε → 0. However, we have limε→0 infT infψ STOM[ψ] = −∞ by the Proposition 3.7. This suggests that a naive process is not valid to establish such connection. A possible alternative to investigate the limit of OM functional is to relate T and ε by a function T = T (ε) and study the convergence of infψ STO(Mε)[ψ] as ε → 0. This idea has been partially studied in [31]. They showed
+that for the scaling T = ε−α, 0 < α 6 1, the OM functional Γ-converges to a functional completely characterized by the FW theory. However, for a more general and physical scaling T = T (ε), the convergence of OM functional and its minimizer is not clear. The renormalized OM functional (1.9) might be a good candidate to perform such analysis.
+(iii) The discretization scheme described in EGMA can be further improved. For example, one may discretize SˆE[φ] first then use some optimization methods like quasi-Newton or conjugate gradient type methods to search for the extremal. However, the algorithm we proposed here combines the iteration for solving Euler-Lagrange equation and finding the maximum of U (x) simultaneously. It has the advantage that we can compute the optimal energy parameter and the MPP at the same time. This strategy may not apply for the optimization methods. Designing more efficient numerical methods to perform these two tasks together is an issue of practical interests.
+In summary, the current work provides new ideas on the FW-OM dilemma. It will be instructive to further study the FW-OM connections with this new perspective.
+Acknowledgements The authors are grateful to Profs. Shaobo Gan, Eric Vanden-Eijnden, Jiazhong Yang and Shulin Zhou for stimulating discussions. Special thanks are due to Prof. Wenmeng Zhang for his patient explanation about their recent progress on C1,β-linearization problem. The work of T. Li is supported by the NSFC under grants No. 11421101, 91530322 and 11825102. The work of W. Ren is partially supported by Singapore MOE ACRF grants R-146-000-267-114 (Tier-1) and R-146-000-232-112 (Tier-2), and NSFC grant No. 11871365. The work of X. Li is supported by the Construct Program of the Key Discipline in Hunan Province.
+References
+1 V.I. Arnold. Mathematical methods of classical mechanics. Springer-Verlag, Berlin, 1989. 2 A. Bovier, M. Eckhoff, V. Gayrard, and M. Klein. Metastablility in reversible diffusion processes I. Sharp asymptotics for capacities and exit times. J. Eur. Math. Soc., 6:399–424, 2004. 3 A. Bovier, V. Gayrard, and M. Klein. Metastablility in reversible diffusion processes II. Precise asymptotics for small eigenvalues. J. Eur. Math. Soc., 7:69–99, 2005. 4 M. Cameron, R.V. Kohn, and E. Vanden-Eijnden. The string method as a dynamical system. J. Nonlinear Sci., 21:193–230, 2011.
+
+
+ 30 Qiang Du et al. Sci China Math
+5 G. Contreras, J. Delgado, and R. Iturriaga. Lagrangian flows: The dynamics of globally minimizing orbits-II. Bull. Braz. Math. Soc., 28(2):155–196, 1997. 6 C.M. Dafermos. Hyperbolic conservation laws in continuum physics. Springer, Berlin and Heidelberg, 3rd edition, 2010. 7 C. Dellago, P.G. Bolhuis, and D. Chandler. Efficient transition path sampling: Application to Lennard-Jones cluster rearrangements. J. Chem. Phys., 108(22):9236–9245, 1998. 8 M.M. Dunlop and A.M. Stuart. MAP estimators for piecewise continuous inversion. Inverse. Probl., 32(10), 2016. 9 D. Du ̈rr and A. Bach. The Onsager-Machlup function as Lagrangian for the most probable path of a diffusion process. Commun. Math. Phys., 60(2):153–170, 1978. 10 W. E, W. Ren, and E. Vanden-Eijnden. String method for the study of rare events. Phys. Rev. B, 66(5):052301, 2002. 11 W. E, W. Ren, and E. Vanden-Eijnden. Minimum action method for the study of rare events. Comm. Pure. Appl. Math., 57:637–656, 2004. 12 W. E, W. Ren, and E. Vanden-Eijnden. Simplified and improved string method for computing the minimum energy paths in barrier-crossing events. J. Chem. Phys., 126(16):164103, 2007. 13 W. E and E. Vanden-Eijnden. Towards a theory of transition paths. J. Stat. Phys., 123(3), 2006. 14 W. E and E. Vanden-Eijnden. Transition-path theory and path-finding algorithms for the study of rare events. Ann. Rev. Phys. Chem., 61:391–420, 2010. 15 P. Faccioli, M. Sega, F. Pederiva, and H. Orland. Dominant pathways in protein folding. Phys. Rev. Lett., 97(10):108101, 2006. 16 H. Fujisaki, M. Shiga, and A. Kidera. Onsager–Machlup action-based path sampling and its combination with replica exchange for diffusive and multiple pathways. J. Chem. Phys., 132(13):134101, 2010. 17 H. Fujisaki, M. Shiga, K. Moritsugu, and A. Kidera. Multiscale enhanced path sampling based on the Onsager-Machlup action: Application to a model polymer. J. Chem. Phys., 139(5):054117, 2013. 18 T. Fujita and S. Kotani. The Onsager-Machlup function for diffusion processes. J. Math. Kyoto Univ., 22:115–130, 1982. 19 M. Giaquinta and S. Hildebrandt. Calculus of variations I. Springer Science & Business Media, Berlin, 2004. 20 R. Graham. Path integral formulation of general diffusion processes. Z. Physik B, 26:281–290, 1977. 21 P. H ̈anggi, P. Talkner, and M. Borkovec. Reaction-rate theory: Fifty years after Kramers. Rev. Mod. Phys., 62:251–342, 1990. 22 M. Heymann and E. Vanden-Eijnden. The geometric minimum action method: A least action principle on the space of curves. Comm. Pure. Appl. Math., 61(8):1052–1117, 2008.
+23 N. Ikeda and S. Watanabe. Stochastic differential equations and diffusion processes. Wiley, New York, 1980.
+24 L.D. Landau and E.M. Lifshitz. Mechanics, volume 1 of Course of Theoretical Physics. Butterworth-Heinemann, Oxford, 3rd edition edition, 1999. 25 J. Lee, I. Lee, I. Joung, J. Lee, and B.R. Brooks. Finding dominant reaction pathways via global optimization of action. Biophys. J., 112(3):290a, 2017. 26 C. Lv, X. Li, F. Li, and T. Li. Constructing the energy landscape for genetic switching system driven by intrinsic noise. PLoS One, 9:e88167, 2014. 27 R.S. Maier and D.L. Stein. A scaling theory of bifurcations in the symmetric weak-noise escape problem. J. Stat. Phys., 83(3-4):291–357, 1996. 28 R. Man ́e. Lagrangian flows: The dynamics of globally minimizing orbits. Bull. Braz. Math. Soc., 28(2):141–153, 1997. 29 L. Onsager and S. Machlup. Fluctuations and irreversible processes. Phys. Rev., 91(6):1505, 1953. 30 F.J. Pinski and A.M. Stuart. Transition paths in molecules at finite temperature. J. Chem. Phys., 132(18):184104, 2010. 31 F.J. Pinski, A.M. Stuart, and F. Theil. Γ-limit for transition paths of maximal probability. J. Stat. Phys., 146(5):955974, 2012.
+32 C. Schu ̈tte and M. Sarich. Metastability and Markov state models in molecular dynamics: modeling, analysis, algorithmic approaches, volume 24 of Courant Lecture Notes. Amer. Math. Soc., Providence, 2013. 33 Y. Takahashi and S. Watanabe. The probability functionals (Onsager-Machlup functions) of diffusion processes. In Stochastic Integrals, pages 433–463. Springer, 1981. 34 X. Wan. An adaptive high-order minimum action method. J. Comp. Phys., 230:8669–8682, 2011. 35 J. Wang, K. Zhang, and E. Wang. Kinetic paths, time scale, and underlying landscapes: A path integral framework to study global natures of nonequilibrium systems and networks. J. Chem. Phys., 133(12):125103, 2010. 36 O. Zeitouni. On the Onsager-Machlup functional of diffusion processes around non C2 curves. Ann. Prob., 17(3):10371054, 1989. 37 L. Zhang, W. Ren, A. Samanta, and Q. Du. Recent developments in computational modelling of nucleation in phase
+
+
+ Qiang Du et al. Sci China Math 31
+transformations. NPJ Comput. Mater., 2:16003, 2016. 38 W. Zhang, K. Lu, and W. Zhang. Differentiability of the conjugacy in the Hartman-Grobman theorem. Trans. Amer. Math. Soc., 369:4995–5030, 2017. 39 P. Zhou and T. Li. Construction of the landscape for multi-stable systems: Potential landscape, quasi-potential, A-type integral and beyond. J. Chem. Phys., 144(9):094109, 2016. 40 X. Zhou, W. Ren, and W. E. Adaptive minimum action method for the study of rare events. J. Chem. Phys., 128(10):104111, 2008.
+Appendix A Proof of Proposition 3.11
+We now prove Proposition 3.11 in this Appendix. This relies on a series of lemmas. Some of them are quite technical. Recall that ψk is the minimizer of STOkM[ψ], where Tk → +∞ as k → ∞. The
+corresponding energy Ek = E(Tk) and the extremal of SˆEk [φ] is φk for k = 1, 2, . . . . By theorem 3.9, we may assume Ek → E⋆ and φk → φ⋆ without loss of generality. Our main idea is to show that each component of {φ′k} has uniformly bounded variations. Denote φ′(i)
+k
+the ith component of φ′k. We have the total variation
+1 ∨
+0
+φ′(i)
+k (α) = sup
+∆
+n ∑
+j=0
+∣∣φ′(i)
+k (αj+1) − φ′(i)
+k (αj)∣∣
+6 sup
+∆
+d ∑
+i=1
+∑n
+j=0
+∣∣φ′(i)
+k (αj+1) − φ′(i)
+k (αj)∣∣
+6 sup
+∆
+n ∑
+j=0
+√d
+(∑d
+i=1
+∣∣φ′(i)
+k (αj+1) − φ′(i)
+k (αj )∣∣2
+)
+1 2
+= sup
+∆
+n ∑
+j=0
+√d |φ′k(αj+1) − φ′k(αj )| ,
+(A.1)
+where ∆ is a partition of [0, 1] with subdivision points 0 = α0 < α1 < α2 · · · < αn+1 = 1. We only need to show that
+sup
+∆
+n ∑
+j=0
+|φ′k(αj+1) − φ′k(αj )| (A.2)
+is uniformly bounded. Next, we divide [0, 1] into intervals in which φk ∈ C2. We need the following lemma.
+Lemma A.1. There is a constant K > 0 which is independent of T , such that for any T > 0, #{t ∈ [0, T ]|U (ψT (t)) = E(T )} 6 K.
+Proof. By Assumption 2.3, we have the decomposition
+{
+x|U (x) = E(T )
+} =
+N ⋃
+i=1
+Bi,
+where Bi ∩ Bj = ∅ for i 6= j, Bi is closed and connected. We are going to show that ψT passes through each Bi at most once. Assume that there exist 0 < t1 < t2 < T such that x1 = ψT (t1) ∈ Bi, x2 = ψT (t2) ∈ Bi. Define
+ψ ̃T ̃(t) = ψT (t+t1) for t ∈ [0, t2 −t1], where T ̃ = t2 −t1. ψ ̃T ̃ must be the minimizer of ST ̃[ψ] with boundary
+conditions ψ(0) = x1, ψ(T ̃) = x2. Since ψ ̃T ̃ is the minimizer of ST ̃[ψ], by Maupertuis principle we know
+that the minimizer ψ ̃T ̃ induces a geodesic on Bi from x1 to x2 with Riemannian metric [1](Theorem in page 246)
+dρE = √2E(T ) − U (φ) |dφ| .
+
+
+ 32 Qiang Du et al. Sci China Math
+ψ ̃T ̃ must lie on Bi since it minimizes the distance induced by ρE. However, we have
+T>
+∫
+x2
+x1
+∣∣∣ dψ ̃T ̃
+∣∣∣
+√
+2E(T ) − 2U (ψ ̃T ̃)
+= +∞.
+This contradiction implies that ψT passes through Bi at most once. Since there are only finite components Bi of level set {x|U (x) = E(T )}, there is a positive lower bound of the distance between each two components
+im6=ijn dist(Bi, Bj) = l > 0.
+By Assumption 2.9, the length of ψT is uniformly bounded. So we have for any T > 0,
+M>
+∫T
+0
+|ψ ̇T | dt > (K − 1)l.
+This leads to the conclusion that K is finite and independent of T . Lemma A.1 shows that for any k, the points α satisfying U (φk(α)) = Ek are finite. Note that when U (φk(α)) < Ek, φk ∈ C2. By Euler-Lagrange equation (3.14), in an interval [β1, β2] such that φk ∈ C2, the total variation of φ′k is
+β∨2
+β1
+φ(i)
+k6
+∫ β2
+β1
+|φ′k′| dα =
+∫ β2
+β1
+|φ′k |
+√
+|∇U |2 |φ′k|2 − 〈∇U, φ′k〉2
+2Ek − 2U (φk) dα. (A.3)
+We can rewrite Eq. (A.3) with time parameterization as
+∫ β2
+β1
+|φ′k′| dα =
+∫ β2
+β1
+|φ′k |
+√
+|∇U |2 |φ′k|2 − 〈∇U, φ′k〉2
+2Ek − 2U (φk) dα
+=
+∫ β2
+β1
+|φ′k|2 √
+|∇U |2 |τˆk|2 − 〈∇U, τˆk〉2
+2Ek − 2U (φk) dα
+=
+∫ t2
+t1
+|φ′k|2 √
+|∇U |2 |ψ ̇k|2 − 〈∇U, ψ ̇k〉2
+|ψ ̇ k |3
+dα
+dt dt
+= |φ′k|
+∫ t2
+t1
+√
+|∇U |2 |ψ ̇k|2 − 〈∇U, ψ ̇k〉2
+|ψ ̇k|4 dt,
+(A.4)
+where τˆk = φ′k/|φ′k|, t1 = l−1(β1) and t2 = l−1(β2). For any T > 0, we define
+ΘT (t) = |∇U (ψT )|2 |ψ ̇T |2 − 〈∇U (ψT ), ψ ̇T 〉2
+|ψ ̇T |4 (A.5)
+and denote Θk(t) = ΘTk (t). It is obvious that ΘT (t) is well-defined for U (ψT (t)) < E(T ). Recall that the minimizer ψT satisfies the Euler-Lagrange equation
+ψ ̈ + ∇U (ψ) = 0,
+or equivalently the first order system Ψ ̇ 1 = Ψ2,
+Ψ ̇ 2 = −∇U (Ψ1). (A.6)
+We have ψ ≡ Ψ1. We will use  ̃Ψ to denote the extended variable (Ψ1, Ψ2) ∈ R2d. The state  ̃Ψc = (xc, 0) is a fixed point of the system, where xc is a critical point. The following lemma shows that the function ΘT (t) can be continuously extended to t ∈ [0, T ].
+
+
+ Qiang Du et al. Sci China Math 33
+Lemma A.2 (Preliminary properties of ΘT and Ψ). (1) Given xs 6= xc, xf 6= xc and T > 0, lims→t ΘT (s) exists for any t ∈ [0, T ].
+(2) There exists a neighborhood U of critical point xc and constant m > 0, such that for any given t0 > 0, xs, xf ∈ ∂U , we have |Ψ2| > m > 0 for t ∈ [0, t0] when T → +∞.
+Proof. (1) Since Ψ1, Ψ2 ∈ C1[0, T ], ΘT is continuous except the points with Ψ2(tc) = 0. Below we will show these points are removable singularities. Suppose Ψ2(tc) = 0. We have the following Taylor expansion near tc
+−∇U (Ψ1) = Ψ(2) + 1
+2 Ψ(4)(t − tc)2 + 1
+24 Ψ(6)(t − tc)4 + o(t − tc)5,
+Ψ2 = Ψ(2)(t − tc) + 1
+6 Ψ(4)(t − tc)3 + 1
+120 Ψ(6)(t − tc)5 + o(t − tc)6,
+(A.7)
+where Ψ(2), Ψ(4), Ψ(6) are corresponding higher derivatives of Ψ1(t) assuming value at tc. The odd order derivatives of Ψ1 disappear because Ψ(1) = 0,
+Ψ(3) = d
+dt Ψ(2)
+1 =− d
+dt ∇U (Ψ1) = −∇2U ·  ̇Ψ1 = 0
+and
+Ψ(5) = d
+dt Ψ(4)
+1 =d
+dt ∇2U ∇U = ∇(∇2U ∇U ) · Ψ ̇ 1 = 0.
+Substituting (A.7) into ΘT (t), we obtain that in a neighborhood of tc,
+ΘT (t) =
+( ∣∣Ψ(2)∣∣2 ∣∣Ψ(4)∣∣2 − 〈Ψ(2), Ψ(4)〉2 )(t − tc)2 + o(t − tc)2
+9 ∣∣Ψ(4)∣∣2 + o(1) . (A.8)
+With the fact that Ψ(2) = −∇U , Ψ(4) = ∇2U ∇U taking value at Ψ1(tc), we have
+ΘT (t) = [ ̂∇U (∇2U )2 ̂∇U − (̂∇U ∇2U ̂∇U )2](t − tc)2 + o(t − tc)2
+9 + o(1) ,
+where ̂∇U = ∇U/ |∇U |. Since Ψ1 is uniformly bounded, limt→tc ΘT (t) = 0. This ends the proof of the first statement. (2) By assumption 2.6, all eigenvalues of ∇2U (xc) are negative, so there is a neighborhood U of xc, for any x ∈ ∂U, x 6= xc, U (x) < U (xc). For x, y ∈ Rd, let (Φ1(t, x, y), Φ2(t, x, y)) be the solution of (A.6) at time t with initial condition Ψ1(0) = x, Ψ2(0) = y. So Ψ1(t) = Φ1(t, xs, ys(T )), Ψ2(t) = Φ2(t, xs, ys(T )) for some proper ys. Conservation of energy implies
+|ys|2 = 2E(T ) − 2U (xs). (A.9)
+From E(T ) → E⋆, xs assumes value on a compact set ∂U , we know |ys|2 6 2(E⋆ + 1)+ 2 maxxs∈∂U U (xs) for large enough T . Because Φ1(t, x, y), Φ2(t, x, y) are continuous functions of (t, x, y), the triple (t, x, y) assumes value in
+a compact set [0, t0]×∂U ×{|y| 6 2(E⋆+1)+2 maxxs∈∂U U (xs)}, the continuous function |Φ1 − xc|2+|Φ2|2 has a minimum m. Note that (xc, 0) is a fixed point of (A.6), the minimum m must be positive, otherwise the uniqueness of initial value problem will be violated. So we have
+|Φ1(t, xs, ys) − xc|2 + |Φ2(t, xs, ys)|2 > m > 0. (A.10)
+Let tm(T ) = arg mint∈[0,t0] |Φ2(t, xs, ys(T ))|, we have
+lim inf
+T →+∞ |Φ2(tm(T ), xs, ys(T ))| > 0. (A.11)
+
+
+ 34 Qiang Du et al. Sci China Math
+Otherwise, there is a subsequence Tk such that |Φ2(tm(Tk), xs, ys(Tk))| → 0. By the energy conservation (3.4), we get
+lim inf
+k→∞ 2E(Tk) = 2E⋆ = 2U (xc)
+= lim inf
+k→∞
+{
+|Φ2(tm, xs, ys(Tk))|2 + 2U (Φ1(tm(Tk), xs, ys(Tk)))
+}
+= 2 lim inf
+k→∞ U (Φ1(tm(Tk), xs, ys(Tk))).
+So we can select a subsequence U (Φ1(tm(Tkl ), xs, ys(Tkl ))) such that
+lli→m∞ U (Φ1(tm(Tkl ), xs, ys(Tkl ))) = U (xc).
+Since the set {Φ1(tm(Tkl ), xs, ys(Tkl ))} is bounded, we can select a subsequence from Φ1(tm(Tkl ), xs, ys(Tkl )) which converges to a point xm. For simplicity, we still denote it by Φ1(tm(Tkl ), xs, ys(Tkl )). By continuity, U (xc) = U (xm). Because xc is the unique maximum of U (x) in U, we must have xm = xc. However, we know from (A.10) that
+0 = lim inf
+l→∞ |Φ1(tm(Tkl ), xs, ys(Tkl )) − xc|2 + |Φ2(tm(Tkl ), xs, ys(Tkl ))|2 > m > 0.
+This contradiction implies that (A.11) is true. So we have
+|Φ2(t, xs, ys)| > |Φ2(tm, xs, ys)| > m > 0.
+The proof is completed. With the help of Lemmas A.1 and A.2, we can show that for any fixed k, φ′k has bounded variation.
+Lemma A.3. For fixed Tk > 0, φ′k has bounded variation.
+Proof. It is sufficient to show
+sup
+∆
+n ∑
+j=0
+|φ′k(αj+1) − φ′k(αj )| (A.12)
+is bounded, where ∆ is a partition of [0, 1], i.e.,
+∆ : 0 = α0 < α1 < α2 < · · · < αn+1 = 1.
+By Lemma A.1, the set {α ∈ [0, 1]|U (φk(α)) = Ek} is finite. Denote the elements in this set by α1k < α2k < · · · < αkN . The summation in (A.12) can be divided into two cases.
+Case I: αj ∈ (αik, αik+1) for some 0 6 i 6 N − 1 and αj+1 ∈/ (αik, αik+1). Denote the index set for j in this case by I.
+By Lemma A.1, #{j ∈ I} 6 N . We have ∑
+j∈I
+|φ′k(αj+1) − φ′k(αj )| 6 2N M. (A.13)
+Case II: αj, αj+1 ∈ (αik, αik+1). Denote the index set for j in this case by II.
+For j ∈ II, φk ∈ C2[αj, αj+1]. We have
+∑
+j∈II
+|φ′k(αj+1) − φ′k(αj )| = ∑
+j∈II
+∣∣∣∣∣
+∫ αj+1
+αj
+φ′k′ dα
+∣∣∣∣∣
+6
+N ∑
+l=1
+∫ αlk+1
+αlk
+|φ′k′| dα
+6
+N ∑
+l=1
+∫ tk
+l+1
+tlk
+√Θk(t) dt
+=
+∫ Tk
+0
+√Θk(t) dt,
+
+
+ Qiang Du et al. Sci China Math 35
+where tlk = l−1
+k (αlk). lk is defined in (3.34). By Lemma A.2, Θ(t) is continuous so it is bounded by MΘ in [0, Tk]. This leads to ∑
+j∈II
+|φ′k(αj+1) − φ′k(αj )| 6
+√MΘ Tk .
+Combining with (A.13), φ′k has bounded variation.
+By Proposition 3.9, we know that φk, which has the same graph as ψk, tends to φ⋆ passing through a critical point xc when T → ∞. We will show that φ′k has uniformly bounded variation in a neighborhood of xc. This will be done through linearization analysis and Hartman-Grobman theorem. In the neighborhood of (xc, 0), The nonlinear system (A.6) can be well-approximated by its linearizaion
+x ̇ 1 = x2,
+x ̇ 2 = A2x1, (A.14)
+where A2 = −∇2U (xc). Because all eigenvalues of ∇2U (xc) are negative, we may denote the eigenvalues of A by 0 < μ1 6 μ2 6 · · · 6 μd, the corresponding unit orthogonal eigenvectors by ξ1, ξ2 . . . , ξd. We also use x ̃ to denote the extended variable x ̃ = (x1, x2). For the linearized system (A.14), we have the following lemma.
+Lemma A.4. The solution of (A.14) with boundary condition x1(0) = xs, x1(T ) = xf is
+x1(t) = (eAT − e−AT )−1[eAt(xf − e−AT xs) + eA(T −t)(xs − e−AT xf )],
+x2(t) = (eAT − e−AT )−1A[eAt(xf − e−AT xs) − eA(T −t)(xs − e−AT xf )]. (A.15)
+For any xs 6= 0, xf 6= 0, xs 6= xf , the integral
+∫T
+0
+√
+ΘTL(t) dt
+is uniformly bounded with respect to T , where
+ΘTL(t) = (x1TA4x1)|x2|2 − (x1TA2x2)2
+|x2|4 (A.16)
+Proof. It is straightforward to check that (A.15) is the solution of the boundary value problem. The function ΘTL(t) is a special case of ΘT (t) defined in (A.5) by taking U (x) = −xTA2x. By Lemma A.2, we
+only need to consider the case that T is sufficiently large. For simplicity, we denote ΘTL(t) = F (t)/|x2|4, where F (t) = (x1TA4x1)|x2|2 − (x1T A2x2)2. (A.17)
+Denote xis = xsTξi, xif = xfTξi, i = 1, 2, . . . d. We have explicit form of F (t) and |x2|2
+F (t) = ∑
+i<j
+{
+μi2μj (eμiT − e−μiT )−1(eμj T − e−μj T )−1[pieμit + qieμi(T −t)]·
+[pj eμjt − qj eμj(T −t)] − μiμj2(eμiT − e−μiT )−1(eμj T − e−μjT )−1·
+[pieμit − qieμi(T −t)][pj eμj t + qj eμj (T −t)]
+}2
+=: ∑
+i<j
+fi2j (t),
+|x2|2 = ∑
+i
+μi2(eμiT − e−μiT )−2[pieμit − qieμi(T −t)]2,
+where pi = xif − e−μiT xis, qi = xis − e−μiT xif . Clearly, if xis, xif 6= 0, when T gets large enough, pi, qi 6= 0 and they are uniformly bounded.
+
+
+ 36 Qiang Du et al. Sci China Math
+We first show that in [0, T /2], ∫ T/2
+0
+√
+ΘTL(t) dt is uniformly bounded. We have
+√
+ΘTL(t) =
+√∑
+i<j fi2j
+|x2|2 6 C maxi<j |fij |
+|x2|2 6 C ∑
+i<j
+|fij |
+|x2|2 .
+It is sufficient to show for each pair i < j,
+∫ T /2
+0
+|fij |
+|x2|2 dt
+is uniformly bounded. The key idea of the proof is to verify that fij and |x2|2 can be dominated by an exponential function. For given xs, let us denote the sets
+S = {i|xis 6= 0}, S ̄ = {1, 2, . . . , d}\S.
+Since xs 6= 0, S is not empty. For different choices of xs and xf , we divide the proof into 4 cases. Case 1: i, j ∈ S ̄, i 6= j.
+If S ̄ is not empty, for every i ∈ S ̄, we can always assume xif 6= 0. Otherwise fij = 0 for any j. If μi = μj , fij = 0. For μi < μj
+|fij | 6 Ce(μi+μj )(t−T ),
+where C is a generic positive constant independent of T . At the same time,
+|x2|2 > Ce2μi(t−T ).
+Thus ∫ T/2
+0
+|fij |
+|x2|2 dt 6 C
+∫ T /2
+0
+e(μj −μi)(t−T ) dt
+=C
+μj − μi
+(e− 1
+2 (μj −μi)T − e−(μj −μi)T ) 6 2C
+μj − μi
+,
+(A.18)
+which is uniformly bounded.
+Case 2.1: i 6= j ∈ S, μi < μj.
+In this case, fij can be bounded by an exponential function
+|fij | 6 Ce−(μi+μj)t. (A.19)
+The denominator |x2|2 can be estimated by
+|x2|2 > μi2[pieμi(2t−T ) − qi]2e−2μit + μj2[pj eμj(2t−T ) − qj ]2e−2μj t. (A.20)
+If for every t ∈ [0, T /2], (pieμi(2t−T ) − qi)2 > 0, there is a positive lower bounded such that
+|x2|2 > Ce−2μit.
+We have ∫ T/2
+0
+|fij |
+|x2|2 dt 6 C
+∫ T /2
+0
+e−(μj −μi)t dt
+=C
+μj − μi
+(1 − e− 1
+2 (μj −μi)T ) 6 C
+μj − μi
+.
+(A.21)
+If there is a ti ∈ [0, T /2] such that pieμiti −qieμi(T −ti) = 0, then we define ρi = (qi/pi) 1
+μi , ρj = (qj /pj)
+1 μj
+if pjqj > 0. The constants ρi, ρj are uniformly bounded with respect to T . We have e2ti = ρieT . We will show that in a neighborhood of ti, the integral is uniformly bounded.
+
+
+ Qiang Du et al. Sci China Math 37
+If ρi = ρj = ρ, we can obtain the estimation
+|fij | 6 4μiμj |pi| |pj| ρ 1
+2 (μi+μj)(μj − μi)(t − ti)2e− 1
+2 (μj +μi)T + o(t − ti)2e− 1
+2 (μj +μi)T . (A.22)
+The denominator |x2|2 > C(t − ti)2e−2μiT + o(t − ti)2e−2μiT . (A.23)
+So there is a δ > 0 independent of T , in [ti − δ, ti + δ],
+|fij |
+|x2|2 6 (C + o(1))e− 1
+2 (μj −μi)T
+C + o(1) 6 1.
+The integration ∫ ti+δ
+ti−δ |fij| /|x2|2 dt is uniformly bounded.
+If ρi 6= ρj, there is a neighborhood of ti such that (pj eμj(2t−T ) − qj)2 > 0. With Taylor expansion near ti, we obtain
+|fij | 6 Ce− 1
+2 (μi+μj )T . (A.24)
+|x2|2 > (C2 + o(1))(t − ti)2e−μiT + e−μjT . (A.25)
+So there is a δ > 0 such that in [ti − δ, ti + δ],
+|x2|2 > C(t − ti)2e−μiT + Ce−μj T .
+In all, the integration
+∫ ti+δ
+ti −δ
+|fij |
+|x2|2 dt 6C
+∫ ti+δ
+ti −δ
+e− 1
+2 (μj −μi)T
+C2(t − ti)2 + e−(μj−μi)T dt
+=2
+∫δ
+0
+C de 1
+2 (μj −μi)T s
+1 + (Ce 1
+2 (μj −μi)T s)2 dt
+=C
+∫ Cδe 12 (μj −μi )T
+0
+ds
+1 + s2 6 C π
+2
+(A.26)
+is uniformly bounded. To summarize, we have shown that there exists a δ > 0, the integration in the neighborhood [ti−δ, ti+δ] is uniformly bounded. Outside this interval, we have
+|x2|2 > Ce−2μit.
+Thus ∫ T/2
+0
+|fij |
+|x2|2 dt =
+∫ ti−δ
+0
++
+∫ ti+δ
+ti −δ
++
+∫ T /2
+ti +δ
+|fij |
+|x2|2 dt
+6C+
+∫ T /2
+0
+e−(μj−μi)t dt 6 C + 1
+μj − μi
+.
+(A.27)
+Case 2.2: i 6= j ∈ S, μi = μj = μ.
+The proof in this case is similar as Case 2.1. The main difference is that the estimation of |fij| is replaced by |fij| 6 Ce−μT . (A.28)
+If there exists ti such that pieμti − qieμ(T −ti) = 0, the estimation (A.22), (A.23), (A.24) and (A.25) imply that |fij| /|x2|2 is uniformly bounded in [ti − δ, ti + δ]. Outside this interval,
+|x2|2 > Ce−2μt.
+Thus ∫ T/2
+0
+|fij |
+|x2|2 dt =
+∫ ti−δ
+0
++
+∫ ti+δ
+ti −δ
++
+∫ T /2
+ti +δ
+|fij |
+|x2|2 dt
+6 C + e−μT
+∫ T /2
+0
+e2μt dt 6 C + 1
+μ.
+(A.29)
+
+
+ 38 Qiang Du et al. Sci China Math
+Case 3: i ∈ S, j ∈ S ̄.
+In this case, we can estimate fij and |x2|2 by
+|fij | 6
+∣∣∣μixif [pieμi(2t−T ) + qi][eμj t − e−μjt] − μj xj
+f [pieμi(2t−T ) − qi][eμj t + e−μj t]
+∣∣∣·
+e−μite−μj T 6 Ce−μiteμj (t−T ).
+|x2|2 > μi2[pieμi(2t−T ) − qi]2e−2μit + μj2
+∣∣∣xj
+f
+∣∣∣
+2 (eμj t + e−μjt)2e−2μjT . (A.30)
+If there exists ti ∈ [0, T /2] such that pieμi(2t−T ) − qi = 0, we can take similar argument as in Case 2.1. So in a δ-neighborhood of ti, the integration is uniformly bounded. Outside this neighborhood, we have
+|x2|2 > C(e−2μit + e2μj (t−T )).
+Since μj > μi, t 6 T /2, we have e−2μit > e2μj (t−T ). Thus
+∫ T /2
+0
+|fij |
+|x2|2 dt =
+∫ ti−δ
+0
++
+∫ ti+δ
+ti −δ
++
+∫ T /2
+ti +δ
+|fij |
+|x2|2 dt
+6C+C
+∫ T /2
+0
+e(μi+μj )te−μj T dt
+6C+ C
+μi + μj
+(e−(μj −μi)T − e−μj T )
+6 C + 2C
+μi + μj
+.
+(A.31)
+Case 4: i ∈ S ̄, j ∈ S. As in Case 3, we have
+|fij | 6 Ce−μjteμi(t−T ), (A.32)
+|x2|2 > μj2[pj eμj(2t−T ) − qj ]2e−2μjt + μi2
+∣∣xif
+∣∣2 (eμit + e−μit)2e−2μiT . (A.33)
+If there exists a tj ∈ [0, T /2] such that pjeμj(2tj−T ) − qj = 0, similar argument as the Case 2.1 holds. We have boundedness of the integrand in a δ-neighborhood of tj, and
+|x2|2 > C(e−2μj t + e2μi(t−T ))
+outside the δ-neighborhood. Denote tc = μiT
+μi+μj . When t 6 tc, e−2μjt > e2μi(t−T ). When t > tc, e−2μjt 6 e2μi(t−T ). So we have the estimate
+∫ T /2
+0
+|fij |
+|x2|2 dt 6
+∫ tj +δ
+tj −δ
+|fij |
+|x2|2 dt + C
+∫ tc
+0
+e(μi+μj )te−μiT dt + C
+∫ T /2
+tc
+e−μj te−μi(t−T ) dt
+6C+ C
+μi + μj
+e−μiT (eμiT − 1) + C
+μi + μj
+eμiT (e−μiT − e− 1
+2 (μi+μj )T )
+6C+ C
+μi + μj
+.
+So far, we have shown that ∫ T/2
+0
+√
+ΘTL(t) dt is uniformly bounded. As for the interval [T /2, T ], we can
+define s = T − t, repeat previous discussions to show that ∫ T
+T /2
+√
+ΘTL(t) dt is also uniformly bounded. The proof is done. In order to show the uniformly bounded variation of φ′k in the neighborhood of a critical point xc, we
+employ a strengthened version of Hartman-Grobman theorem to control the nonlinearity[38]. Let T t(x ̃0), Lt(x ̃0) be the solution of the nonlinear system (A.6) or the linear system (A.14), respectively, at time t
+with the initial condition Ψ ̃ (0) = x ̃0 or x ̃(0) = x ̃0.
+
+
+ Qiang Du et al. Sci China Math 39
+Lemma A.5. There exists a neighborhood U of Ψ ̃ c and a homeomorphism H : U → R2d such that HT t = LtH for any t > 0 and
+H(Ψ ̃ ) =  ̃Ψ −  ̃Ψc + O(|Ψ ̃ − Ψ ̃ c|1+β), H−1(x ̃) = x ̃ +  ̃Ψc + O(|x ̃|1+β) (A.34)
+for some constant β ∈ (0, 1).
+Proof. This is a corollary of Theorem 7.1 in [38]. Without loss of generality, we assume  ̃Ψc = 0.
+Otherwise we can define a shift S : U → R2d, S(Ψ ̃ ) =  ̃Ψ − Ψ ̃ c. Since Ψ ̃ c is invariant under T t, we have ST tS−1(0) = 0. We can consider the homeomorphism H ̃ = HS. We first consider the 1-time solution T 1. By Theorem 7.1 in [38], there is a homeomorphism H0 which satisfies H0(0) = 0, H0T 1 = L1H0 and
+H0(x ̃) = x ̃ + O(|x ̃|1+β), H0−1(x ̃) = x ̃ + O(|x ̃|1+β).
+Then we define
+H=
+∫1
+0
+L−sH0T s ds. (A.35)
+We first verify HT t = LtH for any t > 0. Indeed,
+LtH =
+∫1
+0
+Lt−sH0T s−t dsT t =
+(∫ 0
+−t
++
+∫ 1−t
+0
+)
+L−sH0T s dsT t.
+Since H0 = L−1H0T , the first term is
+∫0
+−t
+L−sH0T s dt =
+∫0
+−t
+L−s−1H0T s+1 ds =
+∫1
+1−t
+L−sH0T s ds.
+So we obtain
+LtH =
+∫1
+0
+L−sH0T s dsT t = HT t.
+To show that H also satisfies condition (A.34), we utilize Taylor expansion in a neighborhood of Ψ ̃ c
+T sx ̃ = ∇T s(Ψ ̃ c)x ̃ + O(|x ̃|2).
+Note that T t(x ̃) is the solution of (A.6), we have
+d
+dt ∇T t(x ̃) = ∇ dT t
+dt = ∇
+[ Ψ2
+−∇U (Ψ1)
+]
+=
+[0 I
+−∇U (Ψ1) 0
+]
+∇T t(x ̃).
+Taking x ̃ = Ψ ̃ c, we obtain d
+dt ∇T t(Ψ ̃ c) = J ∇T t(Ψ ̃ c),
+where
+J=
+[0 I
+A2 0
+]
+.
+Based on the fact T t(Ψ ̃ c) =  ̃Ψc, we get ∇T t(Ψ ̃ c) = eJt and
+T s  ̃x = eJsx ̃ + O(|x ̃|2).
+We obtain H0T sx ̃ = T sx ̃ + O(|T sx ̃|1+β) = eJsx ̃ + O(|x ̃|1+β).
+Substituting the above into (A.35) and note that Ls = eJs, we get
+H=
+∫1
+0
+L−sH0T s ds = x ̃ + O(|x ̃|1+β).
+
+
+ 40 Qiang Du et al. Sci China Math
+We now turn to H−1. We can check that
+H−1 =
+∫1
+0
+T −sH0−1Ls ds. (A.36)
+From (A.35) we obtain
+H
+∫1
+0
+T −sH0−1Ls ds =
+∫1
+0
+∫1
+0
+L−tH0T t−sH0−1Ls dt ds.
+(A.36) follows by noting that Lt−s = H0T t−sH0−1. Similar procedure can be applied to get the estimate
+H−1(x ̃) = x ̃ + O(|x ̃|1+β).
+Lemma A.6. Let U be the neighborhood of Ψ ̃ c ensured by Lemma A.5. Then
+∫T
+0
+√ΘT (t) dt (A.37)
+is uniformly bounded with respect to T for any initial xs ∈ ∂U and terminal xf ∈ ∂U.
+Proof. By Lemma A.2, we only need to consider the case T → +∞. Since ψT is uniformly bounded,
+for any finite t0, |ψ ̇T | has a positive lower bound and thus
+Tli→m∞
+∫ t0
+0
+√ΘT (t) dt 6 C.
+So we will only consider the case when T and t are both sufficiently large. In the neighborhood U, we can estimate ΘT (t) using the linearized version ΘTL(t). By Lemma A.5, there exists β ∈ (0, 1) such that Ψ1 = x1 + xc + O(r1+2β ),
+Ψ2 = x2 + O(r1+2β ),
+where r = √|x1|2 + |x2|2. A direct calculation shows
+√ΘT (t) =
+√F (t) + G1(t)
+|x2|2 + G2(t) .
+The functions G1 = O(r4+2β ), G2 = O(r2+2β ). As in the proof of Lemma A.4, we first consider the interval [0, T /2]. r2 can be explicitly written as
+r2 = ∑
+i∈S
+(1 − e−2μiT )−2[(pieμi(2t−T ) + qi)2 + μi2(pieμi(2t−T ) − qi)2]e−2μit
++∑
+i∈S ̄
+(1 − e−2μiT )−2[(1 − e−2μit)2 + μi2(1 + e−2μit)2]e2μi(t−T ).
+Note that the coefficients of e−2μit and e2μi(t−T ) can not be zero, so there are constants c > 0, C > 0 such that
+c
+
+∑
+i∈S
+e−2μit + ∑
+i∈S ̄
+e2μi(t−T )
+
+ 6 r2 6 C
+
+∑
+i∈S
+e−2μit + ∑
+i∈S ̄
+e2μi(t−T )
+
+.
+If we denote m = min S, n = min S ̄, we have
+c(e−2μmt + e2μn(t−T )) 6 r2 6 C(e−2μmt + e2μn(t−T )) (A.38)
+when t is sufficiently large.
+Recall that
+|x2|2 = ∑
+i∈S
+μi2(1 − e−2μiT )−2[pieμi(2t−T ) − qi]2e−2μit
++∑
+i∈S ̄
+μi2(1 − e−2μiT )−2[1 + e−2μit]2e2μi(t−T ).
+
+
+ Qiang Du et al. Sci China Math 41
+Case 1: μm > μn. Let
+tc = μnT
+μn + μm
+<T
+2.
+It is easy to check that [pieμi(2t−T ) − qi]2 has a positive lower bound when t < tc. In [0, tc], e−2μmt > e2μn(t−T ). So we have
+r2(1+β) 6 Ce−2(1+β)μmt 6 Ce−2μmt 6 1
+2 |x2|2
+when t is sufficiently large. In [tc, T /2], e−2μmt 6 e2μn(t−T ). Since T − t > T /2, we have
+r2(1+β) 6 Ce2(1+β)μn(t−T ) 6 Ce2μn(t−T ) 6 1
+2 |x2|2
+when T is large enough. Thus we obtain |G2| 6 1
+2 |x2|2, which yields
+∫ T /2
+0
+√ΘT (t) dt 6C
+∫ T /2
+0
+√F
+|x2|2 +
+√|G1|
+|x2|2 dt
+6C
+∫ T /2
+0
+√
+ΘTL(t) dt + C
+∫ tc
+0
+e−2μm(1+β)t+2μmt dt
++C
+∫ T /2
+tc
+e2μn(1+β)(t−T )−2μn(t−T ) dt
+6C
+∫ T /2
+0
+√
+ΘTL(t) dt + C
+2βμm
++C
+2βμn
+.
+(A.39)
+By Lemma A.4, we obtain that ∫ T/2
+0
+√ΘT (t) dt is uniformly bounded. Case 2: μm 6 μn. We have e−2μmt > e2μn(t−T ). Eq. (A.38) yields r2 = O(e−2μmt). If there exists tm such that pmeμm(2t−T ) − qm = 0, then in a δ-neighborhood of tm,
+√Θ(t) 6 F (t) + O(e−μm(1+β)T )
+C2(t − tm)2e−μmT + e−μnT + O(e−μm(1+β)T ) .
+Applying similar argument as in the proof of Case 2.1, Lemma A.4, we can show that ∫ tm+δ
+tm −δ
+√Θ(t) dt is uniformly bounded. Outside this δ-neighborhood, we have
+r2(1+β) 6 Ce−2(1+β)μmt 6 Ce−2μmt 6 1
+2 |x2|2
+for sufficiently large t. So the integration
+∫ T /2
+0
+√ΘT (t) dt 6 C
+∫ T /2
+0
+√F
+|x2|2 +
+√G1
+|x2|2 dt
+6C
+∫ T /2
+0
+√
+ΘTL(t) dt + C
+∫ tm+δ
+tm −δ
++C
+∫ T /2
+0
+e−2μm(1+β)t+2μmt dt
+6C
+∫ T /2
+0
+√
+ΘTL(t) dt + C + C
+2βμm
+is also uniformly bounded.
+In all, we have shown that ∫ T/2
+0
+√ΘT (t) dt is uniformly bounded. Similar argument applies to
+∫T T /2
+√ΘT (t) dt.
+Lemma A.6 shows that in a neighborhood of critical point xc, φ′k has uniformly bounded variation.
+Lemma A.7. Suppose that the graph limit φ⋆ passes through a critical point xc at αc. Then there is an interval [α−, α+] which contains αc such that {φ′k(α)} has uniformly bounded variation in this interval.
+
+
+ 42 Qiang Du et al. Sci China Math
+Proof. Denote U = {x| |x − xc| < 2δ} in which Lemma A.6 holds, and V = {x| |x − xc| < δ} ⊂ U. Define (α−, α+) to be an interval satisfying the following two conditions: (1) αc ∈ (α−, α+); (2) ∀α ∈ (α−, α+), φ⋆(α) ∈ V; (3) α+ − α− > 0. Since φk uniformly converges to φ⋆, when k is sufficiently large,
+|φk(α) − xc| 6 |φk(α) − φ⋆(α)| + |φ⋆(α) − xc| < 2δ, α ∈ (α−, α+).
+Denote I = [α−, α+], we have φk(α) ∈ U for any α ∈ I when k is sufficiently large. The total variation of φ′k in I is
+α∨+
+α
+−
+φ′k = sup
+∆
+∑n
+j=1
+|φ′k(αj+1) − φ′k(αj )| , (A.40)
+where ∆ is a partition of I such that
+α− = α0 < α1 < α2 · · · < αn+1 = α+.
+If for any k, Ek > U (φk(α)) for α ∈ I, then φk ∈ C2(I). The total variation in this interval can be estimated by α∨+
+α
+−
+φ′k 6
+∫ α+
+α
+−
+|φ′k′| dα.
+By Lemma A.6, it is uniformly bounded. If U (φk(α)) = Ek holds for some α, by Lemma A.1, these points are finite. As in Lemma A.3, we denote the elements of {α|U (φk(α)) = Ek} by α1k < α2k < · · · < αkN , and divide the summation in (A.40) into two cases. For Case I, we have
+∑
+j∈I
+|φ′k(αj+1) − φ′k(αj )| 6 2M N.
+For Case II, we have
+∑
+j∈II
+|φ′k(αj+1) − φ′k(αj )| 6
+N ∑
+l=1
+∫ αk
+l+1
+αlk
+|φ′k′| dα 6
+∫ Tk
+0
+√Θk(t) dt
+by noting the fact φk ∈ C2(αlk, αlk+1). It is also uniformly bounded by Lemma A.6. Proof of Proposition 3.11. By Assumption 2.5, the number of critical points are finite. Without loss of generality, we assume that φ⋆ passes through only one critical point xc at α = αc. We will show that
+every component of φ′k is uniformly bounded and has uniformly bounded variation. Denote φ′(i)
+k the ith
+component of φ′k. |φ′(i)
+k | 6 |φ′k| 6 M trivially holds.
+By Lemma A.7, there is an interval I = (α−, α+) which contains αc such that {φ′k} has uniformly
+bounded variation in I. Outside the interval I, the function E⋆ − U (φ⋆(α)) > 2m > 0 for some positive constant m since E⋆ = max U (x). From the fact that φk → φ⋆ uniformly, we obtain Ek − U (φk) > m for any α ∈ [0, 1]\(α−, α+) when k is large enough. This implies φk ∈ C2([0, 1]\I). The total variation of φ′k on [0, 1]\I can be bounded by
+∨
+[0,1]\I
+φ′k =
+∫
+[0,1]\I
+|φ′k′| dα =
+∫
+[0,1]\I
+|φ′k |
+√
+|∇U |2 |φ′k|2 − 〈∇U, φ′k〉2
+2Ek − 2U (φk) dα 6 MU M 2
+m,
+where MU is the upper bound of |∇U (φk)|. This shows that the sequence {φk} has uniformly bounded variation. With Helly’s theorem, we can choose subsequence {φ′kl} such that φ′kl converges almost everywhere to some function g with |g(α)| 6 M and bounded variation. By applying the dominated convergence theorem to
+φkl (α) = xs +
+∫α
+0
+φ′kl (β) dβ,
+
+
+ Qiang Du et al. Sci China Math 43
+we get
+φ∗(α) = ll→im∞ φkl (α) = xs + lli→m∞
+∫α
+0
+φ′kl (α) dα = xs +
+∫α
+0
+g(β) dβ.
+So g(α) = φ⋆′(α) almost everywhere. The proof is done.

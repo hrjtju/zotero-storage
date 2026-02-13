@@ -1,0 +1,1340 @@
+Journal of Statistical Mechanics: Theory and Experiment
+PAPER
+Hausdorff dimension, heavy tails, and generalization in neural networks*
+To cite this article: Umut Şimşekli etalJ.Stat.Mech. (2021) 124014
+View the article online for updates and enhancements.
+You may also like
+Shift-curvature, SGD, and generalization Arwen V Bradley, Carlos A Gomez-Uribe and Manish Reddy Vuyyuru
+
+Stochastic collapse: how gradient noise attracts SGD dynamics towards simpler subnetworks Feng Chen, Daniel Kunin, Atsushi Yamamura () et al.
+
+Uncovering structure-property relationships of materials by subgroup discovery Bryan R Goldsmith, Mario Boley, Jilles Vreeken et al.
+
+This content was downloaded from IP address 45.67.201.219 on 19/12/2025 at 14:21
+
+
+J. Stat. Mech. (2021) 124014
+PAPER: ML 2021
+Hausdorff dimension, heavy tails, and
+generalization in neural networks∗
+Umut  ̧Sims ̧ekli1,5,∗∗, Ozan Sener2, George Deligiannidis3 and Murat A Erdogdu4
+1 INRIA & E ́cole Normale Sup ́erieure—PSL Research University, France 2 Intel Labs, Germany 3 University of Oxford & The Alan Turing Institute, United Kingdom 4 University of Toronto & Vector Institute, Canada E-mail: umut.simsekli@inria.fr, ozan.sener@intel.com, george.deligiannidis@stats.ox.ac.uk and erdogdu@cs.toronto.edu
+Received 15 November 2021 Accepted for publication 15 November 2021 Published 29 December 2021
+Online at stacks.iop.org/JSTAT/2021/124014 https://doi.org/10.1088/1742-5468/ac3ae7
+Abstract. Despite its success in a wide range of applications, characterizing the generalization properties of stochastic gradient descent (SGD) in non-convex deep learning problems is still an important challenge. While modeling the trajectories of SGD via stochastic differential equations (SDE) under heavy-tailed gradient noise has recently shed light over several peculiar characteristics of SGD, a rigorous treatment of the generalization properties of such SDEs in a learning theoretical framework is still missing. Aiming to bridge this gap, in this paper, we prove generalization bounds for SGD under the assumption that its trajectories can be well-approximated by a Feller process, which defines a rich class of Markov processes that include several recent SDE representations (both Brownian or heavy-tailed) as its special case. We show that the generalization error can be controlled by the Hausdorff dimension of the trajectories, which is intimately linked to the tail behavior of the driving process. Our results imply that heavier-tailed processes should achieve better generalization; hence, the tailindex of the process can be used as a notion of ‘capacity metric’. We support
+∗This article is an updated version of: Simsekli U, Sener O, Deligiannidis G and Erdogdu M A 2020 Hausdorff dimension, heavy tails, and generalization in neural networks Advances in Neural Information Processing Systems vol 33 eds H Larochelle, M Ranzato, R Hadsell, M F Balcan and H Lin (New York: Curran Associates) pp 5138–51. ∗∗Author to whom any correspondence should be addressed. 5This work was conducted while U S ̧ was a visiting faculty member at University of Oxford, Department of Statistics and affiliated with LTCI, Te ́le ́com Paris, Institut Polytechnique de Paris.
+© 2021 IOP Publishing Ltd and SISSA Medialab srl 1742-5468/21/124014+35$33.00 All rights, including for text and data mining, AI training, and similar technologies, are reserved.
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+our theory with experiments on deep neural networks illustrating that the proposed capacity metric accurately estimates the generalization error, and it does not necessarily grow with the number of parameters unlike the existing capacity metrics in the literature.
+Keywords: deep learning, learning theory, machine learning, nonlinear dynamics
+Contents
+1. Introduction.......................................................................... 3
+2. Technical background .......................................................... .... 5 2.1. Stable distributions......................................................................... 6 2.2. L ́evy and Feller processes ................................................................ 6 2.3. Decomposable Feller processes ...................................................... ..... 7 2.4. The Hausdorff dimension.................................................................. 7
+3. Mathematical setup ............................................................ .... 8
+4. Generalization bounds via Hausdorff dimension .............................10 4.1. Uniform Hausdorff dimension and Feller processes..................................10 4.2. Generalization bounds via uniform Hausdorff dimension ..........................11 4.3. Generalization bounds via non-uniform Hausdorff dimension.....................13
+5. Experiments.........................................................................14
+6. Conclusion...........................................................................16
+Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+Appendix A. Additional experimental results and implementation details ..................................................................16 A.1. Comparison with other generalization metrics for deep networks ...............16 A.2. Synthetic experiments....................................................................17 A.3. Implementation details for the deep neural network experiments ...............17
+Appendix B. Representing optimization algorithms as Feller processes ...19
+Appendix C. Decomposable Feller processes and their Hausdorff dimension ..............................................................19
+Appendix D. Additional technical background..................................20 D.1. The Minkowski dimension...............................................................20 D.2. Egoroff’s theorem ........................................................................ 21
+Appendix E. Postponed proofs .....................................................21 E.1. Proof of proposition .....................................................................21 E.2. Proof of theorem 1 ...................................................................... 21
+https://doi.org/10.1088/1742-5468/ac3ae7 2
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+E.3. Proof of theorem 2 ...................................................................... 24 E.4. Proof of theorem 3 ...................................................................... 27
+References .........................................................................32
+1. Introduction
+Many important tasks in deep learning can be represented by the following optimization problem,
+min
+w∈Rd
+{
+f(w) := 1
+n
+n ∑
+i=1
+f(i)(w)
+}
+, (1)
+where w ∈ Rd denotes the network weights, n denotes the number of training data points, f denotes a non-convex cost function, and f(i) denotes the cost incurred by a single data point. Gradient-based optimization algorithms, perhaps stochastic gradient descent (SGD) being the most popular one, have been the primary algorithmic choice for attacking such optimization problems. Given an initial point w0, the SGD algorithm is based on the following recursion,
+wk+1 = wk − η∇f ̃k(wk) with ∇f ̃k(w) := 1
+B
+∑
+i∈B ̃ k
+∇f(i)(w), (2)
+where η is the step-size, and ∇f ̃k is the unbiased stochastic gradient with batch size
+B = |B ̃k| for a random subset B ̃k of {1, . . . , n} for all k ∈ N, | · | denoting cardinality. In contrast to convex optimization setting where the behavior of SGD is fairly wellunderstood (see e.g. [DDB20, SSBD14]), the generalization properties of SGD in nonconvex deep learning problems is an active area of research [AZL19, AZLL19, PBL19]. In the last decade, there has been considerable progress around this topic, where several generalization bounds have been proven in different mathematical setups [AZLL19, DR17, KL17, Lon17, MWZZ17, NHD+19, NTS15, RRT17, ZLZ19]. While these bounds are useful at capturing the generalization behavior of SGD in certain cases, they typically grow with dimension d, which contradicts empirical observations [NBMS17]. An important initial step toward developing a concrete generalization theory for the SGD algorithm in deep learning problems, is to characterize the statistical properties of the weights {wk}k∈N, as they might provide guidance for identifying the constituents that determine the performance of SGD. A popular approach for analyzing the dynamics of SGD, mainly borrowed from statistical physics, is based on viewing it as a discretization of a continuous-time stochastic process that can be described by a stochastic differential equation (SDE). For instance, if we assume that the gradient noise, i.e. ∇f ̃k(w) − ∇f(w) can be well-approximated with a Gaussian random vector, we can represent (2) as the Euler–Maruyama discretization of the following SDE,
+dWt = −∇f(Wt)dt + Σ(Wt)dBt, (3)
+https://doi.org/10.1088/1742-5468/ac3ae7 3
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+where Bt denotes the standard Brownian motion in Rd, and Σ : Rd → Rd×d is called the diffusion coefficient. This approach has been adopted by several studies [CS18, HLLL17, JKA+17, MHB16, ZWY+19]. In particular, based on the ‘flat minima’ argument (cf [HS97]), Jastrzebski et al [JKA+17] illustrated that the performance of SGD on unseen data correlates well with the ratio η/B. More recently, Gaussian approximation for the gradient noise has been taken under investigation. While Gaussian noise can accurately characterize the behavior of SGD for very large batch sizes [PSGN19], Simsekli et al [SSG19] empirically demonstrated that the gradient noise in fully connected and convolutional neural networks can exhibit heavy-tailed behavior in practical settings. This characteristic was also observed in recurrent neural networks [ZKV+19]. Favaro et al [FFP20] illustrated that the iterates themselves can exhibit heavy-tails and investigated the corresponding asymptotic behavior in the infinite-width limit. Similarly, Martin and Mahoney [MM19] observed that the eigenspectra of the weight matrices in individual layers of a neural network can exhibit heavy-tails; hence, they proposed a layer-wise heavy-tailed model for the SGD iterates. By invoking results from heavy-tailed random matrix theory, they proposed a capacity metric based on a quantification of the heavy-tails, which correlated well with the performance of the network on unseen data. Further, they empirically demonstrated that this capacity metric does not necessarily grow with dimension d. Based on the argument that the observed heavy-tailed behavior of SGD6 in practice cannot be accurately represented by an SDE driven by a Brownian motion, Simsekli et al [SSG19] proposed modeling SGD with an SDE driven by a heavy-tailed process, so-called the α-stable L ́evy motion [Sat99]. By using this framework and invoking metastability results proven in statistical physics [IP06, Pav07], SGD is shown to spend more time around ‘wider minima’, and the time spent around those minima is linked to the tail properties of the driving process [CWZ+21, NS ̧GR19, SSG19]. Even though the SDE representations of SGD have provided many insights on several distinguishing characteristics of this algorithm in deep learning problems, a rigorous treatment of their generalization properties in a statistical learning theoretical framework is still missing. In this paper, we aim to take a first step in this direction and prove novel generalization bounds in the case where the trajectories of the optimization algorithm (including but not limited to SGD) can be well-approximated by a Feller process [Sch16], which form a broad class of Markov processes that includes many important stochastic processes as a special case. More precisely, as a proxy to SGD, we consider the Feller process that is expressed by the following SDE:
+dWt = −∇f(Wt)dt + Σ1(Wt)dBt + Σ2(Wt)dLα(Wt)
+t , (4)
+where Σ1, Σ2 are d × d matrix-valued functions, and Lα(·)
+t denotes the state-dependent
+α-stable L ́evy motion, which will be defined in detail in section 2. Informally, Lα(·)
+t can
+be seen as a heavy-tailed generalization of the Brownian motion, where α : Rd → (0, 2]d
+denotes its state-dependent tail-indices. In the case αi(w) = 2 for all i and w, Lα(·)
+t
+6 Recently, Gurbuzbalaban et al [GSZ21] and Hodgkinson and Mahoney [HM21] have simultaneously shown that the law of the SGD iterates (2) can indeed converge to a heavy-tailed stationary distribution with infinite variance when the step-size η is large and/or the batch-size B is small. These results form a theoretical basis for the origins of the observed heavy-tailed behavior of SGD in practice.
+https://doi.org/10.1088/1742-5468/ac3ae7 4
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+reduces to √2Bt whereas if αi gets smaller than 2, the process becomes heavier-tailed in the ith component, whose tails asymptotically obey a power-law decay with exponent αi. The SDEs in [CS18, HLLL17, JKA+17, MHB16, ZWY+19] all appear as a special case of (4) with Σ2 = 0, and the SDE proposed in [SSG19] corresponds to the isotropic setting: Σ2(w) is diagonal and αi(w) = α ∈ (0, 2 ] for all i, w. In (4), we allow each
+coordinate of Lα(·)
+t to have a different tail-index which can also depend on the state Wt.
+We believe that Lα(·)
+t provides a more realistic model based on the empirical results of [S ̧GN+19], suggesting that the tail index can have different values at each coordinate and evolve over time. At the core of our approach lies the fact that the sample paths of Markov processes often exhibit a fractal-like structure [Xia03], and the generalization error over the sample paths is intimately related to the ‘roughness’ of the random fractal generated by the driving Markov process, as measured by a notion called the Hausdorff dimension. Our main contributions are as follows.
+(a) We introduce a novel notion of complexity for the trajectories of a stochastic learning algorithm, which we coin as ‘uniform Hausdorff dimension’. Building on [Sch98], we show that the sample paths of Feller processes admit a uniform Hausdorff dimension, which is closely related to the tail properties of the process.
+(b) By using tools from geometric measure theory, we prove that the generalization error can be controlled by the Hausdorff dimension of the process, which can be significantly smaller than the ambient dimension d. In this sense, the Hausdorff dimension acts as an ‘intrinsic dimension’ of the problem, mimicking the role of Vapnik–Chervonenkis (VC) dimension in classical generalization bounds.
+These two contributions collectively show that heavier-tailed processes achieve smaller generalization error, implying that the heavy-tails of SGD incur an implicit regularization. Our results also provide a theoretical justification to the observations reported in [MM19] and [SSG19]. Besides, a remarkable feature of the Hausdorff dimension is that it solely depends on the tail behavior of the process; hence, contrary to existing capacity metrics, it does not necessarily grow with the number of parameters d. Furthermore, we provide an efficient approach to estimate the Hausdorff dimension by making use of existing tail index estimators, and empirically demonstrate the validity of our theory on various neural networks. Experiments on both synthetic and real data verify that our bounds do not grow with the problem dimension, providing an accurate characterization of the generalization performance.
+2. Technical background
+In this section, we provide the required technical background on stable distributions, L ́evy and Feller processes, and the Hausdorff dimension.
+https://doi.org/10.1088/1742-5468/ac3ae7 5
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+2.1. Stable distributions
+Stable distributions appear as the limiting distribution in the generalized central limit theorem [L ́ev37] and can be seen as a generalization of the Gaussian distribution. In this paper, we will be interested in symmetric α-stable distributions, denoted by SαS. In the one-dimensional case, a random variable X is SαS(σ) distributed, if its characteristic function (chf.) has the following form: E[exp(iωX)] = exp(−|σω|α), where α ∈ (0, 2 ] is called the tail-index and σ ∈ R+ is called the scale parameter. When α = 2, SαS(σ) = N (0, 2σ2), where N denotes the Gaussian distribution in R. As soon as α < 2, the distribution becomes heavy-tailed and E[|X|q] becomes finite if and only if q < α, indicating that the variance of SαS is finite only when α = 2. There are multiple ways to extend SαS to the multivariate case. In our experiments, we will be mainly interested in the elliptically-contoured α-stable distribution [ST94], whose chf. is given by E[exp(i〈ω, X〉)] = exp(−‖ω‖α) for X, ω ∈ Rd, where 〈·, ·〉 denotes the Euclidean inner product. Another common choice is the multivariate α-stable distribution with independent components for a vector α ∈ Rd, whose chf. is given by
+E[exp(i〈ω, X〉)] = exp(−∑d
+i=1|ωi|αi). Essentially, the ith component of X is distributed with SαS with parameters αi and σi = 1. Both of these multivariate distributions reduce to a multivariate Gaussian when their tail indices are 2.
+2.2. Le ́vy and Feller processes
+We begin by defining a general Le ́vy process (also called L ́evy motion), which includes Brownian motion Bt and the α-stable motion Lα
+t as special cases7. A L ́evy process {Lt}t 0
+in Rd with the initial point L0 = 0, is defined by the following properties:
+(a) For N ∈ N and t0 < t1 < · · · < tN , the increments (Lti − Lti−1) are independent for all i.
+(b) For any t > s > 0, (Lt − Ls) and Lt−s have the same distribution.
+(c) Lt is continuous in probability, i.e. for all δ > 0 and s 0, P(|Lt − Ls| > δ) → 0 as t → s.
+By the L ́evy–Khintchine formula [Sat99], the chf. of a L ́evy process is given by E[exp(i〈ξ, Lt〉)] = exp(−tψ(ξ)), where ψ : Rd → C is called the characteristic (or Le ́vy) exponent, given as:
+ψ(ξ) = i〈b, ξ〉 + 1
+2 〈ξ, Σξ〉 +
+∫
+Rd
+[
+1 − ei〈x,ξ〉 + i〈x, ξ〉
+1 + ‖x‖2
+]
+ν(dx), ∀ξ ∈ Rd. (5)
+Here, b ∈ Rd denotes a constant drift, Σ ∈ Rd×d is a positive semi-definite matrix, and ν is called the L ́evy measure, which is a Borel measure on Rd \ {0} satisfying
+∫
+Rd‖x‖2/(1 + ‖x‖2)ν(dx) < ∞. The choice of (b, Σ, ν) determines the law of Lt−s; hence,
+it fully characterizes the process Lt by the properties (a) and (b) above. For instance, from (5), we can easily verify that under the choice b = 0, Σ = 1
+2 Id, and ν(ξ) = 0, with
+Id denoting the d × d identity matrix, the function exp(−ψ(ξ)) becomes the chf. of a standard Gaussian in Rd; hence, Lt reduces to Bt. On the other hand, if we choose b = 0,
+7 Here Lα
+t is equivalent to Lα(·)
+t with αi(w) = α ∈ (0, 2 ], ∀i ∈ {1, . . . , d} and ∀w ∈ Rd.
+https://doi.org/10.1088/1742-5468/ac3ae7 6
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+Σ = 0, and ν(dx) = dr
+r1+α λ(dy), for all x = ry, (r, y) ∈ R+ × Sd−1 where Sd−1 denotes unit
+sphere in Rd and λ is an arbitrary Borel measure on Sd−1, we obtain the chf. of a generic multivariate α-stable distribution, hence Lt reduces to Lα
+t . Depending on λ, exp(−ψ(ξ)) becomes the chf. of an elliptically contoured α-stable distribution or an α-stable distribution with independent components [Xia03]. Feller processes (also called L ́evy-type processes [BSW13]) are a general family of Markov processes, which further extend the scope of L ́evy processes. In this study, we consider a class of Feller processes [Cou65], which locally behave like L ́evy processes and they additionally allow for state-dependent drifts b(w), diffusion matrices Σ(w), and L ́evy measures ν(w, dy) for w ∈ Rd. For a fixed state w, a Feller process {Wt}t 0 is defined through the chf. of the random variable Wt − w, given as ψt(w, ξ) = E [exp(−i〈ξ, Wt − w〉)]. A crucial characteristic of a Feller process related to its chf. is its symbol Ψ, defined as,
+Ψ(w, ξ) = i〈b(w), ξ〉 + 1
+2 〈ξ, Σ(w)ξ〉 +
+∫
+Rd
+[
+1 − ei〈x,ξ〉 + i〈w, ξ〉
+1 + ‖x‖2
+]
+ν(w, dx), (6)
+for w, ξ ∈ Rd [Jac02, Sch98, Xia03]. Here, for each w ∈ Rd, Σ(w) ∈ Rd×d is symmetric positive semi-definite, and for all w, ν(w, dx) is a L ́evy measure. Under mild conditions, one can verify that the SDE (4) we use as a proxy for the SGD algorithm indeed corresponds to a Feller process with b(w) = −∇f(w), Σ(w) = 2Σ1(w), and an appropriate choice of ν (see [HDS18]). We also note that many other popular stochastic optimization algorithms can be accurately represented by a Feller process, which we describe in appendix B. Hence, our results can be useful in a broader context.
+2.3. Decomposable Feller processes
+In this paper, we will focus on decomposable Feller processes introduced in [Sch98], which will be useful in both our theory and experiments. Let Wt be a Feller process with symbol Ψ. We call the process Wt ‘decomposable at w0’, if there exists a point
+w0 ∈ Rd, such that Ψ(w, ξ) = ψ(ξ) + Ψ ̃ (w, ξ), where ψ(ξ) := Ψ(w0, ξ) is called the subsymbol and Ψ ̃ (w, ξ) := Ψ(w, ξ) − Ψ(w0, ξ) is the remainder term. Here, Ψ ̃ is assumed to satisfy certain smoothness and boundedness assumptions, which are provided in appendix C. Essentially, the technical regularity conditions on Ψ ̃ impose a structure on the triplet (b, Σ, ν) around w0 which ensures that, around that point, Wt behaves like a L ́evy process whose characteristic exponent is given by the sub-symbol ψ.
+2.4. The Hausdorff dimension
+Due to their recursive nature, Markov processes often generate ‘random fractals’ [Xia03] and understanding the structure of such fractals has been a major challenge in modern probability theory [BP17, Kho09, KX17, LG19, LY19, Yan18]. In this paper, we are interested in identifying the complexity of the fractals generated by a Feller process that approximates SGD. The intrinsic complexity of a fractal is typically characterized by a notion called the Hausdorff dimension [Fal04], which extends the usual notion of dimension (e.g. a line
+https://doi.org/10.1088/1742-5468/ac3ae7 7
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+segment is one-dimensional, a plane is two-dimensional) to fractional orders. Informally, this notion measures the ‘roughness’ of an object (i.e. a set) and in the context of L ́evy processes, they are deeply connected to the tail properties of the corresponding L ́evy measure. [Sch98, Xia03, Yan18]. Before defining the Hausdorff dimension, we need to introduce the Hausdorff measure. Let G ⊂ Rd and δ > 0, and consider all the δ-coverings {Ai}i of G, i.e. each Ai denotes a set with diameter less than δ satisfying G ⊂ ∪iAi. For any s ∈ (0, ∞), we then denote:
+Hs
+δ(G) := inf
+∑ ∞
+i=1
+diam(Ai)s, (7)
+where the infimum is taken over all the δ-coverings. The s-dimensional Hausdorff measure of G is defined as the monotonic limit:
+Hs(G) := δli→m0 Hs
+δ(G). (8)
+It can be shown that Hs is an outer measure; hence, it can be extended to a complete measure by the Carath ́eodory extension theorem [Mat99]. When s is an integer, Hs is equal to the s-dimensional Lebesgue measure up to a constant factor; thus, it strictly generalizes the notion ‘volume’ to the fractional orders. We now proceed with the definition of the Hausdorff dimension.
+Definition 1. The Hausdorff dimension of G ⊂ Rd is defined as follows.
+dimH G := sup{s > 0 : Hs(G) > 0} = inf{s > 0 : Hs(G) < ∞}. (9)
+One can show that if dimH G = s, then Hr(G) = 0 for all r > s and Hr(G) = ∞ for all r < s [EMG90]. In this sense, the Hausdorff dimension of G is the moment order s when Hs(G) drops from ∞ to 0, and we always have 0 dimH G d [Fal04]. Apart from the trivial cases such as dimH Rd = d, a canonical example is the well-known Cantor set, whose Hausdorff dimension is (log 2/log 3) ∈ (0, 1). Besides, the Hausdorff dimension of Riemannian manifolds correspond to their intrinsic dimension, e.g. dimH Sd−1 = d − 1. We note that, starting with the seminal work of Assouad [Ass83], tools from fractal geometry have been considered in learning theory [DSD19, MSS19, SHTY13] in different contexts. In this paper, we consider the Hausdorff dimension of the sample paths of Markov processes in a learning theoretical framework, which, to the best of our knowledge, has not yet been investigated in the literature.
+3. Mathematical setup
+In this section, we precise the mathematical framework that we will use in our theoretical results. Let Z = X × Y denote the space of data points, with X being the space of features and Y the space of the labels. We consider an unknown data distribution over Z, denoted by μz. We assume that we have access to a training set with n elements, denoted as S = {z1, . . . , zn}, where each element of S is independently and identically
+https://doi.org/10.1088/1742-5468/ac3ae7 8
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+distributed (i.i.d.) from μz. We will denote S ∼ μ⊗n
+z , where μ⊗n
+z is the n-times product measure of μz.
+To assess the quality of an estimated parameter, we consider a loss function : Rd × Z → R+, such that (w, z) measures the loss induced by a single data point z for the particular choice of parameter w ∈ Rd. We accordingly denote the population risk with
+R(w) := Ez[ (w, z)], (10)
+and the empirical risk with
+ˆR(w, S) := 1
+n
+n ∑
+i=1
+(w, zi). (11)
+We note that we allow the cost function f in (1) and the loss to be different from each other, where f should be seen as a surrogate loss function. In particular, we will have different sets of assumptions on f and . However, as f and are different from each other, the discrepancy between the risks of their respective minimizers would have an impact on generalization. We leave the analysis of such discrepancy as a future work. An iterative training algorithm A (for example SGD) is a function of two variables S and U , where S denoting the dataset and U encapsulating all the algorithmic randomness (e.g. batch indices to be used in training). The algorithm A(S, U ) returns the entire evolution of the parameters in the time frame [0, T ], where [A(S, U )]t = wt being the parameter value returned by A at time t (e.g. parameters trained by SGD at time t). More precisely, given a training set S and a random variable U , the algorithm will output a random process {wt}t∈[0,T] indexed by time, which is the trajectory of iterates. To formalize this definition, let us denote the class of bounded Borel functions defined from [0, T ] to Rd with B([0, T ], Rd), and define
+A:
+∞ ⋃
+n=1
+Zn × Ω → B([0, T ], Rd), (12)
+where Ω denotes the domain of U . We will denote the law of U by μu, and without loss of generality we let T = 1. In the remainder of the paper, we will consider the case where the algorithm A is chosen to be the trajectories produced by a Feller process W(S) (e.g. the proxy for SGD (4)), whose symbol depends on the training set S. More precisely, given S ∈ Zn, the
+output of the training algorithm A(S, ·) will be the random mapping t → W(S)
+t , where
+the symbol of W(S) is determined by the drift bS(w), diffusion matrix ΣS(w), and the L ́evy measure νS(w, ·) (see (6) for definitions), which all depend on S. In this context, the random variable U represents the randomness that is incurred by the Feller process. In particular, for the SDE proxy (4), U accounts for the randomness due to Bt and Lα(·)
+t. As our framework requires A to produce continuous-time trajectories to represent the discrete-time recursion of SGD (2), we can consider the linearly interpolated continuoustime process; an approach which is commonly used in SDE analysis [Dal17, EH20, EMS18, NS ̧GR19, RRT17]. For a given t ∈ [kη, (k + 1)η), we can define the process  ̃Wt as the linear interpolation of wk and wk+1 (see (2)), such that wk =  ̃Wkη for all k. On
+https://doi.org/10.1088/1742-5468/ac3ae7 9
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+the other hand, the random variable U here represents the randomness incurred by the choice of the random minibatches B ̃k over iterations (2). Throughout this paper, we will assume that S and U are independent from each other. In the case of (4), this will entail that the randomness in Bt and Lα
+t does not depend on S, or in the case of the SGD recursion, it will require the random sets B ̃k ⊂ {1, . . . , n} to be drawn independently from S.8 Under this assumption, U does not play a crucial role in our analysis; hence, to ease the notation, we will occasionally omit the dependence on U and simply write A(S) := A(S, U ). We will further use the notation [A(S)]t := [A(S, U )]t to refer to wt. Without loss of generality, we will assume that the training algorithm is always initialized with zeros, i.e. [A(S)]0 = 0 ∈ Rd, for all S ∈ Zn. Finally, we define the collection of the parameters given in a trajectory, as the image of A(S), i.e.
+WS := {w ∈ Rd : ∃t ∈ [0, 1], w = [A(S)]t}, (13)
+and the collection of all possible parameters as the union
+W :=
+⋃
+n1
+⋃
+S ∈Z n
+WS. (14)
+Note that W is still random due to its dependence on U .
+4. Generalization bounds via Hausdorff dimension
+In this section, we present our main contributions, where we derive generalization bounds based on the Hausdorff dimension of the training trajectories.
+4.1. Uniform Hausdorff dimension and Feller processes
+In this part, we introduce the ‘uniform Hausdorff dimension’ property for a training algorithm A, which is a notion of complexity based on the Hausdorff dimension of the trajectories generated by A. By translating [Sch98] into our context, we will then show that decomposable Feller processes possess this property.
+Definition 2. An algorithm A has uniform Hausdorff dimension dH if for any n ∈ N+ and any training set S ∈ Zn
+dimH WS = dimH{w ∈ Rd : ∃t ∈ [0, 1], w = [A(S, U )]t} dH, μu − almost surely. (15)
+Since WS ⊂ W ⊂ Rd, by the definition of Hausdorff dimension, any algorithm A possesses the uniform Hausdorff dimension property trivially with dH = d. However, as we will illustrate in the sequel, dH can be much smaller than d, which is of our interest in this study.
+Proposition 1. Let {W(S)}S∈Zn be a family of Feller processes. Assume that for each S, W(S) is decomposable at a point wS with sub-symbol ψS. Consider the algorithm A that
+8 Note that this prevents adaptive minibatching algorithms, e.g. [AB99] to be represented in our framework.
+https://doi.org/10.1088/1742-5468/ac3ae7 10
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+Figure 1. Trajectories of Lα
+t for α = 2.0, 1.5, and 1.0. The colors indicate the evolu
+tion in time. We observe that the trajectories become ‘simpler’ as dimH Lα[0, T ] = α gets smaller.
+returns [A(S)]t = W(S)
+t for a given S ∈ Zn and for every t ∈ [0, 1]. Then, we have
+dimH WS βS, where βS := inf
+{
+λ 0 : lim
+‖ξ‖→∞
+|ψS (ξ )|
+‖ξ‖λ = 0
+}
+, (16)
+μu-almost surely. Furthermore, A has uniform Hausdorff dimension with
+dH = sup
+n
+sup
+S ∈Z n
+βS. (17)
+We provide all the proofs in appendix E. Informally, this result can be interpreted as follows. Thanks to the decomposability property, for each S, the process W(S) behaves like a L ́evy motion around wS, and the characteristic exponent is given by the subsymbol ψS. Because of this locally regular behavior, the Hausdorff dimension of the
+image of W(S) can be bounded by βS, which only depends on tail behavior of the L ́evy process whose exponent is the sub-symbol ψS.
+Example 1. In order to illustrate proposition 1, let us consider a simple example, where
+W(S)
+t is taken as the d-dimensional α-stable process with d 2, which is independent of
+the data sample S. More precisely, W(S)
+t is the solution to the SDE given by dW(S)
+t = dLα
+t
+for some α ∈ (0, 2 ], where Lα
+1 is an elliptically-contoured α-stable random vector. As
+W(S)
+t is already a Le ́vy process, it trivially satisfies the assumptions of proposition 1 with βS = α for all n and S [BG60], hence
+dimH WS α, (18)
+μu-almost surely (in fact, one can show that dimH WS = α, see [BG60], theorem 4.2).
+Hence, the ‘algorithm’ [A(S)]t = W(S)
+t has uniform Hausdorff dimension dH = α. This shows that as the process becomes heavier-tailed (i.e. α decreases), the Hausdorff dimension dH gets smaller. This behavior is illustrated in figure 1.
+The term βS is often termed as the upper Blumenthal–Getoor (BG) index of the L ́evy process with an exponent ψS [BG60], and it is directly related to the tail-behavior of the corresponding L ́evy measure. In general, the value of βS decreases as the process gets heavier-tailed, which implies that the heavier-tailed processes have smaller Hausdorff dimension; thus, they have smaller complexity.
+https://doi.org/10.1088/1742-5468/ac3ae7 11
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+4.2. Generalization bounds via uniform Hausdorff dimension
+This part provides the first main contribution of this paper, where we show that the generalization error of a training algorithm can be controlled by the Hausdorff dimension of its trajectories. Even though our interest is still in the case where A is chosen as a Feller process, the results in this section apply to more general algorithms. To this end, we will be mainly interested in bounding the following object:
+sup
+t∈[0,1]
+| ˆR([A(S)]t, S) − R([A(S)]t)| = sup
+w∈WS
+| ˆR(w, S) − R(w)|, (19)
+with high probability over the choice of S and U . Note that this is an algorithm dependent definition of generalization that is widely used in the literature (see [BE02] for a detailed discussion). To derive our first result, we will require the following assumptions.
+H 1 is bounded by B and L-Lipschitz continuous in w.
+H 2 The diameter of W is finite μu-almost surely. S and U are independent.
+H 3 A has uniform Hausdorff dimension dH.
+H 4 For μu-almost every W, there exists a Borel measure μ on Rd and positive num
+bers a, b, r0 and s such that 0 < μ(W) μ (Rd) < ∞ and 0 < ars μ(Bd(x, r))
+brs < ∞ for x ∈ W, 0 < r r0.
+Boundedness of the loss can be relaxed at the expense of using sub-Gaussian concentration bounds and introducing more complexity into the expressions [MBM16]. More precisely, H 1 can be replaced with the assumption ∃K > 0, such that ∀p,
+E[ (w, z)p]1/p K√p, and by using sub-Gaussian concentration our bounds will still hold with K in place of B. On the other hand, since we have a finite time-horizon and we fix the initial point of the processes to 0, by using [XZ20] lemma 7.1, we can show that the finite diameter condition on W holds almost surely, if standard regularity assumptions hold uniformly on the coefficients of W(S) (i.e. b, Σ, and ν in (6)) for all S ∈ Zn, and a countability condition on Z. Finally H 4 is a common condition in fractal geometry, and ensures that the set W is regular enough, so that we can relate its Hausdorff dimension to its covering numbers [Mat99]9. Under these conditions and an additional countability condition on Z (see [BE02] for similar assumptions), we present our first main result as follows.
+Theorem 1. Assume that H 1 to 4 hold, and Z is countable. Then, for a sufficiently large n, we have
+sup
+w∈WS
+| ˆR(w, S) − R(w)| B
+√
+2dH log(nL2)
+n + log(1/γ)
+n , (20)
+with probability at least 1 − γ over S ∼ μ⊗n
+z and U ∼ μu.
+9 H 4 ensures that the Hausdorff dimension of W coincides with another notion of dimension, called the Minkowski dimension, which is explained in detail in appendix D. We note that for many fractal-like sets, these two notions of dimensions are equal to each other (see [Mat99], chapter 5), which include α-stable processes (see [Fal04], chapter 16).
+https://doi.org/10.1088/1742-5468/ac3ae7 12
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+This theorem shows that the generalization error can be controlled by the uniform Hausdorff dimension of the algorithm A, along with the constants inherited from the regularity conditions. A noteworthy property of this result is that it does not have a direct dependency on the number of parameters d; on the contrary, we observe that dH plays the role that d plays in standard bounds [AB09], implying that dH acts as the intrinsic dimension and mimics the role of the VC dimension in binary classification [SSBD14]. Furthermore, in combination with proposition 1 that indicates dH decreases as the processes W(S) get heavier-tailed, theorem 1 implies that the generalization error can be controlled by the tail behavior of the process: heavier-tails imply less generalization error. We note that the countability condition on Z is crucial for theorem 1. Thanks to this condition, in our proof, we invoke the stability properties of the Hausdorff dimension and we directly obtain a bound on dimH W. This bound combined with H 4 allows us to control the covering number of W, and then the desired result can be obtained by using standard covering techniques [AB09, SSBD14]. Next, we show that the log n dependency of dH is not crucial. In the next theorem, we show that the log n factor can be replaced with any increasing function (e.g. log log n) by using a chaining argument, with the expense of having L as a multiplying factor (instead of log L). Theorem 1 holds for sufficiently large n; however, this threshold is not apriori known, which is a limitation of the result.
+Theorem 2. Assume that H 1 to 4 hold, and Z is countable. Then, for any function ξ : R → R satisfying limx→∞ ρ(x) = ∞, and for a sufficiently large n, we have
+sup
+w∈WS
+( ˆR(w, S) − R(w)
+)
+cLB diam(W )
+√
+dHρ(n)
+n + log(1/γ)
+n,
+with probability at least 1 − γ over S ∼ μ⊗n
+z and U ∼ μu, where c is an absolute constant.
+4.3. Generalization bounds via non-uniform Hausdorff dimension
+In our second main result, we control the generalization error without the countability assumption on Z, and more importantly we will also relax H 3. Our main goal will be to relate the error to the Hausdorff dimension of a single WS, as opposed to dH, which uniformly bounds dimH WS′ for every S′ ∈ Zn. In order to achieve this goal, we introduce a technical assumption, which lets us control the statistical dependency between the training set S and the set of parameters WS. For any δ > 0, let us consider a finite δ-cover of W by closed balls of radius δ, whose centers are on the fixed grid
+{((2j1 + 1)δ
+2√d , . . . , (2jd + 1)δ
+2√d
+)
+: ji ∈ Z, i = 1, . . . , d
+}
+, (21)
+and collect the center of each ball in the set Nδ. Then, for each S, let us define the set Nδ(S) := {x ∈ Nδ : Bd(x, δ) ∩ WS = ∅}, where Bd(x, δ) ⊂ Rd denotes the closed ball centered around x ∈ Rd with radius δ.
+https://doi.org/10.1088/1742-5468/ac3ae7 13
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+H 5 Let Z∞ := (Z × Z × · · · ) denote the countable product endowed with the product topology and let B be the Borel σ-algebra generated by Z∞. Let F, G be the sub-σ-algebras of B generated by the collections of random variables given by { ˆR(w, S) : w ∈ W, n 1} and { {w ∈ Nδ(WS)} : δ ∈ Q>0, w ∈ Nδ, n 1} respectively. There exists a constant M 1 such that for any A ∈ F, B ∈ G we have P [A ∩ B] M P [A] P[B].
+This assumption is common in statistics and is sometimes referred to as the ψmixing condition, a measure of weak dependence often used in proving limit theorems, see e.g. [Bra83]; yet, it is unfortunately hard to verify this condition in practice. In our context H 5 essentially quantifies the dependence between S and the set WS, through
+the constant M > 0: smaller M indicates that the dependence of ˆR on the training sample S is weaker. This concept is also similar to the mutual information used recently in [AAV18, HS ̧KM21, RZ19, XR17] and to the concept of stability [BE02].
+Theorem 3. Assume that H 1, 2 and 5 hold, and H 4 holds with WS in place of W for all n 1 and S ∈ Zn, (with s, a, b, r0 can potentially depend on n and S). Then, for n sufficiently large, we have
+sup
+w∈WS
+| ˆR(w, S) − R(w)| 2B
+√
+[dimH WS + 1]log2(nL2)
+n + log(7M /γ)
+n , (22)
+with probability at least 1 − γ over S ∼ μ⊗n
+z and U ∼ μu.
+This result shows that under H 5, we can replace dH in theorem 1 with dimH WS, at the expense of introducing the coupling coefficient M into the bound. We observe that two competing terms are governing the generalization error: in the case where dimH WS is small, the error is dominated by the coupling parameter M, and vice versa. On the other hand, in the context of proposition 1, dimH WS βS, μu-almost surely, implying
+again that a heavy-tailed W(S) would achieve smaller generalization error as long as the dependency between S and WS is weak.
+5. Experiments
+We empirically study the generalization behavior of deep neural networks from the Hausdorff dimension perspective. We use VGG networks [SZ15] as they perform well in practice, and their depth (the number of layers) can be controlled directly. We vary the number of layers from D = 4 to D = 19, resulting in the number of parameters d between 1.3M and 20M . We train models on the CIFAR-10 dataset [KH09] using SGD and we choose various stepsizes η, and batch sizes B. We provide full range of parameters and additional implementation details in appendix A. The code can be found in https:// github.com/umutsimsekli/Hausdorff-Dimension-and-Generalization. We assume that SGD can be well-approximated by the process (4). Hence, to bound the corresponding dimH WS to be used in theorem 3, we invoke proposition 1, which relies on the existence of a point wS around which the process behaves like a regular L ́evy process with exponent ψS. Considering the empirical observation that SGD exhibits a
+https://doi.org/10.1088/1742-5468/ac3ae7 14
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+Figure 2. Empirical study of generalization behavior on VGG [SZ15] networks with various depth values (the number of layers are shown as D). As our theory predicts, the generalization error is strongly correlated with βS. As βS ∈ (0, 2 ], the estimates exceeding 2 is an artifact of the estimator.
+‘diffusive behavior’ around a local minimum [BJSG+18], we take wS to be the local minimum found by SGD and assume that the conditions of proposition 1 hold around that point. This perspective indicates that the generalization error can be controlled by the BG index βS of the L ́evy process defined by ψS(ξ); the sub-symbol of the process (4) around wS. Estimating the BG index for a general L ́evy process is a challenging task; however, the choice of the SDE (4) imposes some structure on ψS, which lets us express βS in a simpler form. Inspired by the observation that the tail-index of the gradient noise in a multi-layer neural network differs from layer to layer, as reported in [S ̧GN+19], we will assume that, around the local minimum wS, the dynamics of SGD will be similar to the L ́evy motion with frozen coefficients: Σ2(wS)Lα(wS), see (4) for definitions. We will further impose that, around wS, the coordinates corresponding to the same layer l have the same tail-index αl. Under this assumption, the BG index can be analytically computed as βS = maxl αl ∈ (0, 2 ] [Hen73, MX05]. While the range (0, 2 ] might seem narrow at the first sight, we note that dimH WS; hence βS determines the order of the generalization error and this parameter gets closer to 0 with more layers added to the network (see figure 2). Thanks to this simplification, we can easily compute βS, by first estimating each αl by using the estimator proposed in [MMO15], which can efficiently estimate αl by using multiple SGD iterates. We trained all the models for 100 epochs and computed their βS over the last epoch, assuming that the iterations reach near local minima. We monitor the generalization error in terms of the difference between the training and test accuracy with respect to the estimated βS in figure 2(a). We also plot the final test accuracy in figure 2(b). Test accuracy results validate that the models perform similarly to the state-of-the-art, which suggests that the empirical study matches the practically relevant application settings. Results in figure 2(a) indicate that, as predicted by our theory, the generalization error is strongly correlated with βS, which is an upper-bound of the Hausdorff dimension. With increasing βS (implying increasing Hausdorff dimension), the generalization error increases, as our theory indicates. Moreover, the resulting behavior validates the
+https://doi.org/10.1088/1742-5468/ac3ae7 15
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+importance of considering dimH WS as opposed to ambient dimension: for example, the number of parameters in the four-layer network is significantly lower than other networks; however, its Hausdorff dimension as well as generalization error are significantly higher. Even more importantly, there is no monotonic relationship between the number of parameters and dimH WS. In other words, increasing depth is not always beneficial from the generalization perspective. It is only beneficial if it also decreases dimH WS. We also observe an interesting behavior: the choice of η and B seems to affect βS, indicating that the choice of the algorithm parameters can impact the tail behavior of the algorithm. In summary, our theory holds over a large selection of depth, step-sizes, and batch sizes when tested on deep neural networks. We provide additional experiments on synthetic models in appendix A.
+6. Conclusion
+In this paper, we rigorously tied the generalization in a learning task to the tail properties of the underlying training algorithm, shedding light on an empirically observed phenomenon. We established this relationship through the Hausdorff dimension of the SDE approximating the algorithm, and proved a generalization error bound based on this notion of complexity. Unlike the ambient dimension, our bounds do not necessarily grow with the number of parameters in the network, and they solely depend on the tail behavior of the training process, providing an explanation for the implicit regularization effect of heavy-tailed SGD. Finally, we note that extensions of our framework have shown that the generalization error can be linked to topological data analysis tools [BLGS ̧21], and our tools can be used for analyzing discrete-time dynamical systems through the fractal dimensions of their invariant measures [CDE+21].
+Acknowledgments
+In the early version of the manuscript, which was published at NeurIPS 2020, we identified an imprecision in definition 2, and a mistake in figure 2 and in the statement and the proof of theorem 3, which are now fixed. The authors are grateful to Berfin S ̧ims ̧ek and Xiaochuan Yang for fruitful discussions, and thank Vaishnavh Nagarajan for pointing out the imprecision in definition 2. The contribution of Umut  ̧Sims ̧ekli to this work is partly supported by the French National Research Agency (ANR) as a part of the FBIMATRIX (ANR-16-CE23-0014) project.
+Appendix A. Additional experimental results and implementation details A.1. Comparison with other generalization metrics for deep networks
+In this section, we empirically analyze the proposed metric with respect to existing generalization metrics, developed for neural networks. Specifically, we consider the ‘flat minima’ argument of Jastrzevski et al [JKA+17] and plot the generalization error vs η/B
+https://doi.org/10.1088/1742-5468/ac3ae7 16
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+Figure A1. Empirical comparison to other capacity metrics.
+which is the ratio of step size to the batch size. As a second comparison, we use heavytailed random matrix theory based metric of Martin and Mahoney [MM19]. We plot the generalization error with respect to each metric in figure A1. As the results suggest, our metric is the one which correlates best with the empirically observed generalization error. The metric proposed by Martin and Mahoney [MM19] fails for the low number of layers and the resulting behavior is not monotonic. Similarly, η/B captures the relationship for very deep networks (for D = 16 & 19), however, it fails for other settings. We also note that the norm-based capacity metrics [NTS15] typically increase with the increasing dimension d, we refer to [NBMS17] for details.
+A.2. Synthetic experiments
+We consider a simple synthetic logistic regression problem, where the data distribution is a Gaussian mixture model with two components. Each data point zi ≡ (xi, yi) ∈ Z = Rd × {−1, 1} is generated by simulating the model: yi ∼ Bernoulli(1/2) and xi|yi ∼ N (myi, 100Id), where the means are drawn from a Gaussian: m−1, m1 ∼ N (0, 25Id). The loss function is the logistic loss as (w, z) = log(1 + exp(−yx w)). As for the algorithm, we consider a data-independent multivariate stable process: [A(S)]t = Lα
+t for any S ∈ Zn, where Lα
+1 is distributed with an elliptically contoured α
+stable distribution with α ∈ (0, 2 ] (see section 2): when α = 2, Lα
+t is just a Brownian motion, as α gets smaller, the process becomes heavier-tailed. By theorem 4.2 of [BG60], A has the uniform Hausdorff dimension property with dH = α independently from d when d 2. We set d = 10 and generate points to represent the whole population, i.e. {zi}ntot
+i=1
+with ntot = 100 K. Then, for different values of α, we simulate A for t ∈ [0, 1], by using a small step-size η = 0.001 (the total number of iterations is hence 1/η). We finally draw 20 random sets S with n elements from this population, and we monitor the maximum difference supw∈WS | ˆR(w, S) − R(w)| for different values of n. We repeat the whole procedure 20 times and report the average values in figure A2. We observe that the results support theorems 1 and 3: for every n, the generalization error decreases with decreasing α, hence illustrates the role of the Hausdorff dimension.
+https://doi.org/10.1088/1742-5468/ac3ae7 17
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+Figure A2. Results on synthetic data.
+A.3. Implementation details for the deep neural network experiments
+In this section, we provide the additional details which are skipped in the main text for the sake of space. We use the following VGG style neural networks with various number of layers as
+• VGG4: Conv(512)–ReLU–MaxPool–Linear
+• VGG6: Conv(256)–ReLU–MaxPool–Conv(512)–ReLU–MaxPool–Conv(512)ReLU–MaxPool–Linear
+• VGG7: Conv(128)–ReLU–MaxPool–Conv(256)–ReLU–MaxPool–Conv(512)ReLU–MaxPool–Conv(512)–ReLU–MaxPool–Linear
+• VGG8: Conv(64)–ReLU–MaxPool–Conv(128)–ReLU–MaxPool–Conv(256)ReLU–MaxPool–Conv(512)–ReLU–MaxPool–Conv(512)–ReLU–MaxPool–Linear
+• VGG11: Conv(64)–ReLU–MaxPool–Conv(128)–ReLU–MaxPool –Conv(256)ReLU–Conv(256)–ReLU–MaxPool–Conv(512)–ReLU–Conv(512)–ReLUMaxPool–Conv(512)–ReLU–Conv(512)–ReLU–MaxPool–Linear
+• VGG16: Conv(64)–ReLU–Conv(64)–ReLU–MaxPool–Conv(128)–ReLUConv(128)–ReLU–MaxPool–Conv(256)–ReLU–Conv(256)–ReLU–Conv(256)ReLU–MaxPool–Conv(512)–ReLU–Conv(512)–ReLU–Conv(512)–ReLUMaxPool–Conv(512)–ReLU–Conv(512)–ReLU–Conv(512)–ReLU–MaxPool–Linear
+• VGG19: Conv(64)–ReLU–Conv(64)–ReLU–MaxPool–Conv(128)–ReLUConv(128)–ReLU–MaxPool–Conv(256)–ReLU–Conv(256)–ReLU–Conv(256)ReLU–Conv(256)–ReLU–MaxPool–Conv(512)–ReLU–Conv(512)–ReLUConv(512)–ReLU–Conv(512)–ReLU–MaxPool–Conv(512)–ReLU–Conv(512)ReLU–Conv(512)–ReLU–Conv(512)–ReLU–MaxPool–Linear
+where all convolutions are noted with the number of filters in the paranthesis. Moreover, we use the following hyperparameter ranges for step size of SGD: {1e–2, 1e–3, 3e–3, 1e–4, 3e–4, 1e–5, 3e–5} with the batch sizes {32, 64, 128, 256}. All networks are learned with cross entropy loss and ReLU activations, and no additional technique like batch normalization or dropout is used. While computing the empirical BG index over the layers, we only consider convolutional layers ignoring the final
+https://doi.org/10.1088/1742-5468/ac3ae7 18
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+fully-connected layer. We also release the full source code of the experiments at https:// github.com/umutsimsekli/Hausdorff-Dimension-and-Generalization.
+Appendix B. Representing optimization algorithms as Feller processes
+Thanks to the generality of the Feller processes, we can represent multiple popular stochastic optimization algorithms as a Feller process, in addition to SGD. For instance, let us consider the following SDE:
+dWt = −Σ0(Wt)∇f(Wt)dt + Σ1(Wt)dBt + Σ2(Wt)dLα(Wt)
+t , (B.1)
+where Σ0, Σ1, Σ2 are d × d matrix-valued functions and the tail-index α(·) of Lα
+t (·) is also allowed to change depending on value of the state Wt. We can verify that this SDE corresponds to a Feller process with b(w) = −Σ0(w)∇f(w), Σ(w) = 2Σ1(w), and an appropriate choice of ν [HDS18]. As we discussed in the main document, we the choice Σ0 = Id can represent SGD with state-dependent Gaussian and/or heavy-tailed noise. Besides, we can choose an appropriate Σ0 in order to be able to represent optimization algorithms that use second-order geometric information, such as natural gradient [Ama98] or stochastic Newton [EM15] algorithms. On the other hand, by using the SDEs proposed in [BB18, GGZ18, LPH+17, OKL19, S ̧ZTG20], we can further represent momentum-based algorithms such as SGD with momentum [Pol64] as a Feller process.
+Appendix C. Decomposable Feller processes and their Hausdorff dimension
+In our study, we focus on decomposable Feller processes, introduced in [Sch98]. Let us consider a Feller process expressed by its symbol Ψ. We call the process defined by Ψ decomposable at w0, if there exists a point w0 ∈ Rd such that the symbol can be decomposed as
+Ψ(w, ξ) = ψ(ξ) + Ψ ̃ (w, ξ), (C.1)
+where ψ(ξ) := Ψ(w0, ξ) is the sub-symbol and Ψ ̃ (w, ξ) = Ψ(w, ξ) − Ψ(w0, ξ) is the reminder term. Let j ∈ Nd
+0 denote a multi-index10. We assume that there exist functions
+a, Φj : Rd → R such that the following holds:
+• Ψ(x, 0) ≡ 0
+• ‖Φ0‖∞ < ∞, and Φj ∈ L1 (Rd) for all |j| d + 1.
+•
+∣∣∣∂j
+wΨ ̃ (w, ξ)
+∣∣∣ Φj(w) (1 + a2(ξ)), for all w, ξ ∈ Rd and |j| d + 1.
+• a2(ξ) κ0‖ξ‖r0, for ‖ξ‖ large, r0 ∈ (0, 2 ], and κ0 > 0.
+10 We use the multi-index convention j = (j1, . . . , jd) with each ji ∈ N0, and we use the notation ∂j
+w  ̃Ψ(w, ξ) = ∂j1  ̃Ψ(w,ξ)
+∂wj11
+. . . ∂jd  ̃Ψ(w,ξ)
+∂wjdd
+,
+and |j| = ∑d
+i=1 ji .
+https://doi.org/10.1088/1742-5468/ac3ae7 19
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+The Hausdorff dimension of the image of a decomposable Feller process is bounded, due to the following result.
+Theorem 4 ([Sch98] theorem 4).
+Let Ψ(x, ξ) generate a Feller process, denoted by {Wt}t 0. Assume that Ψ is decomposable at w0 with the sub-symbol ψ. Then, for any given T ∈ R+, we have
+dimH W([0, T ]) β, Px − almost surely, (C.2)
+where W([0, T ]) := {w : w = Wt, for somet ∈ [0, T ]} is the image of the process, Px denotes the law of the process {Wt}t 0 with initial value x, and β is the upper Blumenthal–Getoor index of the L ́evy process with the characteristic exponent ψ(ξ), given as follows:
+β := inf
+{
+λ 0 : lim
+‖ξ‖→∞
+|ψ(ξ)|
+‖ξ‖λ = 0
+}
+. (C.3)
+Appendix D. Additional technical background
+In this section, we will define the notions that will be used in our proofs. For the sake of completeness we also provide the main theoretical results that will be used in our proofs.
+D.1. The Minkowski dimension
+In our proofs, in addition to the Hausdorff dimension, we also make use of another notion of dimension, referred to as the Minkowski dimension (also known as the box-counting dimension [Fal04]), which is defined as follows.
+Definition 3. Let G ⊂ Rd be a set and let N δ(G) be a collection of sets that contains either one of the following:
+• The smallest number of sets of diameter at most δ which cover G
+• The smallest number of closed balls of diameter at most δ which cover G
+• The smallest number of cubes of side at most δ which cover G
+• The number of δ-mesh cubes that intersect G
+• The largest number of disjoint balls of radius δ, whose centers are in G.
+Then the lower- and upper-Minkowski dimensions of G are respectively defined as follows:
+dimM G := lim inf
+δ→0
+log |Nδ(G)|
+− log δ , dimMG := lim sup
+δ→0
+log |Nδ(G)|
+− log δ . (D.1)
+In case the dimM G = dimM G, the Minkowski dimension dimM(G) is their common value.
+We always have 0 dimH G dimM G dimMG d where the inequalities can be strict [Fal04].
+https://doi.org/10.1088/1742-5468/ac3ae7 20
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+It is possible to construct examples where the Hausdorff and Minkowski dimensions are different from each other. However, in many interesting cases, these two dimensions often match each other [Fal04]. In this paper, we are interested in such a case, i.e. the case when the Hausdorff and Minkowski dimensions match. The following result identifies the conditions for which the two dimensions match each other, which form the basis of H 4:
+Theorem 5 ([Mat99] theorem 5.7). Let A be a non-empty bounded subset of Rd. Suppose there is a Borel measure μ on Rd and there are positive numbers a, b, r0 and s such
+that 0 < μ(A) μ (Rd) < ∞ and
+0 < ars μ(Bd(x, r)) brs < ∞ for x ∈ A, 0 < r r0 (D.2)
+Then dimH A = dimM A = dimM A = s.
+D.2. Egoroff’s theorem
+Egoroff’s theorem is an important result in measure theory and establishes a condition for measurable functions to be uniformly continuous in an almost full-measure set.
+Theorem 6 (Egoroff’s theorem [Bog07] theorem 2.2.1). Let (X, A, μ) be a space with a finite nonnegative measure μ and let μ-measurable functions fn be such that μalmost everywhere there is a finite limit f(x) := limn→∞ fn(x). Then, for every ε > 0, there exists a set Xε ∈ A such that μ (X \ Xε) < ε and the functions fn converge to f uniformly on Xε.
+Appendix E. Postponed proofs
+E.1. Proof of proposition 1
+Proof. Let ΨS denote the symbol of the process W(S). Then, the desired result can obtained by directly applying theorem 4 on each ΨS.
+E.2. Proof of theorem 1
+We first prove the following more general result which relies on dimM W.
+Lemma 1. Assume that is bounded by B and L-Lipschitz continuous in w. Let W ⊂ Rd be a set with finite diameter. Then, for n sufficiently large, we have
+sup
+w∈W
+| ˆR(w, S) − R(w)| B
+√
+2dimM W log(nL2)
+n + log(1/γ)
+n , (E.1)
+with probability at least 1 − γ over S ∼ μ⊗n
+z.
+https://doi.org/10.1088/1742-5468/ac3ae7 21
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+Proof. As is L-Lipschitz, so are R and ˆR. By using the notation ˆRn(w) := ˆR(w, S), and by the triangle inequality, for any w′ ∈ W we have:
+| ˆRn(w) − R(w)| =
+∣∣∣ ˆRn (w′) − R (w′) + Rˆ n(w) − ˆRn (w′) − R(w) + R (w′)
+∣∣∣ , (E.2)
+∣∣∣Rˆ n (w′) − R (w′)
+∣∣∣ + 2L ‖w − w′‖ . (E.3)
+Now since W has finite diameter, let us consider a finite δ-cover of W by balls and collect the center of each ball in the set Nδ := Nδ(W). Then, for each w ∈ W, there exists a w′ ∈ N δ, such that ‖w − w′‖ δ. By choosing this w′ in the above inequality, we obtain:
+| ˆRn(w) − R(w)|
+∣∣∣ ˆRn (w′) − R (w′)
+∣∣∣ + 2Lδ. (E.4)
+Taking the supremum of both sides of the above equation yields:
+sup
+w∈W
+| ˆRn(w) − R(w)| max
+w∈Nδ
+∣∣∣ ˆRn(w) − R(w)
+∣∣∣ + 2Lδ. (E.5)
+Using the union bound over N δ, we obtain
+PS
+(
+max
+w∈Nδ
+| ˆRn(w) − R(w)| ε
+)
+= PS
+(⋃
+w∈Nδ
+{
+| ˆRn(w) − R(w)| ε
+})
+, (E.6)
+∑
+w∈Nδ
+PS
+(
+| ˆRn(w) − R(w)| ε
+)
+. (E.7)
+Further, for δ > 0, since |N δ| has finitely many elements, we can invoke Hoeffding’s inequality for each of the summands on the right-hand side and obtain
+PS
+(
+max
+w∈Nδ
+| ˆRn(w) − R(w)| ε
+)
+2|Nδ| exp
+{
+− 2nε2
+B2
+}
+=: γ. (E.8)
+Notice that N δ is a random set, and choosing ε based on |N δ|, one can obtain a deterministic γ. Therefore, we can plug this back in (E.5) and obtain that, with probability at least 1 − γ
+sup
+w∈W
+| ˆRn(w) − R(w)| B
+√
+log(2|Nδ|)
+2n + log(1/γ)
+2n + 2Lδ. (E.9)
+Now since W ⊂ Rd, dimM W is finite. Then, for any sequence {δn}n∈N such that limn→∞ δn = 0, we have, ∀ > 0, ∃n > 0 such that n n implies
+log(|Nδ|) (dimM W + ) log(δ−1
+n ). (E.10)
+https://doi.org/10.1088/1742-5468/ac3ae7 22
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+Choosing δn = 1/√nL2 and = dimM W, we have for ∀n ndimM W ,
+log(2|Nδ|) log(2) + dimM W log(nL2) and 2Lδn = √2n. (E.11)
+Therefore, we obtain with probability at least 1 − γ
+sup
+w∈W
+| ˆRn(w) − R(w)| B
+√
+log(2) + dimM W log(nL2)
+2n + log(1/γ)
+2n + √2n, (E.12)
+B
+√
+2dimM W log(nL2)
+n + log(1/γ)
+n , (E.13)
+for sufficiently large n. This concludes the proof.
+We now proceed to the proof of theorem 1.
+Proof of theorem 1. By noticing Zn is countable (since Z is countable) and using the property that dimH∪i∈NAi = supi∈N dimH Ai (cf [Fal04], section 3.2), we observe that
+dimH W = dimH
+⋃
+n1
+⋃
+S ∈Z n
+WS = sup
+n1
+sup
+S ∈Z n
+dimH WS dH, (E.14)
+μu-almost surely. Define the event QR = {diam(W) R}. On the event QR, by theorem 5, we have that dimM W = dimM W = dimH W dH, μu-almost surely. Now, we observe that
+sup
+w∈WS
+| ˆR(w, S) − R(w)| sup
+w∈W
+| ˆR(w, S) − R(w)|. (E.15)
+Hence, by defining ε = B
+√
+2(dimM W) log(nL2)
+n + log(1/γ)
+n , and using the independence of S
+and U , lemma 1, and (E.14), we write
+PS,U
+(
+sup
+w∈WS
+| ˆR(w, S) − R(w)| > B
+√
+2dH log(nL2)
+n + log(1/γ)
+n ; QR
+)
+PS,U
+(
+sup
+w∈W
+| ˆR(w, S) − R(w)| > B
+√
+2dH log(nL2)
+n + log(1/γ)
+n ; QR
+)
+= PS,U
+(
+sup
+w∈W
+| ˆR(w, S) − R(w)| > B
+√
+2dH log(nL2)
+n + log(1/γ)
+n ; dimM W dH ; QR
+)
+PS,U
+(
+sup
+w∈W
+| ˆR(w, S) − R(w)| > ε ; QR
+)
+.
+https://doi.org/10.1088/1742-5468/ac3ae7 23
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+Finally, we let R → ∞ and use dominated convergence theorem to obtain
+PS,U
+(
+sup
+w∈WS
+| ˆR(w, S) − R(w)| > B
+√
+2dH log(nL2)
+n + log(1/γ)
+n
+)
+PS,U
+(
+sup
+w∈W
+| ˆR(w, S) − R(w)| > ε
+)
+γ,
+which concludes the proof.
+E.3. Proof of theorem 2
+Similar to the proof of theorem 1, we first prove a more general result where dimMW is fixed.
+Lemma 2. Assume that is bounded by B and L-Lipschitz continuous in w. Let W ⊂ Rd be a bounded set with dimMW dM. For any function ρ : R → R satisfying limx→∞ ρ(x) = ∞ and for a sufficiently large n, with probability at least 1 − γ, we have
+sup
+w∈W
+( ˆRn(w) − R(w)
+)
+cLB diam(W )
+√
+dMρ(n) + log(1/γ)
+n,
+where c is an absolute constant.
+Proof. We define the empirical process
+Gn(w) := ˆRn(w) − R(w) = 1
+n
+n ∑
+i=1
+(w, zi) − Ez[ (w, z)],
+and we notice that
+E[Gn(w)] = 0.
+Recall that a random process {G(w)}w∈W on a metric space (W, d) is said to have sub-Gaussian increments if there exists K 0 such that
+‖G(w) − G(w′)‖ψ2 Kd(w, w′), (E.16)
+where ‖ · ‖ψ2 denotes the sub-Gaussian norm [Ver19].
+We verify that {Gn(w)}w has sub-Gaussian increments with K = 2L/√n and for the metric being the standard Euclidean metric, d(w, w′) = ‖w − w′‖. To see why this is the case, notice that
+Gn(w) − Gn(w′) = 1
+n
+n ∑
+i=1
+[ (w, zi) − (w′, zi) − (Ez (w, z) − Ez (w′, z))] ,
+which is a sum of i.i.d. random variables that are uniformly bounded by
+| (w, zi) − (w′, zi) − (Ez (w, z) − Ez (w′, z))| 2L‖w − w′‖,
+https://doi.org/10.1088/1742-5468/ac3ae7 24
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+by the Lipschitz continuity of the loss. Therefore, Hoeffding’s lemma for bounded and centered random variables easily imply that
+E {exp [λ (Gn(w) − Gn(w′))]} exp
+[ 2λ2
+n L2‖w − w′‖2
+]
+, (E.17)
+thus, we have ‖Gn(w) − Gn(w′)‖ψ2 (2L/√n)‖w − w′‖.
+Next, define the sequence δk = 2−k and notice that we have δk ↓ 0. Dudley’s tail bound (see for example theorem 8.16 in [Ver19]) for this empirical process implies that, with probability at least 1 − γ, we have
+sup
+w,w′∈W
+(Gn(w) − Gn(w′)) C √Ln
+[
+SW + √log(2/γ)diam(W)
+]
+, (E.18)
+where C is an absolute constant and
+SW =
+∑
+k∈Z
+δk
+√
+log |Nδk(W)|.
+In order to apply Dudley’s lemma, we need to bound the above summation. For that, choose κ0 such that
+2κ0 diam(W) > 2κ0−1,
+and any strictly increasing function ρ : R → R. Now since dimMW dM, for the sequence {δk}k∈N, and for a sufficiently large n, whenever k ρ(n) , we have
+log |Nδk(W)| 2dM log(δ−1
+k)
+= log(4)dMk.
+By splitting the entropy sum in Dudley’s tail inequality in two terms, we obtain
+SW =
+∑
+k∈Z
+δk
+√
+log |Nδk(W)|
+=
+ρ(n)
+∑
+k=−κ0
+δk
+√
+log |Nδk(W)| +
+∑ ∞
+k= ρ(n)
+δk
+√
+log |Nδk(W)|.
+https://doi.org/10.1088/1742-5468/ac3ae7 25
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+For the first term on the right-hand side, we use the monotonicity of covering numbers, i.e. |Nδk| |Nδl| for k l, and write
+ρ(n)
+∑
+k=−κ0
+δk
+√
+log |Nδk(W)|
+√
+log |Nδ ρ(n) (W)|
+ρ(n)
+∑
+k=−κ0
+δk
+√log(4)dM ρ(n)
+∑ ∞
+k=−κ0
+δk
+√log(4)dMρ(n)2κ0+1
+4diam(W )√log(4)dMρ(n).
+For the second term on the right-hand side, we have
+∞ ∑
+k= ρ(n)
+δk
+√
+log |Nδk(W)| √log(4)dM
+∞ ∑
+k= ρ(n)
+√kδk
+√log(4)dM
+∑ ∞
+k=0
+kδk
+= 2√log(4)dM.
+Combining these, we obtain
+SW 2√log(4)dM
+{
+1 + 2diam(W)√ρ(n)
+} .
+Plugging this bound back in Dudley’s tail bound (E.18), we obtain
+sup
+w,w′∈W
+(Gn(w) − Gn(w′)) CLdiam(W)
+√dMρ(n) + √log(2/γ)
+√n .
+Now fix w0 ∈ W and write the triangle inequality,
+sup
+w∈W
+Gn(w) sup
+w,w′∈W
+(Gn(w) − Gn(w′)) + Gn(w0).
+Clearly for a fixed w0 ∈ W, we can apply Hoeffding’s inequality and obtain that, with probability at least 1 − γ,
+Gn(w0) B
+√
+log(2/γ)
+n.
+Combining this with the previous result, we have with probability at least 1 − 2γ
+sup
+w∈W
+Gn(w) CLdiam(W)
+√dM
+√KdM + √log(2/γ)
+√n + B
+√
+log(2/γ)
+n.
+Finally replacing and γ with γ/2 and collecting the absolute constants in c, we conclude the proof.
+https://doi.org/10.1088/1742-5468/ac3ae7 26
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+Proof of theorem 2. The proof follows the same lines of the proof of theorem 1, except that we invoke lemma 2 instead of lemma 1.
+E.4. Proof of theorem 3
+Proof. We start by restating our theoretical framework in an equivalent way for mathematical convenience. In particular, consider the (countable) product measure μz∞ = μz ⊗ μz ⊗ . . . defined on the cylindrical sigma-algebra. Accordingly, denote S ∼
+μz∞ as an infinite sequence of i.i.d. random vectors, i.e. S = (zj)j 1 with zj ∼i.i.d. μz for all j = 1, 2, . . . . Furthermore, let Sn := (z1, . . . , zn) be the first n elements of S. In this nota
+tion, we have S d= Sn and WS
+d= WSn, where d= denotes equality in distribution. Similarly,
+we have ˆRn(w) = ˆR(w, Sn). Due to the hypotheses and theorem 5, we have dimMWSn = dimHWSn =: dH(S, n), μu-almost surely. It is easy to verify that the particular forms of the δ-covers and N δ in H 5 still yield the same Minkowski dimension in (D.1). Then by definition, we have for all S and n:
+lim sup
+δ→0
+log |Nδ(WSn)|
+log(1/δ) = δli→m0 sup
+r<δ
+log |Nr(WSn )|
+log(1/r) = dH(S, n), (E.19)
+μu-almost surely. Hence for each n
+fn
+δ (S) := sup
+Q r<δ
+log |Nr(WSn)|
+log(1/r) → dH(S, n), (E.20)
+as δ → 0 almost surely, or alternatively, for each n, there exists a set Ωn of full measure such that
+lδi→m0 fn
+δ (S) = δli→m0 sup
+Q r<δ
+log |Nr(WSn )|
+log(1/r) → dH(S, n), (E.21)
+for all S ∈ Ωn. Let Ω∗ := ∩n Ωn. Then for S ∈ Ω∗ we have that for all n
+lδi→m0 fn
+δ (S) = δli→m0 sup
+Q r<δ
+log |Nr(WSn )|
+log(1/r) → dH(S, n), (E.22)
+and therefore, on this set we also have
+lδi→m0 sup
+n
+1
+αn
+min{1, |fn
+δ (S) − dH(S, n)|} → 0,
+where αn is a monotone increasing sequence such that αn 1 and αn → ∞. To see why, suppose that we are given a collection of functions {gn(r)}n where r > 0, such that limr→0 gn(r) → 0 for each n. We then have that the infinite dimensional vector (gn(r))n →
+https://doi.org/10.1088/1742-5468/ac3ae7 27
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+(0, 0, . . . ) in the product topology on R∞. We can metrize the product topology on R∞ using the metric
+d ̄(x, y) =
+∑
+n
+1
+αn
+min{1, |xn − yn|},
+where x = (xn)n 1, y = (yn)n 1, and 1 αn → ∞ is monotone increasing. Alternatively, notice that if limr→0 gn(r) → 0 for all n, for any > 0 choose N 0 such that for n N 0, 1/αn < , and choose r0 such that for r < r0, we have maxn N0|gn(r)| < . Then for r < r0 we have
+sup
+n
+1
+αn
+min{1, |gn(r)|} max
+{
+sup
+n N0
+1
+αn
+min{1, |gn(r)|}, sup
+n>N0
+1
+αn
+min{1, |gn(r)|}
+}
+max
+{
+αn
+, sup
+n>N0
+1
+αn
+}
+,
+where we used that αn 1.
+Applying the above reasoning we have that for all S ∈ Ω∗
+Fδ(S) := sup
+n
+1
+αn
+min{1, |fn
+δ (S) − dH(S, n)|} → 0,
+as δ → 0. By applying theorem 6 to the collection of random variables {F δ(S) ; δ}, for
+any δ′ > 0 we can find a subset Z ⊂ Z∞, with probability at least 1 − δ′ under μz∞, such that on Z the convergence is uniform, that is
+sup
+S∈Z
+sup
+n
+1
+αn
+min{1, |fn
+r (S) − dH(S, n)|} c(r),
+where c(r) → 0 as r → 0. Notice that c(r) = c(δ′, r), that is it depends on the choice of δ′ (for any δ′, we have limr→0 c(r ; δ′) = 0). As U and S are assumed to be independent, all the following statements hold μualmost surely, hence we drop the dependence on U to ease the notation. We proceed as in the proof of lemma 1:
+sup
+w∈WSn
+| ˆRn(w) − R(w)| max
+w∈N Sn
+δ
+∣∣∣Rˆ n(w) − R(w)
+∣∣∣ + 2Lδ. (E.23)
+Notice that on Z we have that
+sup
+S∈Z
+sup
+n
+1
+αn
+min{1, |fn
+r (S) − dH(S, n)|} c(r), for all r > 0,
+so in particular for any sequence {δn ; n 0} we have that
+{S ∈ Z} ⊆ ⋂
+n
+{1
+αn
+min{1, |fn
+δn(S) − dH(S, n)|} c(δn)
+}
+,
+or
+{S ∈ Z} ⊆ ⋂
+n
+{|Nδn (WSn )| (1/δn)dH(S,n)+αnc(δn)} .
+https://doi.org/10.1088/1742-5468/ac3ae7 28
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+Let (δn)n 0 be a decreasing sequence such that δn ∈ Q for all n and δn → 0. We then have
+P
+(
+max
+w∈Nδn(WSn)| ˆRn(w) − R(w)| ε
+)
+P
+(
+{S ∈ Z} ∩
+{
+max
+w∈Nδn(WSn )| ˆRn(w) − R(w)| ε
+})
++ δ′.
+For ρ > 0 and k ∈ N+ let us define Jk(ρ) := (kρ, (k + 1)ρ] and set ρn := log(1/δn). Furthermore, for any t > 0 define
+ε(t) :=
+√
+B2
+2n [log(1/δn) (t + αnc(δ′, δn)) + log(M /δ′)].
+Notice that ε(t) is increasing in t. Therefore, we have
+P
+(
+max
+w∈Nδn(WSn)| ˆRn(w) − R(w)| ε(dH(S, n))
+)
+δ′ + P
+({
+|Nδn (WSn )|
+(1
+δn
+)dH(S,n)+αnc(δn)}
+∩
+{
+max
+w∈Nδn (WSn)| ˆRn(w) − R(w)| ε(dH(S, n))
+})
+= δ′ +
+d
+ρ ∑n
+k=0
+P
+({
+|Nδn (WSn )|
+(1
+δn
+)dH (S,n)+αn c(δn ) }
+∩
+{
+max
+w∈Nδn (WSn)| ˆRn(w) − R(w)| ε(dH(S, n))
+}
+∩ {dH(S, n) ∈ Jk(ρn)}
+)
+= δ′ +
+d
+ρ ∑n
+k=0
+P
+({
+|Nδn (WSn )|
+(1
+δn
+)dH(S,n)+αnc(δn)}
+∩ {dH(S, n) ∈ Jk(ρn)}
+∩⋃
+w∈N (δn)
+(
+{w ∈ Nδn(WSn)} ∩
+{
+| ˆRn(w) − R(w)| ε(dH(S, n))
+}) ⎞
+⎠
+δ′ +
+d
+ρ ∑n
+k=0
+∑
+w∈Nδn
+P
+({
+| ˆRn(w) − R(w)| ε(kρn)
+}
+∩ {w ∈ Nδn(WSn)} ∩
+{
+|Nδn (WSn )|
+(1
+δn
+)dH(S,n)+αnc(δn)}
+∩ {dH(S, n) ∈ Jk(ρn)}
+)
+,
+where we used the fact dH(S, n) d almost surely, and that on the event dH(S, n) ∈ J k(ρn), ε(dH(S, n)) ε(kρn).
+https://doi.org/10.1088/1742-5468/ac3ae7 29
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+Notice that the events
+{w ∈ Nδn(WSn)} , {|Nδn(WSn)| (1/δn)dH(S,n)+αnc(δn)} , {dH(S, n) ∈ Jk(ρn)} ,
+are in G. To see why, notice first that for any 0 < δ ∈ Q
+|Nδ(WSn )| =
+∑
+w∈Nδ
+{w ∈ Nδ(WSn)} ,
+so |Nδ(WSn)| is G-measurable as a finite sum of G-measurable variables. From (E.20) it can also be seen that dH(S, n) is also G-measurable as a countable supremum of Gmeasurable random variables. On the other hand, the event {| ˆRn(w) − R(w)| ε(kρn)} is clearly in F (see H 5 for definitions). Therefore,
+P
+(
+max
+w∈Nδn(WSn)| ˆRn(w) − R(w)| ε(dH(S, n))
+))
+δ′ + M
+d
+ρ ∑n
+k=0
+∑
+w∈Nδn
+P
+({
+| ˆRn(w) − R(w)| ε(kρn)
+})
+×P
+(
+{w ∈ Nδn(WSn)} ∩
+{
+|Nδn (WSn )|
+(1
+δn
+)dH(S,n)+αnc(δn)}
+∩ {dH(S, n) ∈ Jk(ρn)}
+)
+,
+δ′ + 2M
+d
+ρ ∑n
+k=0
+e− 2nε2(kρn)
+B2
+∑
+w∈Nδn
+P
+(
+{w ∈ Nδn(WSn)}
+∩
+{
+|Nδn (WSn )|
+(1
+δn
+)dH(S,n)+αnc(δn)}
+∩ {dH(S, n) ∈ Jk(ρn)})
+δ′ + 2M
+d
+ρ ∑n
+k=0
+e− 2nε2(kρn)
+B2
+∑
+w∈Nδn
+E
+(
+{w ∈ Nδn(WSn)}
+×
+{
+|Nδn (WSn )|
+(1
+δn
+)dH(S,n)+αnc(δn)}
+× {dH(S, n) ∈ Jk(ρn)}
+)
+δ′ + 2M
+d
+ρ ∑n
+k=0
+e− 2nε2(kρn)
+B2 E
+⎛
+⎝∑
+w∈Nδn
+{w ∈ Nδn(WSn )}
+×
+{
+|Nδn (WSn )|
+(1
+δn
+)dH(S,n)+αnc(δn)}
+× {dH(S, n) ∈ Jk(ρn)}
+)
+,
+https://doi.org/10.1088/1742-5468/ac3ae7 30
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+δ′ + 2M
+d
+ρ ∑n
+k=0
+e− 2nε2(kρn)
+B2 E
+(
+|Nδn(WSn)| ×
+{
+|Nδn (WSn )|
+(1
+δn
+)dH (S,n)+αn c(δn ) }
+× {dH(S, n) ∈ Jk(ρn)}
+)
+= δ′ + 2M
+d
+ρ ∑n
+k=0
+e− 2nε2(kρn)
+B2 E
+([ 1
+δn
+]dH(S,n)+αnc(δn)
+× {dH(S, n) ∈ Jk(ρn)}
+)
+.
+Now, notice that the mapping t → ε2(t) is linear, with Lipschitz coefficient
+dε2(t)
+dt = B2
+2n log(1/δn).
+Therefore, on the event {dH(S, n) ∈ Jk(ρn)} we have
+ε2(dH(S, n)) − ε2(kρn) (dH(S, n) − kρn) B2
+2n log(1/δn) (E.24)
+ρn
+B2
+2n log(1/δn). (E.25)
+Hence,
+ε2(kρn) ε2 (dH(S, n)) − B2
+2n ,
+where we used the fact that ρn = log(1/δn). Therefore, we have
+P
+(
+max
+w∈Nδn(WSn)| ˆRn(w) − R(w)| ε(dH(S, n))
+)
+δ′ + 2M E
+⎛
+⎝
+d
+ρ ∑n
+k=0
+e− 2nε2(kρn)
+B2
+[1
+δn
+]dH (S,n)+αn c(δn )
+× {dH(S, n) ∈ Jk(ρn)}
+⎞
+⎠
+δ′ + 2M E
+⎛
+⎝
+d
+ρ ∑n
+k=0
+e− 2nε2(dH(S,n))
+B2 +1
+[1
+δn
+]dH(S,n)+αnc(δn)
+× {dH(S, n) ∈ Jk(ρn)}
+⎞
+⎠
+= δ′ + 2M E
+(
+e− 2nε2(dH(S,n))
+B2 +1
+[1
+δn
+]dH(S,n)+αnc(δn))
+.
+https://doi.org/10.1088/1742-5468/ac3ae7 31
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+By the definition of ε(t), for any S and n, we have that:
+2M e− 2nε2(dH(S,n))
+B2 +1
+[1
+δn
+]dH (S,n)+αn c(δn )
+= 2eδ′.
+Therefore,
+P
+(
+max
+w∈Nδn(WSn)| ˆRn(w) − R(w)| ε(dH(S, n))
+)
+(1 + 2e)δ′.
+That is, with probability at least 1 − (1 + 2e)δ′ we have:
+max
+w∈Nδn(WSn )| ˆRn(w) − R(w)| ε(dH(S, n))
+=
+√
+B2
+2n
+[log(√nL) (t + αnc(δ′, δn)) + log(M /δ′)].
+Choosing δn = 1/√nL2 and αn = log(n), for each δ′ > 0, with probability at least 1 −
+(1 + 2e)δ′ we have
+sup
+w∈WSn
+| ˆRn(w) − R(w)| B
+√
+log(√nL) [dH(S, n) + c(δ′, δn) log n] + log ( M
+δ′
+)
+2n + √2n,
+(E.26)
+where for each δ′ > 0, we have limn→∞ c(δ′, δn) = 0. Hence, for sufficiently large n, we
+have with probability at least 1 − (1 + 2e)δ′ we have:
+sup
+w∈WSn
+| ˆRn(w) − R(w)| 2B
+√
+[dH(S, n) + 1]log2(nL2) + log (M
+δ′
+)
+n . (E.27)
+Setting γ := (1 + 2e)δ′ and using 1 + 2e < 7, we obtain the desired result. This concludes the proof.
+References
+[AAV18] Asadi A, Abbe E and Verd ́u S 2018 Chaining mutual information and tightening generalization bounds Advances in Neural Information Processing Systems pp 7234–43
+[AB99] Au S K and Beck J L 1999 A new adaptive importance sampling scheme for reliability calculations Struct. Saf. 21 135–58
+[AB09] Anthony M and Bartlett P L 2009 Neural Network Learning: Theoretical Foundations (Cambridge: Cambridge University Press) [Ama98] Amari S-i 1998 Natural gradient works efficiently in learning Neural Comput. 10 251–76 [Ass83] Assouad P 1983 Densite ́ et dimension Ann. Inst. Fourier 33 233–82 [AZL19] Allen-Zhu Z and Li Y 2019 Can sgd learn recurrent neural networks with provable generalization? Advances in Neural Information Processing Systems pp 10331–41
+[AZLL19] Allen-Zhu Z, Li Y and Liang Y 2019 Learning and generalization in overparameterized neural networks, going beyond two layers Advances in Neural Information Processing Systems pp 6155–66
+[BB18] Barakat A and Bianchi P 2018 Convergence and dynamical behavior of the adam algorithm for non convex stochastic optimization (arXiv:1810.02263) [BE02] Bousquet O and Elisseeff A 2002 Stability and generalization JMLR 2 499–526
+https://doi.org/10.1088/1742-5468/ac3ae7 32
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+[BG60] Blumenthal R M and Getoor R K 1960 Some theorems on stable processes Trans. Am. Math. Soc. 95 263 – 73 [BJSG+18] Baity-Jesi M, Sagun L, Geiger M, Spigler S, Ben Arous G, Cammarota C, LeCun Y, Wyart M and Biroli G 2018 Comparing dynamics: deep neural networks versus glassy systems Proc. 35th Int. Conf. Machine Learning vol 80 pp 314–23 [BLG ̧S21] Birdal T, Lou A, Guibas L and  ̧Sim ̧sekli U 2021 Intrinsic dimension, persistent homology and generalization in neural networks Advances in Neural Information Processing Systems (NeurIPS) [Bog07] Bogachev V I 2007 Measure Theory vol 1 (Berlin: Springer) [BP17] Bishop C J and Peres Y 2017 Fractals in Probability and Analysis (Cambridge: Cambridge University Press) [Bra83] Bradley R C 1983 On the ψ-mixing condition for stationary random sequences Trans. Am. Math. Soc. 276 55–66
+[BSW13] B ̈ottcher B, Schilling R and Wang J 2013 Le ́vy Matters: III. Le ́vy-Type Processes: Construction, Approximation and Sample Path Properties (Lecture Notes in Mathematics) vol 2099 (Cham: Springer) [CDE+21] Alexander C, George D, Erdogdu M A, Gu ̈rb ̈uzbalaban M,  ̧Sim ̧sekli U and Zhu L 2021 Fractal structure and generalization properties of stochastic optimization algorithms NeurIPS [Cou65] Courrege P 1965 Sur la forme int ́egro-diffe ́rentielle des ope ́rateurs de ck ∞ dans c satisfaisant au principe du maximum Se ́minaire Brelot-Choquet-Deny. The ́orie du Potentiel vol 10 pp 1–38
+[CS18] Chaudhari P and Soatto S 2018 Stochastic gradient descent performs variational inference, converges to limit cycles for deep networks ICLR [CWZ+21] Alexander C, Wang X, Zhu L, Holmes C, G ̈urb ̈uzbalaban M and  ̧Sim ̧sekli U 2021 Asymmetric heavy tails and implicit bias in Gaussian noise injections ICML [Dal17] Dalalyan A S 2017 Theoretical guarantees for approximate sampling from smooth and log-concave densities J. R. Stat. Soc. B 79 651–76
+[DDB20] Dieuleveut A, Durmus A and Bach F 2020 Bridging the gap between constant step size stochastic gradient descent and Markov chains Ann. Stat. 48 1348–82 [DR17] Dziugaite G K and Roy D M 2017 Computing nonvacuous generalization bounds for deep (stochastic) neural networks with many more parameters than training data (arXiv:1703.11008) [DSD19] Dym N, Sober B and Daubechies I 2019 Expression of fractals through neural network functions (arXiv:1905.11345) [EH20] Erdogdu M A and Hosseinzadeh R 2020 On the convergence of Langevin Monte Carlo: the interplay between tail growth and smoothness (arXiv:2005.13097) [EM15] Erdogdu M A and Montanari A 2015 Convergence rates of sub-sampled Newton methods (arXiv:1508.02810)
+[EMG90] Edgar G A 1990 Topology Measure, and Fractal Geometry (Undergraduate Texts in Mathematics) (New York: Springer) [EMS18] Erdogdu M A, Mackey L and Shamir O 2018 Global non-convex optimization with discretized diffusions Advances in Neural Information Processing Systems pp 9671–80 [Fal04] Falconer K 2004 Fractal Geometry: Mathematical Foundations and Applications (New York: Wiley)
+[FFP20] Favaro S, Fortini S and Peluchetti S 2020 Stable behaviour of infinitely wide deep neural networks AISTATS
+[GGZ18] Gao X, G ̈urb ̈uzbalaban M and Zhu L 2018 Global convergence of stochastic gradient Hamiltonian Monte Carlo for non-convex stochastic optimization: non-asymptotic performance bounds and momentumbased acceleration (arXiv:1809.04618) [GSZ21] Gurbuzbalaban M, Simsekli U and Zhu L 2021 The heavy-tail phenomenon in SGD Int. Conf. Machine Learning
+[HDS18] Huang Q, Duan J and Song R 2018 Homogenization of stable-like feller processes (arXiv:1812.11624) [Hen73] Hendricks W J 1973 A dimension theorem for sample functions of processes with stable components Ann. Probab. 1 849–53
+[HLLL17] Hu W, Li C J, Li L and Liu J-G 2017 On the diffusion approximation of nonconvex stochastic gradient descent (arXiv:1705.07562) [HM21] Hodgkinson L and Mahoney M W 2021 Multiplicative noise and heavy tails in stochastic optimization Int. Conf. Machine Learning
+[HS97] Hochreiter S and Schmidhuber J 1997 Flat minima Neural Comput. 9 1–42 [H ̧SKM21] Hodgkinson L,  ̧Sim ̧sekli U, Khanna R and Mahoney M W 2021 Generalization properties of stochastic optimizers via trajectory analysis (arXiv:2108.00781) [IP06] Peter I and Pavlyukevich I 2006 First exit times of sdes driven by stable Le ́vy processes Stoch. Process. Appl. 116 611–42 [Jac02] Jacob N 2002 Pseudo Differential Operators and Markov Processes: Volume II. Generators and Their Potential Theory (Singapore: World Scientific) [JKA+17] Jastrzebski S, Kenton Z, Arpit D, Ballas N, Fischer A, Bengio Y and Storkey A 2017 Three factors influencing minima in SGD (arXiv:1711.04623)
+https://doi.org/10.1088/1742-5468/ac3ae7 33
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+[KH09] Krizhevsky A and Hinton G 2009 Learning Multiple Layers of Features from Tiny Images
+[Kho09] Khoshnevisan D 2009 From fractals and probability to le ́vy processes and stochastic PDEs Fractal Geometry and Stochastics IV (Berlin: Springer) pp 111–41
+[KL17] Kuzborskij I and Lampert C H 2017 Data-dependent stability of stochastic gradient descent (arXiv:1703.01678) [KX17] Khoshnevisan D and Xiao Y 2017 On the macroscopic fractal geometry of some random sets Stochastic Analysis and Related Topics (Berlin: Springer) pp 179–206 [Le ́v37] Le ́vy P 1937 The ́orie de l’Addition des Variables Ale ́atoires (Paris: Gauthiers-Villars) [LG19] Le Gue ́vel R 2019 The Hausdorff dimension of the range of the Le ́vy multistable processes J. Theor. Probab. 32 765–80
+[Lon17] London B 2017 A PAC-Bayesian analysis of randomized learning with application to stochastic gradient descent Advances in Neural Information Processing Systems pp 2931–40
+[LPH+17] Lu X, Perrone V, Leonard H, Teh Y W and Vollmer S 2017 Relativistic Monte Carlo AISTATS [LY19] L ̈orinczi J and Yang X 2019 Multifractal properties of sample paths of ground state-transformed jump processes Chaos Solitons Fractals 120 83–94 [Mat99] Mattila P 1999 Geometry of Sets and Measures in Euclidean Spaces: Fractals and Rectifiability (Cambridge: Cambridge University Press) [MBM16] Song M, Yu B and Montanari A 2016 The landscape of empirical risk for non-convex losses (arXiv:1607.06534) [MHB16] Mandt S, Hoffman M and Blei D 2016 A variational analysis of stochastic gradient algorithms ICML [MM19] Martin C H and Mahoney M W 2019 Traditional and heavy-tailed self regularization in neural network models ICML [MMO15] Mohammadi M, Mohammadpour A and Ogata H 2015 On estimating the tail index and the spectral measure of multivariate α-stable distributions Metrika 78 549–61 [MSS19] Malach E and Shalev-Shwartz S 2019 Is deeper better only when shallow is good? NeurIPS [MWZZ17] Mou W, Wang L, Zhai X and Zheng K 2017 Generalization bounds of sgld for non-convex learning: two theoretical viewpoints (arXiv:1707.05947) [MX05] Meerschaert M M and Xiao Y 2005 Dimension results for sample paths of operator stable L ́evy processes Stoch. Process. Appl. 115 55–75
+[NBMS17] Neyshabur B, Bhojanapalli S, McAllester D and Srebro N 2017 Exploring generalization in deep learning NeurIPS
+[NHD+19] Negrea J, Haghifam M, Dziugaite G K, Khisti A and Roy D M 2019 Information-theoretic generalization bounds for SGLD via data-dependent estimates Advances in Neural Information Processing Systems pp 11015–25 [N ̧SGR19] Nguyen T H,  ̧Sim ̧sekli U, G ̈urb ̈uzbalaban M and Richard G 2019 First exit time analysis of stochastic gradient descent under heavy-tailed gradient noise NeurIPS [NTS15] Neyshabur B, Tomioka R and Nathan S 2015 Norm-based capacity control in neural networks Conf. Learning Theory pp 1376–401
+[OKL19] Orvieto A, Kohler J and Lucchi A 2019 The role of memory in stochastic optimization (arXiv:1907.01678) [Pav07] Pavlyukevich I 2007 Cooling down Le ́vy flights J. Phys. A: Math. Theor. 40 12299 [PBL19] Poggio T, Banburski A and Liao Q 2019 Theoretical issues in deep networks: approximation, optimization and generalization (arXiv:1908.09375) [Pol64] Polyak B T 1964 Some methods of speeding up the convergence of iteration methods USSR Comput. Math. Math. Phys. 4 1–17
+[PSGN19] Panigrahi A, Somani R, Goyal N and Netrapalli P 2019 Non-Gaussianity of stochastic gradient noise (arXiv:1910.09626) [RRT17] Raginsky M, Alexander R and Telgarsky M 2017 Non-convex learning via stochastic gradient Langevin dynamics: a nonasymptotic analysis (arXiv:1702.03849) [RZ19] Russo D and Zou J 2019 How much does your data exploration overfit? controlling bias via information usage Trans. Inf. Theory 66 302–23
+[Sat99] Sato K-i 1999 Le ́vy Processes and Infinitely Divisible Distributions (Cambridge: Cambridge University Press) [Sch98] Schilling R L 1998 Feller processes generated by pseudo-differential operators: on the Hausdorff dimension of their sample paths J. Theor. Probab. 11 303–30 [Sch16] Schilling R L 2016 An introduction to Le ́vy and feller processes Le ́vy-type Processes to Parabolic SPDEs ed D Khoshnevisan and R Schilling (Basel: Birkha ̈user) [[ ̧SGN+19]]  ̧Sim ̧sekli U, G ̈urb ̈uzbalaban M, Nguyen T H, Richard G and Sagun L 2019 On the heavy-tailed theory of stochastic gradient descent for deep neural networks (arXiv:1912.00018) [SHTY13] Sugiyama M, Hirowatari E, Tsuiki H and Yamamoto A 2013 Learning figures with the Hausdorff metric by fractals-towards computable binary classification Mach. Learn. 90 91–126
+[SSBD14] Shalev-Shwartz S and Ben-David S 2014 Understanding Machine Learning: From Theory to Algorithms (Cambridge: Cambridge University Press)
+https://doi.org/10.1088/1742-5468/ac3ae7 34
+
+
+J. Stat. Mech. (2021) 124014
+Hausdorff dimension, heavy tails, and generalization in neural networks
+[SSG19] Simsekli U, Sagun L and Gurbuzbalaban M 2019 A tail-index analysis of stochastic gradient noise in deep neural networks ICML
+[ST94] Samorodnitsky G and Taqqu M S 1994 Stable Non-gaussian Random Processes: Stochastic Models with Infinite Variance vol 1 (Boca Raton, FL: CRC Press) [SZ15] Simonyan K and Zisserman A 2015 Very deep convolutional networks for large-scale image recognition ICLR ed Y Bengio and Y LeCun [[ ̧SZTG20]]  ̧Sim ̧sekli U, Zhu L, Teh Y W and G ̈urb ̈uzbalaban M 2020 Fractional underdamped Langevin dynamics: retargeting sgd with momentum under heavy-tailed gradient noise Int. Conf. Machine Learning [Ver19] Vershynin R 2019 High-Dimensional Probability (Cambridge: Cambridge University Press) [Xia03] Xiao Y 2003 Random fractals and Markov processes Mathematics 2003 830–907 [XR17] Xu A and Raginsky M 2017 Information-theoretic analysis of generalization capability of learning algorithms NeurIPS [XZ20] Xie L and Zhang X 2020 Ergodicity of stochastic differential equations with jumps and singular coefficients Ann. Inst. Henri Poincare ́ 56 175–229
+[Yan18] Yang X 2018 Multifractality of jump diffusion processes Ann. Inst. Henri Poincare ́ 54 2042–74 [ZKV+19] Zhang J, Karimireddy S P, Veit A, Kim S, J Reddi S, Kumar S and Sra S 2019 Why ADAM beats SGD for attention models (arXiv:1912.03194) [ZLZ19] Zhou Y, Liang Y and Zhang H 2019 Understanding generalization error of sgd in nonconvex optimization Stat 1050 7
+[ZWY+19] Zhu Z, Wu J, Yu B, Wu L and Ma J 2019 The anisotropic noise in stochastic gradient descent: its behavior of escaping from sharp minima and regularization effects ICML
+https://doi.org/10.1088/1742-5468/ac3ae7 35

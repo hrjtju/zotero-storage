@@ -1,0 +1,1351 @@
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+Efficient Neural SDE Training using Wiener-Space Cubature ∗
+Luke Snow LAS474@CORNELL.EDU School of Electrical and Computer Engineering Cornell University Ithaca, NY, USA
+Vikram Krishnamurthy VIKRAMK@CORNELL.EDU School of Electrical and Computer Engineering Cornell University Ithaca, NY, USA
+Editor:
+Abstract
+A neural stochastic differential equation (SDE) is an SDE with drift and diffusion terms parametrized by neural networks. The training procedure for neural SDEs consists of optimizing the SDE vector field (neural network) parameters to minimize the expected value of an objective functional on infinite-dimensional path-space. Existing training techniques focus on methods to efficiently compute path-wise gradients of the objective functional with respect to these parameters, then pair this with Monte Carlo simulation to estimate the gradient expectation. In this work we introduce a novel training technique which bypasses and improves upon this Monte Carlo simulation; we extend results in the theory of Wiener space cubature to approximate the expected objective functional value by a weighted sum of functional evaluations of deterministic ODE solutions. Our main mathematical contribution enabling this approximation is an extension of cubature bounds to the setting of Lipschitz-nonlinear functionals acting on path-space. Our resulting constructive algorithm allows for more computationally efficient training along several lines. First, it circumvents Brownian motion simulation and enables the use of efficient parallel ODE solvers, thus decreasing the complexity of path-functional evaluation. Furthermore, and more surprisingly, we show that the number of paths required to achieve a given (expected loss functional oracle value) approximation can be reduced in this deterministic cubature regime. Specifically, we show that under reasonable regularity assumptions we can observe a O(n−1) convergence rate, where n is the number of path
+evaluations; in contrast with the standard O(n−1/2) rate of naive Monte Carlo or the O(log(n)/n) rate of quasi-Monte Carlo. Keywords: neural stochastic differential equations, generative modeling, stochastic dynamical systems, Wiener-space cubature, rough path theory
+1 Introduction
+A neural stochastic differential equation (SDE) (Tzen and Raginsky, 2019a; Liu et al., 2019; Kidger et al., 2021b; Issa et al., 2024; Tzen and Raginsky, 2019b; Li et al., 2020) is an SDE with drift and diffusion terms parametrized by neural networks. Neural SDEs are highly flexible continuoustime generative models for time-series data, capable of approximating arbitrary dynamics. They are useful for modeling continuous-time systems with noise, as they learn the underlying stochastic
+*. This research was supported by NSF grants CCF-2312198 and CCF-2112457 and U. S. Army Research Office under grant W911NF-24-1-0083
+1
+arXiv:2502.12395v4 [cs.LG] 31 Oct 2025
+
+
+SNOW AND KRISHNAMURTHY
+processes directly from data, using the function approximation capabilities of neural networks. Applications include generative time-series tasks such as in quantitative finance (Gierjatowicz et al., 2020; Arribas et al., 2020; Choudhary et al., 2024). The training procedure for neural SDEs involves tuning the vector field (neural network) parameters to minimize a functional distance measure between the distributional law of the neural SDE and an empirical data distribution. Existing works innovate along two main directions: the development of novel functional distance measures, and construction of more efficient computation of gradients with respect to parameters. The former includes approaches such as adversarial GAN objectives (Kidger et al., 2021b), variational free energy minimization (Tzen and Raginsky, 2019a), finite-dimensional distribution matching (Zhang et al., 2024), and signature kernel scores (Issa et al., 2024). The latter includes methods such as automatic differentiation (AD) (Tzen and Raginsky, 2019a) and stochastic adjoint methods (Kidger et al., 2021c). Existing training techniques assume that path-wise parameter gradient computations of neural SDE sample paths can be combined with Monte Carlo simulation to obtain gradients of the distributional performance, quantified by the expected value of an appropriate loss functional. Inherently accepted is that this Monte Carlo simulation fundamentally produces an estimate with statistical error O(n−1/2), where n is the number of SDE sample path gradient evaluations. In this work, we move beyond this Monte Carlo training regime to construct a more efficient training scheme. Specifically, we extend results from the theory of Wiener space cubature to express the expected loss functional as a functional of a weighted sum of deterministic ordinary differential equation (ODE) solutions. This reformulation allows us to express the optimization objective as a minimization problem with respect to this functional of ODE solutions. Optimization of this derived expression offers two important advantages: 1. Exploiting efficient ODE methods. We improve upon existing neural SDE path-wise gradient computation by leveraging efficient ODE gradient computation methods. One may circumvent the computational requirement of simulating and storing Brownian motion paths, reducing both time and memory complexity. 2. Improve upon Monte Carlo complexity. Under reasonable assumptions, we improve upon the O(n−1/2) Monte Carlo simulation guarantee, achieving O(n−1) complexity. This drastically reduces the number of paths which must be solved to achieve a given approximation bound. Observe that the two advantages of this approach are complimentary: the latter means we can reduce the number of paths required to achieve any given loss approximation bound. The former means, that since these paths are now solutions of ODEs, rather than SDEs, each path evaluation is also cheaper in both time and memory overhead. Pre-Processing Necessity: These computational savings are nontrivial, but as such they are not free. As we will discuss, they rely on our ability to construct structured deterministic cubature paths in our ambient space, which we solve the ODEs with respect to. We call this construction a necessary pre-processing step, which must be run once before training the model. However, we provide a quantitative complexity bound for the computation required in this pre-processing step, and show numerically that even in high dimensions it is negligible compared to the gains in efficiency made during training.
+Contribution – Cubature Bounds for Nonlinear Functionals: Our key mathematical contribution is an extension of cubature on Wiener space (Lyons and Victoir, 2004) to the nonlinear path functional domain. Cubature on Wiener space extends the idea of deterministic quadrature for numerical integration, as represented by Tchakaloff’s theorem (Bayer and Teichmann, 2006), to solutions of
+2
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+diffusions driven by Brownian motion. This approach was introduced by Lyons and Victoir (Lyons and Victoir, 2004) for numerically solving partial differential equations through their stochastic Fokker-Planck representation, via diffusion-law approximations by deterministic ODE solutions through well chosen ”cubature” paths. Such results (Lyons and Victoir, 2004; Litterer and Lyons, 2012; Crisan and McMurray, 2019) are grounded in the Lie-algebraic structures of rough path theory (Lyons, 1998), and quantify approximation error at single-time instances of (functions of) the diffusion law. These approximation bounds can be extended straightforwardly to linear functionals operating on path-space, by Riesz representation and uniform integral bounds. However, many useful neural SDE loss functionals are nonlinear functionals (Li et al., 2020; Kidger et al., 2021b; Zhang et al., 2024); our main mathematical contribution is the development of Wiener-space cubature bounds for general nonlinear functionals, which need only satisfy a minimal Lipschitz condition. Other works have investigated such cubature approximation for infinite-dimensional nonlinear functionals, e.g., Bayer and Friz (2013), but only in the asymptotic weak convergence sense. As far as we are aware, we are the first to provide non-asymptotic approximation bounds which allow for complexity quantification, in this generalized domain. This should be of interest outside the domain of neural SDE training. Next we introduce the neural SDE model in Section 1.1, discuss the learning framework in Section 1.2, and outline our contributions in more detail in Section 1.2.2.
+1.1 Neural SDE
+In this section we introduce the neural SDE as an Itoˆ stochastic differential equation since that is the prevailing form in the neural SDE literature. However, in Section 2 we reformulate it as a Stratonovich SDE for analytical convenience and consistency with the cubature methodology. Fix a finite time horizon T > 0, and let B ∶ [0, T ] → Rdb be a db-dimensional standard Brownian motion. Let v ∼ N (0, Idv ) be a dv-dimensional normal random variable. We define the neural SDE model analogously to Kidger et al. (2021b); Issa et al. (2024); Zhang et al. (2024) , as
+Xθ
+0 = ζθ(v), dXθ
+t = μθ(t, Xθ
+t )dt + σθ(t, Xθ
+t )dBt (1)
+with t ∈ [0, T ], and
+ζθ ∶ Rdv → Rdx , μθ ∶ [0, T ] × Rdx → Rdx , σθ ∶ [0, T ] × Rdx → Rdx×db (2)
+Here ζθ, μθ, σθ are neural networks collectively parametrized by weights θ ∈ Θ, where Θ is a
+compact subset of Rdθ . In practice, the neural network architecture automatically confines the parameter space to this compact domain Θ. We specify assumptions on the structure of the neural networks in Section 2.2.1, such that (1) has a unique strong solution for all t ∈ [0, T ], denoted by
+Xtθ ∈ Rdx .
+1.2 Learning Framework
+In this section we outline the framework for training neural SDEs, and provide an outline of our main results. Neural SDEs are trained such that their path-space distributional statistics approximate some empirical (training) data in path-space.
+Neural SDE Path-Space Distribution: Let X be the space of continuous paths on [0, T ], and
+denote Xθ ∈ X a sample path of the neural SDE (1) with parameter θ. We index path Xθ in time as
+(Xtθ)t∈[0,T ]. Let P(θ) = Law((Xtθ)t∈[0,T ]) be the distributional law of the process Xθ.
+3
+
+
+SNOW AND KRISHNAMURTHY
+Empirical Training Data: We assume access to an empirical data distribution Xdata on pathspace X , i.e., a collection of paths on X . We aim to train (1) such that P(θ) ≈ Xdata; such that P(θ) approximates Xdata in a distributional sense. This approximation can be quantified rigorously by utilization of a loss functional, as we now discuss.
+1.2.1 LOSS FUNCTIONAL
+The procedure for training a neural SDE exploits the construction of a loss functional L ∶ X × X → R, which compares two paths on X . Then, P(θ) ≈ Xdata can be identified with minimizing EXθ∼P(θ),X′∼Xdata[L(X, X′)]. In this work we assume a fixed empirical data distribution Xdata, without loss of generality. Then for ease of notation we represent the training objective through a data-dependent loss functional
+Ldata = EX∼Xdata [L(⋅, X)] ∶ X → R
+which quantifies the distance between neural SDE paths Xθ ∈ X and the specified data distribution Xdata. In terms of the learning framework, we may then identify the relation P(θ) ≈ Xdata as oc
+curring when E[Ldata(Xθ)] is small. Thus, the training objective for a neural SDE, given empirical
+data distribution Xdata, is to solve the optimization problem1:
+arg min
+θ∈Θ⊂Rdθ
+EXθ∼P(θ)[Ldata(Xθ)] (3)
+Kidger et al. (2021b); Issa et al. (2024); Zhang et al. (2024); Briol et al. (2019); Gierjatowicz et al. (2022); Cuchiero et al. (2020); Li et al. (2020) explore the performance of neural SDE models under different constructions of (what is equivalently) Ldata. In contrast, in this work we investigate an
+efficient method for estimating the general objective EXt∼P(θ)[Ldata(Xθ)], and thus for training via backpropagation of gradients of this estimate. Existing Training Methodology: State-of-the-art techniques to optimizing (3) operate along three main principles. First, path-wise simulation and gradient evaluation ∂
+∂θ Ldata(Xθ). Then,
+Monte Carlo simulation to approximate E [ ∂
+∂θ Ldata(Xθ)] = ∂
+∂θ E[Ldata(Xθ)] with O(n−1/2) error. Third, optimization using gradient methods. Most innovation in training occurs in the first step, with the construction of loss functionals and efficient methods for SDE gradient evaluation. In contrast, in this work we develop a methodology for bypassing the Monte Carlo simulation by an efficient deterministic approximation scheme, namely Wiener-space cubature.
+1.2.2 MAIN RESULTS: EFFICIENT LEARNING USING WIENER SPACE CUBATURE
+In this paper we present an alternative approach to gradient backpropagation which circumvents the stochastic (Monte Carlo) simulation paradigm. We extend Wiener space cubature techniques (Lyons and Victoir, 2004) to approximate the expected loss functional E[Ldata(Xθ)] by a weighted sum of functionals of deterministic ODE solutions. Specifically, our main result can be stated informally as follows:
+1. As is standard in this framework, we only aim to compute a local stationary point, since global minimization is in general intractable. This does not detract from our work, which simply provides efficiency gains for existing state-of-the-art methods for neural SDE optimization.
+4
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+Meta-Theorem 1 (Wiener Space Cubature Approximation) The expected loss functional in (3) can be approximated by a convex combination of functionals of ordinary differential equation trajectories:
+E[Ldata(Xθ)] =
+n
+z∑=1
+λz Ldata (φθ
+z(t)) + error (4)
+where φzθ(t) is the solution at time t of an ODE w.r.t. vector fields in (1) and ”cubature” path ωz(t), z = 1, . . . , n. Here n is the number of ODEs to be solved and the weights satisfy λz ≥
+0, ∑n
+z=1 λz = 1. Also, under reasonable assumptions we achieve the following approximation bound: error = O (n−1)
+Observe that Meta-Theorem 1 implies the following
+min
+θ∈Θ
+n
+z∑=1
+λz Ldata (φθ
+z(t)) = min
+θ∈Θ E[Ldata(Xθ)] + O (n−1) (5)
+Thus, instead of optimizing the objective (3), we optimize the left hand side of (5). This allows us to not only achieve O(n−1) approximation complexity, but to compute backpropagated gradients more efficiently using ODE methods, as captured in the following Meta-Corollary.
+Meta-Corollary 1 (Efficient ODE Gradient Evaluations) Given the representation (4), we can optimize the approximate loss functional (5) by computing gradients as
+∂
+∂θ
+n
+z∑=1
+λz Ldata (φθ
+z(t)) =
+n
+z∑=1
+λz
+∂
+∂θ Ldata(φθ
+z(t)) (6)
+where ∂
+∂θ Ldata(φzθ(t)) can be computed using automatic differentiation or ODE adjoint gradient methods (Chen et al., 2018; Kidger et al., 2021a; Matsubara et al., 2021; McCallum and Foster, 2024). These techniques tend to be both more time- and memory- efficient than analogous methods for SDE gradient computation, such as automatic differentiation through SDE solvers (Tzen and Raginsky, 2019a) or stochastic adjoint methods (Kidger et al., 2021c).
+Meta-Theorem 1 and Meta-Corollary 1 represent the two main computational advantages of this approach, specifically: improvement upon Monte Carlo functional estimation complexity, and computation enhancement by removal of the requirement of simulating and storing Brownian motion, since we solve deterministic ODEs. Let us finally make a few remarks on the construction of this method.
+Remarks.
+1. Cubature Path and Weight Construction. The cubature paths ωz and weights λz, z ∈ [n], will be constructed such they are independent of θ. Thus, we need only compute them once prior to gradient descent, in a pre-processing operation, as discussed in Section 3. 2. Sparse Path and Weight Recombination. The key operation that allows our O(n−1) complexity bound is a high-order recombination procedure introduced in Litterer and Lyons (2012). This procedure sparsifies the cubature weights thereby drastically reducing the number of ODEs to be solved while maintaining desirable accuracy. This is made rigorous in Section 3.
+5
+
+
+SNOW AND KRISHNAMURTHY
+Organization: Section 2 outlines the Wiener space cubature methodology and provides our first result, Theorem 4, which extends the cubature techniques to approximate functionals on infinitedimensional path-space. Section 3 introduces a high-order recombination procedure which drastically reduces the number of necessary ODE computations to achieve a desirable cubature approximation. It contains our second main result, Theorem 9, which provides the precise guarantees that were presented in Meta-Theorem 1. Section 4 provides a detailed high-dimensional numerical implementations of our method, verifying the improvements in gradient estimation complexity and training efficiency. All the results in this paper are fully reproducible and the code is available at
+https://github.com/LukeSnow0/Neural-SDE. All proofs are in the appendix.
+2 Neural SDE Wiener Space Cubature
+In this section we first introduce the existing methodology of Wiener space cubature approximations. We then extend these techniques to handle loss functionals, enabling application to neural SDE training. The main result of this section is Theorem 4, which provides explicit error bounds between the expected loss functional and our constructed Wiener space cubature approximation.
+2.1 Wiener Space Cubature Formulation
+In this section we first introduce the Stratonovich SDE reformulation of the neural SDE (1). We then introduce the fixed-time Wiener space cubature formulation of Lyons and Victoir (2004), which utilizes this Stratonovich form.
+2.1.1 STRATONOVICH REFORMULATION
+For notational convenience and consistency with the cubature literature, we absorb the time-dependency in (1) into the state space. This allows us to express vector fields in terms of only the augmented state vector Xˆt. First, recall the neural SDE (1) in Itoˆ form. The time-dependence of vector fields μθ(t, ⋅), σθ(t, ⋅) can be absorbed into the state-space by
+constructing the following equivalent augmented system: Let Xˆt,[i∶j] denote the ith to jth elements
+of augmented vector Xˆt, and Xˆt,[i] denote the i’th element. For variable Xˆt ∈ Rdx+1, with Xˆt,[0] = t, let
+Xˆ0,[1∶dx] = ζθ(v), dXˆt = μˆθ(Xˆt)dt + σˆθ(Xˆt)dBt, Xˆ0,[0] = 0, dXˆt,[0] = dt
+ζθ ∶ Rdv → Rdx , μˆθ ∶ Rdx+1 → Rdx+1, σˆθ ∶ Rdx+1 → Rdx+1×db (7)
+Next, let {V θ
+i }db
+i=0 be the vector fields in the Stratonovich formulation of the augmented neural
+SDE (1), with Xtθ ∈ Rdx+1. Specifically,
+Vθ
+0 (x) = μˆθ(x) − 1
+2
+db
+i=∑1
+dV θ
+i (x) ⋅ V θ
+i (x), V θ
+i (x) = σˆθ
+i (x), i = 1, . . . , db
+Then,
+Xθ
+t =∫
+t
+0
+Vθ
+0 (Xθ
+s )ds + ∫
+t
+0
+db
+i=∑1
+Vθ
+i (Xθ
+s ) ○ dBi
+s=∫
+t
+0
+db
+i=∑0
+Vθ
+i (Xθ
+s ) ○ dBi
+s, Xθ
+t,[0] = t (8)
+6
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+with ○ dBsi denoting Stratonovich stochastic integration, and by convention ○ dBt0 = dt. The initial value in the Stratonovich formulation is chosen identical to (1); therefore, the process described by (8) is equivalent to the original process (1).
+2.1.2 WIENER SPACE CUBATURE
+Given the Stratonovich SDE formulation (8), the following is the main Wiener-space cubature result of Lyons and Victoir (2004); this result pioneered the usage of deterministic cubature approximations in stochastic analysis (Crisan and McMurray, 2019) and finance (Teichmann, 2006), for instance.
+Theorem 1 (Lyons and Victoir (2004)) Denote by C0
+bv([0, T ], Rd) the space of Rd-valued con
+tinuous functions of bounded variation defined on [0, T ]. Let (Xtθ)t∈[0,T ] be the solution of a
+SDE in Stratonovich form (8), with vector fields {V θ
+i }db
+i=0. There exist, for any sufficiently smooth
+f ∶ Rdx+1 → R, paths and weights
+ω1, . . . , ωq ∈ C0
+bv([0, T ], Rdb+1), λ1, . . . , λq > 0 ∶
+q
+i=∑1
+λi = 1 (9)
+such that for t > 0 ,
+E[f (Xθ
+t )] =
+q
+j=∑1
+λjf (φθ
+j (t)) + O(t m+1
+2 ) (10)
+Here m is the cubature ”order”, and φθ
+j (t) is the solution at time t of the following ordinary differential equation with respect to ωj, in the sense of Lyons and Victoir (2004):
+dφθ
+j (t) =
+db
+i=∑0
+Vθ
+i (φθ
+j (t))dωi
+j(t), φθ
+0 = X0 = ζθ(v) (11)
+Proof See Appendix
+Theorem 1 allows one to approximate the solutions of an SDE by computing solutions of ODEs with respect to the SDE-defining vector fields {V θ
+i }db
+i=1 and well-chosen ”cubature paths” {ωi}q
+j=1
+and weights {λj}q
+j=1. The cubature ”order”, defining the structure of these paths and weights, essentially controls the precision of this approximation (10) and can be controlled such that this method is more efficient than Monte Carlo baselines for computing E[f (Xtθ)]. In this work we extend
+Theorem 1 to general Lipschitz-nonlinear functionals of the entire SDE path {Xtθ, t ∈ [0, T ]}, and present constructive algorithms for utilizing this approximation for neural SDE training. Next we provide some insight into the construction of the cubature paths and weights defining (10), but refer to Lyons and Victoir (2004) for the full details.
+2.1.3 CUBATURE PATH AND WEIGHT CONSTRUCTION
+Lyons and Victoir (2004) provides not only the existence of cubature paths and weights defining an approximation of the form (10), but provides quantitative conditions on these paths and weights that can lead to their construction (10). Furthermore, explicit paths and weights (9) of certain orders (m = 3, 5) are constructed which satisfy (10). These paths and weights can be abstractly considered
+7
+
+
+SNOW AND KRISHNAMURTHY
+as approximating the statistics of the underlying Brownian motion driving the system (1); here we provide their formal defining property. This definition relies on a stochastic Taylor expansion and is based in rough path theory, see Lyons and Victoir (2004) for full details.
+Definition 2 (Cubature Path and Weights) Denote
+A=
+∞
+k⋃=0
+{0, . . . , db}k, Am = {(i1, . . . , ik) ∈ A/{∅, 0} ∶ k + card{j ∶ ij = 0} ≤ m} (12)
+where card{S} returns the cardinality of the set S. The paths ω1, . . . , ωq ∈ C0
+bv([0, T ], Rdb) and weights λ1, . . . , λq > 0 define a cubature formula on Wiener space of degree m at time T if for all (i1, . . . , ik) ∈ Am,
+E (∫0<t1<⋅⋅⋅<tk=T ○dBi1
+t1 ⋅ ⋅ ⋅ ○ dBik
+tk ) =
+q
+j=∑1
+λj ∫0<t1<⋅⋅⋅<tk=T
+dωi1
+j (t1) . . . dωik
+j (tk) (13)
+The paths and weights necessary to achieve the approximation (10) are precisely those that define a cubature formula on Wiener space of degree m at time t. These will be used in our cubature path construction in Section 2.2.2.
+The following Lemma provides the existence of such paths and weights, enabling Theorem 1. This Lemma can be viewed as an extension of Tchakaloff’s Theorem (Bayer and Teichmann, 2006).
+Lemma 3 (Lyons and Victoir (2004) Theorem 2.4) Let m be a natural number. Then there exist q paths ω1, . . . , ωq ∈ C0
+bv([0, T ], Rdb+1) and q positive weights λ1, . . . , λq with q ≤ card{Am}, defining a cubature formula on Wiener space of degree m at time T .
+The contribution of Lyons and Victoir (2004) is to provide not only existence of such cubature paths and weights, but explicit constructions of them for certain orders m. Definition 2 provides the structure necessary to explicitly specify such paths and weights, and Lyons and Victoir (2004) does so using Lie-algebraic synthesis rooted in this stochastic Taylor expansion, for orders m = 3, 5. An explicit order m = 7 construction is given in Ferrucci et al. (2024) using Hopf algebraic techniques. For our purposes, we omit these construction techniques and simply rely on the fact that certain explicit constructions exist. We can directly use these existing cubature paths and weights within our constructive algorithms for efficient neural SDE training. First, we must attain the noted generalization of Theorem 1 to nonlinear functionals.
+2.2 Wiener Space Cubature for Nonlinear Loss Functional
+In Section 2.1 we introduced the structure of cubature formulations on Wiener space, which approximate the expected value of functions of solutions of SDEs at single time-instances. Recall that the training procedure for neural SDEs involved minimization of a data-dependent loss functional, which acts on entire paths rather than solutions at a single time instance. In this section we introduce an algorithmic procedure for extending the approximation capabilities of cubature methods to the nonlinear path functional domain. Put simply, we extend Wiener space cubature to a function space.
+8
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+2.2.1 PRELIMINARIES: ASSUMPTIONS AND STRUCTURAL DEFINITIONS
+Recall the notation of Section 1. We denote by (Xtθ)t∈[0,T ] the unique strong solution of the neural SDE (1). We are interested in forming cubature approximations of the expected path loss E[Ldata(Xθ)] with respect to loss functional Ldata, in the sense of a generalization of Theorem 1. We now introduce several assumptions which will be necessary for our generalized cubature approximation bounds, introduced in Section 2.2.2, to hold.
+A1 The vector fields ζθ, μθ, σθ in the Itoˆ neural SDE formulation (1) are Lipschitz-continuous, and Ev[ζθ(v)2] < ∞. Furthermore, assume there exists a constant M < ∞ such that
+sup
+t∈[0,T ],x∈Rdx ,θ∈Θ {∥μθ(t, x)∥ + ∥ ∂
+∂x μθ(t, x)∥ + ∥σθ(t, x)∥ + ∥ ∂
+∂x σθ(t, x)∥} ≤ M
+i.e., the vector fields are uniformly bounded in magnitude and in first-order spatial differentiation.
+A2 The loss functional Ldata(X) ∶ X → R is b-Lipschitz continuous with respect to the L1 metric over X ; that is,
+∣Ldata(X) − Ldata(Y )∣ ≤ b∥X − Y ∥1 = b ∫
+T
+0 ∣X(t) − Y (t)∣dt, ∀X, Y ∈ X
+A3 Recall Am in (12), and inductively define a family of Lie-bracketed vector fields as
+Vθ
+[∅] = 0, V θ
+[i] = V θ
+i , Vθ
+[α∗i] = [V θ
+[α], V θ
+i ], 0 ≤ i ≤ db, α ∈ A
+where [Vi, Vj] = JVj Vi − JViVj is the Lie bracket expansion and JV is the Jacobian matrix of
+vector field V . Then, we assume the vector fields {V θ
+i }i∈[db+1] satisfy the uniform Ho ̈rmander’s condition: there exists an integer p∗ such that
+inf
+⎧⎪⎪⎨⎪⎪⎩ ∑
+α∈A1(p∗)
+⟨V θ
+[α](x), ζ⟩2; x, ζ ∈ Rdx, ∣ζ∣ = 1, θ ∈ Θ
+⎫⎪⎪⎬⎪⎪⎭
+∶= M > 0 (14)
+Discussion of Assumptions: The continuity and growth assumptions in A1 are the standard conditions guaranteeing unique strong solutions to (1) (Kloeden et al., 1992). The uniform boundedness in A1 is assumed in Litterer and Lyons (2012), and can easily be satisfied in practice; with arbitrarily high probability the process Xtθ will be confined to some compact subset of the domain Rdx on the finite time interval [0, T ]. Thus, in computation we effectively consider the behavior of vec
+tor fields μθ and σθ within compact sets, in which case the boundedness immediately follows. A2 admits many standard neural SDE loss functionals, for instance the latent SDE formulation of Li et al. (2020). A3 is known as the uniform Ho ̈rmander condition, and was introduced in Kusuoka and Stroock (1987). It is widely assumed in formal analyses of SDEs as it ensures the smoothness of the solution of SDEs; see Section 5 of Elst and Robinson (2009) for a detailed treatment. Furthermore, in Section 6.1 of the supplementary document we provide sufficient conditions on practical neural SDE vector fields for A3 to be met; these conditions are easily satisfied e.g., when we have uniform ellipticity of the diffusion matrix2 This is .
+2. Specifically, a sufficient condition for A3 to be met is if the diffusion matrix gθ(t, x) = [V θ
+1 ⋯Vθ
+db ] ∈ Rd×m has full
+rank d and is uniformly nondegenerate: gθ(t, x) gθ(t, x)⊺ ⪰ λId, ∀(t, x, θ), for some λ > 0. In this case p∗ = 1 suffices.
+9
+
+
+SNOW AND KRISHNAMURTHY
+2.2.2 CUBATURE PATH CONSTRUCTION AND ERROR
+The purpose of this subsection is twofold: we first provide an explicit algorithmic construction of ODEs with respect to paths in X , exploiting explicit constructions of cubature paths and weights defined by Definition 2. Second, we analyze this construction to show that we can approximate the loss functional statistic E[Ldata(Xθ)] arbitrarily well by the solutions of these ODEs. Theorem 4 is our first main result, and provides a guarantee on this approximation. This construction, using interval-appendages of time-scaled paths, is exactly analogous to how Lyons and Victoir (2004) obtains desirable approximation rates using cubature formulae. Our procedure for approximating a loss functional satisfying A2 by deterministic cubature ODEs is as follows: 1. For q, m > 0, take cubature paths {ωj}j∈[q] and weights {λj}j∈[q] which define a cubature formula on Wiener space of degree m at time 1, as in Definition 2. Explicit constructions for such paths and weights are given in Lyons and Victoir (2004) for orders m = 3 and m = 5 and in Ferrucci et al. (2024) for order m = 7. 2. Divide the interval [0, T ] as
+0 = t0 < t1 < ⋅ ⋅ ⋅ < tk = T, (15)
+and let si = ti − ti−1, i = 1, . . . , k.
+3. Construct the exhaustive set of vectors {Iz ∈ Nk}z∈[qk] with each element taking a natural number 1, . . . , q and index beginning at 0. Construct scaled paths {ωs,j}j∈[q] as
+ωs,j ∶ [0, T ] → Rdb+1, ω0
+s,j(t) = t, ωi
+s,j(t) = √sωi
+j(t/s), for i = 1, . . . , db (16)
+Then, construct paths ωz ∶ [0, T ] → Rdb+1, z ∈ [qk] as
+ωz(t) =
+q
+j=∑1
+k
+i=∑0
+1(t ∈ [ti, ti+1))1(Iz[i] = j)ωsi+1,j(t) (17)
+4. Let φzθ(t) be the solution of the ODE
+dφθ
+z(t) =
+db
+i=∑0
+Vθ
+i (φθ
+z (t))dωi
+z(t), φθ
+0 = X0 = ζθ(v) (18)
+at time t, and where the initial point ζθ(v) is specified in (1). Denote by φzθ the entire path
+{φzθ(t), t ∈ [0, T ]} ∈ X
+Then, letting λ′
+z ∶= λIz[0] . . . λIz[k], the functional
+Φθ
+Ldata ∶= ∑
+z ∈[qk ]
+λ
+′
+z Ldata (φθ
+z) (19)
+forms an approximation of the loss functional statistic E[Ldata(Xθ)], with approximation error given by the following Theorem. This is the first main result of the paper, and constitutes our most significant mathematical contribution. It extends the Wiener-space cubature guarantees of Lyons and Victoir (2004) to general Lipschitz-nonlinear path functionals, and thus should be of interest outside the current setting of neural SDE training.
+10
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+Theorem 4 (Cubature Path Approximation Error) Recall the notation in Section 2.2.2. Let ti =
+T (1 − (1 − i
+k )γ) and 0 < γ < m − 1. Recall m is the cubature order in Definition 2. Under A1, A2 and A3 we have:
+∣E[Ldata(Xθ)] − Φθ
+Ldata ∣ ≤ 3 b T 1/2 K C(m, γ)k−γ/2 (20)
+where K is a constant independent of T , C(m, γ) is a constant depending only on m and γ.
+Proof See Appendix
+Thus, under suitable time discretization, we can approximate the loss functional statistic E[Ldata(Xθ)] arbitrarily well, taking k large enough, by solving the deterministic system of ODEs
+(19). 3 This result extends the guarantees of Lyons and Victoir (2004) to the nonlinear path functional domain, and may be of independent interest outside of the neural SDE training regime. The proof utilizes the Stone-Weierstrass Theorem, and can be found in Section 6.5.1.
+Remark. 1-Wasserstein metric structure. The bound (20) is derived from a bound on the 1Wasserstein distance between the neural SDE path-space law and the discrete cubature-induced path-space law. Indeed, by duality this 1-Wasserstein distance is equivalent to the supremum of the difference in expected 1-Lipschitz functional evaluations, with respect to each law. Thus, such a bound implies (20) for all nonlinear functionals Ldata satisfying the Lipschitz structure A2. Exponential Complexity: The price of achieving the approximation error (20) is that the number of ODEs (19) to be solved grows exponentially (qk) with the discretization (15) resolution k. In the following section we employ the high-order recombination method of Litterer and Lyons (2012) to drastically reduce the number of ODEs to be solved, while maintaining desirable approximation error. We do so in a constructive way that can result in an overall improvement in computational efficiency as compared to classical Monte Carlo stochastic simulation.
+3 High-Order Recombination for Efficient Neural SDE Cubature Approximations
+This section establishes the second main result of the paper, namely Algorithm 1 and Theorem 9. In particular, we show how to exploit the high-order recombination technique of Litterer and Lyons (2012) in order to drastically reduce the number of ODE evaluations required for a given approximation error. The idea is to partition the space of paths and re-weight within these partitions, such that the center of mass is preserved and the number of paths in the partition is reduced. First we introduce some preliminary definitions which will be used in the main recombination algorithm. Then we provide our second main result, Theorem 9, which provides a quantitative approximation bound resulting from this recombination procedure. The bound in Theorem 9 can be reduced, for certain parametrizations, such that an O(n−1) rate is achieved; this is detailed in Corollary 10. Furthermore, we provide explicit complexity bounds for the computation required to perform the preprocessing operation (recombined cubature path construction - Algorithm 1) necessary to achieve
+3. Recall that we require the inequality 0 < γ < m − 1 to hold. In practice, we need an explicit construction of cubature paths and weights of order m, as in Definition 2. Thus, currently we are limited to several specific choices for m (for instance, Lyons and Victoir (2004) provide explicit constructions for m = 3, 5). However, there is active research in providing explicit constructions of Wiener space cubature paths and weights of higher order; for instance Ferrucci et al. (2024) constructs order m = 7 Wiener space cubature paths using Hopf algebras. Such advancements to higherorder m cubature approximations will allow our bound (20) to become tighter by allowing γ to increase. However, the current constructions for m = 3 and 5 given in Lyons and Victoir (2004) are sufficient for the computational gains detailed in this paper.
+11
+
+
+SNOW AND KRISHNAMURTHY
+these rates. Finally we place these results within the overall context of neural SDE training via efficient backpropagation.
+3.1 Pre-Processing Recombination Algorithm
+Here we detail the pre-processing recombination algorithm, from which cubature paths and weights are produced that allow for advantageous approximation complexity rates. First some definitions.
+Definition 5 (Localization Litterer and Lyons (2012)) Consider a discrete probability measure μ on RN and a collection (Uj)l
+j=1 of balls of radius u on RN which covers the support of μ. Then, construct a collection of positive measures μj, 1 ≤ j ≤ l such that μi ⊥ μj ∀i ≠ j (disjoint supports),
+μ = ∑l
+i=1 μi, and supp(μj) ⊆ Uj ∩ supp(μ). Such a collection (Uj, μj)l
+j=1 is called a localization of
+μ to the cover (Uj)l
+j=1, with radius u.
+Definition 6 (Measure Reduction (Litterer and Lyons, 2012)) Let Pr denote a set of r test functions {p1, . . . , pr} on a measure space (Ω, μ) with μ a finite discrete measure:
+μ=
+ˆn
+i=∑1
+λiδzi, λi > 0, zi ∈ Ω (21)
+A probability measure μ ̃ is a reduced measure w.r.t. μ and Pr if supp(μ ̃) ⊆ supp(μ), ∫ p(x)μ ̃(dx) =
+∫ p(x)μ(dx) ∀p ∈ Pr, card(supp(μ ̃)) ≤ r + 1.
+Definition 7 (Reduced Measure w.r.t. Localization (Litterer and Lyons, 2012)) A measure μ ̃ is a reduced measure with respect to the localization (Uj, μj)l
+j=1 and a finite set of integrable test
+functions P if there exists a localization (Uj, μ ̃j)l
+j=1 of μ ̃ such that for 1 ≤ j ≤ l the measures μ ̃j are reduced measures (Def. 6) w.r.t. μj and P .
+Computing a reduced measure with respect to a localization is a key component of our preprocessing procedure (Algorithm 1). It allows one to transform a finite measure into another with drastically reduced support which approximates the statistics of the original. Litterer and Lyons (2012) presents an algorithmic procedure for computing such reduced measures. We refer to this operation which takes a measure μ (21) and outputs a reduced measure with respect to a localization (Uj, μj)l
+j=1, with card{supp(μ ̃)} = l(r + 1) as RM Procedure (RMP). For our purposes we may consider only this abstract procedure; for brevity we provide all details of RMP in Appendix 6.4.
+Definition 8 (Reduced Measure Procedure (RMP)) A Reduced Measure Procedure (RMP) takes as input a discrete measure μ (21) and a localization (Uj, μj)l
+j=1 of μ with radius u and w.r.t. test functions Pr. It outputs a reduced measure μ ̃ w.r.t. these specifications. We write μ ̃ =
+RMP(μ, (Uj, μj)l
+j=1, Pr)
+Now we introduce Algorithm 1, a recombination algorithm which exploits RMP to drastically reduce the number of ODEs which need to be solved within the cubature approximation. Algorithm 1 is a pre-processing procedure which must only be completed once before training the neural SDE (1). Specifically, once the weights λ ̃Iz[i] are recovered, we may construct for any θ ∈ Θ the ”recombined” cubature approximation
+ ̃Φθ
+Ldata ∶= ∑
+z ∈[qk ]
+Ldata(φθ
+z) ̃λIz[0] . . .  ̃λIz[k] (22)
+12
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+Algorithm 1 Pre-Processing for Wiener Space Cubature Recombination
+Initialize time partition D = 0 = t0 < t1 < ⋅ ⋅ ⋅ < tk = T of [0, T ], and let si = ti − ti−1.
+Take r > 0; Initialize Pr as a basis for the space of polynomials on Rdx with degree at most r.
+Initialize paths ω1, . . . , ωq ∈ C0
+bv([0, T ], Rdb) and weights λ1, . . . , λq > 0 defining a cubature formula on Wiener space of degree m > 0, as in Section 2.1.3.
+For discrete measure μ = ∑l
+j=1 μj δxj on Rdx , let
+KLV(μ, s) ∶=
+l
+j=∑1
+q
+i=∑1
+μj λiδxj +ωi(s)
+Initialize point mass x at the origin of Rdx, and set Q ̃(1)
+D,u(x) = KLV(δx, s1) for i = 2 ∶ k − 1 do Q
+(i)
+D,u(x) = KLV(Q ̃(i−1)
+D,u (x), si); take any localization (Uj, μj)li
+j=1 of Q(i)
+D,u(x) with radius
+ui.
+Q ̃ (i)
+D,u(x) = RMP(Q(i)
+D,u(x), (Uj , μj )li
+j=1, Pr). (Recall Definition 8 for the reduced measure procedure (RMP)) end for
+Q ̃ (k)
+D,u(x) = KLV(Q ̃(k−1)
+D,u (x), sk)
+for i = 1 ∶ k do
+Express Q ̃(i)
+D,u(x) = ∑li(r+1)
+j=1 αx ̃j δx ̃j
+for j = 1 ∶ li(r + 1) do
+Take z ∈ [qk] s.t. ωz(ti) = x ̃j (exists by construction). Denote  ̃λIz[i] ∶= αx ̃j . end for
+For the remaining z ∈ [qk] s.t. there is no x ̃j ∈ supp(Q ̃(i)
+D,u(x)) with x ̃j = ωz(ti), set  ̃λIz[i] = 0 end for
+Return weights { ̃λIz[i], z ∈ [rk], i ∈ [k]}
+where, recall φzθ ∈ X is the solution of the ODE (18). That is, we solve ODEs along weighted cubature paths (17) with weights constructed as above from the recombination procedure. By the recombination procedure, most of the sequences of weights  ̃λIz[0] . . . λ ̃Iz[k] will equal zero, and thus ODEs will only need to be solved along a small fraction of the original paths ωz. Thus, (22) forms a computationally efficient approximation of E[Ldata(Xθ)].
+3.2 Complexity Guarantees: Recombined Cubature
+The approximation error of the recombined cubature sum (22) in terms of the number of paths is quantified in the following result, which is the second main result of this paper.
+Theorem 9 (Recombined Cubature Path Approximation Error) Let ti = T (1 − (1 − i
+k )γ) for
+0 ≤ i ≤ k. Take m, γ, r such that rp∗ ≥ m ≥ γ +1. Construct weights {λ ̃Iz[i]}z∈[qk] from Algorithm 1
+using any localization with radius ui = sp∗/2γ
+i . Then, under A1, A2, A3, and letting (22)
+ ̃Φθ
+Ldata ∶= ∑
+z ∈[qk ]
+Ldata(φθ
+z) ̃λIz[0] . . .  ̃λIz[k]
+13
+
+
+SNOW AND KRISHNAMURTHY
+be constructed from the output of Algorithm 1, we have the following approximation guarantee:
+∣E[Ldata(Xθ)] −  ̃Φθ
+Ldata ∣ = O ⎛
+⎝n
+−γ (rp∗ /c−rp∗ +1)
+dx(p∗−2) ⎞
+⎠ (23)
+where n is the number of ODE computations, and c is such that γ ≤ p∗(r+1)
+(p∗r)/c+1 . The explicit constant factor in (23) is given in (48).
+Proof See Appendix
+A result of Theorem 9 is that we may achieve an effective approximation complexity improvement from Monte Carlo methods. The following Corollary illustrates a choice of reasonable (for which there exist explicit cubature path and weight constructions) parameters which produces a O(n−1) rate.
+Corollary 10 (Improved Estimate Efficiency) For p∗, dx ∈ N, take γ = 0.6, m = 5, c = 0.6, and
+r = dx(p∗−2)−1
+0.4 p∗ . Then
+∣E[Ldata(X)] −  ̃Φθ
+Ldata ∣ = O(n−1) (24)
+where n is the number of ODE solves as in Theorem 9. This improves on the Monte Carlo rate O(n−1/2) and the quasi-Monte Carlo rate O((log n)/n). For m = 5, explicit Wiener space cubature paths and weights are given in Lyons and Victoir (2004).
+3.2.1 BOUND DISCUSSION: EFFECTIVE ACHIEVABLE RATES
+Let us discuss these bounds. The precise bound with scaling factors (49) is given by
+∣E[Ldata(Xθ)] −  ̃Φθ
+Ldata ∣ ≤ C ( n
+r +1)
+−κ(r,p∗,c)
+, κ(r, p∗, c) ∶= p∗(r + 1)
+dx(p∗ − 2) ⋅ c − p∗r(c − 1)
+p
+∗r + c , (25)
+where the exponent κ is obtained by taking γ at its admissible maximum γmax = p∗(r+1)
+(p∗r)/c+1 in (23).
+In particular, κ is an increasing function of r whenever c < 1, and attains its maximum at r = 0 whenever c ≥ 1. The bound in (25) involves both the exponent κ(r, p∗, c) and the effective sample size (sample size after recombination) n/(r + 1). Formally, for c < 1 one has
+rli→m∞
+κ(r, p∗, c) = +∞,
+so that the exponent in (25) can be made arbitrarily large by increasing the recombination precision r.
+However, one must also take into account the effect of the r + 1 denominator in (25), as we discuss in the following remark.
+Optimal rates under recombination precision r. For fixed computational budget n, the base in (25) penalizes large r. So, although Theorem 9 suggests that arbitrarily fast decay O(n−k) in the formal exponent is possible by taking r → ∞ (when c < 1), the presence of n/(r + 1) in (25) means that, for a fixed number n of ODE computations, the optimal choice of r is finite. Thus, Corollary 10 should be read as a formal n−1 rate for fixed r, and for any fixed cubature path construction there
+14
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+will be a necessary limit to this precision r. We do not investigate this trade-off further here, but it will make an interesting point of future study to determine the optimal r-balanced rates that can be achieved under certain computational budgets and cubature constructions. Dimension dependence. Observe that the rate (24) mirrors the dimension-independence of the Monte Carlo rate exponent: by choosing r large enough to suppress recombination bias, one recovers an error decay in n whose exponent is independent of dx, even though the constant prefactor may still grow with dx.
+3.2.2 PRE-PROCESSING COMPLEXITY
+Corollary 10 demonstrates that under certain parametrizations, we may achieve a convergence rate exceeding traditional Monte Carlo or quasiMonte Carlo simulation. However, this is not free; there is a tradeoff between approximation efficiency (24) and the complexity of the pre-processing operation (Algorithm 1) which constructs the cubature paths providing this rate. The following Corollary quantifies the complexity bound for this pre-processing operation Algorithm 14:
+Corollary 11 (Pre-Processing Complexity) Algorithm 1 operates in
+O (rkdx(p∗−2) + rkdx(p∗/2−1) log(kdx(p∗/2−1)/r)C(r + 2, r + 1)) (26)
+time. Here C(r + 2, r + 1) is the time to solve a system of linear equations in r + 2 variables and r + 1 constraints.
+In the context of neural SDE training, we must incur the additional complexity (26) to construct recombined cubature weights, but then benefit from improved efficiency, e.g. (24), for every iterative gradient evaluation in the optimization scheme. The advantage of this approach will vary by application, but in many instances this pre-processing requirement should be negligible compared to the savings of the rate (24), especially in cases that require complex and expensive training procedures in moderate dimensions. We show in Section 4 that this pre-processing step incurs negligible time complexity when compared to the efficiency gains even in high dimensions. Next we relate these results back to the overall framework of neural SDE training, by providing a numerical study which validates our theoretical efficiency improvements.
+4 Numerical Study
+We now provide numerical experiments that validate the theoretical developments of Sections 2.1–3. The focus is on two complementary aspects:
+i) Sample efficiency of cubature estimators relative to Monte–Carlo baselines. Recall Corollary 10 predicts faster convergence rates for the cubature estimator, with respect to the number of paths n. Section 4.1 compares this rate of convergence for a simple test functional.
+ii) Practical wall–clock and memory benefits when cubature evaluation is used for full-pipeline neural SDE training. In Section 4.2, we fix n and train a neural SDE with respect to the
+4. This is a consequence of Corollary 14 and the bound (47)
+15
+
+
+SNOW AND KRISHNAMURTHY
+standard variational loss functional (Li et al., 2020); we demonstrate the computational and memory benefits of cubature evaluations, by exploiting efficient deterministic ODE integration.
+We show that the cubature method can significantly outperform Monte Carlo stochastic simulation in both regimes, and that the pre-computation requirement of cubature path construction is negligible compared to these efficiency gains in training. All experiments are run on a Mac M3 CPU without GPU acceleration5, and all code can be found at https://github.com/LukeSnow0/Neural-SDE.
+4.1 Convergence of Loss Functional Estimates
+Theorem 9 quantifies the approximation rates which are attainable by cubature methods; here we numerically investigate these rates. We compare cubature and Monte–Carlo estimates of the expected path functional value Eθ[Ldata(Xθ)], with the following simple test functional satisfying
+A2:
+Ldata(Xθ) = ∫
+1
+0 (Xθ
+t − sin(2πt))2 dt, (27)
+Xθ is the solution of the Stratonovich neural SDE of Section 2.1, with randomly initialized and fixed drift and diffusion neural network parametrizations θ. (27) is an arbitrary Lipschitz-smooth test functional that we use for ease of demonstration.6
+Figure 1: Convergence of cubature (degree–5) vs. Monte–Carlo estimates of Ldata(X). Monte–Carlo ex
+hibits the standard O(n−1/2) decay in path count n, while cubature achieves faster convergence consistent
+with the O(n−1) rate of Corollary 10. For equal n, cubature estimates are uniformly more accurate.
+We compare against a baseline high resolution oracle E[Ldata(Xθ)] = E [∫ 1
+0 (Xtθ − sin(2πt))2 dt]
+computed using Monte Carlo simulation with Euler-grid resolution of 4000 points, and a batch of 10e5 sample paths. Cubature estimates (22) of this oracle use degree–5 paths7 constructed via Algorithm 1 with γ = 0.6, r = 4, m = 5. Let  ̃Φθ
+Ldata,n denote this recombined cubature approximation
+5. Since both ODE and SDE solvers benefit comparably from GPU parallelization, the CPU-based comparison is without loss of generality. 6. In Section 4.2 we implement a full-pipeline neural SDE training procedure using the realistic variational loss functional (Li et al., 2020), to demonstrate the performance within a state-of-the-art training framework. 7. See Appendix 6.3 for these path constructions.
+16
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+(22) with path support size n. Let ˆEn[Ldata(Xθ)] denote the Monte Carlo estimate of this oracle using the same grid resolution, under n sample paths. Figure 1 displays the absolute errors ∣ˆEn[Ldata(Xθ)] − E[Ldata(Xθ)∣ (red) and ∣Φθ
+Ldata,n − E[Ldata(Xθ)∣ (blue) vs the number of sample
+paths n, on log-log scale. Observe that Monte–Carlo achieves the expected O(n−1/2) rate, while cu
+bature achieves a faster decay consistent with O(n−1) to begin with, but then plateaus. 8 Moreover, observe that at equal path counts the cubature estimate yields strictly smaller constants than MonteCarlo, so that accuracy is improved in the finite-sample setting before considering the asymptotic complexity rates 9.
+4.2 Training Complexity: ODE Cubature vs. SDE Monte–Carlo
+Here we compare the cubature and Monte Carlo estimators when used in the full-pipeline procedure of training a neural SDE, using the variational loss functional of (Li et al., 2020). 10 The data paths Xdata are generated from a multi-variate Stratonovich SDE (8) with fixed drift and diffusion. The first marginal dimension of these data paths is visualized in blue in Figure 4. The model is trained with identical neural network architectures under the two gradient estimation techniques:
+- NSDE–MC: Loss functional evaluation of SDE solutions with torchsde.sdeint from package torchdiffeq. 11. Gradients are computed using PyTorch automatic differentiation through these SDE solution paths.
+- Cubature–ODE: Loss functional evaluation, produced by Algorithm 1 with m = 3, k = 5, r =
+4, γ = 0.6, using odeint from package torchdiffeq. 12. Gradients are computed using PyTorch automatic differentiation through these ODE solution paths.
+Table 1 reports mean per-epoch runtime and peak memory usage over n = 50 path evaluations and sweeps in the dimension D, with discretization resolution T = 1000. Observe that the cubature method dominates in low-to-moderate dimensions, in both wall-clock time and memory usage. The memory advantage remains stable in very high dimensions while the wall-clock time advantage begins to deteriorate past dimension 250. Furthermore, the ”overhead” of cubature path construction remains negligible compared to these efficiency gains. Figure 2 displays the variational error convergence over training iteration, of both the cubature method and the standard Monte Carlo method. It can be observed that the convergence behavior is identical, validating the well-posedness of the cubature loss functional (19). In particular, one can safely deploy cubature evaluations through loss functional (19) without concern that the loss landscape will change sufficiently to cause computational bottlenecks during training, even in high dimensions.
+8. This plateau can be explained since for large n, residual error is dominated by ODE time discretization, not cubature approximation, so further optimization of the numerical solver should bring the observed rate closer to the theoretical guarantee. There are some interesting numerical analyses which would be helpful for improving our understanding of the implementation-level complexity guarantees and trade-offs, quantifying such effects as this. 9. It should be of significant theoretical interest to predict when such finite-sample approximation advantage can be observed. 10. This variational loss functional is perhaps the most well-established and standard objective for neural SDE training. Details on this variational loss objective can be found in Appendix 6.2. 11. Each step thus requires Gaussian increments and diffusion algebra in addition to vector field evaluations. 12. Here per-step cost is limited to vector field evaluations since we eliminate the Brownian motion.
+17
+
+
+SNOW AND KRISHNAMURTHY
+Figure 2: Convergence of the variational loss of a neural SDE vs. training iteration, in dimensions 8, 32, 64, 128, using both cubature and Monte Carlo (MC) estimators. We observe that the optimization over the standard loss functional (3) using traditional Monte Carlo, and the optimization over the cubature loss functional (19), behave equivalently in each dimension when measured with respect to training iterations.
+Figure 3: Convergence of the variational loss of a neural SDE during training, in dimensions 8, 32, 64, 128, using both cubature and Monte Carlo (MC) estimators. The cubature method evaluates an estimate of the expected loss functional, at each training epoch, using ODE solutions w.r.t. deterministic cubature paths. The MC method evaluates this estimate by standard stochastic approximation. It is observed that while both methods converge at similar rates w.r.t. the number of training epochs, the cubature estimator offers significant speedups (Table 1), and thus the convergence vs. wall-clock execution time is much faster in the cubature method.
+Table 1: Per-epoch wall–clock time and memory usage vs dimension D
+D MC time Cub time Speedup MC mem Cub mem Mem adv Overhead
+4 2.689 s 0.388 s 6.93x 1.87 MB 0.65 MB 2.88x 0.0132 s 8 2.647 s 0.443 s 5.97x 1.87 MB 0.65 MB 2.88x 0.0118 s 16 2.709 s 0.488 s 5.55x 1.87 MB 0.65 MB 2.88x 0.0132 s 32 2.831 s 0.603 s 4.70x 1.87 MB 0.65 MB 2.88x 0.0134 s 64 3.079 s 1.142 s 2.70x 1.87 MB 0.65 MB 2.88x 0.0189 s 128 3.621 s 2.398 s 1.51x 1.87 MB 0.65 MB 2.88x 0.0174 s 256 5.140 s 5.248 s 0.98x 1.87 MB 0.65 MB 2.88x 0.0233 s
+18
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+Figure 3 displays the variational error incurred by Monte Carlo evaluations and the cubature evaluations, with respect to wall-clock computational time, over varying dimensions with fixed discretization grid T = 200. We observe stable speedup with respect to dimension, in contrast to the report of Table 1, reflecting the extra computational overhead of backpropagation through stochastic Monte Carlo simulation paths13. Figure 4 visualizes the resulting trajectories and training curves, over the training backpropagation iterations. We observe that both methods achieve comparable quality of data approximation, but cubature training is significantly faster, especially in low-to-moderate dimensions, yielding speedups of an order of magnitude. This matches the complexity analysis: cubature eliminates stochastic overhead (RNG and diffusion algebra), resulting in constant-factor benefits while also inheriting the O(n−1) approximation convergence rate.14
+Figure 4: We train an 8-dimensional neural SDE to match the path dataset Xdata displayed (via first marginal dimension) in blue. The orange paths represent (first marginal dimension) samples from the neural SDE distribution before, during, and after training via both cubature and standard MC methods. Observe that the data approximation is qualitatively comparable at each stage of the training process for each technique. The advantage of the cubature method is that the per-epoch compute time and memory requirements are made more efficient, as displayed in Figure 3.
+13. A more comprehensive quantification of this full-pipeline cubature advantage would be a worthwhile endeavor for future research. 14. The experimental results in this section suggest that cubature methods can drastically improve computational efficiency, especially in low-to-moderate dimensions and with a moderate number of sample paths. However, the efficiency gains begin to deteriorate in high dimensions and path samples; further insight into this observation will require analysis of numerical implementation aspects of both procedures. However, the regimes in which we observe advantageous complexity are consistent with our theoretical predictions, in particular the formal approximation complexity of Corollary 10 and the gradient backpropagation advantage incurred by non-stochastic ODE solution paths.
+19
+
+
+SNOW AND KRISHNAMURTHY
+5 Conclusions
+We have provided a new framework for training neural SDEs by exploiting and extending the theory of Wiener space cubature. In particular, we have provided a constructive approach to approximating an expected loss functional of a neural SDE by a weighted combination of deterministic ODE solutions. Our main results rely on an extension of guarantees in Wiener-space cubature to the nonlinear functional domain, and our main mathematical contribution is precisely this extension. Our constructed algorithmic approach exploiting this advance proves advantageous for two reasons. First, we may compute gradients more efficiently by using deterministic ODE solvers. Second, we demonstrate that under reasonable assumptions we improve upon the Monte Carlo complexity of O(n−1/2) to achieve a O(n−1) approximation guarantee. This rate is obtained by carefully choosing algorithmic parameters; in future work we propose to explore the dependence of this rate on the underlying parameters. This will lead to an adaptable framework where the computational load can be optimized for specific generative modeling settings. Furthermore, we demonstrate the computational advantages of this approach in full-pipeline numerical implementations of neural SDE optimization, revealing stable computational speedups and memory efficiency gains even in high dimensions. However, our work is primarily theoretical and there are many interesting facets of numerical implementation which warrant further investigation.
+6 Appendix
+6.1 Sufficient Conditions for the Uniform Ho ̈rmander Property in Neural SDEs
+Consider the Stratonovich SDE
+dXt = V θ
+0 (t, Xt) dt +
+m
+j=∑1
+Vθ
+j (t, Xt) ○ dW j
+t,
+with drift V θ
+0 and diffusion vector fields V θ
+j , where θ ∈ Θ lies in a compact parameter set. The uniform Ho ̈rmander condition of order s requires the existence of s ∈ N and μ > 0 such that
+∑
+∣α∣≤s
+⟨V θ
+[α](t, x), ξ⟩2 ≥ μ for all (t, x, θ) ∈ [0, T ] × Rd × Θ, ∥ξ∥ = 1,
+where V θ
+[α] are iterated Lie brackets of the fields {V θ
+i }m
+i=0. Below we list practical sufficient conditions tailored to neural SDE parameterizations.
+Theorem 12 (Sufficient Conditions for Assumption A3) Suppose each V θ
+i is Cs+1 in x, with derivatives up to order s + 1 uniformly bounded in (t, θ). Then the uniform H ̈ormander condition holds under either of the following structural assumptions: 1. Uniform Ellipticity. The diffusion matrix gθ(t, x) = [V θ
+1 ⋯ Vmθ ] ∈ Rd×m has full rank d and is uniformly nondegenerate:
+gθ(t, x) gθ(t, x)⊺ ⪰ λId, ∀(t, x, θ),
+for some λ > 0. In this case s = 1 suffices.
+20
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+2. Bracket-Generating (Hypoelliptic) Case. If m < d and the diffusion matrix is degenerate, assume there exists s ∈ N and μ > 0 such that
+m
+j=∑1
+s−1
+k∑=0
+⟨adk
+Vθ
+0
+Vθ
+j (t, x), ξ⟩2 ≥ μ, ∀(t, x, θ), ∥ξ∥ = 1,
+where adk
+Vθ
+0
+V ∶= [V θ
+0 , [V θ
+0 , . . . , [V θ
+0 , V ] . . . ]] denotes k-fold iterated commutators.
+The above conditions can be satisfied by common neural SDE parameterizations:
+1. Elliptic diffusion networks. Take m ≥ d and parameterize
+gθ(t, x) = Lθ g ̃θ(t, x),
+with Lθ ∈ GL(d) constrained so that σmin(Lθ) ≥ λ0 > 0, and g ̃θ bounded above and below (e.g. via positive activations such as Softplus).
+2. Kolmogorov-type chains. Partition x = (u, v), place diffusion only on u (so V θ
+j = ∂uj ), and
+design V θ
+0 so that ∇uV θ
+0 couples u into v with uniformly bounded coefficients. Then [V θ
+0 ,Vθ
+j] spans the missing v-directions.
+3. Control-affine structures. If locally fθ(t, x) ≈ Aθ(t, x)x + bθ(t, x) and gθ(t, x) ≈ Bθ(t, x),
+a uniform Kalman-type rank condition on (Aθ, Bθ)—namely that {Bθ, AθBθ, . . . , Ad−1
+θ Bθ}
+spans Rd uniformly—implies UH.
+Smooth activations (e.g. tanh, Softplus, SiLU) ensure the required Cs+1 regularity. Parameter compactness (via weight decay, spectral normalization, or explicit box constraints) ensures uniformity in θ. ReLU activations yield only piecewise C1 vector fields, which complicates the theory, and are best avoided if strict Ho ̈rmander conditions are required.
+6.2 Variational Loss Objective
+We provide here a complete derivation of the variational loss functional used in our simulations in Section 4, following Li et al. (2020). The objective arises from introducing a variational posterior process to approximate the latent path distribution of the neural SDE. Latent Neural SDE Model: We assume the latent state zt ∈ Rd evolves according to the Itoˆ SDE
+dzt = fθ(t, zt) dt + gθ(t, zt) dWt, z0 ∼ pθ(z0), (28)
+where fθ ∶ [0, T ] × Rd → Rd and gθ ∶ [0, T ] × Rd → Rd×db are neural networks, and Wt is a db-dimensional standard Brownian motion. Observations are generated via a conditional decoder:
+yt ∣ zt ∼ pθ(yt ∣ zt), t = 0, . . . , T. (29)
+This defines the generative distribution pθ(y0∶T , z0∶T ) over observed and latent paths. Variational Posterior Process: To approximate the true posterior distribution of z0∶T given y0∶T , we introduce a variational diffusion process of the form
+dzt = f ̃φ(t, zt) dt + gθ(t, zt) dWt, z0 ∼ qφ(z0), (30)
+21
+
+
+SNOW AND KRISHNAMURTHY
+where f ̃φ is a neural network (the variational drift). Note that the diffusion gθ is shared between the prior (28) and the variational posterior (30). This choice ensures that the Radon–Nikodym derivative between the two path measures is tractable. Evidence Lower Bound (ELBO): Let qφ(z0∶T ) denote the path measure induced by (30). The variational training objective is the evidence lower bound (ELBO):
+L(θ, φ) = Eqφ(z0∶T )[ log pθ(y0∶T ∣ z0∶T )] − KL(qφ(z0∶T ) ∥ pθ(z0∶T )) . (31)
+The first term encourages accurate reconstruction of the data, while the second term penalizes deviation from the prior dynamics (28). KL Divergence via Girsanov: Since both (28) and (30) share the same diffusion gθ, Girsanov’s theorem gives the Radon–Nikodym derivative between the two measures:
+dqφ
+dpθ (z0∶T )
+= exp⎛
+⎝∫
+T
+0 ⟨g−1
+θ (t, zt)(fθ(t, zt) − f ̃φ(t, zt)), dWt⟩ − 1
+2∫
+T
+0 ∥g−1
+θ (t, zt)(fθ(t, zt) − f ̃φ(t, zt))∥2dt⎞
+⎠.
+Taking the logarithm and expectation under qφ, the KL divergence simplifies to
+KL(qφ ∥ pθ) = 1
+2 Eqφ [∫
+T
+0 ∥g−1
+θ (t, zt) (fθ(t, zt) − f ̃φ(t, zt))∥2 dt] . (32)
+Final Objective: Combining (31) and (32), the explicit variational loss functional is
+L(θ, φ) = Eqφ(z0∶T )[log pθ(y0∶T ∣ z0∶T ) − 1
+2∫
+T
+0 ∥g−1
+θ (t, zt) (fθ(t, zt) − f ̃φ(t, zt))∥2dt] . (33)
+Thus, the training objective decomposes into: a data reconstruction term Eqφ[log pθ(y0∶T ∣ z0∶T )], and a drift-regularization term given by the quadratic penalty (32). In the context of Section 4, evaluating the expectation in (33) can be done either by Monte–Carlo sampling of paths from (30), or by cubature approximation (Theorem 9), yielding the improved O(n−1) rate of Corollary 10. It is straightforward to evaluate the objective (33) by Monte Carlo simulation using sample paths of the variational SDE. Next we show precisely how to evaluate this using the cubature paths.
+Evaluating the Variational Loss with Cubature Paths
+Let {(ω(i), λi)}n
+i=1 be a degree-m cubature path set with weights λi. On each cubature path, we solve the controlled ODE (Stratonovich form):
+d
+dt z(i)
+t = f ̃φ(t, z(i)
+t ) + gθ(t, z(i)
+t ) ω ̇ (i)(t), z(i)
+0 ∼ qφ(z0),
+where ω ̇ (i)(t) denotes the (piecewise constant or linear) derivative of the deterministic cubature
+path ω(i). For each trajectory z(i) we evaluate:
+Reconstruction: R(i) = ∫
+T
+0
+log pθ(yt ∣ z(i)
+t ) dt (or discrete sum over observation times),
+Regularization: K(i) = 1
+2∫
+T
+0 ∥g−1
+θ (t, z(i)
+t )(fθ(t, z(i)
+t ) − f ̃φ(t, z(i)
+t ))∥2 dt.
+22
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+Cubature estimator: Using the notation (22), the cubature approximation to the loss functional
+is then the weighted sum:Φ ̃ φ,θ
+Ldata = ∑n
+i=1 λi (R(i) − K(i)). and the data-samples are approximated
+minimizing  ̃Φφ,θ
+Ldata over φ, θ.
+6.3 Order-5 Cubature Path Examples
+Here we illustrate one-dimensional degree–5 KLV cubature paths satisfying (2). These paths are explicitly constructed in Lyons and Victoir (2004) Section 5; for brevity we refer to this source for their derivation and mathematical formulation. Figure 5 shows cubature paths for discretization orders k = 1, . . . , 5, constructed via Algorithm 1, with γ = 2, r = 4, m = 5. The support size (number of paths) n grows exponentially with k if paths are concatenated naively, but as explained in Section 3, the recombination procedure ensures that n grows only polynomially, enabling the improved O(n−1) approximation rate of Corollary 10. By Figure 5f, we see that even for k = 10 (n = 4612 paths), the full construction takes only 0.8 seconds. Thus, this overhead of cubature path generation should be negligible relative to the cost and complexity of training in the vast majority of cases. However, this trade-off may need to be analyzed further for specific use-cases with varying dimensions and computational budgets.
+(a) k = 1, n = 3 (b) k = 2, n = 9 (c) k = 3, n = 27
+(d) k = 4, n = 81 (e) k = 5, n = 243 (f) Construction time vs. n
+Figure 5: Degree–5 cubature paths for discretization levels k = 1, . . . , 5. The number of paths n grows exponentially in k without recombination, but Section 3 shows how recombination yields polynomial growth. Panel (f) shows that the one-time preprocessing cost remains negligible (0.8s for k = 10, n = 4612). This
+validates the feasibility of using cubature paths in training while retaining the improved O(n−1) rate of Corollary 10, which improves training efficiency.
+6.4 Measure Reduction Details
+This appendix provides a detailed explanation of the recombination framework of Section 3.
+23
+
+
+SNOW AND KRISHNAMURTHY
+Consider the finite set of test functions Pr = {p1, . . . , pr} on (Ω, μ), a measure space with μ a finite discrete measure
+μ=
+ˆn
+i=∑1
+λiδzi , λi > 0, zi ∈ Ω
+Let P be a Rr-valued random variable P ∶= (pr, . . . , pr) defined on (Ω, μ). Then the law μP of
+P is the discrete measure on Rr:
+μP =
+ˆn
+i=∑1
+λiδxi , xi = (pi(zi), . . . , pr(zi))T ∈ Rr
+and the center of mass (CoM) for measure μP is given as CoM (μP ) = ∑ˆn
+i=1 λixi.
+The key insight is that to construct a reduced measure μ ̃P w.r.t. μP and Pr it is sufficient to
+find a subset xik of the points xi and positive weights λ ̃ik to produce a new probability measure
+μ ̃P = ∑  ̃λik δxik s.t. CoM (μ ̃P ) = CoM (μP ). Then a reduced measure can be constructed as
+μ ̃ = ∑  ̃λik δzik
+with zik ∈ supp(μ) satisfying P (zik ) = xik .
+We now provide a concrete algorithmic procedure for computing a reduced measure with respect to a localization. We first introduce a single-step reduction iteration, as follows.
+Algorithm 2 Reduction Iteration (Litterer and Lyons, 2012)
+Input: n points {xi}n
+i=1 and weights {λi}n
+i=1
+Solve the system of equations: ∑n
+i=1 uixi = 0, ∑n
+i=1 ui = 0
+Compute α = minui>0 λi
+ui , λ′
+i = λi − αui ▷ λ′
+i = 0 for some i Set i′ = {i ∶ λ′
+i = 0}
+while i ≤ n − 1 do if i < i′ then
+λ ̃i = λ′
+i
+else
+λ ̃i = λ′
+i+1, x ̃i = xi+1
+end if end while
+Output weights ( ̃λi)n−1
+i=1 , points (x ̃i)n−1
+i=1
+Then, applying Algorithm 2 iteratively in the following Algorithm 3 allows us to obtain a reduced measure
+24
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+Algorithm 3 Recombination (Litterer and Lyons, 2012)
+Input: μP = ∑nˆ
+i=1 λiδxi
+Partition the support of μP into 2(r + 1) sets Ij, 1 ≤ j ≤ 2(n + 1) of equal size.
+Compute ν = ∑2(r+1)
+i=1 νiδxˆi , where xˆj = EμP (x∣x ∈ Ij ) = ∑xi∈Ij
+λi xi
+νj and νj = μP (Ij) =
+∑i∶xi∈Ij λi
+Apply Algorithm 2 r + 1 times beginning with weights {νi}2(r+1)
+i=1 and {xˆi}2(r+1)
+i=1 , to produce a
+measure ν ̃ = ∑r+1
+j=1 ν ̃ij δx ̃ij with CoM(ν ̃) = CoM(ν).
+Repeat 1 - 4 with μP = ∑r+1
+j=1 ∑xk∈Iij ν ̃ij
+λk νij
+δxk until r + 1 particles remain.
+Lemma 13 (Litterer and Lyons (2012)) Algorithm 3 requires ⌈log(ˆn/r)⌉ iterations of Algorithm 2.
+Corollary 14 (Litterer and Lyons (2012)) Algorithm 3 operates in
+O(rˆn + r log(ˆn/r)C(r + 2, r + 1))
+time, where C(r + 2, r + 1) is the time to compute the solution of a system of linear equations in r + 2 variables and r + 1 constraints.
+6.5 Proofs
+Let us first provide a technical definition that will be used in the proofs. Associated to the structural dynamics of the neural SDE (1) is a Markov semigroup.
+Definition 15 (Markov Semigroup) The Markov semigroup Ptθ associated to the dynamics of the SDE (1) is given by
+Pθ
+t f (x) ∶= E(f (Xθ
+t )∣Xθ
+0 = x)
+We also provide the following technical result which will be used in our main proof.
+STONE–WEIERSTRASS DENSITY OF REGULARIZED CYLINDER FUNCTIONALS
+Let Ω ∶= C([0, T ]; Rd) denote the path space equipped with the uniform norm ∥ω∥∞ ∶= supt∈[0,T ] ∥ω(t)∥1. We consider a class of cylinder functionals A of the form:
+Fn(ω) ∶= fn(ω(t1), . . . , ω(tn)), 0 ≤ t1 < ⋅ ⋅ ⋅ < tn ≤ T,
+where fn ∶ (Rd)n → R is measurable and satisfies the regularized Lipschitz condition:
+∣fn(x1, . . . , xn) − fn(y1, . . . , yn)∣ ≤ b
+n
+n
+i=∑1
+∥xi − yi∥1, ∀xi, yi ∈ Rd. (34)
+We define the algebra of such regularized cylinder functionals as:
+A ∶= n∈⋃N Fn, where Fn ∶= {Fn(ω) = fn(ω(t1), . . . , ω(tn)) ∣ fn satisfies (34)} .
+We aim to show that A is dense in C(Ω), the space of real-valued continuous functionals on Ω endowed with the supremum norm topology.
+25
+
+
+SNOW AND KRISHNAMURTHY
+Theorem 16 (Density of Regularized Cylinder Functionals) The algebra A of regularized cylinder functionals is uniformly dense in C(Ω) restricted to compact subsets K ⊂ Ω. In particular, for any F ∈ C(K) and ε > 0, there exists Fn ∈ A such that:
+sup
+ω∈K ∣F (ω) − Fn(ω)∣ < ε.
+Proof We verify the assumptions of the classical Stone–Weierstrass theorem (De Branges, 1959). (1) Algebra: Let Fn, Gn ∈ Fn with corresponding functions fn, gn. Then Fn + Gn and Fn ⋅ Gn also belong to Fn. The sum is clearly Lipschitz with the same bound, and for the product:
+∣fn(x)gn(x) − fn(y)gn(y)∣ ≤ ∣fn(x)∣∣gn(x) − gn(y)∣ + ∣gn(y)∣∣fn(x) − fn(y)∣,
+which is controlled by the Lipschitz condition (34) and boundedness on compact domains. (2) Separates points: For any ω ≠ ω′ ∈ Ω, there exists t0 ∈ [0, T ] and a coordinate j ∈ {1, . . . , d}
+such that ω(t0)j ≠ ω′(t0)j. Define:
+F (ω) ∶= ω(t0)j,
+which is a cylinder function in F1 and satisfies (34), hence F ∈ A distinguishes ω from ω′. (3) Contains constants: The constant function F (ω) ∶= c belongs to F1 and satisfies (34) trivially. Therefore, A is a subalgebra of C(Ω) that contains constants and separates points. By the Stone–Weierstrass theorem, A is uniformly dense in C(K) for every compact K ⊂ Ω.
+6.5.1 THEOREM 4
+Proof
+We proceed in three parts.
+PART 1
+Let F ∶ [0, T ] × Rdx be the class of functions satisfying: supt∈[0,T ] ∥∇f (t, ⋅)∥∞ ∶= A < ∞; i.e., F = LipA. We start by proving the following bound, which will serve as a key step in obtaining the main bound (20).
+sup
+t∈[0,T ],f ∈F
+RRRRRRRRRRRR
+∑
+z ∈[qk ]
+λ
+′
+zf (t, φθ
+z(t)) − E[f (t, Xθ
+t )]
+RRRRRRRRRRRR
+≤ 3 K sup
+t∈[0,T ]
+∥∇f (t, ⋅)∥∞
+⎛
+⎝s1/2
+k+
+k−1
+i=∑1
+s
+(m+1)/2
+i
+(T − ti)m/2
+⎞ ⎠
+(35) where K > 0 is a constant.
+We begin by expressing the term f (t, Xtθ) as the following stochastic Taylor expansion (see
+Lyons and Victoir (2004) Proposition 2.1). Denoting Xtθ,x the stochastic process Xtθ initialized at point x, we have
+f (t, Xθ
+t,x) = ∑
+(i1 ,...,ik )∈Am
+Vθ
+i1 . . . V θ
+ik f (t, x) ∫0<t1<⋅⋅⋅<tk<t ○dBi1
+t1 ⋅ ⋅ ⋅ ○ dBik
+tk + Rm(t, x, f )
+where sup
+x∈Rdx
+√E(Rm(t, x, f ))2) ≤ Ct(m+1)/2 sup
+(i1 ,...,ik )∈Am+2 /Am
+∥V θ
+i1 . . . V θ
+ik f (t, ⋅)∥∞
+26
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+and C is a constant depending only on db and m. Take cubature weights and paths as defined in Section 2.2.2, and define at time T > 0 the Wiener space measure
+QT =
+q
+j=∑1
+λj δωT ,j
+such that
+EQT (f (T, Xθ
+T,x)) =
+q
+j=∑1
+λjf (T, φθ
+T,x(ωT,j ))
+where φθ
+T,x(ωT,j) denotes the time T solution of ODE (18) with initial condition x and path ωT,j Then, for t ≤ T we have
+∣(E − EQT )(f (t, Xθ
+t,x))∣
+≤ E(∣Rm(t, x, f )∣) + EQT (∣Rm(t, x, f )∣)
++
+RRRRRRRRRRRR
+(E − EQT ) ⎛
+⎝∑
+(i1 ,...,ik )∈Am
+Vθ
+i1 . . . V θ
+ik f (t, x) ∫0<t1<⋅⋅⋅<tk<t ○dBi1
+t1 ⋅ ⋅ ⋅ ○ dBik
+tk
+⎞ ⎠
+RRRRRRRRRRRR
+(36)
+By Lemma 3.1 of Lyons and Victoir (2004) we see that
+sup
+x∈Rdx
+EQT [∣Rm(t, x, f )∣] ≤ Cdb,mt(m+1)/2 sup
+(i1 ,...,ik )∈Am+2 /Am
+∥V θ
+i1 . . . V θ
+ik f (t, ⋅)∥∞
+and the third term in (36) can be upper bounded by the expansion:
+∣(E − EQt) ⎛
+⎝∑
+(i1 ,...,ik )∈Am
+Vθ
+i1 . . . V θ
+ik f (t, x) ∫0<t1<⋅⋅⋅<tk<t ○dBi1
+t1 ⋅ ⋅ ⋅ ○ dBik
+tk
+⎞ ⎠
++ (EQt − EQT ) ⎛
+⎝∑
+(i1 ,...,ik )∈Am
+Vθ
+i1 . . . V θ
+ik f (t, x) ∫0<t1<⋅⋅⋅<tk<t ○dBi1
+t1 ⋅ ⋅ ⋅ ○ dBik
+tk
+⎞
+⎠∣
+=
+q
+j=∑1
+λj ∑
+(i1 ,...,ik )∈Am
+Vθ
+i1 . . . V θ
+ik f (t, x) ∫0<t1<⋅⋅⋅<tk<t(dωi1
+t,j (t1) . . . dωik
+t,j (tk) − dωi1
+T,j (t1) . . . dωik
+T,j (tk))
+≤ 2C ̃db,mt(m+1)/2 sup
+(i1 ,...,ik )∈Am
+∥V θ
+i1 . . . V θ
+ik f (t, ⋅)∥∞
+(37)
+where C ̃db,m is a constant depending only on db and m. In (37) the first equality follows since the first term vanishes by definition of the Wiener space cubature paths, and the bound follows as in the proof of Lemma 3.1 in Lyons and Victoir (2004). Thus, putting these together into (36), we obtain the bound
+sup
+x∈Rdx
+∣E ⎛
+⎝f (t, Xθ
+t,x) −
+q
+j=∑1
+λjf (t, φθ
+t,x(ωT,j ))⎞
+⎠∣
+≤ Ct(m+1)/2 ⎛
+⎝ sup
+(i1 ,...,ik )∈Am+2 /Am
+∥V θ
+i1 . . . V θ
+ik f (t, ⋅)∥∞ + 2 sup
+(i1 ,...,ik )∈Am
+∥V θ
+i1 , . . . , V θ
+ik f (t, ⋅)∥∞
+⎞ ⎠
+(38)
+27
+
+
+SNOW AND KRISHNAMURTHY
+for some C dependent only on db and m.
+Consider the construction Φf (t) = ∑z∈[qk] f (t, φtθ,x(ωz))λIz[0] . . . λIz[k]. Let
+t = arg minti<t,i∈[k] ∣t − ti∣ and i be the index of t. Identify t with ti+1. Let si = ti − ti−1 for all i ≤ i,
+si+1 = (t − t). Then, defining the Markov random variable (Ψθ
+i )1≤i≤i+1 by Ψθ
+0 = y,
+P(Ψθ
+i = φθ
+si,x(ωsi,j)∣Ψi−1 = x) = λj, i ∈ 1, . . . , i + 1
+observe that EΨθ f (t, Ψθ
+i+1) = Φθ
+f (t). So, by Theorem 3.3 of Lyons and Victoir (2004) we may extend (38) to Φf (t) to conclude that
+∣Φθ
+f (t) − E[f (t, Xθ
+t )]∣
+≤C
+i+1
+j=∑1
+s
+(m+1)/2
+j { sup
+(i1 ,...,ik )∈Am+2 /Am
+∥V θ
+i1 . . . V θ
+ik P θ
+t−tj f (tj , ⋅)∥∞
++ 2 sup
+(i1 ,...,ik )∈Am
+∥V θ
+i1 , . . . , V θ
+ik P θ
+t−tj f (tj , ⋅)∥∞}
+≤C
+k
+j=∑1
+s
+(m+1)/2
+j { sup
+(i1 ,...,ik )∈Am+2 /Am
+t∈[0,T ]
+∥V θ
+i1 . . . V θ
+ik P θ
+T −tj f (t, ⋅)∥∞
++ 2 sup
+(i1 ,...,ik )∈Am t∈[0,T ]
+∥V θ
+i1 , . . . , V θ
+ik P θ
+T −tj f (t, ⋅)∥∞}
+where the second inequality follows simply by monotonicity of the sum in j. Now, under the Ho ̈rmander condition A3 (Kusuoka and Stroock, 1985),
+∥V θ
+i1 . . . V θ
+ik P θ
+s f ∥∞ ≤ Ks1/2
+s
+(k+card{j,ij =0})/2 ∥∇f ∥∞
+for some constant K; this can be applied to both ∞-norm terms above. By the same derivation as in the proof of Proposition 3.6 of Lyons and Victoir (2004) we obtain for every t ∈ [0, T ]
+∣Φθ
+f (t) − E[f (t, Xθ
+t )]∣ ≤ 3 K sup
+t∈[0,T ]
+∥∇f (t, ⋅)∥∞
+⎛
+⎝s1/2
+k+
+k−1
+i=∑1
+s
+(m+1)/2
+i
+(T − ti)m/2
+⎞ ⎠
+≤ 3KA⎛
+⎝s1/2
+k+
+k−1
+i=∑1
+s
+(m+1)/2
+i
+(T − ti)m/2
+⎞ ⎠
+≤ 3 KA C(m, γ)T 1/2k−γ/2
+(39)
+where in the last inequality we use that by Lyons and Victoir (2004) we have, for tj = T (1 − (1 − j
+k )γ )
+and 0 < γ < m − 1,
+⎛
+⎝s1/2
+k+
+k−1
+i=∑1
+s
+(m+1)/2
+i
+(T − ti)m/2
+⎞
+⎠ ≤ C(m, γ)T 1/2k−γ/2 (40)
+28
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+PART 2
+Let, for all n ∈ N, Fn be the class of multivariate functions fn ∶ [Rdx, . . . , Rdx] → R, where the length of the input vector to fn is n. We suppose fn has the following n-regularized Lipschitz regularity:
+∣fn(x1, . . . , xn) − fn(y1, . . . , yn)∣ ≤ b
+n
+n
+i=∑1
+∥xi − yi∥1 (41)
+First some notation. Let Z denote the joint random vector (Xtθ1,x, . . . , Xtθn,x), for ti ∈ [0, T ], and
+Zˆj = (φtθ1,x(ωT,j), . . . , φtθn,x(ωT,j)). That is, Z collects points at t1, . . . , tn with respect to the
+neural SDE law. Denote P the law of Z. Zˆj collects points w.r.t. the ODE solution (18) along the j’th cubature path ωT,j. Then, we denote Zˆ the random vector defined by the discrete measure over
+Zˆj with weights λj, and ˆP the law of Zˆ. Now, for the marginals. We denote by πi the law of Xti, and πˆti the discrete measure with
+support on cubature points φtθi,x(ωT,j), with respective weights λj. Then, we may induce a coupling γi ∈ Γ(πi, πˆi) (Γ(πi, πˆi) is the set of joint measures with marginals πi and πˆi), such that ∫R2dx ∥x − y∥dγi(x, y) = W1(πi, πˆi) and W1 denotes the 1-Wasserstein distance. By definition of
+the 1-Wasserstein distance, such a coupling exists and attains the infimum (Villani et al., 2008)
+γi = arg inf
+γ∈Γ(π,πˆ) ∫R2dx ∥x − y∥dγ(x, y)
+Now, we may induce the joint coupling as a product measure: γ ∶= γ1 ⊗ ⋅ ⋅ ⋅ ⊗ γn, and proceed as:
+∣E(f (Xt1, . . . , Xtn) − j∑
+λjf (φθ
+t1,x(ωT,j ), . . . , φθ
+tn,x(ωT,j))∣ = ∣EP[f (z)] − EP ̃[f (z)]∣
+= ∣∫ (f (z) − f (zˆ))dγ(z, zˆ)∣ ≤ ∫ ∣f (z) − f (zˆ)∣dγ(z, zˆ) ≤ b
+n∫
+n
+i=∑1
+∥xti − yti ∥d(γ1 ⊗ ⋅ ⋅ ⋅ ⊗ γn)
+=b
+n
+n
+i=∑1 ∫ ∥xi − yi∥dγi(xi, yi) = b
+n
+n
+i=∑1
+W1(πi, πˆi)
+(42)
+Now we set this up in this form because we can immediately obtain a bound on W1(πi, πˆi) by the 1-Wasserstein duality. Observe, by (39) we have:
+sup
+f ∈LipA, t∈[0,T ]
+∣
+k
+j=∑1
+λjf (φθ
+t,x(ωT,j) − E[f (Xθ
+t )]∣ ≤ 3 KA C(m, γ)T 1/2k−γ/2
+⇒ sup
+f ∈Lip1, t∈[0,T ]
+∣
+k
+j=∑1
+λjf (φθ
+t,x(ωT,j) − E[f (Xθ
+t )]∣ ≤ 3 K C(m, γ)T 1/2k−γ/2
+Then, by 1-Wasserstein duality we have:
+W1(πi, πˆi) = sup
+f ∈Lip1
+∣
+k
+j=∑1
+λjf (φθ
+ti,x(ωT,j) − E[f (Xti )]∣ ≤ 3 K C(m, γ)T 1/2k−γ/2
+29
+
+
+SNOW AND KRISHNAMURTHY
+and thus, using (42):
+∣E(f (Xt1, . . . , Xtn) − j∑
+λjf (φθ
+t1,x(ωT,j ), . . . , φθ
+tn,x(ωT,j ))∣ ≤ 3 K b C(m, γ)T 1/2k−γ/2
+where, crucially, this bound is independent from n. We exploit this in the final part, to follow.
+PART 3
+Here we use Theorem 16 to complete the proof. Recall we denote Ω ∶= C([0, T ]; Rd) the path space equipped with the uniform norm ∥ω∥∞ ∶= supt∈[0,T ] ∥ω(t)∥1, and C(Ω) the space of continuous
+real-valued functionals on Ω. Denote Q the infinite-dimensional path-space Law of Xtθ, and Qˆ the
+measure over the discrete set of paths φtθ,x(ωT,j), with weights λj. Then, we aim to show that
+sup
+f ∈Lip1⊂C(Ω)
+∣EQ[f ] − EˆQ[f ]∣ ≤ 3 K b C(m, γ)T 1/2k−γ/2
+We begin by identifying
+sup
+f ∈Lip1
+∣EQ[f ] − EQˆ [f ]∣ = W1(Q, ˆQ)
+A crucial observation is that by the uniform boundedness of vector fields (A1), we have boundedness of paths φtθ,x(ωT,j). Also we have that the path-law Q is contained, in that for any δ > 0 we can find M (δ) < ∞ such that supt∈[0,T ] PQ(∥Xt∥ ≤ M (δ)) ≥ 1 − δ. Let us then choose some functional
+fˆ ∈ Lip1 ⊂ C(Ω) such that W1(Q, ˆQ) ≤ ∣EQ[fˆ] − EQˆ [fˆ]∣ + ε/3. Then, by Theorem 16, for any ε > 0
+we may find some n ∈ N, and Fn ∈ A such that
+∣EP[Fn] − EˆP[Fn]∣ ≥ ∣EQ[fˆ] − EQˆ [fˆ]∣ − ε/2 (43)
+Here Theorem 16 is applied for a compact subset K ⊂ C(Ω), K = {f ∶ supt∈[0,T ] ∥f (t)∥ ≤ M (δ)} for some δ > 0 inducing supf∈Lip1 ∣(EQ∣M(δ)[f ] − EˆQ∣M(δ)[f ]) − (EQ[f ] − EˆQ[f ])∣ ≤ ε ̃,
+supf∈Lip1 ∣(EP∣M(δ)[f ] − EPˆ∣M(δ)[f ]) − (EP[f ] − EˆP[f ])∣ ≤ ε ̃, where Q∣M (δ) denotes the measure Q restricted to ∥x∥ ≤ M (δ) and renormalized. By this procedure we may make ε ̃ arbitrarily small and thus induce the bound (43) for any ε. Thus, we have
+∣EP[Fn] − EˆP[Fn]∣ ≥ W1(Q, ˆQ) − ε (44)
+from which it follows that
+sup
+n∈N,Fn∈A
+∣EP[Fn] − EˆP[Fn]∣ = W1(P, ˆP)
+for clarity, we prove by contradiction: suppose otherwise. Then, there exists α > 0 s.t.
+supn∈N,Fn∈A ∣EP[Fn] − EPˆ[Fn]∣ = W1(P, ˆP) − α, meaning
+W1(P, ˆP) > sup
+n∈N,Fn∈A
+∣EP[Fn] − EˆP[Fn]∣ + δ, ∀δ < α
+which contradicts the fact that (44) can be achieved for any ε > 0.
+30
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+Now, we simply write
+sup
+f ∈C(Ω),f ∈Lip1
+⎡⎢⎢⎢⎢⎣
+E[f (X)] −
+k
+j=∑1
+λk φ(ωT ,j )
+⎤⎥⎥⎥⎥⎦
+= W1(Q, ˆQ) = sup
+n∈N,Fn∈A
+∣EP[Fn] − EˆP[Fn]∣
+≤ 3 K b C(m, γ)T 1/2k−γ/2
+(45)
+6.5.2 THEOREM 9
+Proof By Theorem 4 and Theorem 19 of Litterer and Lyons (2012) we derive
+sup
+x,t ∣Ptf (t, x) −  ̃Φθ
+f (t)∣
+≤ (C1 ⎛
+⎝s1/2
+k+
+k−1
+i=∑1
+m+1
+j=∑m
+s
+(j+1)/2
+i
+(T − ti)j/2
+⎞
+⎠ + C5
+k−1
+i=∑1
+ur+1
+i
+(T − ti)rp∗/2 ) sup
+t∈[0,T ]
+∥∇f (t, ⋅))∥∞
+where C1 ∶= 3 T K A. By the results in Lyons and Victoir (2004) (also Litterer and Lyons (2012) page 20) we have, since m − 1 ≥ γ,
+s1/2
+k+
+k−1
+i=∑1
+m+1
+j=∑m
+s
+(j+1)/2
+i
+(T − ti)j/2 ≤ C7(m, γ)T 1/2k−γ/2
+Let c be such that γ ≤ p(r+1)
+p∗ r
+c +1 . Substituting uj = sp∗/2γ
+j , we have
+k−1
+i=∑1
+sp∗(r+1)/2γ
+i
+(T − ti)rp∗/2 ≤
+k−1
+i=∑1
+ci
+s
+( rp∗
+c +1)/2
+i
+(T − ti)rp∗/2c ≤ C6
+k−1
+i=∑1
+s
+( rp∗
+c +1)/2
+i
+(T − ti)rp∗/2c
+where
+ci = s( p∗(r+1)
+2γ −
+p∗ r
+c +1)
+2)
+i
+(T − ti)rp∗/2c−rp∗/2 ≤ T p∗(r+1)−γ( p∗r
+c +1)k−γ(rp∗/2c−rp∗/2)
+= T p∗(r+1)−γ( p∗r
+c +1)kγrp∗/2−γrp∗/2c =∶ C6
+Then, since rp∗ − 1 ≥ γ,
+C6
+k−1
+i=∑1
+s
+(rp∗+1)/2 i
+(T − ti)rp∗/2 ≤ C7(rp∗, γ)T 1/2+p∗(r+1)−γ( p∗r
+c +1)kγrp∗/2−γrp∗/2c−γ/2
+which gives us
+sup
+x,t ∣Ptf (t, x) −  ̃Φθ
+f (t)∣
+≤ (C1(m, γ, T ) + C2(r, p∗, γ, T )) AT 1/2kγrp∗/2−γrp∗/2c−γ/2
+(46)
+31
+
+
+SNOW AND KRISHNAMURTHY
+with A = supt∈[0,T ] ∥∇f (t, ⋅)∥∞ and C1 and C2 are constants depending only on their arguments. Now, to obtain (23), we first define
+L = max
+i∈[r]
+length(ωi)
+as the maximum of the lengths of paths in the degree m cubature formula on Wiener space over the unit time interval. Then, observe that given A2 there exists M ′ such that vector fields {V θ
+i (⋅)}db+1
+i=1
+are uniformly bounded by M ′. Then (see Litterer and Lyons (2012) for more details),
+supp(Q(k)
+D,u)(x) ⊆ B(x, M ′L
+k
+i=∑1
+s1/2
+j ) ⊆ B(x, M ′LkT 1/2)
+Thus, the total number of ODE computations is bounded by the total number of localizing balls of
+radius uj = sp∗/2γ
+j needed to cover the ball of radius M ′LkT 1/2. The volume Vdx(r) of an dx
+dimensional ball of radius r is given by Vdx(r) = πdx/2
+Γ( dx
+2 +1)
+rdx where Γ is the gamma function. Thus,
+the number of balls  ̃n of radius uj = sp∗/2γ
+j necessary to cover B(x, M ′LkT 1/2) is given by
+ ̃n = (M ′LkT 1/2)dx
+(sp∗/2γ
+j )dx ≤ (M ′LkT 1/2)dx
+(T ( 1
+k )γ )p∗dx/2γ = (M ′L)dx kdx(p∗/2+1)T dx(p∗−1) (47)
+and the total number of ODE computations n is then bounded by (r+1) ̃n, since the reduced measure procedure (RMP) produces reduced measures with support cardinality of at most r + 1 within each localizing ball. Inverting, we have
+k=( n
+r + 1 (M ′L)−dx T −dx(p∗−1))
+1
+dx(p∗/2+1) = (M ′L)− 1
+(p∗/2−1) T − p∗−1
+p∗/2−1 ( n
+r +1)
+1
+dx (p∗ /2−1)
+Thus, substituting into (46), we obtain
+sup
+x,t ∣Ptf (t, x) −  ̃Φθ
+f (t)∣
+≤ (M ′L)
+γ
+p∗/2 T
+γ (p∗ −1)+1
+p∗−2 A T 1/2 (C1(m, γ, T ) + C2(r, p∗, γ, T )) ( n
+r +1)
+−γ (rp∗ /c−rp∗ +1) dx (p∗ −2)
+(48)
+Now, observe that the Proof of Theorem 4 proceeds by obtaining a uniform pointwise bound such as (48), and produces a bound on the W -1 distance between pathwise SDE and cubature measures; in which the bound remains the same except for the functional Lipschitz constant b replacing the Lipschitz constant A. Thus, apply this methodology with the bound (48) to produce (23), written more precisely as:
+∣E[Ldata(Xθ)] −  ̃Φθ
+Ldata ∣
+≤ (M ′L)
+γ
+p∗/2 T
+γ (p∗ −1)+1
+p∗−2 b T 1/2 (C1(m, γ, T ) + C2(r, p∗, γ, T )) ( n
+r +1)
+−γ (rp∗ /c−rp∗ +1)
+dx(p∗−2) (49)
+32
+
+
+EFFICIENT NEURAL SDE TRAINING USING WIENER-SPACE CUBATURE
+References
+Imanol Perez Arribas, Cristopher Salvi, and Lukasz Szpruch. Sig-SDEs model for quantitative finance. In Proceedings of the First ACM International Conference on AI in Finance, pages 1–8, 2020.
+Christian Bayer and Peter K Friz. Cubature on wiener space: pathwise convergence. Applied Mathematics & Optimization, 67(2):261–278, 2013.
+Christian Bayer and Josef Teichmann. The proof of Tchakaloff’s theorem. Proceedings of the American mathematical society, 134(10):3035–3040, 2006.
+Francois-Xavier Briol, Alessandro Barp, Andrew B Duncan, and Mark Girolami. Statistical inference for generative models with maximum mean discrepancy. arXiv preprint arXiv:1906.05944, 2019.
+Ricky TQ Chen, Yulia Rubanova, Jesse Bettencourt, and David K Duvenaud. Neural ordinary differential equations. Advances in neural information processing systems, 31, 2018.
+Vedant Choudhary, Sebastian Jaimungal, and Maxime Bergeron. Funvol: multi-asset implied volatility market simulator using functional principal components and neural SDEs. Quantitative Finance, 24(8):1077–1103, 2024.
+Dan Crisan and Eamon McMurray. Cubature on wiener space for mckean–vlasov sdes with smooth scalar interaction. The Annals of Applied Probability, 29(1):130–177, 2019.
+Christa Cuchiero, Wahid Khosrawi, and Josef Teichmann. A generative adversarial network approach to calibration of local stochastic volatility models. Risks, 8(4):101, 2020.
+Louis De Branges. The stone-weierstrass theorem. Proceedings of the American Mathematical Society, 10(5):822–824, 1959.
+AFM ter Elst and Derek W Robinson. Uniform subellipticity. Journal of Operator Theory, pages 125–149, 2009.
+Emilio Ferrucci, Timothy Herschell, Christian Litterer, and Terry Lyons. High-degree cubature on Wiener space through unshuffle expansions. arXiv preprint arXiv:2411.13707, 2024.
+Patryk Gierjatowicz, Marc Sabate-Vidales, David ˇSiˇska, Lukasz Szpruch, and Zˇ an Zˇ uriˇc. Robust pricing and hedging via neural SDEs. arXiv preprint arXiv:2007.04154, 2020.
+Patryk Gierjatowicz, Marc Sabate-Vidales, David Siska, Lukasz Szpruch, and Zan Zuric. Robust pricing and hedging via neural stochastic differential equations. Journal of Computational Finance, 26(3), 2022.
+Zacharia Issa, Blanka Horvath, Maud Lemercier, and Cristopher Salvi. Non-adversarial training of neural SDEs with signature kernel scores. Advances in Neural Information Processing Systems, 36, 2024.
+Patrick Kidger, Ricky TQ Chen, and Terry J Lyons. ” hey, that’s not an ODE”: Faster ODE adjoints via seminorms. In ICML, pages 5443–5452, 2021a.
+33
+
+
+SNOW AND KRISHNAMURTHY
+Patrick Kidger, James Foster, Xuechen Li, and Terry J Lyons. Neural SDEs as infinite-dimensional gans. In International conference on machine learning, pages 5453–5463. PMLR, 2021b.
+Patrick Kidger, James Foster, Xuechen Chen Li, and Terry Lyons. Efficient and accurate gradients for neural SDEs. Advances in Neural Information Processing Systems, 34:18747–18761, 2021c.
+Peter E Kloeden, Eckhard Platen, Peter E Kloeden, and Eckhard Platen. Stochastic differential equations. Springer, 1992.
+S Kusuoka and D Stroock. Applications of the Malliavin calculus, part iii. J. Fac. Sci. Univ. Tokyo Sect IA Math, 34:391–442, 1987.
+Shigeo Kusuoka and Daniel Stroock. Applications of the Malliavin calculus, part ii. J. Fac. Sci. Univ. Tokyo, 32(1-76):18, 1985.
+Xuechen Li, Ting-Kam Leonard Wong, Ricky TQ Chen, and David K Duvenaud. Scalable gradients and variational inference for stochastic differential equations. In Symposium on Advances in Approximate Bayesian Inference, pages 1–28. PMLR, 2020.
+Christian Litterer and Terry Lyons. High order recombination and an application to cubature on Wiener space. 2012.
+Xuanqing Liu, Tesi Xiao, Si Si, Qin Cao, Sanjiv Kumar, and Cho-Jui Hsieh. Neural SDE: Stabilizing neural ode networks with stochastic noise. arXiv preprint arXiv:1906.02355, 2019.
+Terry Lyons and Nicolas Victoir. Cubature on Wiener space. Proceedings of the Royal Society of London. Series A: Mathematical, Physical and Engineering Sciences, 460(2041):169–198, 2004.
+Terry J Lyons. Differential equations driven by rough signals. Revista Matem ́atica Iberoamericana, 14(2):215–310, 1998.
+Takashi Matsubara, Yuto Miyatake, and Takaharu Yaguchi. Symplectic adjoint method for exact gradient of neural ODE with minimal memory. Advances in Neural Information Processing Systems, 34:20772–20784, 2021.
+Sam McCallum and James Foster. Efficient, accurate and stable gradients for neural ODEs. arXiv preprint arXiv:2410.11648, 2024.
+Josef Teichmann. Calculating the greeks by cubature formulae. Proceedings of the Royal Society A: Mathematical, Physical and Engineering Sciences, 462(2066):647–670, 2006.
+Belinda Tzen and Maxim Raginsky. Neural stochastic differential equations: Deep latent gaussian models in the diffusion limit. arXiv preprint arXiv:1905.09883, 2019a.
+Belinda Tzen and Maxim Raginsky. Theoretical guarantees for sampling and inference in generative models with latent diffusions. In Conference on Learning Theory, pages 3084–3114. PMLR, 2019b.
+Ce ́dric Villani et al. Optimal transport: old and new, volume 338. Springer, 2008.
+Jianxin Zhang, Josh Viktorov, Doosan Jung, and Emily Pitler. Efficient training of neural stochastic differential equations by matching finite dimensional distributions. arXiv preprint arXiv:2410.03973, 2024.
+34

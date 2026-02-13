@@ -1,0 +1,218 @@
+Coupled Josephson junctions
+Ruijie Hea,b, Shenglan Yuana,∗
+aDepartment of Mathematics, School of Sciences, Great Bay University, Dongguan 523000, China bSchool of Mathematics,Sun Yat-sen University, Guangzhou 510275, China
+Abstract
+Keywords:
+1. Introduction
+The application of score-based generative models to Josephson junction systems offers several compelling advantages over traditional analytical methods. Unlike conventional approaches that require explicit equation solving under simplifying assumptions, this data-driven framework learns directly from observational or simulated data, capturing the intrinsic stochasticity and nonlinear coupling without mathematical approximations. The method naturally handles high-dimensional state spaces, scaling efficiently to complex multi-junction arrays where traditional techniques face exponential computational barriers. Its exceptional capability for rare event sampling enables the study of physically crucial but statistically improbable phenomena like quantum phase slips and switching events that would be computationally prohibitive to capture through direct simulation. Furthermore, the approach seamlessly incorporates experimental measurements directly into the learning process, bridging the gap between theoretical models and real-world device behavior. Finally, the probabilistic nature of generative models provides inherent uncertainty quantification, offering not just point estimates but full distributional information about junction states and parameters, which is essential for assessing the reliability and noise resilience of quantum circuits in practical applications. This innovative approach promises to reveal profound insights into the collective dynamics of quantum circuits, uncovering novel synchronization patterns in junction arrays that transcend simple pairwise coupling and exhibit complex spatiotemporal ordering. By mapping the complete dynamical landscape, we can identify optimal coupling configurations that maximize coherence and minimize decoherence in quantum computing applications, potentially leading to more robust qubit designs and quantum memory elements. The framework naturally elucidates the noise resilience properties of different array geometries, demonstrating how specific topological arrangements can either amplify or suppress the impact of thermal fluctuations and environmental noise. Furthermore, scaling to large-scale systems enables the discovery of emergent collective phenomena–such as topological protection, many-body localization, and quantum synchronization transitions–that arise only in the thermodynamic limit and cannot be predicted from individual component behavior. The powerful combination of rigorous physical modeling, embodied in the coupled Josephson junction equations, with modern generative AI represents a transformative direction for investigating complex quantum systems, bridging the gap between microscopic physics and macroscopic emergent behavior while providing unprecedented predictive capabilities for designing next-generation quantum technologies.
+2. Coupled Josephson junction equations
+We consider a two-junction superconducting quantum interference device (SQUID). The system consists of a superconducting loop interrupted by two Josephson junctions with the structure S-I-S-I-S. For multiple
+∗Corresponding author Email addresses: gravitas_sysu@qq.com (Ruijie He), shenglanyuan@gbu.edu.cn (Shenglan Yuan)
+Preprint submitted to ? November 4, 2025
+
+
+junctions, we have to consider the phases of each junction and the coupling between them. The phases across the junctions are denoted by φ1 and φ2. The external magnetic flux is set to zero for simplicity: Φext = 0. The voltage across each junction is related to the phase by
+Vj = ħ
+2e φ ̇ j, for j = 1, 2. (2.1)
+Using the resistively and capacitively shunted junction (RCSJ) model, the current through each junction is
+I j = Icj sin(φ j) + V j
+Rj
++ C jV ̇ j, (2.2)
+where Icj are critical currents, R j represent resistances, and C j stand for capacitances. Substituting (2.1) for V j into (2.2) yeilds
+I j = Icj sin(φ j) + ħ
+2eR j
+φ ̇ j + ħC j
+2e φ ̈ j. (2.3)
+In a SQUID, the total bias current I splits as I = I1 + I2. We can decompose the currents through junctions into symmetric and antisymmetric components:
+I1 = I
+2 + Icirc, I2 = I
+2 − Icirc, (2.4)
+where Icirc means the circulating current around the loop. The flux quantization condition with Φext = 0 gives
+φ1 − φ2 = 2e
+ħ LIcirc,
+where L is the loop inductance. Thus,
+Icirc = ħ
+2eL (φ1 − φ2). (2.5)
+Substitute (2.2) and (2.5) into the expressions for I1 and I2
+I
+2+ ħ
+2eL (φ1 − φ2) = Ic1 sin(φ1) + ħ
+2eR1
+φ ̇1 + ħC1
+2e φ ̈1, (2.6)
+I
+2− ħ
+2eL (φ1 − φ2) = Ic2 sin(φ2) + ħ
+2eR2
+φ ̇2 + ħC2
+2e φ ̈2. (2.7)
+We divide (2.6) by Ic1 , and thus get
+ħC1 2eIc1
+φ ̈1 + ħ
+2eR1 Ic1
+φ ̇1 + sin(φ1) = I
+2Ic1
++ħ
+2eLIc1
+(φ1 − φ2).
+We introduce normalized time t = ωp1 τ, where the plasma frequency is
+ωp1 =
+√
+2eIc1
+ħC1
+.
+Hence,
+φ ̈1 + βJ1 φ ̇1 + sin(φ1) = i1 + ħ
+2eLIc1
+(φ1 − φ2), (2.8)
+2
+
+
+where βJ1 = 1
+ωp1 R1C1 and i1 = I
+2Ic1
+. We define the coupling constant
+κ1 = − ħ
+2eLIc1
+.
+So (2.8) becomes
+φ ̈1 + βJ1 φ ̇1 + sin(φ1) = i1 + κ1(φ2 − φ1), (2.9)
+Similarly, we divide (2.7) by Ic2 and normalize using ωp2 =
+√ 2eIc2
+ħC2 :
+φ ̈2 + βJ2 φ ̇2 + sin(φ2) = i2 − ħ
+2eLIc2
+(φ1 − φ2). (2.10)
+We define the coupling constant
+κ2 = − ħ
+2eLIc2
+.
+Therefore,
+φ ̈2 + βJ2 φ ̇2 + sin(φ2) = i2 + κ2(φ1 − φ2). (2.11)
+According to the fluctuation-dissipation theorem, thermal noise currents ith1 and ith2 are added to the right-hand sides of (2.9) and (2.11). These represent Johnson-Nyquist noise from the resistors. Finally, the coupled Josephson junction equations are
+φ ̈1 + βJ1 φ ̇1 + sin φ1 = i1 + ith1(t) + κ1(φ2 − φ1), (2.12)
+φ ̈2 + βJ2 φ ̇2 + sin φ2 = i2 + ith2(t) + κ2(φ1 − φ2). (2.13)
+3. Learning phase space dynamics
+Generative modeling by estimating gradients of the data distribution (also known as score-based generative models or diffusion models) is a powerful framework that could be very well-suited for investigating complex systems like coupled Josephson junctions. The key idea is to learn the score function, i.e., the gradient of the log probability density ∇x log p(x), where for our junction system as in (2.12)-(2.13), x = [φ1, φ2, φ ̇1, φ ̇2] represents the state vector. We could train score-based models to capture the complex joint distribution of junction states. Instead of solving the coupled equations (2.12)-(2.13) directly, we collect trajectory data from simulations, train a score-based model on the joint distribution of states and generate new trajectories that respect the underlying physics. The score function ∇ log p(φ1, φ2, φ ̇1, φ ̇2) would capture how likely the system is to transition between different dynamical regimes. It implicitly learn the coupling terms and thermal noise characteristics. The fluctuation-dissipation theorem relates thermal noise to damping. Score-based models could separate deterministic dynamics from stochastic components, characterize noise correlations between junctions and identify non-thermal noise sources. Implementation framework
+Step 1 Data generation We simulate the coupled equations (2.12)-(2.13) with different parameter settings and initial conditions.
+Step 2 Score network architecture We design a neural network that respects physical constraints:
+• Periodicity in φ1, φ2 (mod 2π)
+• Time-translation invariance for stationary processes
+3
+
+
+• Potential symmetry between junctions
+Step 3 Training with denoising score matching We use the objective
+Et,x,  ̃x[λ(t)∥sθ(  ̃x, t) − ∇  ̃x log p0t(  ̃x|x)∥],
+where  ̃x is a noisy version of the true state x. The learned score function should reveal preferred phase difference configurations (φ1 − φ2).
+0 50 100 t
+0
+200
+400
+600
+800
+1
+1
+0 50 100 t
+0
+200
+400
+600
+800
+2
+2
+0 50 100 t
+0
+2
+4
+6
+8
+10
+v1
+v1
+0 50 100 t
+0
+2
+4
+6
+8
+10
+v2
+v2
+Figure 1: The coupled Josephson junction dynamics (without noise) for a given set of parameters: βJi = 0.1, ici = 0.8, κi = 0.05,
+i = 1, 2.
+Let v1 = φ ̇1 and v2 = φ ̇2. We can rewrite he following normalized equations (2.9) and (2.11) without noise as a system of first-order ODEs:
+φ ̇1 = v1,
+v ̇1 = i1 − βJ1 v1 − sin(φ1) + κ1(φ2 − φ1), φ ̇2 = v2,
+v ̇2 = i2 − βJ2 v2 − sin(φ2) + κ2(φ1 − φ2).
+4
+
+
+Figure 2: Analyze phase space dynamics with βJi = 0.1, ici = 0.8, κi = 0.05 and σi = 0.01, i = 1, 2.
+Now we add noise terms. We’ll use Euler-Maruyama method for SDEs. We rewrite the system (2.12)(2.13) as
+dφ1 = v1dt,
+dv1 = [i1 − βJ1 v1 − sin(φ1) + κ1(φ2 − φ1)]dt + σ1dW1,
+dφ2 = v2dt,
+dtv2 = [i2 − βJ2 v2 − sin(φ2) + κ2(φ1 − φ2)]dt + σ2dW2,
+where W1 and W2 are independent white noises, and σ1, σ2 are noise intensities related to the thermal noise. We assume the fluctuation-dissipation relation, so the noise intensity is related to the damping and
+temperature. In normalized units, we can set σi = √2kbT/Ri, i = 1, 2 for temperature T in normalized units.
+5
+
+
+0 0.05 0.1 0.15 0.2 Coupling Strength
+0
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+Phase Difference STD
+10-8 Phase Locking
+0 0.05 0.1 0.15 0.2 Coupling Strength
+-1
+-0.8
+-0.6
+-0.4
+-0.2
+0
+0.2
+0.4
+0.6
+0.8
+1
+Velocity Correlation
+Velocity Synchronization
+0 0.05 0.1 0.15 0.2 Coupling Strength
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+Mean Phase Difference
+10-5 Average Phase Separation
+Effect of Coupling Strength on Synchronization
+Figure 3: Study effect of coupling strength on synchronization with βJi = 0.1, ici = 0.8, and σi = 0.01, i = 1, 2.
+4. Sampling rare events
+Josephson junction systems exhibit important rare events:
+1. Phase slips (quantum tunneling between potential minima) 2. Switching currents 3. Synchronization transitions
+Score-based models excel at sampling from low-probability regions of the distribution, which is perfect for studying these rare but physically crucial events. Bifurcation analysis: As the coupling parameters between Josephson junctions evolve, the score landscape learned by generative models undergoes profound qualitative transitions, revealing critical thresholds where the system’s dynamics fundamentally reorganize. These bifurcations manifest as sudden changes in the preferred phase configurations, where weakly coupled junctions may transition from independent oscillations to phase-locked states, or from synchronous to chaotic regimes. The score function’s topology–capturing the gradient of the log-probability distributio–serves as a sensitive detector of these emergent dynamical patterns, with its contours reshaping dramatically at critical coupling strengths. This allows for precise mapping of parameter regions where the system exhibits multistability, enabling the prediction of spontaneous symmetry breaking and the emergence of collective modes that are not apparent from individual junction dynamics alone. Noise-induced transitions: Thermal noise plays a paradoxical role in facilitating transitions between metastable states that would otherwise be separated by insurmountable energy barriers in the deterministic limit. The score-based framework naturally captures how stochastic fluctuations enable rare but physically crucial events–such as phase slips and switching currents–by effectively lowering the activation energy required for state transitions. By learning the joint probability landscape of junction phases and velocities, generative models can quantify transition rates between metastable basins and reveal how noise correlation times and amplitudes influence synchronization stability. This approach provides deep insights into the fundamental trade-offs between noise resilience and sensitivity in quantum circuits, demonstrating how carefully engineered noise can actually enhance certain quantum information processing tasks while degrading others.
+5. Parameter inference
+We could learn the inverse mapping: from observed dynamics (φ1(t), φ2(t)) to underlying parameters (βJ1 , βJ2 , κ1, κ2).
+6
+
+
+6. Conclusions and future challenges
+Multi-junction generalization: Extending this analysis to larger junction arrays unveils rich emergent synchronization phenomena that transcend pairwise coupling effects. As the system size increases, the score landscape evolves to capture collective behaviors such as chimera states (where synchronous and asynchronous populations coexist), frustration in geometrically constrained arrays, and the spontaneous emergence of topological defects in phase ordering. The generative modeling approach scales naturally to high-dimensional state spaces, learning the complex correlations that give rise to macroscopic coherence from microscopic interactions. This framework enables the discovery of novel dynamical phases in quantum circuit networks and provides powerful design principles for optimizing synchronization in large-scale quantum processors, where emergent phenomena can either enhance computational capabilities or introduce destructive collective noise that must be carefully mitigated.
+References
+[1] S. Yuan, Stochastic dynamics of the resistively shunted superconducting tunnel junction system under the impact of thermal fluctuations, Chaos, Solitons and Fractals, 2025, 199: 116917.
+7

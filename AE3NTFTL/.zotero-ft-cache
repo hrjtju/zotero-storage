@@ -1,0 +1,2541 @@
+Complex
+and Adaptive
+Dynamical
+Systems
+Claudius Gros
+A Comprehensive Introduction
+Fifth Edition
+
+
+Complex and Adaptive Dynamical Systems
+
+
+Claudius Gros
+Complex and Adaptive
+Dynamical Systems
+A Comprehensive Introduction
+Fifth Edition
+
+
+Claudius Gros Institute for Theoretical Physics Goethe University Frankfurt Frankfurt/Main, Germany
+ISBN 978-3-031-55075-1 ISBN 978-3-031-55076-8 (eBook) https://doi.org/10.1007/978-3-031-55076-8
+© The Editor(s) (if applicable) and The Author(s), under exclusive license to Springer Nature Switzerland AG 2008, 2011, 2013, 2015, 2024 This work is subject to copyright. All rights are solely and exclusively licensed by the Publisher, whether the whole or part of the material is concerned, specifically the rights of translation, reprinting, reuse of illustrations, recitation, broadcasting, reproduction on microfilms or in any other physical way, and transmission or information storage and retrieval, electronic adaptation, computer software, or by similar or dissimilar methodology now known or hereafter developed. The use of general descriptive names, registered names, trademarks, service marks, etc. in this publication does not imply, even in the absence of a specific statement, that such names are exempt from the relevant protective laws and regulations and therefore free for general use. The publisher, the authors, and the editors are safe to assume that the advice and information in this book are believed to be true and accurate at the date of publication. Neither the publisher nor the authors or the editors give a warranty, expressed or implied, with respect to the material contained herein or for any errors or omissions that may have been made. The publisher remains neutral with regard to jurisdictional claims in published maps and institutional affiliations.
+This Springer imprint is published by the registered company Springer Nature Switzerland AG The registered company address is: Gewerbestrasse 11, 6330 Cham, Switzerland
+Paper in this product is recyclable.
+
+
+May our own thoughts surprise us.
+
+
+Preface
+Complexity, Emergence and Self Organization Complex systems theory deals with dynamical systems showing a large variety of emergent phenomena. Examples relevant to all realms of science abound.
+– Powerlaw distributions in evolving networks. – Deterministic chaos in one-dimensional maps. – Strange attractors in adaptive dynamical systems. – Spontaneous pattern formation in reaction-diffusion systems. – Self-organized criticality in cellular automata. – Organisms living at the edge of chaos. – The rise of life in terms of hypercycles. – Spontaneous synchronization of interacting oscillators. – Neural networks underpinning modern machine learning algorithms.
+These are a few examples treated in this textbook. Complex systems theory is a fascinating subject becoming increasingly important in our socio-scientific culture, with its rapidly growing degrees of complexity. It is also a deeply interdisciplinary subject, providing the mathematical basis for applications in fields ranging from the social sciences and psychology on one side to the neurosciences and artificial intelligence on the other side.
+Readership and Preconditions This primer is intended for students and scientists from the natural and social sciences, engineering, informatics, experimental psychology, or neuroscience. Technically, the reader should have a basic knowledge of mathematics as it is used in the natural sciences or engineering. This textbook is suitable both for studies in conjunction with teaching courses as well as for the individual reader.
+Course Material and the Modular Approach When used for teaching, this primer is suitable for a course running over one or two terms, depending on the pace and on the number of chapters covered. In general, there should be no problem to follow the mathematics involved. Considerable care has been taken to perform the respective derivations on a step-by-step basis.
+vii
+
+
+viii Preface
+Individual chapters may be skipped, whenever time considerations demand it. The book follows a modular approach and the individual chapters are, as far as possible, independent of each other. Notwithstanding, cross references between the different chapters are included throughout the text, since interrelations between distinct topics may be helpful for a thorough understanding.
+Style This interdisciplinary primer sets a high value on conveying concepts and notions within their respective mathematical settings. Believing that a concise style helps the reader to go through the material, this textbook mostly abstains from long text passages with general background explanations or philosophical considerations. Widespread use has been made of paragraph headings with the intention to facilitate scientific reading.
+A Primer to Scientific Common-Sense Knowledge To a certain extent, one can regard this textbook as a primer to a wide range of scientific common-sense knowledge regarding complex systems. A basic expertise about life’s organizational principles, to give an example such as the notion of “life at the edge of chaos”, is important in today’s world to an educated scientist. Other areas of scientific common-sense knowledge discussed in this primer include network theory, which has applications ranging from social networks to gene expression networks, the fundamentals of evolution, cognitive systems theory, as well as the basic principles of dynamical systems, self organization and information theory.
+Exercises and Suggestions for Further Readings Towards the end of each chapter, a selection of exercises is presented. The respective solutions can be found in a dedicated chapter. In addition, the section “Further Reading” at the end of each chapter contains references to standard introductory textbooks and review articles. Also listed are selected articles for further in-depth studies dealing with specific issues treated within the respective chapter.
+Content of the Fifth Edition Since its first printing in 2008, this textbook has seen several extensions. The present fifth edition has been completely revised. As a main addition, the complex systems theory of modern machine learning architectures has been included in a new chapter. In addition, a range of new sections have been added to existing chapters, each dealing with an exciting topic. Such as “Rate Induced Tipping”, “Partially Predictable Chaos”, the “Tragedy of the Commons”, and “Piecewise Linear Dynamical Systems”, to mention a few. The field of complex systems is continuously evolving, and so is this book.
+Acknowledgements I would like to thank Urs Bergmann, Christoph Bruder, Dante Cialvo, Tejaswini Dalvi, Florian Dommert, Barbara Drossel, Rodrigo Echeveste, Bernhard Edegger, Florian Greil, Tim Herfurth, Chistoph Herold, Philipp Hövel, Gregor Kaczor, Guillermo Ludueña, Maripola Kolokotsa, Jay Lennon, Mathias Linkerhand, Wolfgang Mader, Dimitrije Markovic ́, Anne Metz, Zoltán Néda, Bulc ́u Sándor, Ludger Santen, Daniel Nevermann, H.G. Schuster and DeLiang Wang for
+
+
+Preface ix
+their comments, for the preparation of figures and the reading of the manuscript. Particular thanks go to Roser Valentí for continuing support.
+Frankfurt/Main, Germany Claudius Gros January 2024
+
+
+Contents
+1 Network Theory . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1 1.1 Properties of Real-World Networks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1 1.1.1 The Small World Effect . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1 1.1.2 Basic Graph-Theoretical Concepts . . . . . . . . . . . . . . . . . . . . . . . 4 1.1.3 Network Degree Distribution . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9 1.2 Spectral Properties . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11 1.2.1 Graph Laplacian . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14 1.3 Percolation in Generalized Random Graphs . . . . . . . . . . . . . . . . . . . . . . . 17 1.3.1 Graphs with Arbitrary Degree Distributions . . . . . . . . . . . . . 17 1.3.2 Probability Generating Function Formalism . . . . . . . . . . . . . 23 1.3.3 Distribution of Component Sizes . . . . . . . . . . . . . . . . . . . . . . . . . 25 1.4 Robustness of Random Networks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29 1.5 Small-World Models . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 34 1.6 Scale-Free Graphs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36 Exercises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41 Further Reading . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 43 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 43
+2 Bifurcations and Chaos in Dynamical Systems . . . . . . . . . . . . . . . . . . . . . . . . . 45 2.1 Basic Concepts of Dynamical Systems Theory . . . . . . . . . . . . . . . . . . . 45 2.2 Fixpoints, Bifurcations and Stability . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 52 2.2.1 Fixpoints Classification and Jacobian . . . . . . . . . . . . . . . . . . . . 53 2.2.2 Bifurcations and Normal Forms . . . . . . . . . . . . . . . . . . . . . . . . . . 56 2.2.3 Hopf Bifurcations and Limit Cycles . . . . . . . . . . . . . . . . . . . . . 59 2.3 Global Bifurcations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 62 2.3.1 Infinite Period Bifurcation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 64 2.3.2 Catastrophe Theory . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 65 2.3.3 Rate Induced Tipping . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 69 2.4 Logistic Map and Deterministic Chaos . . . . . . . . . . . . . . . . . . . . . . . . . . . . 71 2.4.1 Colliding Attractors . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 77 2.5 Dynamical Systems with Time Delays . . . . . . . . . . . . . . . . . . . . . . . . . . . . 78 2.5.1 Distributed Time Delays . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 81
+xi
+
+
+xii Contents
+Exercises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 82 Further Reading . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 84 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 84
+3 Dissipation, Noise and Adaptive Systems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 87 3.1 Chaos in Dissipative Systems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 87 3.1.1 Phase Space Contraction and Expansion . . . . . . . . . . . . . . . . . 87 3.1.2 Strange Attractors and Dissipative Chaos . . . . . . . . . . . . . . . . 91 3.1.3 Partially Predictable Chaos . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 94 3.2 Adaptive Systems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 97 3.2.1 Conserving Adaptive Systems . . . . . . . . . . . . . . . . . . . . . . . . . . . . 102 3.3 Diffusion and Transport . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 106 3.3.1 Random Walks, Diffusion and Lévy Flights . . . . . . . . . . . . . 106 3.3.2 Markov Chains . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 110 3.4 Stochastic Systems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 113 3.4.1 Langevin Equation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 113 3.4.2 Stochastic Calculus . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 116 3.5 Noise-Controlled Dynamics . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 117 3.5.1 Fokker–Planck Equation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 117 3.5.2 Stochastic Escape . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 119 3.5.3 Stochastic Resonance . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 121 Exercises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 125 Further Reading . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 126 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 126
+4 Self Organization . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 129 4.1 Interplay Between Diffusion and Reaction . . . . . . . . . . . . . . . . . . . . . . . . 129 4.1.1 Travelling Wavefronts in the Fisher Equation . . . . . . . . . . . 131 4.1.2 Sum Rule for the Shape of the Wavefront. . . . . . . . . . . . . . . . 135 4.1.3 Self-Stabilization of Travelling Wavefronts. . . . . . . . . . . . . . 136 4.2 Interplay Between Activation and Inhibition . . . . . . . . . . . . . . . . . . . . . . 138 4.2.1 Turing Instability . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 139 4.2.2 Pattern Formation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 140 4.2.3 Gray–Scott Reaction Diffusion System . . . . . . . . . . . . . . . . . . 142 4.3 Collective Phenomena and Swarm Intelligence . . . . . . . . . . . . . . . . . . . 147 4.3.1 Phase Transitions in Social Systems . . . . . . . . . . . . . . . . . . . . . 147 4.3.2 Collective Decision Making and Stigmergy . . . . . . . . . . . . . 149 4.3.3 Collective Behavior and Swarms . . . . . . . . . . . . . . . . . . . . . . . . . 152 4.3.4 Opinion Dynamics . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 154 4.4 Car Following Models . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 156 4.4.1 Linear Flow and Carrying Capacity . . . . . . . . . . . . . . . . . . . . . . 157 4.4.2 Self-Organized Traffic Congestions . . . . . . . . . . . . . . . . . . . . . . 158 Exercises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 160 Further Reading . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 162 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 162
+
+
+Contents xiii
+5 Information Theory of Complex Systems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 163 5.1 Probability Distribution Functions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 163 5.1.1 Law of Large Numbers . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 167 5.1.2 Bayesian Statistics . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 169 5.1.3 Statistical Binning . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 171 5.1.4 Time Series Characterization . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 173 5.2 Entropy and Information . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 177 5.2.1 Maximal Entropy Distributions. . . . . . . . . . . . . . . . . . . . . . . . . . . 182 5.2.2 Minimal Entropy Principle . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 183 5.2.3 Mutual Information . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 185 5.2.4 Kullback-Leibler Divergence . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 190 5.3 Complexity Measures. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 193 5.3.1 Complexity and Predictability . . . . . . . . . . . . . . . . . . . . . . . . . . . . 195 5.3.2 Algorithmic and Generative Complexity. . . . . . . . . . . . . . . . . 198 Exercises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 200 Further Reading . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 202 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 202
+6 Self-Organized Criticality . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 203 6.1 Landau Theory of Phase Transitions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 203 6.2 Criticality in Dynamical Systems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 209 6.2.1 1/f Noise . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 213 6.3 Cellular Automata . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 214 6.3.1 Conway’s Game of Life. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 215 6.3.2 Forest Fire Model . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 216 6.4 Sandpile Model and Self-Organized Criticality . . . . . . . . . . . . . . . . . . . 218 6.4.1 Absorbing Phase Transitions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 221 6.5 Random Branching Theory . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 222 6.5.1 Branching Theory of Self-Organized Criticality. . . . . . . . . 222 6.5.2 Galton–Watson Processes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 228 6.6 Application to Long-Term Evolution . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 230 Exercises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 237 Further Reading . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 238 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 239
+7 Random Boolean Networks. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 241 7.1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 241 7.2 Random Variables and Networks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 243 7.2.1 Boolean Variables and Graph Topologies . . . . . . . . . . . . . . . . 243 7.2.2 Coupling Functions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 246 7.2.3 Dynamics . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 248 7.3 Dynamics of Boolean Networks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 249 7.3.1 Flow of Information Through a Network . . . . . . . . . . . . . . . . 250 7.3.2 Mean-Field Phase Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 252 7.3.3 Bifurcation Phase Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 254 7.3.4 Scale-Free Boolean Networks . . . . . . . . . . . . . . . . . . . . . . . . . . . . 258
+
+
+xiv Contents
+7.4 Cycles and Attractors . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 260 7.4.1 Quenched Boolean Dynamics . . . . . . . . . . . . . . . . . . . . . . . . . . . . 261 7.4.2 K = 1 Kauffman Network. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 264 7.4.3 K = 2 Kauffman Network. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 266 7.4.4 K = N Kauffman Network . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 267 7.5 Applications . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 270 7.5.1 Living at the Edge of Chaos . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 270 7.5.2 Yeast Cell Cycle . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 271 7.5.3 Application to Neural Networks . . . . . . . . . . . . . . . . . . . . . . . . . . 274 Exercises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 276 Further Reading . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 277 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 278
+8 Darwinian Evolution, Hypercycles and Game Theory . . . . . . . . . . . . . . . . . 279 8.1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 279 8.2 Mutations and Fitness in a Static Environment . . . . . . . . . . . . . . . . . . . . 282 8.3 Deterministic Evolution . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 286 8.3.1 Evolution Equations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 287 8.3.2 Beanbag Genetics: Evolution Without Epistasis . . . . . . . . . 290 8.3.3 Epistatic Interactions and the Error Catastrophe. . . . . . . . . 292 8.4 Finite Populations and Stochastic Escape . . . . . . . . . . . . . . . . . . . . . . . . . 297 8.4.1 Adaptive Climbing Under Strong Selective Pressure. . . . 298 8.4.2 Adaptive Climbing vs. Stochastic Escape. . . . . . . . . . . . . . . . 302 8.5 Prebiotic Evolution . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 304 8.5.1 Quasispecies Theory . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 304 8.5.2 Hypercycles and Autocatalytic Networks . . . . . . . . . . . . . . . . 306 8.6 Macroecology and Species Competition. . . . . . . . . . . . . . . . . . . . . . . . . . . 310 8.7 Coevolution and Game Theory . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 313 8.7.1 Tragedy of the Commons . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 320 Exercises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 322 Further Reading . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 324 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 324
+9 Synchronization Phenomena . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 327 9.1 Frequency Locking . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 327 9.2 Coupled Oscillators and the Kuramoto Model . . . . . . . . . . . . . . . . . . . . 329 9.3 Synchronization in the Presence of Time Delays. . . . . . . . . . . . . . . . . . 337 9.4 Synchronization Mechanisms . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 339 9.4.1 Aggregate Averaging . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 340 9.4.2 Causal Signaling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 344 9.5 Piecewise Linear Dynamical Systems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 348 9.6 Synchronization Phenomena in Epidemics . . . . . . . . . . . . . . . . . . . . . . . . 351 9.6.1 Continuous Time SIRS Model. . . . . . . . . . . . . . . . . . . . . . . . . . . . 356 Exercises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 357 Further Reading . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 359 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 359
+
+
+Contents xv
+10 Complexity of Machine Learning . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 361 10.1 Computation Units . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 361 10.1.1 Structured Units . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 364 10.1.2 The XOR Problem . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 365 10.2 Recurrent Neural Networks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 366 10.2.1 Random Matrix Theory . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 367 10.2.2 Criticality in Recurrent Networks . . . . . . . . . . . . . . . . . . . . . . . . 369 10.3 Neural Differential Equations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 374 10.3.1 Residual Nets . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 374 10.4 Gaussian Processes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 376 10.4.1 Multivariate Gaussians . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 376 10.4.2 Correlated Stochastic Functions . . . . . . . . . . . . . . . . . . . . . . . . . . 379 10.4.3 Machine Learning with Neural Tangent Kernels . . . . . . . . 382 10.5 Attention Induced Information Routing . . . . . . . . . . . . . . . . . . . . . . . . . . . 386 10.5.1 Transformer. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 387 Exercises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 390 Further Reading . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 391 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 391
+11 Solutions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 393 11.1 Solutions to the Exercises of Chap. 1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 394 11.2 Solutions to the Exercises of Chap. 2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 401 11.3 Solutions to the Exercises of Chap. 3 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 407 11.4 Solutions to the Exercises of Chap. 4 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 413 11.5 Solutions to the Exercises of Chap. 5 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 416 11.6 Solutions to the Exercises of Chap. 6 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 424 11.7 Solutions to the Exercises of Chap. 7 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 430 11.8 Solutions to the Exercises of Chap. 8 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 433 11.9 Solutions to the Exercises of Chap. 9 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 440 11.10 Solutions to the Exercises of Chap. 10 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 446 References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 450
+Index . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 451
+
+
+1
+Network Theory
+Dynamical and adaptive networks are the backbone of many complex systems. Examples range from ecological prey–predator networks to the gene- and protein expression networks on which all living creatures are based. The basis of our own identity is provided by the highly sophisticated neural network we carry in our heads. On a social level we interact through social and technical networks like the Internet. Networks are ubiquitous throughout the domain of all living creatures. A good understanding of network theory is of basic importance for complex systems theory. In this chapter we will discuss the most important notions of graph theory, like clustering and degree distributions, together with basic network realizations. Central concepts like percolation, the robustness of networks with regard to failure and attacks, and the “rich-get-richer” phenomenon in evolving social networks will be treated.
+1.1 Properties of Real-World Networks
+1.1.1 The Small World Effect
+Eight or more billion humans live on earth and it might seem that the world is a big place. But, as an Italian proverb states,
+Tutto il mondo è paese. – The world is a village.
+The network of who knows whom—the network of acquaintances—is indeed quite densely webbed. Modern scientific investigations mirror this century-old proverb.
+Social Networks Stanley Milgram performed a by now famous experiment in the 1960s. He distributed a number of letters addressed to a stockbroker in Boston to a random selection of people in Nebraska. The task was to send these letters to the
+© The Author(s), under exclusive license to Springer Nature Switzerland AG 2024 C. Gros, Complex and Adaptive Dynamical Systems, https://doi.org/10.1007/978-3-031-55076-8_1
+1
+
+
+2 1 Network Theory
+Fig. 1.1 Bottom: A network with two kind of nodes, a bipartite networks. The letters A–D may stand for distinct companies, the numerals 1–8 for managers serving on the respective boards of directors. Top: Managers serving on the same boards of directors are acquainted, forming a densely webbed social network 2 1
+3
+45
+7
+6
+8
+D
+78
+B
+345
+C
+6
+A
+12
+addressee (the stockbroker) via mail to an acquaintance of the respective sender. In other words, the letters were to be sent via a social network. The initial recipients of the letters clearly did not know the Boston stockbroker on a first-name basis. Their best strategy was to send their letter to someone whom they felt was closer to the stockbroker, socially or geographically: perhaps someone they knew in the financial industry, or a friend in Massachusetts.
+Six Degrees of Separation About 20% of Milgram’s letters did eventually reach their destination. Milgram found that it had only taken an average of six steps for a letter to get from Nebraska to Boston. This result, dubbed “six degrees of separation”, suggests that it should be possible to connect any two persons on earth via social networks in a similar number of steps.
+SMALL-WORLD EFFECT The “small-world effect” denotes the result that the average distance linking two nodes belonging to the same network can be orders of magnitude smaller than the number of nodes making up the network.
+The small-world effect occurs in all kinds of networks. Milgram examined the networks of friends, which may originate from participating in common activities. This is the case also for other social networks, as illustrated in Fig. 1.1. An example are managers serving together on the board of directors of the same company, which results in a dense network of acquaintances between the managers.
+Networks Are Everywhere Social networks are but just one important example of a communication network. Most human communication takes place directly among individuals. The spreading of news, rumors, jokes and of diseases takes place
+
+
+1.1 Properties of Real-World Networks 3
+Fig. 1.2 A protein
+interaction network, showing a complex interplay between highly connected hubs and communities of subgraphs with increased densities of edges. Reprinted from Palla et al. (2005) with permissions, © 2005 Nature Publishing Group
+Set3c
+complex
+Chromatin silencing
+Pheromone response (cellular fusion)
+Cell polarity, budding
+Protein phosphatase type 2A complex (part)
+CK2 complex and transcription regulation
+43S complex and
+protein metabolism Ribosome
+biogenesis/assembly
+DNA packaging, chromatin assembly
+Cytokinesis (septin ring)
+Tpd3
+Sif2
+Hst1
+Snt1
+Hos2
+Cph1
+Zds1
+Set3
+Hos4
+Mdn1
+Hcr1 Sui1
+Ckb2
+Cdc68
+Abf1 Cka1 Arp4
+Hht1
+Sir4 Sir3
+Htb1
+Sir1 Zds2
+Bob1
+Ste20
+Cdc24
+Bem1 Far1
+Cdc42
+Gic2
+Gic1
+Cla4
+Cdc12
+Cdc11
+Rga1
+Kcc4 Cdc10
+Cdc3
+Shs1
+Gin4
+Bni5
+Sda1
+Nop2
+Erb1
+Has1
+Dbp10
+Rpg1
+Tif35
+Sua7
+Tif6
+Hta1
+Nop12
+Ycr072c
+Arx1
+Cic1 Rrp12
+Nop4
+Cdc55 Pph22
+Pph21
+Rts3
+Rrp14
+Nsa2
+Ckb1
+Cka2
+Prt1 Tif34
+Tif5 Nog2
+Hhf1
+Brx1
+Mak21
+Mak5
+Nug1
+Bud20
+Mak11
+Rpf2
+Rlp7
+Nop7
+Puf6
+Nop15
+Ytm1
+Nop6
+by contacts between individuals. And we are all aware that rumors and epidemic infections can spread fast in densely webbed social networks. Communication networks are ubiquitous. Well known examples are the Internet and the world-wide web. Inside a cell the constituent proteins form an interacting network, as illustrated in Fig. 1.2. The same holds for artificial neural networks and for the scaffolding of our brain, neural networks. It is therefore important to understand the statistical properties of core network classes.
+
+
+4 1 Network Theory
+Fig. 1.3 Random graphs with .N = 12 nodes and connection probabilities .p = 0.0758 and .p = 0.3788 (left/right). Three mutually connected vertices, such (0,1,7), contribute to the clustering coefficient
+60
+1
+9
+2
+3
+4
+5
+7
+8 10
+11
+0
+1
+4
+7
+10
+11
+5
+2
+3
+9
+6
+8
+1.1.2 Basic Graph-Theoretical Concepts
+We start with some basic concepts allowing to characterize graphs and real-world networks. We will use the terms graph and network as interchangeable, vertex, site and node as synonyms, and either edge or link.
+Degree of a Vertex A graph is made out of N vertices connected by edges, with the degree k of a vertex being given by the number of edges linking to it. Nodes having a degree k substantially above the average are denoted “hubs”, they are the VIPs of network theory.
+Coordination Number The simplest type of network is the random graph. It is characterized by only two numbers: By the number of vertices N and by the average degree z, also called the coordination number.
+COORDINATION NUMBER The coordination number z is the average number of links per vertex, viz the average degree.
+A graph with an average degree z has .N z/2 connections. Alternatively we can define with p the probability to find a given edge.
+CONNECTION PROBABILITY The probability that a given edge occurs is called the connection probability p.
+Erdös–Rényi Graphs We can construct a specific type of a random graph with N nodes by drawing .N z/2 lines, the edges, between randomly chosen pairs of nodes, compare Fig. 1.3. This type of random graph is called an “Erdös–Rényi” random graph after two mathematicians who studied this type of graph extensively. In Sect. 1.3 we will introduce and study other types of random graphs. For Erdös–Rényi random graphs we have
+.p = N z
+2
+2
+N (N − 1) = z
+N − 1 (1.1)
+
+
+1.1 Properties of Real-World Networks 5
+for the relation between the coordination number z and the connection probability p . In (1.1) we divided the total number of active links, .N z/2, by the total number of possible links, .N (N − 1)/2.
+The Thermodynamic Limit Mathematical graph theory is often concerned with the thermodynamic limit.
+THE THERMODYNAMIC LIMIT The limit where the number of elements making up a system diverges to infinity is called the “thermodynamic limit” in physics. A quantity is extensive if it is proportional to the number of constituting elements, and intensive if it scales to a constant in the thermodynamic limit.
+We note that .p = z/(N − 1) → 0 in the thermodynamic limit .N → ∞for Erdös–Rényi random graphs when the coordination number is intensive, viz when .z ∼ O(N0).
+For real-world networks, the thermodynamic limit makes sense for very large numbers of nodes. This is the case for the world-wide web, the network of hyperlinks, which is so large that its size can only be estimated. In order of magnitude, the number of documents available online did grow from .N ≃ 0.8 × 109 in 1999 to .N ≃ 3.4 × 1015 in 2023.
+Network Diameter and the Small-World Effect A basic parameter characterizing networks is the diameter D, which specifies the maximal separation between all possible pairs of vertices. For a random network with N vertices and coordination number z we have,
+.zD ≈ N, D ∝ log N/ log z , (1.2)
+in order of magnitude, since nodes have z neighbors, .z2 next-nearest neighbors, and so on. The logarithmic increase in the number of degrees of separation with the size of the network is characteristic of small-world networks. A logarithm increases very slowly with its argument, which implies that network diameters remains small even for networks containing large numbers of nodes. For large networks, the diameter is closely related to the average distance.
+AVERAGE DISTANCE The average distance .l is the average of the minimal path length between all pairs of nodes of a network.
+Stochastic consideration will use in general the average distance .l.
+Clustering in Networks Real-world networks, as the protein network reproduced in Fig. 1.2, contain substantial local recurrent connections. Distinct topological elements and loops are hence frequent.
+CLUSTERING COEFFICIENT The clustering coefficient C is the average fraction of pairs of neighbors of a node that are also neighbors of each other.
+
+
+6 1 Network Theory
+The clustering coefficient is a normalized measure of loops of length three. In a fully connected network, in which everyone knows everyone else, .C = 1. In a random graph a typical site has .z(z−1)/2 pairs of neighbors. The probability of an edge to be present between a given pair of neighbors is .p = z/(N − 1), see (1.1). The clustering coefficient, which is just the probability of a pair of neighbors to be interconnected is therefore
+.Crand = z
+N−1 ≈ z
+N . (1.3)
+The clustering coefficient scales to zero in the thermodynamic limit, viz for large networks. In Table 1.1 the respective clustering coefficients for some real-world networks and for the corresponding random networks are listed for comparison.
+Cliques The clustering coefficient measures the normalized number of triples of fully interconnected vertices. Cliques generalize the notion of clustering to larger subgraphs, see Fig. 1.4.
+CLIQUES A clique is a set of vertices for which (a) every node is connected by an edge to every other member of the clique and (b) no node outside the clique is connected to all members of the clique.
+The term “clique” comes from social networks. A clique is a group of friends where everybody knows everybody else. A clique corresponds, in terms of graph theory, to a maximal fully connected subgraph. For Erdös–Rényi graphs with N vertices and linking probability p, the number of cliques is
+.
+(N
+K
+)
+pK(K−1)/2 (
+1 − pK )N−K
+,
+for cliques of size K . Here
+–.
+(N K
+) is the number of sets of K vertices, – .pK(K−1)/2 is the probability that all K vertices within the clique are mutually interconnected and
+Table 1.1 The number of nodes N , average degree of separation .l, and clustering coefficient C, for four real-world networks. The last column is the value .Crand = z/(N − 1) the clustering coefficient would take for a random graph with the same size and coordination number. From Watts and Strogatz (1998) and Ludueña et al. (2013)
+Network N .l C .Crand
+Movie actors 225,226 3.65 0.79 0.00027 Neural network 282 2.65 0.28 0.05 Power grid 4941 18.70 0.08 0.0005 Internet domains 6,242,195 – 0.20 0.000006
+
+
+1.1 Properties of Real-World Networks 7
+Fig. 1.4 The social graph of Fig. 1.1, with the four-site clique (1,2,3,4) highlighted. The network contains three additional cliques, (3,4,5,7), (5,6) and (7,8)
+21
+3
+45
+7
+6
+8
+–.
+(1 − pK )N−K the probability that every of the .N − K out-of-clique vertices is not connected to all K vertices of the clique.
+The only cliques occurring in random graphs in the thermodynamic limit have the size two, since .p = z/N.
+Communities Another term used is “community”. It is mathematically not as strictly defined as ‘clique’, denoting subgraphs with above-the-average densities of edges. Communities naturally emerge when decimating a bipartite graph stochastically. For the example shown in Fig. 1.1 one would assume that managers are not automatically acquainted when serving on the same board of directors, but with a certain probability, say 80%. Instead of cliques, the respective network of acquaintances between managers will be characterized by a dense community structure.
+Clustering for Real-World Networks Most real-world networks have clustering coefficients that are substantially larger than the one a random network of the same size would have. This is immediately evident for the protein network shown in Fig. 1.2, which is characterized by a rich community structure and an elevated clustering coefficient. In Table 1.1, we list C and the average distance .l for four different networks.
+– A network of collaborations between movie actors. – The neural network of the worm C. Elegans. – A power grid of the United States. – The networks of hyperlinks between domains (not webpages).
+Also given in Table 1.1 are the clustering coefficients .Crand of random graphs of identical size and coordination number. Note that the real-world value is systematically higher than that of random graphs. The small values for the average
+
+
+8 1 Network Theory
+distances .l given in Table 1.1 for three of the four networks relects their small-world nature. Erdös–Rényi random graphs obviously do not match the properties of real-world networks well. In Sect. 1.3 we will discuss generalizations of random graphs that approximate the properties of real-world graphs better. Before, we will discuss several general properties of random graphs.
+Correlation Effects The degree distribution .pk captures the statistical properties of nodes as if they where all independent of each other. In general, the property of a given node will however be dependent on the properties of other nodes, e.g. of its neighbors. When this happens one speaks of “correlation effects”, with the clustering coefficient C being an example. Another example for a correlation effect is what one calls “assortative mixing”. A network is assortatively correlated whenever large-degree nodes, the hubs, tend to be mutually interconnected and assortatively anti-correlated when hubs are predominantly linked to low-degree vertices. Social networks tend to be assortatively correlated, in agreement with the everyday experience that the friends of influential persons, the hubs of social networks, tend to be VIPs themselves.
+Tree Graphs Most real-world networks show strong local clustering and loops abound. An exception are metabolic networks which contain typically only very few loops since energy is consumed and dissipated when biochemical reactions go around in circles. For many types of graphs commonly considered in graph theory, like ErdösRényi graphs, the clustering coefficient vanishes in the thermodynamic limit, and loops become irrelevant. One denotes a loopless graph a “tree graph”.
+Bipartite Networks Many real-world graphs have an underlying bipartite structure, see Fig. 1.1.
+BIPARTITE GRAPH A bipartite graph has two kinds of vertices with links only between vertices of unlike kinds.
+Examples are networks of managers, where one kind of nodes is a company and the other kind of nodes the managers belonging to the board of directors. When eliminating one kind of vertices, in this case it is customary to eliminate the companies, one retains a social network; the network of directors, as illustrated in Fig. 1.1. This network has a high clustering coefficient, as all boards of directors are mapped onto cliques of the respective social network.
+
+
+1.1 Properties of Real-World Networks 9
+1.1.3 Network Degree Distribution
+So far we considered mostly averaged quantities of random graphs, like the clustering coefficient or the average coordination number z. We will now develop tools allowing for a more sophisticated characterization of graphs.
+Degree Distribution The basic description of general random and non-random graphs is given by the degree distribution .pk.
+DEGREE DISTRIBUTION If .Xk is the number of vertices having the degree k , then.pk = Xk/N is the degree distribution, where N is the total number of nodes.
+The degree distribution is a probability distribution function and hence normalized,
+.
+∑
+k pk = 1.
+Degree Distribution for Erdös–Rényi Graphs For an Erdös–Rényi network, the probability of a node to have k edges is given by the Binomial distribution,
+.pk =
+(N − 1
+k
+)
+pk (1 − p)N−1−k , (1.4)
+where p is the link connection probability. For large .N ⪢ k we can approximate the degree distribution .pk by
+.pk ≃ e−pN (pN )k
+k! = e−z zk
+k! , (1.5)
+where z is the average coordination number. We have used
+. lim
+N →∞
+(
+1− x
+N
+)N = e−x ,
+(N − 1
+k
+)
+= (N − 1)!
+k!(N − 1 − k)! ≃ (N − 1)k
+k! ,
+and .(N − 1)kpk = zk, see (1.1). Equation (1.5) is a Poisson distribution with mean
+.〈k 〉 =
+∑ ∞
+k=0
+k e−z zk
+k! = z e−z
+∑ ∞
+k=1
+zk−1
+(k − 1)! = z .
+The variance of the Poisson distribution is z, which implies that the relative width
+.〈k〉/σ = 1/√k becomes progressively smaller when the coordination number z increases.
+Ensemble Fluctuations In general, two specific realizations of random graphs differ. Their properties coincide on the average, but not on the level of individual links. With “ensemble” one denotes the set of possible realizations. The set of all possible realization of three-site networks is shown in Fig. 1.5.
+
+
+10 1 Network Theory
+A
+B
+C
+A
+B
+C
+A
+B
+C
+A
+B
+C
+Fig. 1.5 Four networks with three nodes exist, respectively with .0/1/2/3 edges (from left to right). Given a link probability p, the probability to generate networks with .0/1/2/3 edges is .(1 − p)3, .3p(1 − p)2, .3p2(1 − p) and .p3. One speaks of ensemble fluctuations, compare (1.7)
+In an ensemble of random graphs with fixed p and N the degree distribution .Xk/N will be slightly different from one realization to the next. On the average it will be given by
+.
+1
+N 〈Xk〉 = pk . (1.6)
+Here .〈 . . .〉denotes the ensemble average. One can go one step further and calculate the probability .P (Xk = R) that in a realization of a random graph the number of vertices with degree k equals R. It is given in the large-N limit by
+.P (Xk = R) = e−λk (λk)R
+R! , λk = 〈Xk〉 . (1.7)
+Note the similarity to (1.5) and that the mean .λk = 〈Xk〉 is in general extensive while the mean z of the degree distribution (1.5) is intensive.
+Power Law Distribution A special case are degree distributions decaying for large degrees as a power law,
+.pk ∼ 1
+kα , k → ∞ . (1.8)
+Typically, for real-world graphs, the scaling .∼ k−α holds only for large degrees k. The divergence at .k → 0 is avoided by the “Tsallis–Pareto distribution” .pk =
+(α − 1)(1 + k)−α. For the normalization on .R+ we consider .k ∈ [0 , K, ]with .K → ∞,
+.
+K ∑
+k=0
+pk ≈ (α − 1)
+∫K
+0
+dk
+(1 + k)α = −1
+(1 + k)α−1
+∣∣∣K
+k=0 = 1 − 1
+(1 + K)α−1 .
+
+
+1.2 Spectral Properties 11
+Fig. 1.6 Log-log plot of the distribution of the in-degrees of the hyperlink network between 6,242,194 domains. To a fair degree, the degree distribution is scale invariant, .pk ∼ 1/kα. The value of the exponent, .α ≈ 2.2, implies that the mean degree is finite, with a diverging variance. At the time of the crawl, .〈k 〉 = 35.8was found. Data
+from Ludueña et al. (2013) 2 3 4 5
+log10(in-degree)
+-4
+-2
+0
+2
+log10(degree distribution)
+slope -2.2 6,242,194 domains
+Powerlaw distributions are hence normalizable only if .α > 1. The average degree of the Tsallis–Pareto distribution is
+.〈k 〉 = (α − 1)
+∫K
+0
+dk k + 1 − 1
+(1 + k)α = α − 1
+2 − α (1 + k)2−α∣∣∣K
+0 −1,
+which diverges when .α ≤ 2. Otherwise, when .α > 2, one has .〈k 〉 = 1/(α − 2). The variance is finite in analogy when .α > 3.
+Scale-Free Graphs Power-law functional relations are “scale free”, since any rescaling .k → a k can be reabsorbed into the normalization constant. A famous example of a scale-invariant degree distribution is that of the in-degree of the hyperlink network between domains, as shown in Fig. 1.6. Scale-free functional dependencies are considered to be ‘critical’, since they occur generally at the critical point of a phase transition. We will come back to this issue recurrently in the following chapters.
+1.2 Spectral Properties
+In order to understand a given real-world network it is desirable to develop characterization schemes relying just on a few key observables, e.g. like the coordination number z or the clustering coefficient C. As a further step in this direction we study now spectral properties.
+Adjacency Matrix Any graph G with N nodes can be represented by a matrix encoding the topology of the network, the adjacency matrix.
+ADJACENCY MATRIX The .N × N adjacency matrix .Aˆ has elements .Aij = 1 if nodes i and j are connected, with .Aij = 0 if they are not connected.
+
+
+12 1 Network Theory
+Fig. 1.7 The spectral densities (1.9) for Erdös–Rényi graphs with a coordination number .z = 25 and .N = 100/1000 nodes respectively. For comparison the expected result for the thermodynamic limit .N → ∞, the semi-circle law (1.15), is given. A broadening of .ε = 0.1 has been used, as defined by (1.11)
+-10 -5 0 5 10
+λ
+0
+0.05
+0.1
+ρ(λ)
+N=100
+N=1000
+semi-circle law
+The adjacency matrix is symmetric and consequently has N real eigenvalues.
+SPECTRUM OF A GRAPH The spectrum of a graph G is given by the set of eigenvalues .λi
+of the adjacency matrix .Aˆ.
+A graph with N nodes has N eigenvalues .λi and it is useful to define the corresponding “spectral density”
+.ρ(λ) = 1
+N
+∑
+j
+δ(λ − λj ),
+∫
+dλ ρ(λ) = 1 , (1.9)
+where .δ(λ) is the Dirac delta function. In Fig. 1.7 the spectral density of an ErdösRényi graph is given.
+Green’s Function The spectral density .ρ(λ) can be evaluated once the Green’s function1 .G(λ),
+.G(λ) = 1
+N Tr
+[1
+λ − Aˆ
+]
+=1
+N
+∑
+j
+1
+λ − λj
+, (1.10)
+is known. Here .Tr[. . .] denotes the trace over the matrix .(λ − Aˆ)−1 = (λ1 − Aˆ)−1, where .1 is the identity matrix. In complex plane, we can decompose the inverse,
+. εli→m0
+1
+λ − λj + iε = P 1
+λ − λj
+− iπ δ(λ − λj ) . (1.11)
+1 The reader without prior experience with Green’s functions may skip the following derivation and pass directly to the result, namely to (1.15).
+
+
+1.2 Spectral Properties 13
+where P denotes the principal part, which takes into account that the positive and the negative contributions of the .1/λ divergence cancel. We find the relation
+.ρ(λ) = −1
+π εli→m0 ImG(λ + iε) . (1.12)
+Semi-Circle Law The graph spectra can be evaluated for random matrices2 for the case of small link densities .p = z/N, where z is the average connectivity. We note
+that the Green’s function (1.10) can be expanded into powers of .Aˆ/λ,
+.G(λ) = 1
+N λ Tr
+⎡
+⎣1 + Aˆ
+λ+
+( Aˆ
+λ
+)2
++ ...
+⎤
+⎦ . (1.13)
+Traces over powers of the adjacency matrix .Aˆ can be interpreted, for random graphs, as random walks which need to come back to the starting vertex. Starting from a random site we can connect on the average to z neighboring sites and from there on to .z − 1 next-nearest neighboring sites, and so on. This consideration allows to recast the Taylor expansion (1.13) for the Green’s function into a recursive continued fraction,
+.G(λ) = 1
+λ− z
+λ− z−1
+λ− z−1
+λ−...
+≈1
+λ − z G(λ) , (1.14)
+where we used the approximation .z − 1 ≈ z in the last step. Equation (1.14) constitutes a self-consistency equation for .G = G(λ), with the solution
+.G2 − λ
+zG+ 1
+z =0 , G=
+λ
+2z −
+√
+λ2
+4z2 − 1
+z,
+since .limλ→∞ G(λ) = 0. The spectral density (1.12) then takes the form
+.ρ(λ) =
+{ √4z − λ2/(2 π z) if λ2 < 4z
+0 if λ2 > 4z (1.15)
+of a half-ellipse also known as “Wigner law”, or the “semi-circle law”.
+Loops and the Clustering Coefficient The total number of triangles, viz the overall number of loops of length three in a network is, on the average, .C(N/3)(z − 1)z/2, where C is the clustering coefficient. This relation holds for
+2 Random matrix theory will be further discussed in Sect. 10.2.1 of Chap. 10.
+
+
+14 1 Network Theory
+large networks. One can relate the clustering coefficient C to the adjacency matrix A via
+.C z(z − 1)
+2
+N
+3 = number of triangles
+=1
+6
+∑
+i1 ,i2 ,i3
+Ai1i2 Ai2i3 Ai3i1 = 1
+6 Tr
+[
+A3]
+,
+since three sites .i1, .i2 and .i3 are interconnected only when the respective entries of the adjacency matrix are unity. The sum of the right-hand side of above relation is a moment of the graph spectrum. The factors .1/3 and .1/6 account for overcountings. Above formula holds only when all node have identical degrees .ki ≡ z. Otherwise
+one needs to take an average, .z(z − 1) → ∑
+i ki (ki − 1)/N .
+Moments of the Spectral Density The graph spectrum is directly related to certain topological features of a graph via its moments. The lth moment of .ρ(λ) is given by
+.
+∫
+d λ λlρ(λ) = 1
+N
+N ∑
+j =1
+(λj
+)l
+=1
+N Tr
+[
+Al ]
+=1
+N
+∑
+i1 ,i2 ,...,il
+Ai1i2 Ai2i3 · · · Aili1 , (1.16)
+as one can see from (1.9). The lth moment of .ρ(λ) is therefore equivalent to the number of closed paths of length l, the number of all paths of length l returning to the starting point.
+1.2.1 Graph Laplacian
+Differential operators, like the derivative .df/dx of a function .f (x), may be generalized to network functions. We start by recalling the definitions of the first,
+.
+d
+dx f (x) = lim
+Δx→0
+f (x + Δx) − f (x)
+Δx ,
+and of the second derivative,
+.
+d2
+dx2 f (x) = lim
+Δx→0
+f (x + Δx) + f (x − Δx) − 2 f (x)
+Δx2 .
+
+
+1.2 Spectral Properties 15
+Graph Laplacians Consider a function .fi on a graph with N sites, with .i =
+1 , . . . , N. One defines the graph Laplacian .Λˆ via
+.Λij =
+(∑
+l
+Ail
+)
+δij − Aij =
+⎧⎨
+⎩
+ki i = j
+−1 i and j connected 0 otherwise
+, (1.17)
+where the .Λij = (Λˆ)ij are the elements of the Laplacian matrix, .Aij the adjacency matrix, and where .ki is the degree of vertex i.
+Apart from a sign convention, .Λˆ corresponds to a straightforward generalization of the usual Laplace operator .Δ = ∂2/∂x2 +∂2/∂y2 +∂2/∂z2. To see this, just apply the Laplacian matrix .Λij to a graph-function .f = (f1, . . . , fN ). The graph Laplacian is hence intrinsically related to diffusion processes on networks.3 Alternatively one defines by
+.Lij =
+⎧⎨
+⎩
+1 i=j
+−1/√ki kj i and j connected 0 otherwise
+, (1.18)
+the “normalized graph Laplacian”, where .ki = ∑
+j Aij is the degree of vertex i . The eigenvalues of the normalized graph Laplacian have a straightforward interpretation in terms of the underlying graph topology. One needs however to remove first all isolated sites from the graph, which do not generate entries to the adjacency matrix. The respective .Lij would be ill defined.
+Eigenvalues of the Normalized Graph Laplacian Of interest are the eigenvalues .λl of the normalized graph Laplacian (1.18).
+– The normalized graph Laplacian is positive semidefinite,
+.0 = λ0 ≤ λ1 ≤ · · · ≤ λN−1 ≤ 2 .
+– The lowest eigenvalue .λ0 is always zero, corresponding to the eigenfunction
+.e(λ0) = √1C
+(√
+k1,
+√
+k2, . . . , √kN
+)
+, (1.19)
+where C is a normalization constant and where the .ki are the respective vertex degrees.
+3 See Sect. 3.3.1 of Chap. 3 for an indepth discussion of diffusion processes.
+
+
+16 1 Network Theory
+– The degeneracy of .λ0 is given by the number of disconnected subgraphs contained in the network. The eigenfunctions of .λ0 vanish on all subclusters beside one, where it has the functional form (1.19). – The largest eigenvalue .λN−1 is .λN−1 = 2, if and only if the network is bipartite. Generally, a small value of .2 − λN−1 indicates that the graph is nearly bipartite. The degeneracy of .λ = 2 is given by the number of bipartite subgraphs. – The inequality
+.
+∑
+l
+λl ≤ N
+holds generally. The equality holds for connected graphs, viz when .λ0 has degeneracy one.
+Examples of Graph Laplacians The eigenvalues of the normalized graph Laplacian can be evaluated analytically for some reference graphs.
+– For a complete N-site graph, viz when all sites are mutually interconnected, the eigenvalues are
+.λ0 = 0 , λ
+l = N/(N − 1), l = 1 , . . . , N − 1 .
+– For a complete bipartite graph (all sites of one subgraph are connected to all other sites of the other subgraph) the eigenvalues are
+.λ0 = 0 , λ
+N−1 = 2 , λ
+l = 1 , l = 1,...,N −2.
+The eigenfunction for .λN−1 = 2 has the form
+.e(λN−1) = √1C
+(√
+kA, . . . ,
+√
+kA
+} {{ }
+A sublattice
+, −√
+kB , . . . , −√
+kB
+} {{ }
+B sublattice
+) . (1.20)
+Denoting with .NA and .NB the number of sites in two sublattices A and B, with .NA + NB = N , the degrees .kA and .kB of vertices belonging to sublattice A and B respectively are .kA = NB and .kB = NA for a complete bipartite lattice.
+A densely connected graph will therefore have a substantial number of eigenvalues close to unity. For real-world graphs one may therefore plot the spectral density of the normalized graph Laplacian in order to gain an insight into its overall topological properties. The information obtained from the spectral density of the adjacency matrix and from the normalized graph Laplacian are somewhat distinct.
+
+
+1.3 Percolation in Generalized Random Graphs 17
+1.3 Percolation in Generalized Random Graphs
+The most random of all graphs are Erdös–Rényi graphs. One can relax the extent of randomness somewhat and construct random networks with an arbitrarily given degree distribution. This procedure is also denoted “configurational model”. We will use the configurational model to examine the “percolation transition”, which occurs as a function for link probability p. Graphs decompose into a set of disconnected subgraphs when containing only a few links, but not for high link densities. The respective transition is the percolation transition.
+1.3.1 Graphs with Arbitrary Degree Distributions
+In order to generate random graphs having non-Poisson degree distributions, we may choose a specific set of degrees.
+DEGREE SEQUENCE A degree sequence is a specified set .{ki } of the degrees for the vertices .i = 1 . . . N.
+The degree sequence is also the first information one obtains when examining real-world networks and hence the foundation for all further analysis.
+Construction of Networks with Arbitrary Degree Distribution The degree sequence can be chosen in such a way that the fraction of vertices having degree k will tend to the desired degree distribution in the thermodynamic limit,
+.pk, N → ∞ .
+For the construction, two steps suffice.
+– Assign .ki “stubs” (ends of edges emerging from a vertex) to all vertices, .i = 1 , . . . , N.
+– Iteratively choose pairs of stubs at random and join them together to make complete edges.
+When all stubs have been used up, the resulting graph is a random member of the ensemble of graphs with the desired degree sequence. Figure 1.8 illustrates the construction procedure.
+Average Degree and Clustering The mean number of neighbors is the coordination number
+.z = 〈k 〉 =∑
+k
+kpk .
+
+
+18 1 Network Theory
+Step A Step B
+Fig. 1.8 Construction procedure of a random network with nine vertices and degrees .X1 = 2, .X2 = 3, .X3 = 2, .X4 = 2. In step A (left) the vertices with the desired number of stubs (degrees) are constructed. In step B (right) the stubs are connected randomly
+The probability that one of the second neighbors of a given vertex is also a first neighbor scales as .N −1 for random graphs, regardless of the degree distribution. Loops can be ignored in the limit .N → ∞.
+Degree Distribution of Neighbors Consider a given vertex A and a vertex B that is a neighbor of A, i.e. A and B are linked by an edge. We are now interested in the degree distribution for vertex B, viz in the degree distribution of a neighbor vertex of A, where A is an arbitrary node of a random network with degree distribution .pk. As a first step we consider the average degree of a neighbor node. A high-degree vertex has more edges connected to it. There is then a higher chance that any given edge on the graph will be connected to it, with this chance being directly proportional to the degree of the vertex. The probability distribution of the degree of the vertex to which an edge leads is thus proportional to .kpk and not just to .pk.
+Excess Degree Distribution When we are interested in determining the size of loops or the size of connected components in a random graph, we are normally interested not in the complete degree of the vertex reached by following an edge from A, but in the number of edges emerging from such a vertex that do not lead back to A, because the latter contains all information about the number of second neighbors of A. The number of new edges emerging from B is just the degree of B minus one and its correctly normalized distribution is therefore
+.qk−1 = kpk
+∑
+j jpj
+, qk = (k + 1)pk+1
+∑
+j jpj
+, (1.21)
+since .kpk is the degree distribution of a neighbor, compare Fig. 1.9. The distribution .qk of the outgoing edges of a neighbor vertex is the “excess degree distribution”.
+
+
+1.3 Percolation in Generalized Random Graphs 19
+AB
+Fig. 1.9 The excess degree distribution .qk−1 is the probability of finding k outgoing links of a neighboring site. Here the site B is a neighbor of site A and has a degree .k = 5 and .k − 1 = 4 outgoing edges, compare (1.21). The probability that B is a neighbor of site A is proportional to the degree k of B
+The average number of outgoing edges of a neighbor vertex is then
+.
+∑ ∞
+k=0
+kqk =
+∑∞
+k=0 k(k + 1)pk+1
+∑
+j jpj
+=
+∑∞
+k=1(k − 1)kpk
+∑
+j jpj
+= 〈k2〉 − 〈k〉
+〈k〉 , (1.22)
+where .〈k2〉 is the second moment of the degree distribution.
+Number of Next-Nearest Neighbors We denote with
+.zm, z1 = 〈k 〉 ≡ z
+the average number of m-nearest neighbors. Equation (1.22) gives the average number of vertices two steps away from the starting vertex A via a particular neighbor vertex. Multiplying this by the mean degree of A, namely .z1 ≡ z, we find that the mean number of second neighbors .z2 of a vertex is
+.z2 = 〈k2〉 − 〈k〉 . (1.23)
+Note that .z2 is not given by the variance of the degree distribution,4 which would be .〈(k − 〈k〉)2〉 = 〈k2〉 − 〈k〉2.
+4 Compare Sect. 5.1 of Chap. 5.
+
+
+20 1 Network Theory
+.z2 for the Erdös–Rényi Graph The degree distribution of an Erdös–Rényi graph
+is the Poisson distribution, .pk = e−z zk/k!, see (1.5). For the average number of second neighbors, Eq. (1.23), we obtain
+.z2 =
+∑ ∞
+k=0
+k2e−z zk
+k! − z = ze−z
+∑ ∞
+k=1
+(k − 1 + 1) zk−1
+(k − 1)! − z
+= z2 = 〈k〉2 .
+The mean number of second neighbors of a vertex in an Erdös–Rényi random graph is just the square of the mean number of first neighbors. This is a special case however. For most degree distributions, Eq. (1.23) will be dominated by the term .〈k2〉, which implies that the number of second neighbors is roughly the mean square degree, rather than the square of the mean. For broad distributions these two quantities can be very different.
+Number of Far Away Neighbors The average number of edges emerging from a second neighbor, and not lead ing back to where it came from, is also given by (1.22), and indeed this is true at any distance m away from vertex A. The average number of neighbors at a distance m is then
+.zm = 〈k2〉 − 〈k〉
+〈k〉 zm−1 = z2
+z1
+zm−1 , (1.24)
+where .z1 ≡ z = 〈k〉and .z2 are given by (1.23). Iterating this relation we find
+.zm =
+[ z2
+z1
+]m−1
+z1 . (1.25)
+Giant Connected Cluster Depending on whether .z2 is greater than .z1 or not, Eq. (1.25) will either diverge or converge exponentially as m becomes large.
+. mli→m∞ zm =
+{ ∞ if z2 > z1 0 if z2 < z1
+. (1.26)
+The percolation point is therefore .z1 = z2. Below the transition, the total number of neighbors is
+.
+∑
+m
+zm = z1
+∑ ∞
+m=1
+[ z2
+z1
+]m−1
+= z1
+1 − z2/z1
+= z2
+1
+z1 − z2
+.
+The total number of sites connected to the starting node is finite below the percolation transition, which implies that the network decomposes into non
+
+
+1.3 Percolation in Generalized Random Graphs 21
+connected components. Beyond the percolation transition one or more clusters with macroscopic numbers of nodes form.
+GIANT CONNECTED COMPONENT When the largest cluster of a graph encompasses a finite fraction of all vertices in the thermodynamic limit, it is said to form a giant connected component.
+If the total number of neighbors is infinite, then there must be a giant connected component. When the total number of neighbors is finite, there can be no giant connected component.
+Percolation Threshold When a system has two or more possibly macroscopically different states, one speaks of a phase transition.
+PERCOLATION TRANSITION A percolation transition occurs when the structure of an evolving graph transits from a state in which two (far away) sites are on the average connected/not connected.
+This phase transition occurs when .z2 = z1. Making use of (1.23), .z2 = 〈k2〉−〈k〉, we find that this condition is equivalent to
+.〈k2〉 − 2〈k 〉 = 0,
+∑ ∞
+k=0
+k(k − 2)pk = 0 . (1.27)
+Because of the factor .k(k − 2), vertices of degree zero and degree two do not contribute to the sum. The number of vertices with degree zero or two therefore affects neither the phase transition nor the existence of a giant component.
+– Vertices of degree zero are not connected to any other node, they do not contribute to the network topology. – Vertices of degree one constitute the sole negative contribution to the percolation condition (1.27). No further path is available when arriving at a site with degree one. – Vertices of degree two act as intermediators between two other nodes. Removing vertices of degree two does not change the topological structure of a graph.
+One can therefore remove (or add) vertices of degree two or zero without affecting the existence of the giant component.
+Clique Percolation Edges correspond to cliques with .Z = 2 sites, compare Fig. 1.4. The percolation transition can hence be interpreted as a percolation of cliques having size two and larger. It is then clear that the concept of percolation can be generalized to that of percolation of cliques with Z sites.
+
+
+22 1 Network Theory
+Average Vertex–Vertex Distance Below the percolation threshold the average vertex–vertex distance .l is finite and the graph decomposes into an infinite number of disconnected subclusters.
+DISCONNECTED SUBCLUSTERS A disconnected subcluster or subgraph constitutes a subset of vertices for which (a) there is at least one path in between all pairs of nodes making up the subcluster and (b) there is no path between a member of the subcluster and any out-of-subcluster vertex.
+Well above the percolation transition, .l is given approximately by the condition .zl ≃ N ,
+. log(N/z1) = (l − 1) log(z2/z1), l = log(N/z1)
+log(z2/z1) + 1 , (1.28)
+when using .zl = z1(z2/z1)l−1, as given by (1.25). For Erdös–Rényi random graphs one has .z1 = z and .z2 = z2, which leads to
+.l = log N − log z
+log z + 1 = log N
+log z ,
+as derived previously, see (1.2).
+Clustering Coefficient of Generalized Random Graphs The clustering coefficient C denotes the probability that two neighbors i and j of a particular vertex A have stubs that do interconnect. The probability that two given stubs are connected is .1/(zN − 1) ≈ 1/zN , since zN is the total number of stubs. We have
+.C = 〈ki 〉q 〈kj 〉q
+Nz = 1
+Nz
+[∑
+k
+kqk
+]2
+(1.29)
+=1
+Nz
+[ 〈k2〉 − 〈k〉 〈k〉
+]2
+=z
+N
+[ 〈k2〉 − 〈k〉 〈k〉2
+]2 ,
+where the notation .〈 . . .〉q indicates that the average is to be taken with respect to the excess degree distribution .q = qk, as given by (1.21). As expected, the clustering coefficient vanishes in the thermodynamic limit .N → ∞. However, it may have a very big leading coefficient, especially for degree distributions with fat tails. The differences listed in Table 1.1, between the measured clustering coefficient C and the value .Crand = z/N for Erdös–Rényi graphs, are partly due to the fat tails in the degree distributions .pk of the corresponding networks.
+
+
+1.3 Percolation in Generalized Random Graphs 23
+1.3.2 Probability Generating Function Formalism
+Network theory is about the statistical properties of graphs. A powerful method from probability theory is the generating function formalism, which we will discuss now and apply later on.
+Probability Generating Functions We define with
+.G0(x) =
+∞ ∑
+k=0
+pkxk (1.30)
+the “generating function” .G0(x) for the probability distribution .pk. The generating function .G0(x) contains all information present in .pk. We can recover .pk from .G0(x) by differentiation,
+.pk = 1
+k!
+dk G0
+dxk
+∣∣∣∣x=0
+. (1.31)
+One says that .G0 “generates” the probability distribution .pk.
+Generating Function for the Excess Degree Distribution For later use we define the generating function .G1(x) for the distribution .qk = (k + 1)pk+1/z measuring the number of non-returning edges leaving a neighboring vertex,
+.G1(x) =
+∞ ∑
+k=0
+qkxk =
+∑∞
+k=0(k + 1)pk+1xk
+z=
+∑∞
+k=1 kpkxk−1
+z
+= G'
+0(x)
+z , z = 〈k〉 , (1.32)
+where .G'
+0(x) denotes the first derivative of .G0(x) with respect to its argument.
+Properties of Generating Functions Probability generating functions have a couple of important properties.
+– NORMALIZATION The normalization of .pk implies
+.G0(1) = ∑
+k
+pk = 1 . (1.33)
+
+
+24 1 Network Theory
+– MEAN Straightforward differentiation,
+.G'
+0(1) = ∑
+k
+k pk = 〈k〉 , (1.34)
+yields the average degree .〈k〉. – MOMENTS The nth moment .〈kn〉 of the distribution .pk is given by
+.〈kn〉 = ∑
+k
+knpk =
+[(
+xd
+dx
+)n
+G0(x)
+]
+x=1
+. (1.35)
+Generating Function for Independent Random Variables Let us assume that we have two random variables, such as two dice. Throwing the two dice correspond to two independent random events. The joint probability to obtain .k = 1 , . . . , 6 with the first dice and .l = 1 , . . . , 6 with the second dice is .pk pl. This probability function is generated by
+.
+∑
+k,l
+pkpl xk+l =
+(∑
+k
+pk xk
+) (∑
+l
+pl xl
+)
+,
+i.e. by the product of the individual generating functions. This is the reason why generating functions are so useful in describing combinations of independent random events. As an application consider n randomly chosen vertices. The sum .
+∑
+i ki of the respective degrees has a cumulative degree distribution, which is generated by
+.
+[
+G0(x)
+]n .
+Generating Function of the Poisson Distribution The generating function .G0 =
+∑
+k pkxk of the Poisson distribution .pk = e−z zk/k! is
+.G0(x) = e−z
+∞ ∑
+k=0
+zk
+k! xk = ez(x−1) ,
+with z being the average degree. Compare (1.5). The generating function .G1(x) for the excess degree distribution .qk is
+.G1(x) = G'
+0(x)
+z = ez(x−1) , (1.36)
+compare (1.32). As expected, we find .G1(x) = G0(x) for the Poisson distribution.
+
+
+1.3 Percolation in Generalized Random Graphs 25
+Generating Function of the Exponential Distribution As a second example, consider a graph with an exponential degree distribution:
+.pk = (1 − e−1/κ ) e−k/κ,
+∑ ∞
+k=0
+pk = 1 − e−1/κ
+1 − e−1/κ = 1 , (1.37)
+where .κ is a constant.The generating function is
+.G0(x) = (1 − e−1/κ )
+∑ ∞
+k=0
+e−k/κxk = 1 − e−1/κ
+1 − xe−1/κ ,
+together with
+.z = G'
+0(1) = e−1/κ
+1 − e−1/κ , G1(x) = G'
+0(x)
+z=
+[ 1 − e−1/κ
+1 − xe−1/κ
+]2 .
+Stochastic Sum of Independent Variables Let’s assume that the random variables .k1, k2, . . . are identically distributed, which implies that they have the same generating functions .G0(x). The powers
+.G 2
+0 (x), G 3
+0 (x), G 4
+0 (x) ,
+are the generating functions for
+.k1 + k2, k1 + k2 + k3, k1 + k2 + k3 + k4 ,
+and so on. Next consider that the number of times n this stochastic process is executed is distributed as .pn. As an example consider throwing a dice several times, with a probability .pn to throw n times. The distribution of the results obtained is then generated by
+.
+∑
+n
+pnG n
+0 (x) = GN (G0(x)) , GN (z) = ∑
+n
+pnzn . (1.38)
+We will make use of this relation further on.
+1.3.3 Distribution of Component Sizes
+Absence of Closed Loops For networks below the percolation transition we are interested in the distribution of the sizes of the individual subclusters. The calculations will depend on the absence of closed loops, or any other kind of
+
+
+26 1 Network Theory
+=++ + +
+Fig. 1.10 Graphical representation of the self-consistency (1.39) for the generating function H1(x), represented by the open box. A single vertex is represented by a hashed circle. The subcluster connected to an incoming vertex can be either a single vertex or an arbitrary number of subclusters of the same type connected to the first vertex. In analogy to Newman et al. (2001)
+clustering, for generalized random graphs in the thermodynamic limit. In physics jargon, large random graphs are “tree-like”. We recall that the number of closed loops of length three corresponds to the clustering coefficient C, viz to the probability that two of your friends are also friends of each other. For random networks .C = [〈k2〉 − 〈k〉]2/(z3N ), see (1.29), which tends to zero as .N → ∞.
+Generating Function for the Size Distribution of Components We define by
+.H1(x) = ∑
+m
+h(1)
+m xm
+the generating function for the distribution of cluster sizes containing a given vertex j , with the condition that j is linked to a specific incoming edge, see Fig. 1.10. That is, h(m1) is the probability that the such-defined cluster contains m nodes.
+Self-Consistency Condition for H 1(x) We note the following.
+– The first vertex j belongs to the subcluster with probability 1, its generating function is x. – The probability that the vertex j has k outgoing stubs is qk. – At every stub outgoing from vertex j there is a subcluster. – The total number of vertices consists of those generated by [H1(x)]k plus the starting vertex.
+The number of outgoing edges k from vertex j is described by the distribution function qk, see (1.21). The total size of the k clusters is generated by [H1(x)]k, as a consequence of the multiplication property of generating functions discussed in
+
+
+1.3 Percolation in Generalized Random Graphs 27
+Sect. 1.3.2. The self-consistency equation for the total number of vertices reachable is then
+.H1(x) = x
+∞ ∑
+k=0
+qk [H1(x)]k = x G1(H1(x)) , (1.39)
+where we made use of (1.32) and (1.38).
+Embedding Cluster Distribution Function The quantity that we actually want to know is the distribution of the sizes of the clusters to which the entry vertex belongs.
+– The number of edges emanating from a randomly chosen vertex is distributed according to the degree distribution pk. – Every edge leads to a cluster whose size is generated by H1(x).
+The size of a complete component is thus generated by
+.H0(x) = x
+∞ ∑
+k=0
+pk [H1(x)]k = x G0(H1(x)) , (1.40)
+where the prefactor x corresponds to the generating function of the starting vertex. The complete distribution of component sizes is given by solving (1.39) selfconsistently for H1(x) and then substituting the result into (1.40).
+Mean Component Size The calculation of H1(x) and H0(x) in closed form is not possible. We are, however, interested only in the first moment, viz the mean component size, see (1.34). The component size distribution is generated by H0(x), Eq. (1.40). The the mean component size below the percolation transition is therefore
+.〈s 〉 = H'
+0(1) =
+[
+G0(H1(x)) + x G'
+0(H1(x)) H '
+1(x)
+]
+x=1
+= 1 + G'
+0(1)H '
+1(1 ) , (1.41)
+where we made use of the normalization
+.G0(1) = H1(1) = H0(1) = 1
+
+
+28 1 Network Theory
+of generating functions, see (1.33). The value of H '
+1(1) can be calculated from (1.39) by differentiating:
+.H '
+1(x) = G1(H1(x)) + x G'
+1(H1(x)) H '
+1(x), (1.42)
+H'
+1(1) = 1
+1 − G'
+1(1) .
+Substituting this into (1.41) we find
+.〈s 〉 = 1 + G'
+0(1)
+1 − G'
+1(1) . (1.43)
+Percolation Transition On a closer look, above expression for the mean component size reproduces the percolation condition z2 = z1 derived in Sect. 1.3. We make use of (1.23) and
+.G'
+0(1) = ∑
+k
+k pk = 〈k 〉 = z1, (1.44)
+G'
+1(1) =
+∑
+k k(k − 1)pk
+∑
+k kpk
+= 〈k2〉 − 〈k〉
+〈k〉 = z2
+z1
+,
+where z1 and z2 are the mean numbers of nearest- and next-nearest neighbors. Substitution into (1.43) gives the average component size below the transition as
+.〈s 〉 = 1 + z2
+1
+z1 − z2
+. (1.45)
+This expression has a divergence at z1 = z2. The mean component size diverges at the percolation threshold, compare Sect. 1.3, beyond which the giant connected component forms.
+Size of the Giant Component Above the percolation transition the network contains a giant connected component, which contains a finite fraction S of all sites N. Formally we can decompose the generating functional for the component sizes into a part generating the giant component, H ∗
+0 (x), and a part generating the remaining components,
+.H0(x) → H ∗
+0 (x) + H0(x), H ∗
+0 (1) = S, H0(1) = 1 − S ,
+and equivalently for H1(x). The self-consistency (1.39) and (1.40),
+.H0(x) = xG0(H1(x)), H1(x) = xG1(H1(x)),
+
+
+1.4 Robustness of Random Networks 29
+Fig. 1.11 For Erdös–Rényí graphs, the size S(z) of the giant component vanishes linearly, at the percolation transition occurring at the critical coordination number zc = 1. Compare (1.47) and (1.48)
+0 0.5 1 1.5 2 2.5 3
+coordination number z
+0
+0.2
+0.4
+0.6
+0.8
+1
+size of giant component
+S(z) 2(z-1)
+then take the form
+.1 − S = H0(1) = G0(u), u = H1(1) = G1(u) . (1.46)
+For Erdös–Rényí graphs we have G1(x) = G0(x) = exp(z(x − 1)), see (1.36). This leads to 1 − S = u in (1.46), which takes with
+.1 − S = u = ez(u−1) = e−zS , S = 1 − e−zS (1.47)
+the form of a self-consistency condition for the mean size S of the giant component. Percolation takes place for z ≥ 1.
+Critical Behaviour The Taylor expansion for the exponential,
+.S = 1 − e−zS ≈ zS − (zS)2
+2 , S(z) ≈ 2(z − 1)
+z2 (1.48)
+shows that the S(z) increases linearly in the percolating regime, as shown in Fig. 1.11. It follows from (1.47) that the giant component engulfs the entire net exponentially fast for large degrees z, namely that limz→∞ S(z) → 1.
+1.4 Robustness of Random Networks
+Degree distributions of real-world networks often have “fat tails”, a vaguely defined notion that a given distribution decays only slowly when the degree becomes large. In general, fat tails increase the robustness of a network. That is, the network retains functionality even when a certain number of vertices or edges is removed. The Internet remains functional, to give an example, even when a substantial number of Internet routers fail.
+Removal of Vertices We consider a graph model in which each vertex is either “active” or “inactive”. Inactive vertices are nodes that have either been removed, or
+
+
+30 1 Network Theory
+are present but non-functional. We denote with
+.b = bk
+the probability that a vertex of degree k is active. The generating function
+.F0(x) =
+∞ ∑
+k=0
+pk bk xk, F0(1) = ∑
+k
+pk bk ≤ 1 , (1.49)
+generates the probabilities that a vertex has degree k and is present. Strictly speaking, .F0(x) is not a proper generating function because the normalization .F0(1) is not unity, but the fraction of all vertices that are active. This shortcoming could be rectified by adding via
+.
+(
+1−∑
+k
+pk bk
+) +
+∑ ∞
+k=0
+pk bk xk ,
+a constant to .F (x), which corresponds to the number of inactive nodes, which are in turn equivalent to nodes with degree zero. The normalization can hence be disregarded. By analogy with (1.32) we define by
+.F1(x) =
+∑
+k k pk bk xk−1
+∑
+k k pk
+= F'
+0(x)
+z (1.50)
+the generating function for the degree distribution of neighbor sites. Also .F1(x) is not proper normalized.
+Distribution of Connected Clusters The distributions of the sizes of connected clusters reachable from a given vertex, .H0(x), or from a given edge, .H1(x), are generated respectively by the normalized functions
+.H0(x) = 1 − F0(1) + xF0(H1(x)), H0(1) = 1,
+H1(x) = 1 − F1(1) + xF1(H1(x)), H1(1) = 1 , (1.51)
+which are the logical equivalents of (1.39) and (1.40).
+Random Failure of Vertices First we consider the case of random failures of vertices. In this case, the probability
+.bk ≡ b ≤ 1 , F
+0(x) = b G0(x), F1(x) = b G1(x)
+
+
+1.4 Robustness of Random Networks 31
+of a vertex being present is independent of the degree k and just equal to a constant, b, which means that
+.H0(x) = 1 − b + bxG0(H1(x)), H1(x) = 1 − b + bxG1(H1(x)), (1.52)
+where .G0(x) and .G1(x) are the standard generating functions for the degree of a vertex and of a neighboring vertex, see (1.30) and (1.32). This implies that the mean size of a cluster of connected and present vertices is
+.〈s 〉 = H'
+0(1) = b + bG'
+0(1 ) H'
+1(1)
+= b + b2G'
+0(1)
+1 − bG'
+1(1) = b
+[
+1 + bG'
+0(1)
+1 − bG'
+1(1)
+] ,
+where we followed the derivation presented in (1.42) in order to derive the expression .H '
+1(1) = b/(1 − bG'
+1(1)), which we used. With (1.44) for .G'
+0(1) =
+z1 = z and .G'
+1(1) = z2/z1, we obtain the generalization
+.〈s 〉 = b + b2z2
+1
+z1 − bz2
+of (1.45). The model has a phase transition at the critical value of b,
+.bc = z1
+z2
+=1
+G'
+1(1) . (1.53)
+If the fraction b of the vertices present in the network is smaller than the critical fraction .bc, then there will be no giant component. This is the point at which the network ceases to be functional in terms of connectivity. When there is no giant component, connecting paths exist only within small isolated groups of vertices, but no long-range connectivity exists. For a communication network such as the Internet, this would be fatal. For networks with fat tails, however, we expect that the number of next-nearest neighbors .z2 is large compared to the number of nearest neighbors .z1 and that .bc is consequently small. The network is robust as one would need to take out a substantial fraction of the nodes before it would fail.
+Random Failure of Vertices in Scale-Free Graphs We consider a pure power-law degree distribution
+.pk ∼ 1
+kα ,
+∫ dk
+kα < ∞ , α > 1 ,
+
+
+32 1 Network Theory
+see (1.8) and Sect. 1.6. The first two moments are
+.z1 = 〈k 〉 ∼
+∫
+d k (k/kα), 〈k2〉 ∼
+∫
+d k (k2/kα) .
+Noting that the number of next-nearest neighbors .z2 = 〈k2〉 − 〈k〉, we can identify three regimes:
+– .1 < α ≤ 2, with .z1 → ∞ and .z2 → ∞. .bc = z1/z2 is arbitrary in the thermodynamic limit .N → ∞. – .2 < α ≤ 3, with .z1 < ∞ and .z2 → ∞. .bc = z1/z2 → 0 in the thermodynamic limit. Any number of vertices can be randomly removed with the network remaining above the percolation limit. The network is extremely robust. – .3 < α, with .z1 < ∞ and .z2 < ∞. .bc = z1/z2 can acquire any value and the network has normal robustness.
+Biased Failure of Vertices What happens when somebody sabotages the most important sites of a network? This is equivalent to removing vertices in decreasing order of their degrees, starting with the highest degree vertices. The probability that a given node is active then takes the form
+.bk = θ (kc − k) , (1.54)
+where .θ (x) is the Heaviside step function
+.θ (x) =
+{ 0 for x < 0
+1 for x ≥ 0 . (1.55)
+This form of targeted attacks correspond to setting the upper limit of the sum in (1.49) to .kc. Differentiating (1.51) with respect to x yields
+.H '
+1(1) = F1(H1(1)) + F '
+1(H1(1)) H '
+1(1), H '
+1(1) = F1(1)
+1 − F'
+1(1) ,
+as .H1(1) = 1. The phase transition occurs when .F '
+1(1) = 1,
+.
+∑∞
+k=1 k(k − 1)pkbk
+∑∞
+k=1 kpk
+=
+∑kc
+k=1 k(k − 1)pk
+∑∞
+k=1 kpk
+= 1 , (1.56)
+where we used the definition (1.50) for .F1(x).
+
+
+1.4 Robustness of Random Networks 33
+Fig. 1.12 For a scale-free network with a power-law degree distribution .pk ∼ 1/kα the critical fraction .fc of vertices, as defined by (1.59). Removing a fraction greater than .fc of high degree vertices drives the network below the percolation limit. For a smaller loss of highest degree vertices the giant connected component remains intact (shaded area)
+2 2.5 3
+exponent α
+0
+0.01
+0.02
+0.03
+critical fraction fc
+Biased Failure of Vertices for Scale-Free Networks Scale-free networks have a power-law degree distribution, .pk ∝ k−α. We can then rewrite (1.56) as
+.H (α−2)
+kc − H (α−1)
+kc = H (α−1)
+∞ , (1.57)
+where .Hn(r) is the nth harmonic number of order r,
+.H (r)
+n=
+∑n
+k=1
+1
+kr . (1.58)
+The number of vertices present is .F0(1), see (1.49), or .F0(1)/ ∑
+k pk, since the degree distribution .pk is normalized. If we remove a certain fraction .fc of the vertices we reach the transition determined by (1.57),
+.fc = 1 − F0(1)
+∑
+k pk
+= 1 − H (α)
+kc H (∞α)
+. (1.59)
+It is impossible to determine .kc from (1.57) and (1.59) to get .fc in closed form. However one can, solve (1.57) numerically for .kc and substitute it into (1.59). The results are shown in Fig. 1.12, as a function of the exponent .α. The network is very susceptible with respect to a biased removal of highest-degree vertices.
+– A removal of more than about 3% of the highest degree vertices always leads to a destruction of the giant connected component. Maximal robustness is achieved for .α ≈ 2.2, which is actually close to the exponents measured in some realworld networks. Compare Fig. 1.6.
+
+
+34 1 Network Theory
+Fig. 1.13 Regular linear graphs with connectivities .z = 2 (top) and .z = 4 (bottom)
+– Networks with .α > αc = 3.4788 never have a giant connected component. The
+critical exponent .αc is given by the percolation condition .H (α−2)
+∞ = 2H (α−1)
+∞, see (1.27).
+1.5 Small-World Models
+Random graphs and random graphs with arbitrary degree distribution show no clustering in the thermodynamic limit, in contrast to real-world networks. It is therefore important to find methods to generate graphs that have a finite clustering coefficient and, at the same time, the small-world property.
+Clustering in Lattice Models Lattice models and random graphs are two extreme cases of network models. In Fig. 1.13 we illustrate a simple one-dimensional lattice with connectivity z. For periodic boundary conditions, viz when the chain wraps around itself in a ring, one can evaluate the clustering coefficient C analytically.
+– ONE DIMENSION For number of clusters one finds
+.C = 3(z − 2)
+4(z − 1) , (1.60)
+which tends to .3/4 in the limit of large z. – GENERAL DIMENSION Square or cubic lattices have dimension .d = 2, 3, respectively. The clustering coefficient for general dimensions d is
+.C = 3(z − 2d)
+4(z − d) , (1.61)
+which generalizes (1.60). We note that the clustering coefficient tends to .3/4 for .z ⪢ 2d for regular hypercubic lattices in all dimensions.
+
+
+1.5 Small-World Models 35
+Fig. 1.14 Crossover from a regular lattice to a small-world network via rewiring. Left: Regular lattice with periodic boundary conditions. Right: Two rewired links, original and new links are color coded (dashed/solid)
+Distances in Lattice Models Regular lattices do not show the small-world effect. A regular hypercubic lattice in d dimensions with linear size L has .N = Ld vertices. The average vertex–vertex distance increases as L, or equivalently as
+.l ≈ N 1/d .
+The Watts and Strogatz Model Watts and Strogatz proposed a small-world model that interpolates smoothly between a regular lattice and an Erdös–Rényi random graph. The construction starts with a one-dimensional periodic lattice, see Fig. 1.14. There are several possibilities
+– One goes through all the links of the lattice and rewires the link with a given probability .pnew. – A single edge is selected and rewired, with the procedure repeated .Nnew times. – As a variation one may add links, instead of rewiring. The advantage is that networks may not become disconnected.
+For small .pnew and/or .Nnew, this process produces a graph that is still mostly regular, possessing however a few connections stretching long distances across the lattice, as illustrated in Fig. 1.14. The average coordination number z of the lattice remains constant. The number of neighbors of any particular vertex can, however, be greater or smaller than z.
+Social Network Interpretation The small-world models such as the ones illustrated in Fig. 1.14, have an intuitive justification for social networks. Most people are friends with their immediate neighbors. Neighbors on the same street, people that they work with, or their relatives. However, some people are also friends with a few far-away persons. Far away in a social sense, like people in other countries, people from other walks of life, acquaintances from previous eras of their lives, and so forth. These long-distance acquaintances are represented by the long-range links in small-world models. In Fig. 1.15 the clustering coefficient is shown as a function of network diameter when rewiring is performed edge by edge. The key result is that a few steps are sufficient to achieve a drastic reduction of intra-network distances, as measured by
+
+
+36 1 Network Theory
+0 0.2 0.4 0.6 0.8 1
+clusterning coefficient C/C0
+0
+0.2
+0.4
+0.6
+0.8
+1
+diameter l/l0
+link by link rewiring N = 500, z = 4 5 runs, stopping when graph becomes disconnected
+Fig. 1.15 The scaled clustering coefficient .C/C0 as as a function of the scaled diameter .l/ l0, where .C0 = 3/4 and .l = N/4 are the initial values, for a one-dimensional ring with .N = 500 sites and .z = 4, compare Fig. 1.14. Points correspond to the consecutive random rewiring of a single edge
+the graph diameter. At the same time, the clustering coefficient remains high, as observed in many real-world networks.
+1.6 Scale-Free Graphs
+Evolving Networks Most real-world networks are open, i.e. they are formed by the continuous addition of new vertices to the system. The number of vertices, N, increases throughout the lifetime of the network, as it is the case for the world wide web, which grows exponentially by the continuous addition of new web pages. The small world networks discussed in Sect. 1.5 are, however, constructed for a fixed number of nodes N, growth is not considered.
+Preferential Connectivity Random network models assume that the probability that two vertices are connected is random and uniform. In contrast, most real networks exhibit the “rich-get-richer” phenomenon.
+PREFERENTIAL CONNECTIVITY New vertices prefer to connect to existing nodes which already have high degrees.
+A newly created web page, to give an example, will include links to well-known sites with a quite high probability. Popular web pages will therefore have both a high number of incoming links and a high growth rate for incoming links. The growth of vertices in terms of edges is therefore in general not uniform.
+
+
+1.6 Scale-Free Graphs 37
+t=0 t=1 t=2 t=3
+Fig. 1.16 Illustration of the preferential attachment model for an evolving network. At t = 0 the system consists of N0 = 3 isolated vertices. At every time step a new vertex (shaded circle) is added, which is connected to m = 2 vertices, preferentially to the vertices with high connectivity, determined by the rule (1.62)
+Barabási–Albert Model We start at time t = 0 with N (0) = N0 unconnected vertices. The preferential attachment growth process can then be carried out in two steps.
+– GROWTH At every time step a new vertex is added and connected with m ≤ N0 links to existing nodes. – PREFERENTIAL ATTACHMENT The new links are determined by connecting the m stubs of the new vertex to nodes with degrees ki with probability
+.Π (ki ) = ki + C
+a(t) a(t) = 2m(t − 1) + C(N0 + t − 1 ) , (1.62)
+where the normalization a(t) has been chosen such that the overall probability to
+connect is unity, ∑
+i Π (ki ) = 1.
+The attachment probability Π (ki) is linearly proportional to the number of links already present, modulo an offset C. Other functional dependencies for Π (ki) are of course possible, but not considered here. After t time steps above two steps leads to a network with N (t) = t +N0 vertices and mt edges, see Fig. 1.16. We will now show that preferential attachment leads to a scale-free degree distribution
+.pk ∼ k−γ γ = 3 + C
+m . (1.63)
+This scaling relation is valid for large degrees ki in the limit t → ∞.
+Time-Dependent Connectivities The time dependence of the degree of a given vertex can be calculated analytically using a mean-field approach. Only nodes with large degrees matter, as the scaling relation (1.63) applies asymptotically in the
+
+
+38 1 Network Theory
+limit k → ∞, We may therefore assume ki to be continuous,
+.Δki (t) ≡ ki (t + 1) − ki (t) ≈ ∂ki
+∂t = A Π (ki) = A ki + C
+a(t) , (1.64)
+where Π (ki) is the attachment probability. The overall number of new links is proportional to a normalization constant A, which is hence determined by the sum rule
+.
+∑
+i
+Δki(t) ≡ m = A
+∑
+i
+Π (ki) = A ,
+since the overall probability to attach, ∑
+i Π (ki), is unity. Making use of a(t) = 2m(t − 1) + C(N0 + t − 1), we obtain
+.
+∂ ki
+∂t = m ki + C
+(2m + C)t + a0
+≈m
+2m + C
+ki + C
+t , (1.65)
+where did neglect a0 = C(N0 − 1) − 2m for large times t. The solution of (1.65) is given by
+.
+k ̇i
+ki + C = m
+2m + C
+1
+t , ki(t) = (C + m) ( t
+ti
+)m/(2m+C)
+− C , (1.66)
+where ti is the time at which the vertex i had been added, ki(t) = 0 for t <i. t
+Adding Times We specialize to the case C = 0, the general result for C > 0 can be obtained subsequently from scaling considerations. A vertex added at time ti = Ni − N0 has initially m = ki(ti) links, in agreement with (1.66), which reads
+.ki (t) = m
+(t
+ti
+)0.5
+, ti = t m2/k2
+i (1.67)
+for C = 0. Older nodes, i.e. those with smaller ti, increase their connectivity faster than the younger vertices, viz those with bigger ti, see Fig. 1.17. For social networks this mechanism is dubbed the rich-gets-richer phenomenon.
+The number of nodes N (t) = N0 + t is identical to the number of adding times,
+.t1, . . . , tN0 = 0 , t
+N0+j = j, j = 1, 2 , . . . ,
+where we did define the initial N0 nodes to have adding times zero.
+
+
+1.6 Scale-Free Graphs 39
+0 12 34 56 adding times
+0
+1
+2
+3
+4
+5
+ki(t)
+1/(N0+t)
+P(ti)
+ti
+t
+m2t/k2
+P(t >m2t/k2)
+i
+Fig. 1.17 Left: Time evolution of the connectivities for vertices with adding times t = 1, 2, 3 , . . . and m = 2, following (1.67). Right: The integrated probability, P (ki (t) < k) = P (ti > tm2/k2), see (1.68)
+Integrated Probabilities Using (1.67), the probability that a vertex has a connectivity ki(t) smaller than a certain k, P (ki(t) < k) can be written as
+.P (ki (t) < k) = P
+(
+ti > m2t
+k2
+)
+. (1.68)
+Adding times are uniformly distributed, compare Fig. 1.17, which implies that the probability P (ti) to find an adding time ti is
+.P (ti ) = 1
+N0 + t , (1.69)
+viz just the inverse of the total number of adding times, which coincides in turn with the total number of nodes. P (ti > m2t/k2) is therefore the cumulative number of adding times ti larger than m2t/k2, multiplied with the probability P (ti) to add a new node,
+.P
+(
+ti > m2t
+k2
+) =
+(
+t − m2t
+k2
+)1
+N0 + t . (1.70)
+Scale-Free Degree Distribution The degree distribution pk follows from (1.70) via a simple differentiation,
+.pk = ∂P (ki (t) < k)
+∂k = ∂P (ti > m2t/k2)
+∂k = 2m2t
+N0 + t
+1
+k3 , (1.71)
+in accordance with (1.63). The degree distribution (1.71) has a well defined limit t → ∞, approaching a stationary distribution. We note that the exponent γ = 3 is independent of the number m of added links per new site. This result indicates that growth and preferential attachment play an important role for the occurrence of a power
+
+
+40 1 Network Theory
+law scaling in the degree distribution. To verify that both ingredients are really necessary, we investigate variants of above model. One can repeat above calculation for a finite offset C > 0. The exponent γ is identical to the inverse of the scaling power of ki with respect to time t in (1.66), plus one, which leads to γ = (2m + C)/m + 1 = 3 + C/m.
+Growth with Random Attachment We examine whether growth alone can result in a scale-free degree distribution, assuming random instead of preferential attachment. The growth equation for the connectivity ki of a given node i, compare (1.65), then takes the form
+.
+∂ ki
+∂t = m
+N0 + t . (1.72)
+The m new edges are linked randomly at time t to the (N0 + t − 1) nodes present at the previous time step. Solving (1.72) for ki, with the initial condition ki(ti) = m, we obtain
+.ki = m
+[ ln
+( N0 + t
+N0 + ti
+)
++1
+]
+, (1.73)
+which is a logarithmic increase with time. The probability that vertex i has connectivity ki(t) smaller than k is
+.P (ki (t) < k) = P
+(
+ti > (N0 + t ) e1−k/m − N0
+)
+(1.74)
+=
+[
+t − (N0 + t ) e1−k/m + N0
+]1
+N0 + t ,
+where we assumed that we add the vertices uniformly in time to the system. Using
+.pk = ∂P (ki (t) < k)
+∂k
+for large times t, we find
+.pk = 1
+m e1−k/m = e
+m exp
+(
+−k
+m
+)
+. (1.75)
+Growing networks with random attachment are characterized hence by
+.k∗ = m , (1.76)
+which is identical to half of the average connectivities of the vertices in the system, since 〈k〉 = 2m. Random attachment does not lead to a scale-free degree
+
+
+Exercises 41
+distribution. Note that pk in (1.75) is not properly normalized, nor in (1.71), since we used a large-k approximation during the respective derivations.
+Internal Growth with Preferential Attachment The original preferential attachment model yields a degree distribution pk ∼ k−γ with γ = 3. Most social networks such as the Internet and the Wikipedia network, however, have exponents 2 < γ < 3, with the exponent γ being relatively close to two. It is also observed that new edges are mostly added in between existing nodes, albeit with internal preferential attachment. We can then generalize the preferential attachment model discussed above.
+– At every time step a new vertex is added. – At every time step m new edges are added. – With probability r ∈ [0, 1] any one of the m new edges is added between the new vertex and an existing vertex i, which is selected with a probability ∝ Π (ki), see (1.62). – With probability 1 − r any one of the m new edges is added in between two existing vertices i and j , which are selected with a probability ∝ Π (ki) Π (kj ).
+The model reduces to the original preferential attachment model in the limit r → 1. The scaling exponent γ can be evaluated along the lines used above for the case r = 1. One finds
+.pk ∼ 1
+kγ , γ = 1 + 1
+1 − r/2 . (1.77)
+The exponent γ = γ (r) interpolates smoothly between two and three, with γ (1) = 3 and γ (0) = 2. For most real-world graphs r is quite small, viz most links are added internally. Note, that the average connectivity 〈k 〉 = 2m remains constant, since one new vertex is added for 2m new stubs.
+Exercises
+(1.1) NETWORK OF CLIQUES Consider i = 1, . . . , 9 managers sitting on the boards of six companies with (1,9), (1,2,3), (4,5,9), (2,4,6,7), (2,3,6) and (4,5,6,8) being the respective board compositions. Draw the graphs for the managers and companies, by eliminating from the bipartite manager/companies graph one type of node. The result can be interpreted as a network of cliques. Evaluate for both networks the average degree z, the clustering coefficient C and the graph diameter D.
+
+
+42 1 Network Theory
+(1.2) ENSEMBLE FLUCTUATIONS Derive (1.7) for the distribution of ensemble fluctuations. In the case of difficulties Albert and Barabási (2002), can be consulted. Alternatively, check (1.7) numerically. (1.3) CLUSTERING COEFFICIENT AND DEGREE SEQUENCE Rewrite the expression (1.29) for the clustering coefficient C as a sum over the degree sequence {ki}. Show that the resulting formula, valid only for statistically uncorrelated graphs, may violate the strict bound C ≤ 1, by considering the degree sequence of a star-shaped network with a single central site connected to N − 1 otherwise isolated sites. (1.4) TSALLIS–PARETO DISTRIBUTION Evaluate mean and variance of the Tsallis–Pareto distribution,
+.p(x) = α − 1
+(1 + x)α , (1.78)
+on the interval x ∈ [0, ∞]. (1.5) KRONECKER GRAPHS A Kronecker graph K of two graphs G and H is defined as the outer product K = G ⊗ H , in terms of the respective adjacency matrices, with a node XK
+ij
+of K being linked to a node XK
+kl of K if XG
+i is linked to XG
+k in G and XH
+j is
+linked to XH
+l in H .
+Start by constructing the Kronecker graph of two very small networks of your choice. Express then generically the degree distribution pK (k) of the Kronecker graph in terms of pG(k) and pH (k), the respective degree distributions of G and H . How does the coordination number scale? (1.6) SELF-RETRACING PATH APPROXIMATION Look at Brinkman and Rice (1970) and prove (1.14). This derivation is only suitable for readers with a solid training in physics. (1.7) PROBABILITY GENERATING FUNCTIONS Prove that the variance σ 2 of a probability distribution pk with a generating
+functional G0(x) = ∑
+k pk xk and average 〈k〉 is given by σ 2 = G''
+0(1) +
+〈k 〉 − 〈k〉2.
+Consider furthermore a cumulative process generated by GC(x) = GN (G0(x)), compare (1.38). Calculate the mean and the variance of the cumulative process and discuss the result. (1.8) CLUSTERING COEFFICIENT OF REGULAR LATTICES Prove (1.60) for the clustering coefficient of one-dimensional lattice graphs. Facultatively, generalize this formula to a d-dimensional lattice with links along the main axis. (1.9) ROBUSTNESS OF GRAPHS AGAINST FOCUSED ATTACKS Using the formalism of Sect. 1.4 calculate the robustness of Erdös–Rényi networks against focused attacks with bk = θ (kc − k) being the probability of nodes remaining active. For which values of kc, as a function of the
+
+
+References 43
+coordination number z, does the network remain functional? Evaluate the corresponding critical fraction fc of inactive nodes. (1.10) EPIDEMIC SPREADING IN SCALE-FREE NETWORKS Consult “R. Pastor-Satorras and A. Vespigiani, Epidemicspreadinginscalefreenetworks, Physical Review Letters, Vol. 86, 3200 (2001)”. The task is to solve a simple molecular-field approach to the SIS model for the spreading of diseases in scale-free networks by using the excess degree distribution discussed in Sect. 1.3.1, where S and I stand respectively for susceptible and infective individuals.
+Further Reading
+For further studies several books and review articles on general network theory are recommended, Estrada (2012), Kadushin (2012), and Albert and Barabási (2002). The interested reader might delve into some of the original literature, including the original Watts and Strogatz (1998) small-world model, the mean-field solution of the preferential attachment model, Barabasi et al. (1999), a study regarding the community structure of real-world networks, Palla et al. (2005), or the mathematical basis of graph theory, Erdös and Rényi (1959). A good starting point is the account by Milgram (1967) of his by now famous experiment, which led to the law of “six degrees of separation”, Guare (1990).
+References
+Albert, R., & Barabási, A. L. (2002). Statistical mechanics of complex networks. Review of Modern Physics, 74, 47–97.
+Barabasi, A. L., Albert, R., & Jeong, H. (1999). Mean-field theory for scale-free random networks. Physica A, 272, 173–187.
+Brinkman, W. F., & Rice, T. M. (1970). Single-particle excitations in magnetic insulators. Physical Review B, 2, 1324–1338. Erdös, P., & Rényi, A. (1959). On random graphs. Publications Mathematicae, 6, 290–297.
+Estrada, E. (2012). The structure of complex networks: Theory and applications. Oxford: Oxford University Press. Guare, J. (1990). Six degrees of separation: A play. New York: Vintage.
+Kadushin, C. (2012). Understanding social networks: Theories, concepts, and findings. Oxford: Oxford University Press. Ludueña, G. A., Meixner, H., Kaczor, G., & Gros, C. (2013). A large-scale study of the world wide web: Network correlation functions with scale-invariant boundaries. The European Physical Journal B, 86, 1–7.
+Milgram, S. (1967). The small world problem. Psychology Today, 2, 60–67. Newman, M. E. J., Strogatz, S. H., & Watts, D. J. (2001). Random graphs with arbitrary degree distributions and their applications. Physical Review E, 64, 026118. Palla, G., Derenyi, I., Farkas, I., & Vicsek, T. (2005). Uncovering the overlapping community structure of complex networks in nature and society. Nature, 435, 814–818. Watts, D. J., & Strogatz, S. H. (1998). Collective dynamics of small world networks. Nature, 393, 440–442.
+
+
+2
+Bifurcations and Chaos in Dynamical Systems
+Complex systems theory deals with dynamical systems containing often large numbers of variables. It extends dynamical systems theory, which treats dynamical systems containing a few variables. A good understanding of dynamical systems theory is therefore a prerequisite when studying complex systems. In this chapter we introduce core concepts, like attractors and Lyapunov exponents, bifurcations, and deterministic chaos from the realm of dynamical systems theory. An introduction to catastrophe theory will be provided together with the notion of rate-induced tipping and colliding attractors. Most of the chapter will be devoted to ordinary differential equations and maps, the traditional focus of dynamical systems theory, venturing however towards the end into the intricacies of time delay dynamical systems.
+2.1 Basic Concepts of Dynamical Systems Theory
+Dynamical systems theory deals with the properties of coupled differential equations, determining the time evolution of a few, typically a handful of variables. We present a concise overview covering the most important concepts and phenomena.
+Fixpoints and Limit Cycles In order to illustrate methodologies typical for dynamical systems theory, we start with an elementary non-linear rotator. For a two-dimensional systems .x = (x, y), or
+.x(t) = r(t) cos(φ(t)), y(t) = r(t) sin(φ(t)) (2.1)
+in polar coordinates, we postulate the non-linear differential equations
+.r ̇ = (Γ − r2) r, φ ̇ = ω (2.2)
+© The Author(s), under exclusive license to Springer Nature Switzerland AG 2024 C. Gros, Complex and Adaptive Dynamical Systems, https://doi.org/10.1007/978-3-031-55076-8_2
+45
+
+
+46 2 Bifurcations and Chaos in Dynamical Systems
+x
+y
+x
+y
+Fig. 2.1 The solution of the non-linear rotator, compare (2.1) and (2.2). For .Γ < 0 the orbit is attracted by a stable fixpoint (left), for .Γ > 0 by a stable limit cycle (right)
+govern the dynamical behavior. The typical orbits .(x(t), y(t)) are illustrated in Fig. 2.1. The limiting behavior of (2.2) is
+. tli→m∞
+[ x(t) y (t )
+] =
+⎧⎪⎪⎪⎨
+⎪⎪⎪⎩
+[0
+0
+]
+Γ <0
+[ rc cos(ωt) rc sin(ωt)
+]
+rc2 = Γ > 0
+(2.3)
+In the first case, .Γ < 0, trajectories are attracted by the stable fixpoint .x∗
+0 = (0, 0). In the second case, .Γ > 0, the dynamics approaches stable periodic orbit.
+LIMIT CYCLE Trajectories retrace themselves with a period T for limit cycles, viz one has .x(t + T ) = x(t).
+Limit cycles can be attracting or repelling. In (2.3) one has an attracting limit cycle for .Γ > 0.
+Bifurcation Of particular interest are situations where the behavior of a dynamical system changes qualitatively.
+BIFURCATION The long-term limiting behavior of a dynamical system described by a set of parameterized differential equations may change qualitatively as a function of an external parameter. The resulting change in terms of fixpoints, limit cycles and/or chaotic attractors constitutes a bifurcation.
+The dynamical system (2.1) and (2.2) shows a bifurcation at .Γ = 0, at which a fixpoint turns into a limit cycle. One denotes this specific type of bifurcation a “Hopf bifurcation”, as discussed lateron in detail
+
+
+2.1 Basic Concepts of Dynamical Systems Theory 47
+Fig. 2.2 A fixpoint is stable (unstable) when orbits are attracted (repelled)
+stable
+unstable
+Stability of Fixpoints The dynamics of orbits close to fixpoints or limiting orbits is determined by its stability.
+STABILITY CONDITION A fixpoint is stable (unstable) if nearby orbits are attracted (repelled) by the fixpoint, and metastable if the distance does not change.
+An illustration is given in Fig. 2.2. The stability of fixpoints is closely related to their Lyapunov exponents, as discussed in Sect. 2.4. One can examine the stability of a fixpoint .x∗ by linearizing the equation of motions for .x ≈ x∗. For the fixpoint .r∗ = 0 of (2.2) we find
+.r ̇ =
+(
+Γ − r2)
+r ≈ Γ r, r ⪡ 1 ,
+and .r(t) decreases (increases) for .Γ < 0 (.Γ > 0). For a d-dimensional system .x = (x1, . . . , xd ) the stability of a fixpoint .x∗ is determined by calculating the d eigenvalues of the linearized equations of motion. The system is stable if all eigenvalues are negative and unstable if at least one eigenvalue is positive.
+Phase Space A given dynamical systems lives in its phase space.
+PHASE SPACE The phase space is the space spanned by all allowed values of the variables entering a set of first-order differential equations defining the dynamical system.
+For a two-dimensional system .(x, y) the phase space is .R2, but in the polar coordinates one has
+.
+{
+(r, φ)
+∣∣∣ r ∈ [0, ∞] , φ ∈ [0, 2π [
+} .
+The representation of a phase space changes upon coordinate transformations.
+Attracting States and Manifolds Attracting states play a center role in dynamical systems theory.
+ATTRACTOR A bounded region in phase space to which orbits with certain initial conditions come arbitrarily close is called an attractor.
+Attractors can be isolated points, fixpoints, limit cycles or more complex objects like attracting manifolds, viz subsets of phase space, or chaotic attractors.
+
+
+48 2 Bifurcations and Chaos in Dynamical Systems
+BASIN OF ATTRACTION The set of initial conditions in phase space leading to orbits approaching a certain attractor arbitrarily closely is the basin of attraction.
+Most of the times the extend of a basin of attraction can be evaluated only numerically.
+First-Order Differential Equations Let us consider the third-order differential equation
+.
+d3
+dt3 x(t) = f (x,  ̇x, x ̈ ) . (2.4)
+Using
+.x1(t) = x(t), x2(t) =  ̇x(t), 3x(t) = x ̈ (t) , (2.5)
+we can rewrite (2.4) as a first-order differential equation,
+.
+d
+dt
+⎡
+⎣
+x1
+x2
+x3
+⎤
+⎦=
+⎡
+⎣
+x2
+x3 f (x1, x2, x3)
+⎤
+⎦.
+One can reduce any set of coupled differential equations to a set of first-order differential equations by introducing an appropriate number of additional variables. We therefore consider in the following only first-order, ordinary differential equations.
+Autonomous Systems The generic form for a dynamical system is
+.
+dx(t )
+dt = f(x(t)), x, f ∈ Rd , t ∈ [−∞, +∞] , (2.6)
+when time is continuous, or, equivalently, maps such as
+.x(t + 1) = g(x(t)), x, g ∈ Rd , t = 0, 1, 2 , . . . , (2.7)
+when time is discrete. Together with the time evolution equation one has to set the initial condition .x0 = x(t0). An evolution equation of type (2.15) is denoted “autonomous”, since it does not contain an explicit time dependence. A system of type . ̇x = f(t, x) is dubbed “non-autonomous”. A particular solution .x(t) of a dynamical system in phase space is denoted “trajectory”, or “orbit”. Orbits are uniquely determined by the set of initial conditions, .x(0) ≡ x0, a consequence of dealing with first-order differential equations.
+
+
+2.1 Basic Concepts of Dynamical Systems Theory 49
+Fig. 2.3 The Poincaré map, .x → P(x), which maps an intersection .x of the trajectory with a hyperplane (shaded) to the consecutive intersection .P(x)
+x P(x)
+Poincaré Map It is in general difficult to illustrate graphically the motion of .x(t) in d dimensions. Our retina, as well as our print media, are two-dimensional and it is therefore convenient at times to consider a plane .Σ in .Rd together with the points .x(i) marking the consecutive intersections of an orbit with .Σ, as illustrated in Fig. 2.3. As an example consider the plane
+.Σ = { (x1, x2, 0 , . . . , 0) | x1, x2 ∈ R }
+and the sequence of intersections (see Fig. 2.3)
+.x(i) = (x(i)
+1 , x(i)
+2 , 0 , . . . , 0), (i = 1, 2 , . . .)
+which define the “Poincaré map”
+.P : x(i) ⍿→ x(i+1) . (2.8)
+The Poincaré map is a discrete map, compare (2.7), which can be constructed for continuous-time dynamical systems like (2.15). The Poincaré map is very useful, since we can print and analyze it directly. In the simplest case, a periodic orbit would show up in the Poincaré map as the identity mapping.
+Constants of Motion and Ergodicity Dynamical systems derived in physics from Hamilton- or Lagrange formalism are “mechanical systems”. The vast majority of dynamical systems we will examine are non-mechanical. There are however several foundational concepts from the realm of mechanical systems that are generically relevant.
+
+
+50 2 Bifurcations and Chaos in Dynamical Systems
+– CONSTANT OF MOTION A function .F (x) on phase space .x = (x1, . . . , xd ) is a “constant of motion” if it is conserved under the time evolution of the dynamical system, i.e. when
+.
+d
+dt F (x(t)) =
+d ∑
+i=1
+(∂
+∂ xi
+F (x)
+)
+x ̇i(t) ≡ 0
+holds for all times t. In many mechanical systems the energy is a conserved quantity. – ERGODICITY A dynamical system in which orbits come arbitrarily close to any allowed point in the phase space, irrespective of the initial condition, is called ergodic.
+All conserving systems of classical mechanics are ergodic. The ergodicity of a mechanical system is closely related to “Liouville’s theorem”.1 Ergodicity holds only modulo conserved quantities, which is the case for the energy in many mechanical systems. Then, only points in the phase space having the same energy as the trajectory considered are approached arbitrarily close. It is clear that ergodicity and attractors are mutually exclusive: An ergodic system cannot have attractors and a dynamical system with one or more attractors cannot be ergodic.
+Mechanical Systems and Integrability A dynamical system of type
+.x ̈i = fi(x, x ̇ ), i = 1 , . . . , f
+is a mechanical system, since equations of motion in classical mechanics are of this form, e.g. Newton’s law. f is called the degree of freedom, which implies that mechanical systems can be written as a set of coupled first-order differential equations with 2f variables constituting the phase space,
+.(x1 . . . xf , v1 . . . vf ), vi = x ̇i , i = 1 , . . . , f ,
+with .v = (v1, . . . , vf ) being the generalized velocity. A mechanical system is “integrable” if there are .α = 1 , . . . , f independent constants of motion .Fα(x, x ̇ ), such that
+.
+d
+dt Fα(x, x ̇ ) = 0 , α = 1 , . . . , f .
+The motion in the 2f -dimensional phase space .(x1 . . . xf , v1 . . . vf ) is then restricted to an f -dimensional subspace, which is an f -dimensional torus, see Fig. 2.4.
+1 Liouville’s theorem will be discussed in Sect. 3.1.1 of Chap. 3.
+
+
+2.1 Basic Concepts of Dynamical Systems Theory 51
+(1) (2) (3)
+(1) (2) (3)
+4) (4(
+Fig. 2.4 Left: A KAM-torus can be cut along two lines (vertical/horizontal) and unfolded. Right: A closed orbit on the unfolded torus with .ω1/ω2 = 3/1. The numbers indicate points that coincide after refolding (periodic boundary conditions)
+An example of an integrable mechanical system is the Kepler problem, viz the motion of earth around the sun. Integrable systems are very rare, they constitute however important reference points for the understanding of more complex dynamical systems. A classical example of a non-integrable mechanical system is the three-body problem, viz the combined motion of earth, moon and sun around each other.
+KAM Theorem Kolmogorov, Arnold and Moser (KAM) examined the question of what happens to an integrable system when it is perturbed. Let us consider a two-dimensional torus, as illustrated in Fig. 2.4. Orbit wraps around the torus respectively with frequencies .ω1 and .ω2. A key quantity is the ratio of revolution frequencies .ω1/ω2, which can be rational or irrational. We recalr that irrational numbers r may be approximated with arbitrary accuracy by a sequence of quotients
+.
+m1
+s1
+, m2
+s2
+, m3
+s3
+, . . . s1 < s2 < s3 < . . .
+with ever larger denominators .si. A number r is “very irrational” when it is difficult to approximate r by such a series of rational numbers, viz when very large denominators .si are required to achieve a certain given accuracy for .|r − m/s|. The KAM theorem states that orbits with rational ratios of revolution frequencies .ω1/ω2 are the most unstable under a perturbation of an integrable system and that tori are most stable when this ratio is very irrational.
+Gaps in the Saturn Rings A spectacular example for the instability of rational KAM-tori are the gaps in the rings of the planet Saturn. The time a hypothetical particle in Cassini’s gap (between the A- and the Bring, .r = 118,000 km) would need to orbit Saturn is half the orbiting period of the ‘shepherd-moon’ Mimas. The quotient of these two revolving frequencies is 2:1. Particle orbiting in Cassini’s gap are therefore unstable against perturbation caused by Mimas and thrown out of their orbit.
+
+
+52 2 Bifurcations and Chaos in Dynamical Systems
+2.2 Fixpoints, Bifurcations and Stability
+We start our systematic discussions by considering the stability of fixpoint .x∗ of a one-dimensional dynamical system
+.x ̇ = f (x), f (x∗) = 0 . (2.9)
+A fixpoint is the most simplest invariant manifold.2 Generically, invariant manifolds are sets of phase space that that are invariant under the dynamical flow. Fixpoints are the only possible invariant manifolds for .d = 1 dimension, in two dimensions fixpoints and limiting cycles are possible, with more complicated objects, such as strange attractors, becoming accessible in three and higher dimensions.
+Lyapunov Exponents The stability of a fixpoint is determined by the direction of the flow close to it, which can be determined by linearizing the time evolution equation .x ̇ = f (x)around the fixpoint .x∗,
+.
+d
+dt
+(x − x∗) = x ̇ ≈ f (x∗) + f '(x∗)(x − x∗) + . . . , (2.10)
+where .f '() denotes the first derivative. We rewrite (2.10) as
+.
+d
+dt Δx = f '(x∗) Δx, Δx = x − x∗ ,
+where we neglected terms of order .(x − x∗)2 and higher and where we made use of the fixpoint condition .f (x∗) = 0. This equation has the solution
+.Δx(t ) = Δx(0) etf '(x∗) →
+{ ∞ f '(x∗) > 0
+0 f '(x∗) < 0 . (2.11)
+The perturbation .Δx decreases/increases with time and the fixpoint .x∗ is hence stable/unstable for .f '(x∗) < 0 and .f '(x∗) > 0 respectively.
+LYAPUNOV EXPONENT The time evolution close to a fixpoint .x∗ is generically exponential, .∼ exp(λt), and one denotes by .λ = f '(x∗) the Lyapunov exponent.
+The Lyapunov exponent controls the direction of the flow close to a fixpoint. Orbits are exponentially repelled/attracted for .λ > 0 and for .λ < 0 respectively. For more than a single variable one has to find all eigenvalues of the linearized problem,
+2 Invariant manifolds are touched upon further in in Sect. 3.2.1 of Chap. 3.
+
+
+2.2 Fixpoints, Bifurcations and Stability 53
+as discussed further below, with the fixpoint being stable only when all eigenvalues are negative.
+Fixpoints of Discrete Maps For a discrete map of type
+.x(t + 1) = g(x(t)), x∗ = g(x∗) (2.12)
+the stability of a fixpoint .x∗ can be determined by an equivalent linear analysis,
+.x(t + 1) = g(x(t)) ≈ g(x∗) + g'(x∗)(x(t) − x∗) .
+Using the fixpoint condition .g(x∗) = x∗ we write above expression as
+.Δx(t + 1) = x(t + 1) − x∗ = g'(x∗) Δx(t) ,
+which has the solution
+.Δx(t) = Δx(0) [g'(x∗)]t , |Δx(t) | = |Δx(0)| eλt . (2.13)
+The Lyapunov exponent,
+.λ = log |g'(x∗) | =
+{ < 0 for '(|xg∗)| < 1
+> 0 for '(|xg∗)| > 1 , (2.14)
+controls the stability of the fixpoint. Note the differences in the relation of the Lyapunov exponent .λ to the derivatives .f '(x∗) and .g'(x∗) for differential equations and maps respectively, as given by (2.11) and (2.14).
+2.2.1 Fixpoints Classification and Jacobian
+We assume that the general d-dimensional dynamical system
+.
+dx(t )
+dt = f(x(t)), x, f ∈ Rd , f(x∗) = 0 (2.15)
+has a fixpoint .x∗.
+Jacobian and Lyapunov Exponents For a stability analysis of the fixpoint .x∗ one linearizes (2.15) around the fixpoint, using .xi(t) ≈ xi∗ + δxi(t), with small .δxi(t). One obtains
+.
+d δ xi
+dt = ∑
+j
+Jij δxj , Jij = ∂fi (x)
+∂ xj
+∣∣∣∣x=x∗
+. (2.16)
+
+
+54 2 Bifurcations and Chaos in Dynamical Systems
+The matrix .Jij of all possible partial derivatives is the “Jacobian” of the dynamical system (2.15). The Jacobian allows to generalizes the definition of the Lyapunov exponent for one-dimensional systems, as given previously.
+LYAPUNOV SPECTRUM The set of eigenvalues .{λi } of the Jacobian .i = 1, .., d is the
+spectrum characterizing the fixpoint .x∗.
+Lyapunov exponents .λn = λ'n + iλ'n' may have real .λ'n and imaginary .λ'n' components, which leads to the time evolution
+.eλnt = eλ'nt eiλ'n't
+of infinitesimal perturbations around the fixpoint. A Lyapunov exponent .λn is
+attracting/neutral/repelling when .λ'n is negative/zero/positive respectively.
+HYPERBOLIC FIXPOINT The flow is well defined in linear order when all .λ'i /= 0. In this case the fixpoint is hyperbolic.
+For a non-hyperbolic fixpoint at least one of the Lyapunov exponents is neutral. All Lyapunov exponents are neutral for a vanishing Jacobian.
+Pairwise Conjugate Exponents With .λ = λ'+ iλ'' also its conjugate .λ∗ = λ'− iλ'' in an eigenvalue of the Jacobian, which is a real matrix. It follows that .λ and .λ∗ differ when .λ'' /= 0. In this caser there are (at least) two eigenvalues having the same real part .λ'.
+Fixpoint Classification for .d = 2 In Fig. 2.5 some example trajectories are shown for several fixpoints in .d = 2 dimensions.
+– NODE Both eigenvalues are real and have the same sign, which is negative/positive for a stable/unstable node. – SADDLE Both eigenvalues are real and have opposite signs. – FOCUS The eigenvalues are complex conjugate to each other. The trajectories spiral in/out for negative/positive real parts.
+Fixpoints in higher dimensions are characterized by the number of respective attracting/neutral/repelling eigenvalues of the Jacobian, which may be in turn either real or complex.
+
+
+2.2 Fixpoints, Bifurcations and Stability 55
+Fig. 2.5 Example trajectories for a stable node (left), with a ratio .λ2/λ1 = 2, for a saddle (middle) with .λ2/λ1 = −3, and for a unstable focus (right)
+Stable and Unstable Manifolds For real eigenvalues .λn /= 0 of the Jacobian J , with eigenvectors .en and a sign .sn = λn/|λn|, we define via
+. lim
+t→−sn∞ xn(t ) = x∗ + etλn en, J en = λnen , (2.17)
+trajectories .xn(t) that leave/approach the fixpoint parallel to an eigendirection. These are stable manifolds (for .λn < 0) and unstable manifolds (for .λn > 0).
+For a neutral Lyapunov exponent with .λn = 0 one define a “center manifold” which we will discuss in the context of catastrophe theory in Sect. 2.3.2. The term manifold denotes in mathematics, loosely speaking, a smooth topological object. Stable and unstable manifolds control the flow infinitesimal close to the fixpoint along the eigendirections of the Jacobian and may be continued to all positive and negative times t. Typical examples are illustrated in Figs. 2.5 and 2.6.
+Heteroclinic Orbits One speaks of a “heteroclinc orbit” when the unstable manifold of one fixpoint connects to the stable manifold of another fixpoint, and viceversa. As an example, we consider a two dimensional dynamical system defined by
+.
+x ̇ = 1 − x2
+y ̇ = yx + ε(1 − x2)2 J (x∗) =
+( −2x∗ 0 0 x∗
+)
+, (2.18)
+which has two saddles .x∗± = (x∗, 0), where .x∗ = ±1. The eigenvectors of the
+Jacobian .J (x∗) are aligned with the x and the y axis respectively, for all values of the control parameter .ε.
+The flow diagram, as illustrated in Fig. 2.6, is invariant when inverting both .x ↔ (−x) and .y ↔ (−y). The system contains additionally the .y = 0 axis as a mirror line for a vanishing .ε = 0 and there is a heteroclinic orbit connecting an unstable manifold of .x∗− to one of the stable manifolds of .x∗+. A finite .ε removes the mirror
+
+
+56 2 Bifurcations and Chaos in Dynamical Systems
+Fig. 2.6 Sample trajectories of the system (2.18), for .ε = 0 (left) and .ε = 0.2 (right). Shown are the stable manifolds (thick green lines), the unstable manifolds (thick blue lines) and the heteroclinic orbit (thick red line)
+line .y = 0, present at .ε = 0, destroying the heteroclinic orbit. Real world systems are often devoid of symmetries and heteroclinic orbits hence rare.
+2.2.2 Bifurcations and Normal Forms
+The nature of the solution to a dynamical system, as defined by a suitable first order differential equation (2.15), may change qualitatively as a function of a given control parameter. When this happens, a bifurcation occurs. Here we list the most important classes of what is called a “local bifurcation”. The distinction to their counterpart, “global bifurcations”, will be elucidated in Sect. 2.3. A local bifurcations can be characterized by a simple archetypical equation, the “normal form”, to which a more complex dynamical systems will generically reduce close to the transition point.
+Saddle-Node Bifurcation We consider the dynamical system defined by
+.
+dx
+dt = a − x2 , (2.19)
+for a real variable x and a real control parameter a. The fixpoints .x ̇ = 0
+.x∗+ = +√a, x∗− = −√a, a > 0 (2.20)
+exist only for positive control parameters, .a > 0; there are no fixpoints for negative .a < 0. For the flow we find
+.
+dx
+dt =
+⎧⎪⎨
+⎪⎩
+< 0 for x√>a
+> 0 for x ∈√[a−, √a]
+< 0 for x <√a−
+(2.21)
+
+
+2.2 Fixpoints, Bifurcations and Stability 57
+Fig. 2.7 The saddle-node bifurcation, as described by (2.19). There are two fixpoints for .a > 0,
+an unstable branch .x∗− = −√a and a stable branch .x∗+ = +√a. Left: The phase diagram together with the flow (arrows). Right: The bifurcation potential .U (x) = −ax + x3/3, compare (2.26)
+when .a > 0. The upper branch .x∗+ is hence stable and the lower branch .x∗− unstable, as illustrated in Fig. 2.7. For a saddle-node bifurcation a stable and an unstable fixpoint collide and annihilate each other, one speaks also of a fold, tangential or blue sky bifurcation.
+Transcritical Bifurcation We now consider the dynamical system
+.
+dx
+dt = x(a − x) , (2.22)
+again for a real variable x and a real control parameter a. The two fixpoint solutions .x ̇ = 0,
+.x ∗
+0 =0 , x
+a∗ = a, ∀a (2.23)
+exist for all values of the control parameter. The direction of the flow .x ̇ is positive for x in between the two solutions and negative otherwise, see Fig. 2.8. The respective stabilities of the two fixpoint solutions exchange consequently at .a = 0.
+Pitchfork Bifurcation The “supercritical” pitchfork bifurcation is described by
+.
+dx
+dt = ax − x3, x∗
+0 =0 , x
+∗+ = +√a, x∗− = −√a . (2.24)
+The trivial fixpoint .x∗
+0 = 0 becomes unstable at criticality, .a = 0, and two symmetric stable fixpoints appear, see Fig. 2.9.
+Bifurcation Potentials In many cases one can write the dynamical system under consideration as
+.
+dx
+dt = − d
+dx U (x) , (2.25)
+
+
+58 2 Bifurcations and Chaos in Dynamical Systems
+Fig. 2.8 The transcritical bifurcation, see (2.22). The two fixpoints .x∗
+0 = 0 and .xa∗ = a exchange
+stability at .a = 0. Left: Phase diagram and flow (arrows). Right: The bifurcation potential .U (x) = −ax2/2 + x3/3, compare (2.26)
+where .U (x) is a potential in analogy to Newton’s equation of motion in classical mechanics. Local minima of the potential correspond to stable fixpoints, compare Fig. 2.2. The potentials for the saddle-node and the transcritical bifurcation are
+.Usaddle(x) = −ax +1
+3 x3, Utrans(x) = −a
+2x2 + 1
+3 x3 , (2.26)
+respectively, see the definitions (2.19) and (2.22). The bifurcation potentials, as shown in Figs. 2.7 and 2.8, bring immediately to evidence the stability of the respective fixpoints. The bifurcation potential of the pitchfork bifurcation,
+.Upitch(x) = −a
+2x2 + 1
+4 x4 , (2.27)
+is identical to the Landau-Ginzburg potential describing second-order phase transitions in statistical physics.3 Of relevance is also the subcritical pitchfork transition, defined by .x ̇ = ax + x3.
+Bifurcation Symmetries The three bifurcation scenarios discussed above, saddlenode, transcritical and pitchfork, are characterized by their symmetries close to the critical point, which has been set to .x = 0 and .a = 0 in all three cases. The normal forms and their respective bifurcation potentials constitute the simplest formulations consistent with the defining symmetry properties.
+3 The Landau-Ginzburg theory of phase transitions will be treated at length in the context of selforganized criticality, in Sect. 6.1. of Chap. 6.
+
+
+2.2 Fixpoints, Bifurcations and Stability 59
+Fig. 2.9 The supercritical pitchfork bifurcation, as defined by (2.24). The t.x∗
+0 = 0 becomes
+unstable for .a > 0 and two new stable fixpoints, .x∗+ = +√a and .x∗− = −√a appear. Left: Phase diagram and flow (arrows). Right: The bifurcation potential .U (x) = −ax2/2 + x4/4, compare (2.26)
+The bifurcation potentials of the saddle-node and the pitchfork transitions are respectively antisymmetric and symmetric under a sign change .x ↔ −xof the dynamical variable, compare (2.26) and (2.27).
+.
+(+) ↔ (−) saddle-node transcritical pitchfork x anti – symm a, x – anti 
+The bifurcation potential of the transcritical bifurcation is, on the other hand, antisymmetric under the combined symmetry operation .x ↔ −xand .a ↔ −,a compare (2.26).
+2.2.3 Hopf Bifurcations and Limit Cycles
+Hopf Bifurcation A Hopf bifurcation occurs when a fixpoint changes its stability together with the appearance of an either stable or unstable limiting cycle, e.g. as for non-linear rotator illustrated in Fig. 2.1. The canonical equations of motion are4
+. x ̇ = −y + d(Γ − x2 − y2) x
+y ̇ = x + d(Γ − x2 − y2) y (2.28)
+4 In complex plane, with .z = x + iy, Eq. (2.28) takes the form of a Stuart–Landau oscillator, .z ̇ = iωz + d(Γ − |z2|)z, with .ω = 1.
+
+
+60 2 Bifurcations and Chaos in Dynamical Systems
+in Euclidean phase space .(x, y) = (r cos φ, r sin φ). The standard non-linear rotator (2.2) is recovered when setting .d = 1. There are two steady-state solutions for .Γ > 0,
+.(x ∗
+0, y∗
+0 ) = (0, 0), (xΓ∗ , yΓ∗ ) = √Γ (cos(t), sin(t)) , (2.29)
+a fixpoint and a limit cycle. The limit cycle disappears for .Γ < 0.
+Super- vs. Sub-critical Hopf Bifurcation For d > 0 the bifurcation is “supercritical”. The fixpoint x∗
+0 = (x∗
+0, y∗
+0 ) is stable/unstable for Γ < 0 and Γ > 0 and the
+limit cycle x∗Γ = (xΓ∗ , yΓ∗ ) is stable, as illustrated in Fig. 2.1.
+The direction of flow is reversed for d < 0, with the limit cycle ∗Γx becoming
+repelling. The fixpoint x∗
+0 is then unstable/stable for Γ < 0 and Γ > 0 and one speaks of a “subcritical” Hopf bifurcation.
+Hopf Bifurcation Theorem One may be interested to find out whether a generic two dimensional system,
+.x ̇ = fμ(x, y), y ̇ = gμ(x, y) , (2.30)
+can be reduced to the normal form (2.28) for a Hopf bifurcation, where μ is the bifurcation parameter. Without loss of generality one can assume that the fixpoint x∗
+0 stays at the origin for all values of μ and that the transition takes place for μ = 0.
+To linear order the normal form (2.28) and (2.30) are equivalent if the Jacobian of (2.30) has a pair of complex conjugate eigenvalues, with the real value crossing μ = 0 with a finite slope, which corresponds to a transition from a stable to an unstable focus. Comparing (2.28) and (2.30) to quadratic order one notices that quadratic terms are absent in the normal form (2.28) but not in (2.30). One can however show, with the help of a suitable non-linear transformation, that it is possible to eliminate all quadratic terms from (2.30). One finds that the nature of the bifurcation is determined by a combination of partial derivatives up to cubic order,
+.
+a = [fxxx + fxyy + gxxy + gyyy
+]/16
++ [fxy (fxx + fyy ) − gxy (gxx + gyy ) − fxx gxx − fyy gyy
+]/(16ω)
+where ω > 0 is the imaginary part of the Lyapunov exponent at the critical point μ = 0 and where the partial derivatives as fxy are to be evaluated at μ = 0 and
+x → x∗
+0. The Hopf bifurcations is supercritical and subcritical respectively for a < 0 and a > 0.
+
+
+2.2 Fixpoints, Bifurcations and Stability 61
+limit cycles
+0 1μ
+stable
+unstable
+dr/dt
+1r
+μ = 1.1 μ = 0.7 μ=0 μ =-0.7
+Fig. 2.10 Left: For a fold bifurcation of limit cycles, the locations R± = √1 ± √μ of the stable and unstable limit cycles, R− and R+, as defined by (2.31) and (2.32). At μ = 0 a fold bifurcation of limit cycles occurs and a subcritical Hopf bifurcation at μ = 1. Right: The respective flow diagram. The filled/open circles denote stable/unstable limit cycles. For μ → 1 the unstable limit cycle vanishes, a subcritical Hopf bifurcation. The stable and the unstable limit cycle collided for positive μ → 0 and annihilate each other, a fold bifurcation of limit cycles
+Interplay Between Multiple Limit Cycles A dynamical system may dispose of a number of distinct limit cycles, which can merge or disappear as a function of a given parameter. We consider the simplest case, generalizing the non-linear rotator (2.2) to the next order in r2,
+.r ̇ = −(r2 − γ−)(r2 − γ+) r, φ ̇ = ω, γ− ≤ γ+ . (2.31)
+Real-world physical or biological systems have bounded trajectories, which implies that r ̇ must be negative for large radii r → ∞. This requirement has been taken into account in (2.31), the “Bautin normal form”.
+For γ− < 0 the first factor (r2 − γ−) is smooth for r2 ≥ 0 and does not influence the dynamics qualitatively. In this case (2.31) reduces to a standard supercritical Hopf bifurcation, as a function of the bifurcation parameter γ+.
+Phenomenological Parametrization The roots γ± of r2 in (2.31) typically result from some determining relation. As a possible simple assumption we consider the form
+.γ± = 1 ± √μ , (2.32)
+where μ will be our bifurcation parameter. For μ ∈ [0, 1] we have two positive roots and consequently also two limit cycles, a stable and an unstable one. For μ → 1 the unstable limit cycle vanishes in a subcritical Hopf bifurcation, compare Fig. 2.10.
+Fold Bifurcation of Limit Cycles For a saddle-node bifurcation of fixpoints, aka fold bifurcation, a stable and an unstable fixpoint merge and annihilate each other, as illustrated in Fig. 2.7. The equivalent phenomenon occurs for limit cycles, as shown
+
+
+62 2 Bifurcations and Chaos in Dynamical Systems
+in Fig. 2.10, happening in our model when μ becomes negative,
+.γ± = 1 ± i√|μ|, r ̇ = −[(r2 − 1)2 + |μ|]r .
+No limit cycle exists for μ ≤ 0, only a stable fixpoint at r∗
+0 = 0 remains.
+2.3 Global Bifurcations
+The bifurcations discussed in Sect. 2.2 are termed “local” as they are based on Taylor expansions around a local fixpoint, which implies that the dynamical state changes smoothly at the bifurcation point. There are, on the other hand, bifurcations characterized by the properties of extended orbits. These kinds of bifurcations are hence of “global” character.
+Taken–Bogdanov System We consider a mechanical system with a cubic potential .V (x) and velocity-dependent forces,
+. x ̈ = (x − μ)x ̇ − V '(x) x ̇ = y
+V (x) = x3/3 − x2/2 y ̇ = (x − μ)y + x(1 − x) . (2.33)
+The conservative contribution to the force is .−V '(x) = x(1 − x), as illustrated in Fig. 2.11. The energy, defined by
+.E = x ̇2
+2 + V (x), dE
+dt = [x ̈ + V '(x)]x ̇ = (x − μ)x ̇2 , (2.34)
+is dissipated when .x < μ, viz when the term .(x −μ)x ̇ in (2.33) reduces the velocity. The energy increases however for .x > μ, which means that the term .(x − μ)x ̇ induces accelerated a movement. This interplay between energy dissipation and uptake is typical for adaptive systems.5
+Fixpoints and Jacobian The Taken–Bogdanov system (2.33) has two fixpoints .(x∗, 0), with .x∗ = 0, 1. The eigenvalue of the Jacobian,
+.J =
+(0 1
+(1 − 2x∗) (x∗ − μ)
+)
+, λ±(0, 0) = −μ/2√μ±2/4 + 1
+λ±(1, 0) = (1 − μ)/2 ± √(1 − μ)2/4 − 1
+show that .(0, 0) is always a saddle, a consequence of the quadratic maximum of mechanical potential .V (x) at .x = 0.
+5 Per definition, adaption implies that a system may both dissipate energy and increase its own reservoir, as discussed further in Sect. 3.2 of Chap. 3.
+
+
+2.3 Global Bifurcations 63
+V(x)
+01
+μ
+energy
+x
+dissipation
+energy
+uptake 1 x
+y μ =μc
+Fig. 2.11 Left: The potential .V (x) of the Taken–Bogdanov system (2.33). Energy is dissipated to the environment for .x < μ and taken up for .x > μ. For .μ < 1 the local minimum .x = 1 of the potential becomes an unstable focus. Right: The flow for the critical .μ = μc ≈ 0.8645. The stable and unstable manifolds form an homoclinic loop (red line)
+The local minimum .(1, 0) of the potential is a stable/unstable focus for .μ > 1 and .μ < 1 respectively, with .μ = 1 being the locus of a supercritical Hopf bifurcation. We consider now .μ ∈ [0, 1]and examine the further evolution of the resulting limit cycle.
+Escaping the Potential Well We consider a particle starting with a vanishing velocity close to .x = 1, the local minimum of the Potential well. When the particle takes up enough energy from the environment, due to the velocity dependent force .(x − μ)v, it may be able to reach the local maximum at .x = 0 and escape to .x → −∞. This is the case when .μ < μc ≈ 0.8645. All orbits will escape when the region of energy uptake did expand to .μc. The particle remains trapped in the local potential well if dissipation dominates, which is the case for .μ > μc. The particle is both trapped in the local well and repelled, at the same time, from the unstable minimum at .x = 1, when .μc < μ < 1. The orbit is forced in this case to perform an oscillatory motion around .x = 1, which is equivalent to a stable limit cycle. This limit cycle increases in size for decreasing .μ, exactly touching .(0, 0) for .μ = μc, breaking apart byond, when .μ < μc. The bifurcation occurring at .μ = μc depends non-locally on the overall energy balance, as illustrated in Fig. 2.12. The “homoclinic transition” taking place in the Taken–Bogdanov system is therefore an example of a global bifurcation.
+Homoclinic Bifurcation With a “homocline” one denotes a loop formed by joining a stable and an unstable manifold of the same fixpoint. Homoclines may generically only occur if either forced by symmetries or for special values of bifurcation parameters, with the later being the case for the Taken–Bogdanov system, which undergoes a homoclinic bifurcation.
+An unstable and a stable manifold cross at .μ = μc, compare Figs. 2.11 and 2.12, forming a homocline. The homocline is also the endpoint of the limit cycle present for .μ > μc, which disappears for .μ < μc. The limit cycle is hence destroyed at the
+
+
+64 2 Bifurcations and Chaos in Dynamical Systems
+1x
+y μ > μc
+1x
+y μ < μc
+Fig. 2.12 The flow for the Taken–Bogdanov system (2.33). Left: The flow in the subcritical region, for .μ = 0.9 > μc ≈ 0.8645, together with the resulting limit cycle (thick black line). For .μ → μc the unstable (red) and stable (orange) manifold join to form a homoclinic loop, which is identical to the locus of the limit cycle for .μ → μc. Right: The flow in the supercritical region, for .μ = 0.8 < μc. The limit cycle did break after touching the saddle at .(0, 0)
+point of its maximal size for a homoclinic bifurcation, and not when vanishing, as for a supercritical Hopf bifurcation.
+2.3.1 Infinite Period Bifurcation
+For a further example of how a limit cycle may disappear discontinuously we consider two coupled oscillators characterized by their individual phases, respectively .θ1 and .θ2.6 A typical evolution equation for the phase difference .φ = θ1 − θ2 is
+.φ ̇ = 1 − K cos(φ) . (2.35)
+We can interpret (2.35) via
+.r ̇ =
+(
+1 − r2)
+r, x = r cos(φ), y = r sin(φ) (2.36)
+within the context of a two dimensional limit cycle, compare (2.2). The phase difference .φ continuously increases for .|K| < 1, with the system settling into a limit cycle. For .|K| > 1 two fixpoints for .φ ̇ = 0 appear, a saddle and a stable node, as illustrated in Fig. 2.13. At this point, which correspond to a saddle-node bifurcation on an invariant cycle, the limit cycle breaks up.
+6 This formulation parallels the Kuramoto model, which is treated detail in Sect. 9.1 of Chap. 9.
+
+
+2.3 Global Bifurcations 65
+Fig. 2.13 The flow for a system showing an infinite period bifurcation, as defined by (2.35) and (2.36). Here .K = 1.1. The stable fixpoint (filled circle) merges with the saddle (open circle) in the limit .K → 1, which leads to a saddle-node bifurcation on an invariant cycle
+y
+x
+Infinite Period Bifurcation The limit cycle for .|K| < 1 has a revolution period T of
+.T =
+∫T
+0
+dt =
+∫ 2π
+0
+dt
+dφdφ =
+∫ 2π
+0
+dφ
+φ ̇ =
+∫ 2π
+0
+dφ
+1 − K cos(φ) = 2π
+√1 − K2 ,
+which diverges in the limit .|K | → 1. The transition occurring at .|K | = 1is hence a “infinite period bifurcation”, being characterized by a diverging time scale.
+2.3.2 Catastrophe Theory
+A catchy terminology for potentially discontinuous bifurcations in dynamical systems is “catastrophe theory”, especially when placing emphasis on a geometric interpretation. Catastrophe theory is interested in bifurcations with “codimension” two or higher.
+CODIMENSION The degrees of freedom characterizing a bifurcation diagram.
+The codimension corresponds, colloquially speaking, to the number of parameters one may vary such that something interesting happens. The bifurcation normal forms discussed in Sect. 2.2.2 have a codimension of one.
+Symmetry Broken Pitchfork Bifurcation We consider the one-dimensional system
+.x ̇ = h + ax − x3 . (2.37)
+For .h = 0 the system reduces to the pitchfork normal form of (2.24), becoming invariant under the parity transformation .x ↔ −x.
+Parity is broken whenever .h /= 0. Equation (2.37) can hence be used to study the influence of symmetry breaking onto a bifurcation diagram. There are two free parameters, h and a, the codimension is two.
+
+
+66 2 Bifurcations and Chaos in Dynamical Systems
+x x*
+(1)
+(2)
+(4)
+(3)
+Fig. 2.14 Left: The self-consistency condition .x3 = h + ax for the fixpoints .x∗ of the symmetry broken pitchfork system (2.37), for various fields h and a positive .a > 0. The unstable fixpoint at .x = 0 would becomes stable for .a < 0, compare Fig. 2.9. Right: The hysteresis loop .(1) → (2) → (3) → (4) → (1) occurring for .a > 0 as function of the field h
+Thermodynamic Phases The generalized pitchfork system (2.37) has a close relation to the theory of thermodynamic phase transitions, when assuming that
+.a = a(T ) = a0(Tc − T ), a0 > 0 ,
+where T is the temperature. In the absence of an external field h, only the trivial fixpoint .x∗ = 0 exists for .T > Tc, viz for temperatures above the critical temperature .Tc. In the ordered state, for .T < Tc, there are two possible phases,
+characterized by the positive and negative stable fixpoints .x∗.
+Hysteresis and Memory The behavior of the phase transition changes when an external field h is present. Switching the sign of the field is accompanied, in the ordered state for .T < Tc, by a “hysteresis-loop”
+.(1) → (2) → (3) → (4) → . . . ,
+as illustrated in Fig. 2.14.
+– The field h changes from negative to positive values along .(1) → (2), with the fixpoint .x∗ remaining negative. – At (2) the negative stable fixpoint disappears and the system makes a rapid transition to (3), the catastrophe. – Lowering eventually again the field h, the system moves to (4), jumping in the end back to (1).
+The system retains its state, .x∗ being positive or negative, to a certain extend and one speaks of a memory in the context of catastrophe theory.
+
+
+2.3 Global Bifurcations 67
+Center Manifold A d-dimensional dynamical system with a fixpoint .x∗ and a Jacobian J ,
+. ̇x = f(x), Jij = ∂fi
+∂ xj
+∣∣∣x=x∗ , J en = λnen ,
+may have a number of neutral Lyapunov exponents with vanishing eigenvalues .λi = 0 of the Jacobian.
+CENTER MANIFOLD The space spanned by the neutral eigenvectors .ei is the center manifold.
+Catastrophe theory deals with fixpoints having a non-vanishing center manifold.
+Center Manifold of the Pitchfork System The Lyapunov exponent
+.λ = a − 3 (x∗)2
+of the pitchfork system (2.37) vanishes at the jump-points .(2) and .(4) at which the catastrophe occurs, compare Fig. 2.14. At the jump-points .h + ax is per definition tangent to .x3, having identical slopes,
+.
+d
+dx x3 = d
+dx
+(h + ax), 3x2 = a . (2.38)
+At these transition points the autonomous flow becomes hence infinitesimally slow, since .λ → 0, a phenomenon called “critical slowing down” in the context of the theory of thermodynamic phase transitions.
+Center Manifold Normal Forms The program of the catastrophe theory consists of finding and classifying the normal forms for the center manifolds of stationary points .x∗, by expanding to the next, non-vanishing order in .δx = x − x∗. The aim is hence to classify the types of dynamical behavior potentially leading to discontinuous transitions.
+Catastrophic Fixpoints A generic fixpoint .x∗ = x∗(c) may depend on control parameters .c = (ci, .., cS) of the equations of motion, with S being the codimension. The flow is however smooth around a generic fixpoint and a finite center manifold arises only for certain sets .{cc
+i } of control parameters. The controlling parameters of the pitchfork system (2.37) are h and a, in our example system, and a center manifold exists only when (2.38) is fulfilled, viz when
+.3[x∗(hc, ac)]2 = ac, x∗(hc, ac) = xc∗
+holds, which determines the set of “catastrophic fixpoints” .xc∗.
+
+
+68 2 Bifurcations and Chaos in Dynamical Systems
+Changing the Controlling Parameters How does the location .x∗ of a fixpoint change upon variations .δc around the set of parameters .cc determining the catastrophic fixpoint .xc∗? With
+.xc∗ = x∗(cc), x∗ = x∗(c), δc = c − cc
+we expand the fixpoint condition .f(x, c) = 0 and obtain
+.J δx∗ + P δc = 0 , J
+ij = ∂fi
+∂ xj
+, Pij = ∂fi
+∂ cj
+, (2.39)
+which we can invert if the Jacobian J is non-singular,
+.δx∗ = −J −1P δc, if |J | /= 0 . (2.40)
+The fixpoint may change however in a discontinuous fashion whenever the determinant .|J | of the Jacobian vanishes, viz in the presence of a center manifold. This is precisely what happens at a catastrophic fixpoint .xc∗(cc).
+Catastrophic Manifold The set .xc∗ = xc∗(cc) of catastrophic fixpoints is determined by two conditions, by the fixpoint condition .f = 0 and by .|J | = 0. For the pitchfork system (2.37) we find,
+.ac = 3 (xc∗
+)2 , hc = (xc∗
+)3 − acxc∗ = −2 (xc∗
+)3 ,
+when using (2.38). Solving for .xc∗ = √ac/3 we can eliminate .xc∗ and obtain
+.hc = −2 (ac/3)3/2 , (hc/2)2 = (ac/3)3 , (2.41)
+which determines the “catastrophic manifold” .(ac, hc) for the pitchfork transition, as illustrated in Fig. 2.15.
+Classification of Perturbations The control parameters .(ac, hc) of the pitchfork transition may be changed in two qualitatively distinct ways, namely along the catastrophic manifold (2.41), or perpendicular to it. It would hence be useful to dispose of a list of canonical perturbations characterizing all possible distinct routes to change catastrophic fixpoints .xc∗ = x∗(cc)
+qualitatively, upon small changes .δc = c − cc of the control parameters .c. It is the aim of catastrophe theory to develop such a canonical classification scheme for the perturbations of center manifolds.
+Gradient Dynamical Systems At times the flow .f(x) of a dynamical system may be represented as a gradient of a bifurcation potential .U (x),
+. ̇x = f(x) = −∇ U (x ) . (2.42)
+
+
+2.3 Global Bifurcations 69
+Fig. 2.15 The fixpoints .x∗ (upper folded plane) of the symmetry broken pitchfork system (2.37), as a function of the control parameters a and h. The catastrophic manifold .(ac, hc), compare (2.41), has a cusp-like form (green lines)
+x*
+h
+a
+0
+0
+This is generically the case for one-dimensional systems, as discussed in Sect. 2.2.2, but otherwise not. For the gradient representation
+. x ̇ = g(x, y) g = −Ux(x, y)
+y ̇ = h(x, y) h = −Uy(x, y)
+of a two-dimensional system to be valid, to give an example, the cross-derivatives .gy = −Uxy = −Uyx = hx would need to coincide. This is however normally not the case.
+For gradient dynamical systems one needs to discuss only the properties of the bifurcation potential .U (x), as scalar quantity, and they are hence somewhat easier to investigate than a generic dynamical system of the form . ̇x = f(x). Catastrophe theory is mostly limited to gradient systems.
+2.3.3 Rate Induced Tipping
+For the bifurcation scenarios studied hitherto, we took as a precondition that controlling parameters changed slowly, on time scales substantially exceeding that of the primary dynamics. This is the “adiabatic limit”.
+Bifurcation vs. Tipping A rapid transfer between distinct stable manifolds may occur when systems reach a bifurcation point upon adiabatic parameter changes, as illustrated in Fig. 2.14. Systems undergoing self-accelerating instabilities are said “to tip”, which is a somewhat broader terminology. Instead of a description in terms
+
+
+70 2 Bifurcations and Chaos in Dynamical Systems
+ba
+x
+-0.4
+0.4 flow f(x-a)
+f(x-b)
+0 100 200 300
+time t
+-5
+0
+5
+10
+15
+20
+x(t)
+r = 0.4 r = 0.5 r = 0.6 r = 1.2
+Fig. 2.16 Rate-induced tipping. Left: The fixpoints .x∗ = a/b are stable for the individual flows
+(2.43), here for .a = 5 and .b = − .5 The stationary points shift to .±√52 − 1 ≈ ±4.9when the two flows are superimposed, as given by (2.45). Right: The orbits .x(t) under the influence of a forcing .a ̇ = r. For small rates the system manages to adapt, as for .r = 0.4, for larger rates not. For .r = 0.5/0.6/1.2 the system tips towards the alternative steady state
+of an abstract bifurcation, ‘tipping’ emphasizes the role of positive feedback effects. This view is particularly important in climatology and ecology.
+Rate Induced Tipping Individual components of a dynamical system may evolve on vastly different time scales. In climatology, a widely discussed slow component is the Greenland iceshield, which takes millenia to grow or melt. In ecology, adaption to changing environmental condition via Darwinian evolution is likewise a slow process, extending over geological periods.7 Systems with slow components may show a reduced resilence against shocks in terms of rapid parameter changes, as typical for climatic and ecological systems facing anthropogenic forcing. When the rate matters, at which control parameters change, “rated induced tipping” may occur.
+Competing Fixpoints Close to an attracting state the flow is linear. At larger distances z, the numerical size of the flow .f = f (z)may however fade away, f.i. as described by
+.x ̇ = f (x − a), f (z) = −z
+1 + z2 . (2.43)
+In this example the flow decays inversely with the distance to the fixpoint .x∗ = a, as illustrated in Fig. 2.16, after being maximal in magnitude at .x = a ± 1. For two attracting states the dynamics takes the form
+.x ̇ = f (x − a) + f (x − b) , (2.44)
+7 See Chap. 8.
+
+
+2.4 Logistic Map and Deterministic Chaos 71
+which makes the system bistable. The two flows compete with each other, which shifts the two stable fixpoints,
+.(x − a)[1 + (x − b)2] = −(x − b)[1 + (x − a)2] ,
+as determined by .x ̇ = 0, or
+.(x − a)(x − b) = −1 , x = ±
+√
+a2 − 1 , (2.45)
+where we specialized in the last step to .b = −.a The two stable fixpoints are seperated by an unstable fixpoint at .x = 0. Equation (2.44) describes a situation in which the influence of attracting states decays in phase space, which is typical for dynamical systems composed of interacting real-world identities. An example would be physical objects, whose sphere of influence is often limited to the immediate surrounding.
+Adaption Catastrophy In (2.44) the dynamical variable .x = x(t) reflects the state of the system. In the following we take .x ≈ a to correspond to a healthy system, say a pristine ecosystem, and states .x ≈ b to a disrupted system. External impacts may change the control parameter .a = a(t), e.g. with a constant rate r,
+.a ̇ = r .
+The orbit cannot follow when a moves to the right too fast, which happens when .  ̇x < a ̇ = r. Given that .f (x −a) is bounded, this necessarily happens with increasing r. At this point the system fails to adapt to the changing environment, with the orbit reverting to a disrupted state close to b. Rate induced tipping occurs in the form of an adaption catastrophy. Extended transients are observed close to the critical rate r, as shown in Fig. 2.16.
+2.4 Logistic Map and Deterministic Chaos
+The notion of “chaos” plays an important role in dynamical systems theory. A chaotic system is defined as a system that cannot be predicted within a given numerical accuracy. At first sight this seems to be a surprising concept, since differential equations of the type of (2.15), which do not contain any noise or randomness, are perfectly deterministic. Once the starting point is known, the resulting trajectory can be calculated for all times. Chaotic behavior can arise nevertheless, due to an exponential sensitivity to initial conditions.
+DETERMINISTIC CHAOS A deterministic dynamical system is chaotic when it shows exponential sensibility with respect to initial conditions.
+
+
+72 2 Bifurcations and Chaos in Dynamical Systems
+0 2 4 6 8 10 12 14 16 18 20 22
+forecasting timespan [days]
+0
+1
+prediction reliablity
+scenario
+2011 - DWD
+2001 - ECMWF
+complexity barrier?
+Fig. 2.17 The average accuracy of weather forecasting, normalized to .[0, 1], decreases rapidly with increasing prediction timespan, due to the chaotic nature of weather dynamics. Increasing the resources devoted for improving the prediction accuracy results in decreasing returns close to the resulting complexity barrier. Reprinted from Gros (2012) under CC-BY-4.0 license, © 2012 Complex Systems Publications, Inc.
+This means that a very small change in the initial setting can blow up even after a short time. When considering real-world applications, when models need to be determined from measurements containing inherent errors and limited accuracies, an exponential sensitivity can result in unpredictability. A well known example is the problem of long-term weather prediction, as shown in Fig. 2.17.
+Logistic Map One of the most cherished models in the field of deterministic chaos is the logistic map of the interval .[0, 1] onto itself,
+.xn+1 = g(xn) ≡ r xn (1 − xn), xn ∈ [0, 1] , r ∈ [0, 4] , (2.46)
+where we made use of the notation .xn = x(n), for discrete times .n = 0, 1 , ... The functional dependence is illustrated in Fig. 2.18. Despite its apparent simplicity, the logistic map shows an infinite series of bifurcations that culminate in a transition to chaos.
+Biological Interpretation We may consider .xn ∈ [0, 1] as standing for the population density of a reproducing species in the year n. In this case the factor .r(1 − xn) ∈ [0, 4]corresponds to the number of offspring per year and animal, which is limited for high population densities .x → 1, viz when resources become scarce. The classical example is that of a herd of reindeer on an island. Knowing the population density .xn in a given year n we may predict via (2.46) the population density for all subsequent years exactly; the system is deterministic.
+
+
+2.4 Logistic Map and Deterministic Chaos 73
+0 0.2 0.4 0.6 0.8 1
+x
+0
+0.2
+0.4
+0.6
+0.8
+1
+r = 2.5
+g(x) g(g(x))
+0 0.2 0.4 0.6 0.8 1
+x
+0
+0.2
+0.4
+0.6
+0.8
+1
+r = 3.3
+g(x) g(g(x))
+Fig. 2.18 The logistic map .g(x) = rx(1 − x)(red), and the iterated logistic map .g(g(x)) (green); for .r = 2.5 (left) and .r = 3.3 (right). Also shown are iterations of .g(x), starting from .x = 0.1 (thin solid line). Note, that the fixpoint .g(x) = x is stable/unstable for .r = 2.5 and .r = 3.3, respectively. The orbit is attracted to a fixpoint of .g(g(x)) for .r = 3.3, corresponding to a cycle of period two for .g(x)
+Nevertheless the population shows irregular behavior for certain values of r, which is hence chaotic.
+Fixpoints of the Logistic Map We start with the fixpoints of .g(x),
+.x = rx(1 − x) ⇐⇒ x = 0 or 1 = r(1 − x) .
+The non-trivial fixpoint is
+.1/r = 1 − x, x(1) = 1 − 1/r, r1 < r, r1 = 1 . (2.47)
+It is present for .r1 < r, with .r1 = 1, due to the restriction .x(1) ∈ [0, 1].
+Stability Analysis For maps, fixpoints are stable when the derivative .g' of the flow is smaller than one in magnitude, see (2.14). For .x(1) = 1 − 1/r this translates to
+.g'(x) = r(1 − 2x), g'(x(1)) = 2 − r . (2.48)
+Noting that .r ∈ [1, 4], we obtain
+.|2 − r| < 1 ⇐⇒ r 1 < r < r2 with
+{ r1 = 1
+r2 = 3 (2.49)
+for the region of stability of .x(1).
+
+
+74 2 Bifurcations and Chaos in Dynamical Systems
+Fixpoints of Period Two For .r > 3 a fixpoint of period two appears. This fixpoint is a fixpoint of the iterated function
+.g(g(x)) = rg(x)(1 − g(x)) = r2x(1 − x)(1 − rx(1 − x)) .
+The fixpoint equation .x = g(g(x)) leads to the cubic equation
+.1 = r2(1 − rx + rx2) − r2x(1 − rx + rx2),
+0 = r3x3 − 2r3x2 + (r3 + r2)x + 1 − r2 . (2.50)
+In order to find the roots of (2.50) we use the fact that .x = x(1) = 1 − 1/r is a stationary point of both .g(x) and .g(g(x)), see Fig. 2.18. Dividing (2.50) by the root .(x − x(1)) = (x − 1 + 1/r) one obtains
+.(r3x3 − 2r3x2 + (r3 + r2)x + 1 − r2) : (x − 1 + 1/r) =
+r3x2 − (r3 + r2)x + (r2 + r) .
+The two fixpoints of .g(g(x)) are therefore the roots of
+.x2 −
+(
+1+ 1
+r
+)
+x+
+(1
+r+ 1
+r2
+)
+= 0,
+which leads to
+.x (2)
+± =1
+2
+(
+1+ 1
+r
+) ±
+√ 1
+4
+(
+1+ 1
+r
+)2
+−
+(1
+r+ 1
+r2
+)
+. (2.51)
+Period Doubling Bifurcation We have three fixpoints of period two for .r > 3 (two stable ones and one unstable), and only a single fixpoint for .r < 3. What happens at .r = 3?
+.x (2)
+± (r = 3) = 1
+2
+3+1
+3±
+√ 1
+4
+(3 + 1
+3
+)2
+−
+(3 + 1
+9
+)
+=2
+3 =1− 1
+3 = x(1)(r = 3 ) .
+At .r = 3 the fixpoint splits into two stable and one unstable branch, see Fig. 2.19, akin to the pitchfork bifurcations discussed in Sect. 2.2. Given that a period doubling occurs at .r = 3, the transition can be seen alternatively as the discrete analog of a supercritical Hopf bifurcation.
+
+
+2.4 Logistic Map and Deterministic Chaos 75
+2.8 3 3.2 3.4 3.6 3.8 4
+r
+0
+0.2
+0.4
+0.6
+0.8
+1
+3 3.2 3.4 3.6 3.8 4
+r
+-3
+-2
+-1
+0
+1
+<λ>
+Fig. 2.19 Left: The values .xn for the iterated logistic map (2.46). For .r < r∞ ≈ 3.57 the .xn go through cycles with finite but progressively longer periods. For .r > r∞ the plot would be fully covered in most regions if all .xn would be shown. Right: The corresponding maximal Lyapunov exponents, as defined by (2.55). Positive Lyapunov exponents .λ indicate chaotic behavior
+Bifurcation Cascade One may carry out a stability analysis for .x(2)
+± , just as for
+.x(1). One finds a critical value .r3 > r2 such that
+.x (2)
+± (r) stable ⇐⇒ r 2 < r < r3 . (2.52)
+Going further on one finds an .r4 such that there are four fixpoints of period four, that is of .g(g(g(g(x)))), for .r3 < r < r4. In general there are critical values .rn and .rn+1 such that there are
+.2n−1 fixpoints x(n) of period 2n−1 ⇐⇒ rn < r < rn+1 .
+The logistic map therefore shows iterated bifurcations. This, however, is not yet chaotic behavior.
+Chaos in the Logistic Map There exists a critical .r∞ at which the period-doubling series converges,
+. nli→m∞ rn → r∞, r∞ = 3.5699456 . . .
+No stable fixpoint of even period exists in the region
+.r∞ < r < 4 .
+In order to characterize the sensitivity of (2.46) with respect to the initial condition, we consider two slightly different starting points .x1 and .x'
+1:
+.x1 − x'
+1 = y1, |y1| ⪡ 1 .
+
+
+76 2 Bifurcations and Chaos in Dynamical Systems
+The key question is then whether the difference
+.ym = xm − x'm, ym+1 ≈ dg(x)
+dx
+∣∣∣x=xm
+ym (2.53)
+between the two respective orbits is still small after m iterations. For (2.53) we used .x'm = xm − ym, neglecting terms .∼ y2m. We hence obtain
+.ym+1 = r(1 − 2xm) ym ≡ ε ym .
+For .|ε| < 1 the map is stable, as two initially different populations close in with time passing. For .|ε| > 1 they diverge; the map is chaotic.
+Lyapunov Exponents We remind ourselves of the definition
+.|ε | = eλ, λ = log
+∣∣∣∣
+dg(x)
+dx
+∣∣∣∣ (2.54)
+the Lyapunov exponent .λ = λ(r) of a map, as introduced in Sect. 2.2. For positive Lyapunov exponents the time development is exponentially sensitive to the initial conditions and shows chaotic features,
+.λ < 0 ⇔ stability , λ > 0 ⇔ instability .
+This is indeed observed in nature, e.g. for populations of reindeer on isolated islands, as well as for the logistic map for .r∞ < r < 4, compare Fig. 2.19.
+Maximal Lyapunov Exponent The Lyapunov exponent, as defined by (2.54), provides a description of the short time behavior. For a corresponding characterization of the long time dynamics one defines the “maximal Lyapunov exponent”
+.λ(max) = nli⪢m1
+1
+n log
+∣∣∣∣∣
+dg(n)(x)
+dx
+∣∣∣∣∣ , g(n)(x) = g(g(n−1)(x)) . (2.55)
+Using (2.54) for the short time evolution we can decompose .λ(max) into an averaged sum of short time Lyapunov exponents. .λ(max) is the “global Lyapunov exponent”. One needs to select advisedly the number of iterations n in (2.55). On one side n should be large enough such that short-term fluctuations of the Lyapunov exponent are averaged out. The available phase space is however generically finite, for the logistic map we have .y ∈ [0, 1]. Therefore, two initially close orbits cannot diverge ad infinitum. One needs hence to avoid phase-space restrictions, evaluating .λ(max) for large but finite numbers of iterations n.
+
+
+2.4 Logistic Map and Deterministic Chaos 77
+Routes to Chaos The chaotic regime .r∞ < r < 4 of the logistic map connects to the regular regime .0 < r < r∞ with increasing period doubling. One speaks of a “route to chaos via period-doubling”. The study of chaotic systems is a wide field of research and a series of routes leading from regular to chaotic behavior have been found. Two important alternative routes to chaos are:
+– INTERMITTENCY ROUTE TO CHAOS The trajectories are almost periodic and interdispersed with regimes of irregular behaviour. The occurrence of these irregular bursts increases until the system becomes irregular. – RUELLE–TAKENS–NEWHOUSE ROUTE TO CHAOS A strange attractor appears in a dissipative system after two (Hopf) bifurcations. As a function of an external parameter a fixpoint evolves into a limit cycle (Hopf bifurcation), which then turns into a limiting torus, which subsequently turns into a strange attractor.
+2.4.1 Colliding Attractors
+Bifurcations are generically the result of colliding invariant manifolds, viz of stable and unstable fixpoints, limit cycles and chaotic sets. Examples are the saddle-node bifurcation (2.19), at which a stable and an unstable fixpoint merge, and the collision between a limit cycle and a saddle within the Taken–Bogdanov system (2.33).
+Odd Logistic Map The collision between two chaotic attractors can be studied within the odd logistic map
+.xn+1 = g(xn) = xn
+(λ − x2
+n
+), λ > 0 , (2.56)
+which is invariant under inversion .x ↔ (−x). The local maximum .gm = g(xm) is given by
+.g' = 0 , x
+m=
+√λ
+3 , gm = 2
+√
+λ3
+33 , (2.57)
+as illustrated in Fig. 2.20.
+Merging Chaotic Attractors For .λ < 1 only the trivial fixpoint exists. Afterwards, for .1 < λ < sλ, there are two attracting states that are related via inversion symmetry, as shown in Fig. 2.20. Both branches undergo a period-double transition to chaos, in equivalence to the one observed for the standard logistic map, compare
+
+
+78 2 Bifurcations and Chaos in Dynamical Systems
+-1 0 1
+-1
+0
+1
+xm
+gm
+x
+g=x(2-x2)
+0 0.5 1 1.5 2 2.5 3
+λ
+-2
+-1
+0
+1
+2
+xn+1 = xn(λ-xn
+2)
+unique fixpoint positive attractor negative attractor merged
+Fig. 2.20 Left: For .λ = 2, the odd logistic map (2.56). The local maximum .gm is reached for
+.xm = √λ/3 ≈ 0.82. Right: The bifurcation diagram of the odd logistic map as a function of .λ. One has a unique fixpoint .xn = 0 (black) for .λ < 1 and two equivalent attractors (blue/green) for
+.1 < λ < λs , which merge at .λs = √27/2 ≈ 2.6. Inversion symmetry is restored at .λs (red). A period-doubling transition to chaos is observable in the symmetry broken phase
+Fig. 2.19. At .λs, determined by
+.g(gm) = 0 , λ
+s = 4 λs3
+33 , λs =
+√27
+2 , (2.58)
+the two attractors merge. Only a single chaotic attractor remains for .λ > λs.
+Chaotic Attractors in Crisis In general, different types of attractors may collide. A Hopf bifurcation, f.i., occurs when limit cycles contract to a point, which is equivalent to the merger of limit cycles with fixpoints. One speaks of a “crisis” when chaotic attractors collide with unstable fixpoints or limit cycles. For the logistic map (2.46), a crisis occurs at .r = 4, namely when the chaotic attractor hits the unstable fixpoint .x = 0. Orbits diverge for .r > 4.
+2.5 Dynamical Systems with Time Delays
+The dynamical systems we considered so far all had instantaneous dynamics, being of the type
+.
+d
+dt y(t) = f (y(t)), t > 0 (2.59)
+y(t = 0) = y0 ,
+when denoting with .y0 the initial condition. This is the simplest case: one dimensional (a single dynamical variable only), autonomous (.f (y) is not an explicit function of time) and deterministic (no noise).
+
+
+2.5 Dynamical Systems with Time Delays 79
+Time Delays In many real-world applications the couplings between different subsystems and dynamical variables is not instantaneous. Signals and physical interactions need a certain time to travel from one subsystem to the next. Time delays are therefore encountered commonly and become important when the delay time T is comparable to the intrinsic time scales of the dynamical system. We consider here the simplest case, a noise-free one-dimensional dynamical system with a single delay time,
+.
+d
+dt y(t) = f (y(t), y(t − T )), t > 0 (2.60)
+y(t) = φ(t), t ∈ [− T , 0] .
+Due to the delayed coupling we need now to specify an entire initial function .φ(t). Differential equations containing one or more time delays need to be considered carefully, with the time delay introducing additional dimensions to the problem. We discuss a several basic examples.
+Linear Couplings We start with the linear delay equation
+.
+d
+dt y(t) = −ay(t) − by(t − T ), a, b > 0 . (2.61)
+The only constant solution for .a + b /= 0 is the trivial state .y(t) ≡ 0. The trivial solution is stable in the absence of time delays, .T = 0, whenever .a + b > .0 The question is, whether a finite T may change this. We may expect the existence of a certain critical .Tc, such that .y(t) ≡ 0 remains stable for small time delays .0 ≤ T < cT. In this case the initial function .φ(t) will affect the orbit only transiently, in the long run the motion would be damped out, approaching the trivial state asymptotically for .t → ∞.
+Delay Induced Hopf Bifurcation Trying our luck with the usual exponential ansatz, we find
+.λ = −a − be−λT , y(t) = y0eλt , λ = p + iq . (2.62)
+Separating into a real and an imaginary part we obtain
+.
+p + a = −be−pT cos(qT ),
+q = be−pT sin(qT ) . (2.63)
+For .T = 0 the solution is .p = −(a + b), .q = 0, as expected, and the trivial solution .y(t) ≡ 0 is stable. A numerical solution is shown in Fig. 2.21 for .a = 0.1 and .b = 1.
+
+
+80 2 Bifurcations and Chaos in Dynamical Systems
+Fig. 2.21 For .a = 0.1 and .b = 1, the components p and
+q of the solution .e(p+iq)t of the delay system given by (2.61). The state .y(t) ≡ 0 becomes unstable whenever the real part p turns positive. The imaginary part q is given in units of .π
+-3
+-2
+-1
+0
+0.5 1 1.5 2 2.5 3
+delay time T
+Im - part q
+Re - part p
+The crossing point .p = 0 is determined by
+.a = −b cos(qT ), q = b sin(qT ) . (2.64)
+The first condition in (2.64) can be satisfied only for .a < b. Taking the squares in (2.64) and eliminating qT one has
+.q =
+√
+b2 − a2, T ≡ Tc = arccos(−a/b)/q .
+One therefore finds a Hopf bifurcation at .T = Tc, which implies that the trivial solution becomes unstable for .T > Tc. For .a = 0 the transition point is defined by .q = b, together with .Tc = π/(2b). Note, that there is a Hopf bifurcation only for .a < b, viz whenever the time delay dominates, and that q becomes non-zero well before the bifurcation point, compare Fig. 2.21. One has therefore a region of damped oscillatory behavior with .q /= 0 and .p < 0.
+Discontinuities For differential equations with time delays one may specify arbitrary initial functions .φ(t), also initial functions with discontinuities, which will induce discontinuities in the derivatives of the respective trajectories. As an example we consider the case .a = 0, .b = 1 of (2.61), with a non-zero constant initial function,
+.
+d
+dt y(t) = −y(t − T ), φ(t) ≡ 1 . (2.65)
+The solution can be evaluated by stepwise integration,
+.y(t) − y(0) =
+∫t
+0
+dt' y ̇ (t') = −
+∫t
+0
+dt'y(t' − T ) = −
+∫t
+0
+dt' = −t, 0 < t < T .
+The first derivative in consequently discontinuous at .t = 0,
+. t l→i 0m−
+d
+dt y(t) = 0, t l→i 0m+
+d
+dt y(t) = −1 .
+
+
+2.5 Dynamical Systems with Time Delays 81
+In analogy one show that the second derivative has a discontinuity at .t = T , the third derivative at .t = 2T , and so on.
+Injectivity Ordinary differential equations are injective in the sense that distinct initial conditions lead to distinct trajectories. This holds regardless of the presence of attracting manifolds, which determine solely the long-term behavior. Delay systems are not necessarily injective with respect to the initial function. Consider logistic growth with a delayed growth rate,
+.
+d
+dt y(t) = y(t − T )(y(t) − 1), φ(t = 0) = 1 . (2.66)
+For any .φ(t) with .φ(0) = 1 the solution is .y(t) ≡ 1 for all .t ∈ [0, ∞.] Distinct initial functions lead to identical orbits.
+Non-constant Time Delays Things may become rather weird when the time delays are not constant, as for
+.
+d
+dt y(t) = y(t − T (y)) + 1
+2 , T (y) = 1 + |y(t)|,
+φ(t) =
+{ 1 t < −1
+0 t ∈ [−1, 0] .
+(2.67)
+It is easy to see, that the two functions
+.y(t) = t
+2 , y(t) = 3t
+2 , t ∈ [0, 2] ,
+are both solutions of (2.67), with appropriate continuations for .t > 2. Two different solutions of the same differential equation and identical initial conditions, this cannot happen for ordinary differential equations. It is evident, that special care must be taken when examining dynamical systems with time delays numerically.
+2.5.1 Distributed Time Delays
+Basic delay differential systems contain a single time delay T , like (2.61), which corresponds to an instantaneous memory process. In general, the memory .yM (t) of past trajectories will be a convolution,
+.yM (t) =
+∫∞
+0
+K(τ )y(t − τ )dτ,
+∫∞
+0
+K(τ )dτ = 1 , (2.68)
+where we defined with .K(τ ) the delay kernel. For a sharply peaked delay kernel, .K(τ ) = δ(τ − T ), one recovers .yM (t) = y(t − T ).
+
+
+82 2 Bifurcations and Chaos in Dynamical Systems
+Exponentially Distributed Delays Explicitly we consider with
+.K(τ ) = 1
+T e−τ/T (2.69)
+exponentially distributed time delays. One has
+.
+d
+dt yM (t) =
+∫∞
+0
+dτ K(τ ) d
+dt y(t − τ ) = −
+∫∞
+0
+dτ K(τ ) d
+dτ y(t − τ ), (2.70)
+which allows to integrate the last expression by parts when using (2.69). The resulting closed expression,
+.y ̇M = −1
+T
+∫∞
+0
+dτ e−τ/T d
+dτ y(t − τ ) = y − yM
+T , (2.71)
+corresponds to a trailing average, with the memory variable .yM trying to approach y.
+Kernel Series Framework Equation (2.71) implies that a delay differential equation with exponentially distributed delays can be mapped exactly to a system of ordinary differential equations by adding an additional variable, namely .yM (t). For generic kernels .K(τ ) in (2.68) one can generalize this concept by adding a diverging number of memory variables. With this approach, denoted “kernel series framework”, one can map any time delay system to a N-dimensional system of ordinary differential equations. For the case of a single time delay one speaks of the “linear chain trick”. In general one has .N → ∞, which reflects the notion that delay systems are formally infinite dimensional.
+Exercises
+(2.1) JACOBIANS WITH DEGENERATE EIGENVALUES Jacobians with degenerate eigenvalues may not dispose of a corresponding number of eigenvectors, being non-symmetric. Consider the linear system
+.x ̇ = −x + y, y ̇ = −ry, r > 0 , (2.72)
+and determine the eigenvalues of the Jacobian for the fixpoint (0, 0) and its eigenvectors. What happens in the limit r → 1? (2.2) CATASTROPHIC SUPERLINEAR GROWTH The growth of a resource variable x(t) ≥ 0, as defined by
+.x ̇ = xβ − γ x, γ = 0, 1 , (2.73)
+
+
+Exercises 83
+is sub/super-linear for β < 1 and β > 1 respectively. Start by solving2(.73) analytically for γ = 0. Is there a singularity, viz a finite time ts < ∞ for which limt→ts x(t) diverges catastrophically? Continue then by discussing qualitatively the behavior for γ = 1. Next consider sublinear decay, viz x ̇ = −xβ , with β < 1. Can the stable fixpoint x∗ = 0 be reached in finite time? (2.3) HETEROCLINIC ORBITS AND SYMMETRIES Discuss, in analogy to (2.18), the fixpoints and the stable and unstable manifolds of
+.x ̇ = 1 − x2, y ̇ = −y + ε(1 − x2)2 . (2.74)
+Is there a heteroclinic orbit? (2.4) THE SUBCRITICAL PITCHFORK TRANSITION Discuss, in analogy to Sect. 2.2, the fixpoints, and their stability, of the subcritical pitchfork transition described by the canonical equation of motion x ̇ = ax + x3.
+(2.5) ENERGY CONSERVATION IN LIMIT CYCLES Evaluate, for the Taken–Bogdanov system (2.33) and μ ∈ [μc, 1], the energy balance, as defined by (2.34), by integrating numerically dE/dt . How large is the overall energy dissipation and uptake when completing one cycle? Good numerical accuracy is important, you will probably need to use the Runge-Kutta method. (2.6) MAXIMAL LYAPUNOV EXPONENT Show, that the maximal Lyapunov exponent (2.55) can be written as the timeaveraged local exponent, see (2.54). (2.7) LYAPUNOVEXPONENTS ALONG PERIODIC ORBITS Evaluate the longitudinal Lyapunov exponent λφ along the r = 1 trajectory of (2.35). Consider both the case when the coupling K is smaller or larger than the critical Kc = 1 of the infinite period bifurcation. For K < cKthe orbit is periodic and the integral of the longitudinal Lyapunov exponent over one period T vanishes. Why is this generically the case for periodic orbits? (2.8) GRADIENT DYNAMICAL SYSTEMS Is it possible to add a term to the evolution equation x ̇ = . . . of the dynamical system (2.74), such that it becomes a gradient dynamical system, as defined in (2.42)? (2.9) LIMIT CYCLES IN GRADIENT SYSTEMS Show that gradient dynamical systems, compare (2.42), have no limit cycles. (2.10) DELAY DIFFERENTIAL EQUATIONS The delay equation (2.61) allows for harmonically oscillating solutions for certain sets of parameters a and b. Which are the conditions? In addition, specialize for the case a = 0. (2.11) PERIOD-3 CYCLES IN THE LOGIST MAP For the logistic map, g(x) = rx(1 − x), a window of stability for period-3
+cycles starts at r∗ = 1 + 2√2 ≈ 3.8284, viz inside the otherwise chaotic
+
+
+84 2 Bifurcations and Chaos in Dynamical Systems
+regime. Compare Fig. 2.19. Find the values for
+.x1 = g(x3), x2 = g(x1), x3 = g(x3) , (2.75)
+together with Lyapunov exponent. Plot the iterated map for r = r∗ and values a bit smaller/larger. The occurring saddle-node bifurcation is also called ‘tangent transition’ Why? (2.12) CAR-FOLLOWING MODEL A car moving with velocity x ̇ (t) follows another car driving with velocity v(t) via
+.x ̈ (t + T ) = α(v(t) −  ̇x(t)), α > 0 , (2.76)
+with T > 0 being the reaction time of the driver. Prove the stability of the steady-state solution for a constant velocity v(t) ≡ v0 of the preceding car.8
+Further Reading
+For further studies we refer to introductory texts to classical dynamical systems, Goldstein (2002), to bifurcation theory, Kielhöfer (2012), to chaos theory, Devaney (2018), Poston and Stewart (2014), and to the generalization of chaos to quantum mechanics, Gutzwiller (2013). Readers interested in the KAM theorem may consult Ott (2002). An easy to follow introduction to time delays system can be found in Wernecke et al. (2019), for more details see Kharitonov (2012). The kernel series framework for delay dynamical systems is elaborated in Nevermann and Gros (2023), rate induced tipping in Ritchie et al. (2023). The interplay between complexity barriers and chaotic dynamics is discussed in Gros (2012).
+References
+Devaney, R. (2018). An introduction to chaotic dynamical systems. London: CRC Press. Goldstein, H. (2002). Classical mechanics (3rd ed.). Reading: Addison-Wesley. Gros, C. (2012). Pushing the complexity barrier: Diminishing returns in the sciences. Complex Systems, 21, 183.
+Gutzwiller, M. C. (2013). Chaos in classical and quantum mechanics. Berlin: Springer Science & Business Media.
+Kharitonov, V. (2012). Time-delay systems: Lyapunov functionals and matrices. Berlin: Springer Science & Business Media. Kielhöfer, H. (2012). Bifurcation theory. Berlin: Springer.
+8 More realistic car-following models are discussed in Sect. 4.4 of Chap. 4.
+
+
+References 85
+Nevermann, D. H., & Gros, C. (2023). Mapping dynamical systems with distributed time delays to sets of ordinary differential equations. Journal of Physics A: Mathematical and Theoretical, 56, 345702. Ott, E. (2002). Chaos in dynamical systems. Cambridge: Cambridge University Press. Poston, T., & Stewart, I. (2014). Catastrophe theory and its applications. Chelmsford: Courier Corporation. Ritchie, P. D., Alkhayuon, H., Cox, P. M., & Wieczorek, S. (2023). Rate-induced tipping in natural and human systems. Earth System Dynamics, 14, 669–683. Wernecke, H., Sandor, B., & Gros, C. (2019). Chaos in time delay systems, an educational review. Physics Reports, 824 , 1.
+
+
+3
+Dissipation, Noise and Adaptive Systems
+Most dynamical systems are not isolated, but interacting with an embedding environment that may add stochastic components to the evolution equations. The internal dynamics slows down when energy is dissipated to the outside world, approaching attracting states which may be regular, such as fixpoints or limit cycle, or irregular, such as chaotic attractors. Adaptive systems alternate between phases of energy dissipation and uptake, until a balance between these two opposing processes is achieved. In this chapter an introduction to adaptive, dissipative and stochastic systems will be given together with important examples from the realm of noise controlled dynamics, like diffusion, random walks and stochastic escape and resonance. We will discuss to which extent chaos, a regular guest of adaptive systems, may remain predictable.
+3.1 Chaos in Dissipative Systems
+The time evolution of deterministic systems can be computed exactly, at least as matter of principle, once the initial conditions are known.1 We now turn to “stochastic systems”, i.e. dynamical systems that are influenced by noise and fluctuations. On a mean level, the impact of noise shows up as “dissipation”.
+3.1.1 Phase Space Contraction and Expansion
+Friction and Dissipation Friction plays an important role in real-world systems, causing energy to be dissipated to the environment.
+1 For references, Chap. 2 is devoted to determinstic dynamics.
+© The Author(s), under exclusive license to Springer Nature Switzerland AG 2024 C. Gros, Complex and Adaptive Dynamical Systems, https://doi.org/10.1007/978-3-031-55076-8_3
+87
+
+
+88 3 Dissipation, Noise and Adaptive Systems
+Energy is conserved when the contributions from all constituent parts of the overall system are taken into account. Friction just stands for a transfer process of energy; when energy is transferred from a system we observe, like a car on a motorway with the engine turned off, to a system not under observation, such as the surrounding air. In this case the combined kinetic energy of the car and the thermal energy of the air body remains constant; the air heats up a little bit while the car slows down.
+Mathematical Pendulum As an example we consider the damped mathematical pendulum,
+.φ ̈ + γ φ ̇ + ω2
+0 sin φ = 0 , (3.1)
+which describes a pendulum with a rigid bar, capable of turning over completely, with φ corresponding to the angle between the bar and the vertical.
+The mathematical pendulum reduces to the damped harmonic oscillator for small φ ≈ sin φ, which is damped/critical/overdamped for γ < 2ω0, γ = 2ω0 and γ > 2ω0. In the absence of damping, γ = 0, the energy
+.E = φ ̇2
+2 − ω2
+0 cos φ (3.2)
+is conserved,
+.
+d
+dt E = φ ̇ φ ̈ + ω2
+0φ ̇ sin φ = φ ̇ (φ ̈ + ω2
+0 sin φ) = −γ φ ̇2 ,
+when using (3.1).
+Normal Coordinates Transforming the damped mathematical pendulum (3.1) to a set of coupled first-order differential equations via x = φ and φ ̇ = y one gets
+. x ̇ = y
+y ̇ = − γ y − ω2
+0 sin x . (3.3)
+The phase space for x = (x, y) R2. For all γ > 0 the motion approaches for t → ∞ one of the equivalent global fixpoints (2π n, 0), where n ∈ Z.
+Phase Space Contraction By definition, phase space contracts close to an attractor. For a three-dimensional phase space, x = (x, y, z), the quantity
+.ΔV (t) = Δx(t)Δy(t)Δz(t)
+= (x(t) − x'(t)) (y(t) − y'(t)) (z(t) − z'(t))
+
+
+3.1 Chaos in Dissipative Systems 89
+-2
+-1
+0
+1
+2
+3 φ.
+φπ
+π/2
+-π/2
+-2
+-1
+0
+1
+2
+3 φ.
+φ
+/2 π π
+-π/2
+Fig. 3.1 Simulation of the mathematical pendulum φ ̈ = − sin(φ) − γφ ̇, illustrating the evolution of the phase space volume for consecutive times (shaded regions), starting with t = 0 (top). Left: The dissipationless case γ = 0. The energy, see (3.2), is conserved as well as the phase space volume (Liouville’s theorem). Shown are trajectories for E = 1 and E = −0.5 (solid/dashed line). Right: For γ = 0.4. Note the consecutive contraction of the phase space volume
+corresponds to a small volume in phase space when |x − x'| is small. Its time evolution is given by
+.
+d
+dt ΔV = Δx ̇ ΔyΔz + ΔxΔy ̇ Δz + ΔxΔyΔ ̇z ,
+or
+.
+ΔV ̇
+ΔxΔyΔz = Δx ̇
+Δx + Δy ̇
+Δy + Δz ̇
+Δz = ∇ ·  ̇x , (3.4)
+with the right-hand side corresponding to the trace of the Jacobian.
+In Fig. 3.1 the time evolution of a phase space volume is illustrated for the case of the mathematical pendulum. Volumes of the phase space remain connected under the effect of the time evolution, undergoing however at times substantial deformations.
+DISSIPATIVE AND CONSERVING SYSTEMS A dynamical system is dissipative, if its phase space volume contracts continuously, viz when ∇ ·  ̇x < 0 for all x(t). The system is said to be conserving if the phase space volume is a constant of motion, viz if ∇ ·  ̇x ≡ 0.
+Mechanical systems, i.e. systems described by Hamiltonian mechanics, are conserving in above sense. One denotes this result from classical mechanics as “Liouville’s theorem”.

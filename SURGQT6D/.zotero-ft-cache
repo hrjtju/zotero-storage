@@ -1,0 +1,690 @@
+OPERATOR LEARNING: ALGORITHMS AND ANALYSIS
+NIKOLA B. KOVACHKI, SAMUEL LANTHALER, AND ANDREW M. STUART
+Abstract. Operator learning refers to the application of ideas from machine learning to approximate (typically nonlinear) operators mapping between Banach spaces of functions. Such operators often arise from physical models expressed in terms of partial differential equations (PDEs). In this context, such approximate operators hold great potential as efficient surrogate models to complement traditional numerical methods in many-query tasks. Being data-driven, they also enable model discovery when a mathematical description in terms of a PDE is not available. This review focuses primarily on neural operators, built on the success of deep neural networks in the approximation of functions defined on finite dimensional Euclidean spaces. Empirically, neural operators have shown success in a variety of applications, but our theoretical understanding remains incomplete. This review article summarizes recent progress and the current state of our theoretical understanding of neural operators, focusing on an approximation theoretic point of view.
+1. Introduction
+This paper overviews algorithms and analysis related to the subject of operator learning: finding approximations of maps between Banach spaces, from data. Our focus is primarily on neural operators, which leverage the success of neural networks in finite dimensions; but we also cover related literature in the work specific to learning linear operators, and the use of Gaussian processes and random features. In subsection 1.1 we discuss the motivation for our specific perspective on operator learning. Subsection 1.2 contains a literature review. Subsection 1.3 overviews the remainder of the paper.
+1.1. High Dimensional Vectors Versus Functions. Many tasks in machine learning require operations on high dimensional tensors1 arising, for example, from pixellation of images or from discretization of a real-valued mapping defined over a subset of Rd. The main idea underlying the work that we overview in this paper is that it can be beneficial, when designing and analyzing algorithms in this context, to view these high dimensional vectors as functions u : D → Rc defined on a domain D ⊂ Rd. For example (c, d) = (3, 2) for RGB images and (c, d) = (1, 3) for a scalar field such as temperature in a room. Pixellation, or discretization, of D will lead to a tensor with size scaling like N , the number of pixels or discretization points; N will be large and hence the tensor will be of high dimension. Working with data-driven algorithms designed to act on function u, rather than the high dimensional tensor, captures intrinsic properties of the problem, and not details related to specific pixellation or discretization; as a consequence models learned from data can be transfered from one pixellation or discretization level to another. Consider the image shown in Figure 1a, at four levels of resolution. As an RGB image it may be viewed as a vector in R3N where N is the number of pixels. However by the time we reach the highest resolution (bottom right) it is more instructive to view it as a function mapping D := [0, 1]2 ⊂ R2 into R3. This idea is summarized
+Date: February 27, 2024. 1“Tensor” here may be a vector, matrix or object with more than two indices.
+
+
+in Figure 1b. Even if the original machine learning task presents as acting on high dimensional tensor of dimension proportional to N , it is worth considering whether it may be formulated in the continuum limit N → ∞, conceiving of algorithms in this setting, and only then approximating to finite dimension again to obtain practical algorithms. These ideas are illustrated in Figures 2a and 2b.
+(a) Same images at different resolutions
+(b) Different resolutions as vectors and (bottom right) as a function
+(a) Directly design algorithm at fixed resolution N
+(b) Design algorithm at limit of infinite resolution
+1.2. Literature Review. We give a brief overview of the literature in this field; greater depth, and more citations, are given in subsequent sections.
+Algorithms on Function Space. The idea of conceiving algorithms in the continuum, and only then discretizing, is prevalent in numerous areas of computational science and engineering. For example in the field of PDE constrained optimization the relative merits of optimize-then-discretize, in comparison with discretize-thenoptimize, are frequently highlighted [54]. In the field of Bayesian inverse problems [61] formulation on Banach space [133] leads to new perspectives on algorithms, for example in MAP estimation [63]. And sampling probability measures via MCMC can be formulated on Banach spaces [32], leading to provably dimension independent convergence rates [51].
+
+
+Supervised Learning on Function Space. Supervised learning [49] rose to prominence in the context of the use of deep neural network (DNN) methods for classifying digits and then images. In such contexts the task is formulated as learning a mapping from a Euclidean space (pixellated image) to a set of finite cardinality. Such methods are readily generalized to regression in which the output space is also a Euclidean space. However, applications in science and engineering, such as surrogate modeling [121] and scientific discovery [113], often suggest supervised learning tasks in which input and/or output spaces are infinite dimensional; in particular they comprise spaces of functions defined over subsets of Euclidean space. We refer to the resulting methods, conceived to solve supervised learning tasks where the inputs and outputs are functions, as neural operators. Whilst there is earlier work on regression in function space [116], perhaps the earliest paper to conceive of neural network-based supervised learning between spaces of functions is [24]. This work was generalized in the seminal DeepONet paper [92]. Concurrently with the development of DeepONet other methods were being developed, including methods based on model reduction [14] (PCA-Net) and on random features [101]. The random feature approach in [101] included the use of manipulations in the Fourier domain, to learn the solution operator for viscous Burgers’ equation, whose properties are well-understood in Fourier space. We also mention a related Fourier-based approach in [106, 107]. The idea of using the Fourier transform was exploited more systematically through development of the Fourier Neural Operator (FNO) [83]. The framework introduced in this paper has subsequently been generalized to work with sets of functions other than Fourier, such as wavelets [135], spherical harmonics [16] and more general sets of functions [13,73]. The FNO architecture is related to convolutional neural networks, which have also been explored for operator learning, see e.g. [45, 88, 117, 118], and [50, 115] for relevant work. We mention also similar developments in computer graphics where, in [104], a method is proposed based on projections onto the eigenfunctions of the Laplace-Beltrami operator and is subsequently extended in [89, 127, 146]. At a more foundational level, recent work [11] develops a theoretical framework to study neural operators, aiming to pinpoint theoretical distinctions between these infinite-dimensional architectures from conventional finite-dimensional approaches, based on a frame-theoretic notion of representation equivalence.
+Approximation Theory. The starting point for approximation theory is universal approximation. Such theory is overviewed in the finite dimensional setting in [109]. It is developed systematically for neural operators in [66], work that also appeared in [68]. However, the first paper to study universal approximation, in the context of mappings between spaces of scalar-valued functions, is Chen and Chen [24]. This was followed by work extending their analysis to DeepONet [74], analysis for the FNO [67] and analysis for PCA-Net in [14], and a number of more recent contributions, e.g. [21, 22, 56, 57, 60, 149]. The paper [92] first introduced DeepONets and studied their practical application on a number of prototypical problems involving differential equations. The empirical paper [35] studies various neural operators from the perspective of the cost-accuracy trade-off, studying how many parameters, or how much data, is needed to achieve a given error. Such complexity issues are studied theoretically for DeepONet, in the context of learning the solution operator for the incompressible Navier-Stokes equation and several other PDEs, in [74], with analogous analysis for PCA-Net in [72]. In [94] the coefficient to solution map is studied for divergence form elliptic PDEs, and analyticity of the coefficient and the solution is exploited to study complexity of the resulting neural operators. The paper [52] studies complexity for the same problem, but exploits operator holomorphy. In [78] complexity
+
+
+is studied for Hamilton-Jacobi equations, using approximation of the underlying characteristic flow. The work [46] discusses conditions under which neural operator layers are injective and surjective. The sample complexity of operator learning with DeepONet and related architectures is discussed in [90]. Out-of-distribution bounds are discussed in [13]. The paper [36] studies the learning of linear operators from data. This subject is developed for elliptic and parabolic equations, and in particular for the learning of Greens functions, in [17–19,48,132,137] and, for spectral properties of the Koopman operator, the solution operator for advection equations, in [31, 65].
+1.3. Overview of Paper. In section 2 we introduce operator learning as a supervised learning problem on Banach space; we formulate testing and training in this context, and provide an example from porous medium flow. Section 3 is devoted to definitions of the supervised learning architectures that we focus on in this paper: PCA-Net, DeepONet, the Fourier Neural Operator (FNO) and random features methods. Section 4 describes various aspects of universal approximation theories in the context of operator learning. In section 5 we study complexity of these approximation, including discussion of linear operator learning; specifically we study questions such as how many parameters, or how much data, is required to achieve an operator approximation with a specified level of accuracy; and what properties of the operator can be exploited to reduce complexity? We summarize and conclude in section 6.
+2. Operator Learning
+In subsection 2.1 we define supervised learning, followed in subsection 2.2 by discussion of the topic in the specific case of operator learning. Subsection 2.3 is devoted to explaining how the approximate operator is found from data (training) and how it is evaluated (testing). Subsection 2.4 describes how latent structure can be built into operator approximation, and learned from data. Subsection 2.5 contains an example from parametric partial differential equations (PDEs) describing flow in a porous medium.
+2.1. Supervised Learning. The objective of supervised learning is to determine an underlying mapping Ψ† : U → V from samples2
+(2.1) {un, Ψ†(un)}N
+n=1, un ∼ μ.
+Here the probability measure μ is supported on U. Often supervised learning is formulated by use of the data model
+(2.2) {un, vn}N
+n=1, (un, vn) ∼ π,
+where the probability measure π is supported on U × V. The data model (2.1) is a special case which is sufficient for the exposition in this article. In the original applications of supervised learning U = Rdx and V = Rdy (regression) or V = {1, · · · K} (classification). We now go beyond this setting.
+2.2. Supervised Learning of Operators. In many applications arising in science and engineering it is desirable to consider a generalization of the finite-dimensional setting to separable Banach spaces U, V of vector-valued functions:
+U = {u : Dx → Rdi }, Dx ⊆ Rdx
+V = {v : Dy → Rdo }, Dy ⊆ Rdy .
+2Note that from now on N denotes the data volume (and not the size of a finite dimensional problem as in subsection 1.1).
+
+
+Given data (2.1) we seek to determine an approximation to Ψ† : U → V from within a family of parameterized functions
+Ψ : U × Θ 7→ V.
+Here Θ ⊆ Rp denotes the parameter space from which we seek the optimal choice of parameter, denoted θ⋆. Parameter θ⋆ may be chosen in a data-driven fashion to optimize the approximation of Ψ† by Ψ( · ; θ⋆); see the next subsection. In section 4 we will discuss the choice of θ⋆ from the perspective of approximation theory.
+2.3. Training and Testing. The data (2.1) is used to train the model Ψ; that is, to determine a choice of θ. To this end we introduce an error, or relative error, measure r : V′ × V′ → R+. Here V′ is another Banach space containing the range of Ψ† and Ψ( · ; θ). Typical choices for r include the error
+(2.3) r(v1, v2) = ∥v1 − v2∥V′
+and, for ε ∈ (0, ∞), one of the relative errors
+(2.4) r(v1, v2) = ∥v1 − v2∥V′
+ε + ∥v1∥V′
+, or r(v1, v2) = ∥v1 − v2∥V′
+max{ε, ∥v1∥V′ } .
+Now let μN be the empirical measure
+μN = 1
+N
+N
+X
+n=1
+δun .
+Then the parameter θ⋆ is determined from
+θ∗ = argminθ RN (θ), RN (θ) := Eu∼μN r Ψ†(u), Ψ(u; θ) q ,
+for some positive q, typically q = 1. Function RN (θ) is known as the empirical risk; also of interest is the expected (or population) risk
+R∞(θ) := Eu∼μ r Ψ†(u), Ψ(u; θ) q .
+Note that R∞(θ) requires knowledge of data in the form of the entire probability measure μ. Once trained, models are typically tested by evaluating the error
+error := Eu∼μ′ r Ψ†(u), Ψ(u; θ) q .
+Here μ′ is defined on the support of μ. For computational purposes the measure μ′ is often chosen as another empirical approximation of μ, independently of μN ; other empirical measures may also be used. For theoretical analyses μ′ may be chosen equal to μ, but other choices may also be of interest in determining the robustness of the learned model; see, for example, [13].
+2.4. Finding Latent Structure. Behind many neural operators is the extraction of latent finite dimensional structure, as illustrated in Figure 3. Here we have two encoder/decoder pairs on U and V, namely
+GU ◦ FU ≈ IU , GV ◦ FV ≈ IV
+where IU , IV are the identity maps on U and V respectively. Then φ is chosen so that
+GV ◦ φ ◦ FU ≈ Ψ†.
+The map FU extracts a finite dimensional latent space from the input Banach space while the map GV returns from a second finite dimensional latent space to the output Banach space. These encoder-decoder pairs can be learned, reducing the operator approximation to a finite dimensional problem.
+
+
+Figure 3. Latent Structure in Maps Between Banach Spaces U and V
+2.5. Example (Fluid Flow in a Porous Medium). We consider the problem of finding the piezometric head v from permeability a in a porous medium assumed to be governed by the Darcy Law in domain D ⊂ R2. This results in the need to solve the PDE
+(−∇ · (a∇v) = f, z ∈ D
+v = 0, z ∈ ∂D.
+(2.5)
+Here we consider f ∈ H−1(D) to be given and fixed. The operator of interest 3 Ψ† : a 7→ v then maps from a subset of the Banach space L∞(D) into H01(D). An example of a typical input-output pair is shown in Figures 4a, 4b. Because the equation requires strictly positive a, in order to be well-defined mathematically and to be physically meaningful, the probability measure μ must be chosen carefully. Furthermore, from the point of view of approximation theory, it is desirable that the the space U is separable; for this reason it is often chosen to be L2(D) and the measure supported on functions a satisfying a positive lower bound and a finite upper bound. Draws from such a measure are in L∞(D) and satisfy the necessary positivity and boundedness inequalities required for a solution to the Darcy problem to exist [44].
+(a) Input a (b) Output v
+3. Specific Supervised Learning Architectures
+Having reviewed the general philosophy behind operator learning, we next aim to illustrate how this methodology is practically implemented. To this end, we review several representative proposals for neural operator architectures, below.
+3We use the notation a for input functions here, because it is a commonly adopted notation in applications to porous medium flow.
+
+
+3.1. PCA-Net. The PCA-Net architecture was proposed as an operator learning framework in [14], anticipated in [53, 134]. In the setting of PCA-Net, Ψ† : U → V is an operator mapping between Hilbert spaces U and V, and inputs are drawn from a probability measure μ on U. Principal component analysis (PCA) is employed to obtain data-driven encoders and decoders, which are combined with a neural network mapping to give rise to the PCA-Net architecture. The encoder is defined from PCA basis functions on the input space U, computed from the covariance under μ : the encoder FU is determined by projection onto the first dU PCA basis functions {φj}dU
+j=1. The encoding dimension dU represents a hyperparameter of the architecture. The resulting encoder is given by a linear mapping to the PCA coefficients,
+FU : U → RdU , FU (u) = Lu := {⟨φj, u⟩}dU
+j=1.
+The decoder GV on V is similarly obtained from PCA under the the push-forward measure Ψ†
+#μ. Denoting by {ψj}dV
+j=1 the first dV basis functions under this pushforward, the PCA-Net decoder is defined by an expansion in this basis, i.e.
+GU : RdV → V, GU (α) =
+dV
+X
+j=1
+αj ψj .
+The PCA dimension dV represents another hyperparameter of the PCA-Net architecture. Finally, the PCA encoding and decoding on U and V are combined with a finitedimensional neural network α : RdU × Θ → RdV , w 7→ α(w; θ) where
+α(w; θ) := (α1(w; θ), . . . , αdV (w; θ)),
+parametrized by θ ∈ Θ. This results in an operator ΨP CA : U → V, of the form
+ΨP CA(u; θ)(y) =
+dV
+X
+j=1
+αj(Lu; θ)ψj(y), ∀u ∈ U , y ∈ Dy
+which defines the PCA-Net architecture. Hyperparameters include the dimensions of PCA dU , dV , and additional hyperparameters determining the neural network architecture of α. In practice we are given samples of input-/output-function pairs with uj sampled i.i.d. from μ:
+{(u1, v1), . . . , (uN , vN )},
+where vj := Ψ†(uj). Then the PCA basis functions are determined from the covariance under an empirical approximation μN of μ, and its pushforward under Ψ†. The same data is then used to train neural network parameter θ ∈ Θ defining α(w; θ).
+3.2. DeepONet. The DeepONet architecture was first proposed as a practical operator learning framework in [92], building on early work by Chen and Chen [24]. Similar to PCA-Net, the DeepONet architecture is also defined in terms of an encoder FU on the input space, a finite-dimensional neural network α between the latent finite-dimensional spaces, and a decoder GV on the output space. To simplify notation, we only summarize this architecture for real-valued input and output functions. Extension to operators mapping between vector-valued functions is straightforward. The encoder in the DeepONet architecture is given by a general linear map L,
+FU : U → RdU , FU (u) = Lu.
+Popular choices for the encoding include a mapping to PCA coefficients, or could comprise pointwise observations {u(xl)}dU
+l=1 at a pre-determined set of so-called
+
+
+sensor points xl. Another alternative of note are active subspaces [147], which combine information about the input distribution and forward mapping through its gradient. This approach has been explored for function encoding in scientific ML in [93, 102]. The decoder in the DeepONet architecture is given by expansion with respect to a neural network basis. Given a neural network ψ : Dy × Θψ → RdV , which defines a parametrized function from the domain Dy of the output functions to RdV , the DeepONet decoder is defined as
+GV : RdV → V, GV (α) =
+dV
+X
+j=1
+αj ψj .
+The above encoder and decoders on U and V are combined with a finite-dimensional neural network α : RdU × Θα → RdV , to define the parametrized DeepONet,
+ΨDEEP (u; θ)(y) =
+dV
+X
+j=1
+αj(Lu; θα)ψj(y; θψ), ∀u ∈ U , y ∈ Dy.
+This architecture is specified by choice of the linear encoding L, and choice of neural network architectures for α and ψ. Following [92] the network α is conventionally referred to as the “branch-net” (often denoted b or β), while ψ is referred to as the “trunk-net” (often denoted t or τ ). The combined parameters θ = {θα, θψ} of these neural networks are learned from data of input- and output-functions.
+3.3. FNO. The Fourier Neural Operator (FNO) architecture was introduced in [68,83]. In contrast to the PCA-Net and DeepONet architectures above, FNO is not based on an approach that combines an encoding/decoding to a finite-dimensional latent space with a finite-dimensional neural network. Instead, neural operators such as the FNO generalize the structure of finite-dimensional neural networks to a function space setting, as summarized below. We will assume that the domain of the input and output functions Dx = [0, 2π]d can be identified with the d-dimensional periodic torus. FNO is an operator architecture of the form,
+ΨF NO(u; θ) = Q ◦ LL ◦ · · · L2 ◦ L1 ◦ R(u), ∀u ∈ U ,
+Ll(v)(x; θ) = σ Wlv(x) + bl + K(v)(x; γl) .
+It comprises of input and output layers Q, R, given by a pointwise composition with either a shallow neural network or a linear transformation, and several hidden layers Ll. Upon specification of a “channel width” dc, the l-the hidden layer takes as input a vector-valued function v : x 7→ v(x) ∈ Rdc and outputs another vectorvalued function Ll(v) : x 7→ Ll(v)(x) ∈ Rdc .4 Each hidden layer involves an affine transformation
+v(x) 7→ w(x) := Wlv(x) + bl + K(v)(x; γl),
+and a pointwise composition with a standard activation function
+w(x) 7→ σ(w(x)),
+where σ could e.g. be the rectified linear unit or a smooth variant thereof. In the affine transformation, the matrix-vector pair (Wl, bl) defines a pointwise affine transformation of the input v(x), i.e. multiplication by matrix Wl and adding
+4Channel width can change from layer to layer; we simplify the exposition by fixing it.
+
+
+a bias bl. K is a convolutional integral operator, parameterized by γl,
+K(v)(x; γl) =
+ˆ
+Dx
+κ(x − y; γl)v(y) dy,
+with κ( · ; γl) a matrix-valued integral kernel. The convolutional operator can be conveniently evaluated via the Fourier transform F, giving rise to a matrix-valued Fourier multiplier,
+K(v)(x; γl) = F −1(F (κ( · ; γl))F (v)),
+where the Fourier transform is computed componentwise, and given by F(v)(k) =
+ ́
+Dx v(x)e−ik·x dx. To be more specific, if we write κ(x) = (κij(x))dc
+ij=1 in terms of its components, and if κbk,ij denotes the k-th Fourier coefficient of κij(x), then the i-th component K(v)i of the vector-valued output function K(v) is given by
+[K(v)i](x; γl) = 1
+(2π)d
+X
+k∈Zd
+
+
+dc
+X
+j=1
+κbk,ij F (vj )(k)
+
+ eik·x.
+Here, the inner sum represents the action of κb = F(κ) on F(v), and the outer sum is the inverse Fourier transform F −1. The Fourier coefficients κbk,ij represent the tunable parameters of the convolutional operator. In a practical implementation, a Fourier cut-off kmax is introduced and the sum over k is restricted to Fourier wavenumbers |k|l∞ ≤ kmax, with | · |l∞ the l∞-norm, resulting in a finite number of tunable parameters γl = {bκk,ij : |k|l∞ ≤ kmax, i, j = 1, . . . , dc}. To summarize, the FNO architecture is defined by
+(1) an input layer R, given by pointwise composition of the input function with a shallow neural network or a linear transformation, (2) hidden layers L1, . . . , LL involving, for each l = 1, . . . , L, matrix Wl, bias bl and convolutional operator K( · ; γl) with parameters γl identified with the corresponding Fourier multipliers bκk,ij, (3) an output layer Q, given by pointwise composition with a shallow neural network or a linear transformation.
+The composition of these layers defines a parametrized operator u 7→ ΨF NO(u; θ), where θ collects parameters from (1), (2) and (3). The parameters contained in θ are to be trained from data. The hyperparameters of FNO include the channel width dc, the Fourier cut-off kmax, the depth L and additional hyperparameters specifying the input and output layers R and Q. In theory, the FNO is formulated directly on function space and does not involve a reduction to a finite-dimensional latent space. In a practical implementation, it is usually discretized by identifying the input and output functions with their point-values on an equidistant grid. In this case, the discrete Fourier transform can be conveniently evaluated using the fast Fourier transform algorithm (FFT), and straightforward implementation in popular deep learning libraries is possible.
+3.4. Random Features Method. The operator learning architectures above are usually trained from data using stochastic gradient descent. Whilst this shows great empirical success, the inability to analyze the optimization algorithms used by practitioners makes it difficult to make definitive statements about the networks that are trained in practice. The authors of [101] have proposed a randomized alternative, by extending the random features methodology [114] to a function space setting; this methodology has the advantage of being trainable through solution of a quadratic optimization problem. The random feature model (RFM) requires specification of a parametrized operator ψ : U × Γ → V with parameter set Γ, and a probability measure ν on the
+
+
+parameters Γ. Each draw γ ∼ ν specifies a random feature ψ( · ; γ) : U → V, i.e. a random operator. Given iid samples γ1, . . . , γM ∼ ν, the RFM operator is then defined as
+ΨRF M (u; θ)(y) =
+M
+X
+j=1
+θjψ(u; γj)(y) ∀u ∈ U , y ∈ Dy; γj i.i.d. .
+Here θ1, . . . , θM are scalar parameters. In contrast to the methodologies outlined above, the random feature model keeps the randomly drawn parameters γ1, . . . , γM fixed, and only optimizes over the coefficient vector θ = (θ1, . . . , θM ). With conventional loss functions, the resulting optimization over θ is convex, allowing for efficient and accurate optimization and a unique minimizer to be determined. A suitable choice of random features is likely problem-dependent. Among others, DeepONet and FNO with randomly initialized weights are possible options. In the original work [101], the authors employ Fourier space random features (RF) for their numerical experiments, resembling a single-layer FNO. These Fourier space RF are specified by ψ(u; γ) = σ F −1(χF γF u) , where F denotes Fourier transform, σ an activation function, and χ is a Fourier space reshuffle, and γ is drawn from a Gaussian random field.
+3.5. Discussion. The architectures above can be roughly divided into two categories, depending on how the underlying ideas from deep learning are leveraged to define a parametrized class of mappings on function space.
+Encoder-Decoder Network Structure. The first approach, which we refer to as encoder-decoder-net and which includes the PCA-Net and DeepONet architectures, involves three steps: first, the input function is encoded by a finitedimensional vector; second, an ordinary neural network, such as a fully connected or convolutional neural network, is employed to map the encoded input to a finitedimensional output; third, a decoder maps the finite-dimensional output to an output function in the infinite-dimensional function space. This approach is very natural from a numerical analysis point of view, sharing the basic structure of many numerical schemes, such as finite element methods (FEM), finite volume methods (FVM), and finite difference methods (FDM), as illustrated in Table 1. From this point of view, encoder-decoder-nets mainly differ from standard numerical schemes by replacing the hand-crafted algorithm and choice of numerical discretization by a data-driven algorithm encoded in the weights and biases of a neural network, and the possibility for a data-driven encoding and reconstruction. While appealing, such structure yields approximations within a fixed, finite-dimensional, linear subspace of V. In particular, each output function from the approximate operator belongs to this linear subspace independently of the input function. Therefore these methods fall within the category of linear approximation, while methods for which outputs lie on a nonlinear manifold in V lead to what is known as nonlinear approximation. The benefits of nonlinear approximation are well understood in the context of functions [38], however, for the case of operators, results are still sparse but benefits for some specific cases have been observed [27, 69, 75, 79]. The FNO [83] and random features [101] are concrete examples of operator learning methodologies for which the outputs lie on a nonlinear manifold in V.
+Neural Operators Generalizing Neural Network Structure. A second approach to defining a parametrized class of operators on function space, distinct from encoder-decoder-nets, is illustrated by FNO. Following this approach, the structure of neural networks, which consist of an alternating composition of affine and nonlinear layers, is retained and generalized to function space. Nonlinearity is introduced
+
+
+Method Encoding Finite-dim. Mapping Reconstruction FEM Galerkin projection Numerical scheme Finite element basis FVM Cell averages Numerical scheme Piecewise polynomial FD Point values Numerical scheme Interpolation PCA-Net PCA projection Neural network PCA basis DeepONet Linear encoder Neural network Neural network basis
+Table 1. Numerical schemes vs. Encoder-Decoder-Net.
+via composition with a standard activation function, such as rectified linear unit or smooth variants thereof. The affine layers are obtained by integrating the input function against an integral kernel; this introduces nonlocality which is clearly needed if the architecture is to benefit from universal approximation.
+Optimization and Randomization. The random features method [101] can in principle be combined with any operator learning architecture. The random features approach opens up a less explored direction of combining optimization with randomization in operator learning. In contrast to optimization of all parameters (by gradient descent) within a neural operator approach, the RFM allows for indepth analysis resulting in error and convergence guarantees that take into account the finite number of samples, the finite number of parameters and the optimization [76]. One interesting, and largely unresolved question is how to design efficient random features for the operator learning setting. The RFM is closely related to kernel methods which have a long pedigree in machine learning. In this context, we mention a related kernel-based approach proposed in [12], which employs kernel methods for operator learning within the encoder-decoder-net paradigm. This approach has shown to be competitive on several benchmark operator learning problems, and has been analyzed in [12].
+Other Approaches. This review is mostly focused on methods that fall into one of the neural network-based approaches above, but it should be emphasized that other approaches are being actively pursued with success. Without aiming to present an exhaustive list, we mention nonlinear reduced-order modeling [79,87,111, 112, 134], approaches based on the theory of Koopman operators [81, 99, 108, 145], work aiming to augment and speed up numerical solvers [131], or work on datadriven closure modeling [58, 91, 139–141], to name just a few examples. For a broader overview of other approaches to machine learning for PDEs, we refer to the recent review [20]. While most “operator learning” is focused on operators mapping between functions with spatial or spatio-temporal dependence and often arising in connection with PDEs, we note that problems involving time-series represent another important avenue of machine learning research, which can also be viewed from, and may benefit from, the continuous viewpoint [77].
+4. Universal Approximation
+The goal of the methodologies summarized in the last section is to approximate operators mapping between infinite-dimensional Banach spaces of functions. The first theoretical question to be addressed is whether these methods can achieve this task, even in principle? The goal of this line of research is to identify classes of operators for which operator learning methodologies possess a universal approximation property, i.e. the ability to approximate a wide class of operators to any given accuracy in the absence of any constraints on the model size, the number of data samples and without any constraints on the optimization.
+
+
+Universal approximation theorems are well-known for finite dimensional neural networks mapping between Euclidean spaces [34, 55], providing a theoretical underpinning for their use in diverse applications. These results show that neural networks with non-polynomial activation can approximate very general classes of continuous (and even measurable) functions to any degree of accuracy. Universal approximation theorems for operator learning architectures provide similar guarantees in the infinite-dimensional context.
+4.1. Encoder-Decoder-Nets. As pointed out in the last section, a popular type of architecture follows the encoder-decoder-net paradigm. Examples include PCANet and DeepONet. The theoretical basis for operator learning broadly, and within this paradigm more specifically, was laid out in a paper by Chen and Chen [24] in 1995, only a few years after the above cited results on the universality of neural networks. In that work, the authors introduce a generalization of neural networks, called operator networks, and prove that the proposed architecture possesses a universal property: it is shown that (shallow) operator networks can approximate, to arbitrary accuracy, continuous operators mapping between spaces of continuous functions. This architecture and analysis forms the basis of DeepONet, where the shallow neural networks of the original architecture of [24] are replaced by their deep counterparts. We present first a general, abstract version of an encoder-decoder-net and give a criterion on the spaces U, V for which such architectures satisfy universal approximation. We then summarize specific results for DeepONet and PCA-Net architectures. We call an encoder-decoder-net a mapping ΨED : U → V which has the form
+ΨED = FU ◦ α ◦ GV
+where FU : U → RdU , GV : RdV → V are bounded, linear maps and α : RdU → RdV is a continuous function. The following theorem [68, Lemma 22] asserts that encoder-decoder-nets satisfy universal approximation over a large class of spaces U and V.
+Theorem 4.1. Suppose that U, V are separable Banach spaces with the approximation property. Let Ψ† : U → V be a continuous operator. Fix a compact set K ⊂ U . Then for any ε > 0, there exist positive integers dU , dV , bounded linear maps FU : U → RdU , GV : RdV → V, and a function α ∈ C(RdU ; RdV ), such that
+sup
+u∈K
+∥Ψ†(u) − (FU ◦ α ◦ GV )(u)∥V ≤ ε.
+♢
+A Banach space is said to have the approximation property if, over any compact set, the identity map can be resolved as the limit of finite rank operators [86]. Although it is a fundamental property useful in many areas in approximation theory, it is not satisfied by all separable Banach spaces [43]. However, many of the Banach spaces used in PDE theory and numerical analysis such as Lebesgue spaces, Sobolev spaces, Besov spaces, and spaces of continuously differentiable functions all posses the approximation property [68, Lemma 26]. The above therefore covers a large range of scenarios in which encoder-decoder-nets can be used. We now give examples of encoder-decoder-nets where we fix the exact functional form of FU and GV and show that universal approximation continues to hold.
+4.1.1. Operator Network and DeepONet. The specific form of operator networks as introduced and analysed by Chen and Chen in [24] focuses on scalar-valued input and output functions. We will state the main result of [24] in this setting for
+
+
+notational simplicity. Extension to vector-valued functions is straight-forward. In simplified form, Chen and Chen [24, cf. Theorem 5] obtain the following result:
+Theorem 4.2. Suppose that σ ∈ C(R) is a non-polynomial activation function. Let D ⊂ Rd be a compact domain with Lipschitz boundary. Let Ψ† : C(D) → C(D) be a continuous operator. Fix a compact set K ⊂ C(D). Then for any ε > 0, there are positive integers dU , dV , N , sensor points x1, . . . , xdU ∈ D, and coefficients ck
+i,
+ξk
+ij, bi, ωk, ζk with i = 1, . . . , N , j = 1, . . . , dU , k = 1, . . . , dV , such that
+sup
+u∈K
+sup
+x∈D
+Ψ†(u)(x) −
+dV
+X
+k=1
+N
+X
+i=1
+ck
+iσ
+
+
+dU
+X
+j=1
+ξk
+ij u(xj ) + bi
+
+(4.1)  σ(ωkx + ζk) ≤ ε.
+♢
+Here, we can identify the linear encoder Lu = (u(x1), . . . , u(xdU )), the shallow branch-net α, with components
+αk(Lu) =
+N
+X
+i=1
+ck
+iσ
+
+
+dU
+X
+j=1
+ξk
+ij u(xj ) + bi
+
+,
+and trunk-net ψ, with components
+ψk(y) = σ(ωkx + ζk).
+With these definitions, (4.1) can be written in the equivalent form,
+sup
+u∈K
+Ψ†(u) −
+dV
+X
+k=1
+αk (Lu)ψk
+C (D)
+≤ ε.
+Remark 4.3. Theorem 4.2 holds in much greater generality. In particular, it is not necessary to consider operator mapping input functions to output functions on the same domain D. In fact, the same result can be obtained for operators Ψ† : C(V ) → C(D), where the input “functions” u ∈ C(V ) can have domain a compact subset V of a general, potentially infinite-dimensional, Banach space. ♢
+Theorem 4.2 provides the motivation and theoretical underpinning for DeepONet, extended to deep branch- and trunk-nets in [92]. These results demonstrate the universality of DeepONet for a very wide range of operators, with approximation error measured in the supremum-norm over a compact set of input functions.
+Related Work. Several extensions and variants of DeepONets have been proposed after the initial work by Lu et al. [92], including extensions of the universal approximation analysis. We provide a short overview of relevant works that include a theoretical component below.
+Input Functions Drawn From a Probability Measure. In [74], Theorem 4.2 has been generalized to input functions drawn from a general input measure μ, including the case of unbounded support, such as a Gaussian measure. The error is correspondingly measured in the Bochner L2(μ)-norm (cp. discussion of PCANet universality below), and it is demonstrated that DeepONet can approximate general Borel measurable operators in such a setting.
+Alternative Encoders. There is work addressing the discretization-invariance of the encoding in DeepONet, resulting in architectures that allow for encoding of the input function at arbitrary sensor locations include Bel(Basis enhanced learning)Net [149] and VIDON (Variable-input deep operator networks) [110].
+
+
+The authors of [56] introduce Basis Operator Network, a variant of DeepONet, where encoding is achieved by projection onto a neural network basis. Universal approximation results are obtained, including encoding error estimates for this approach. In [60], the authors address the issue of multiple input functions, and propose MIO-Net (Multiple Input/Output Net), based on tensor-product representations. The authors prove a universal approximation property for the resulting architecture, and demonstrate its viability in numerical experiments.
+DeepONets on Abstract Hilbert Spaces. DeepONets mapping between abstract Hilbert spaces have been considered in [21,22], including a discussion of their universality in that context.
+4.1.2. PCA-Net. At a theoretical level, PCA-Net shares several similarities with DeepONet and much of the analysis can be carried out along similar lines. In addition to proposing the PCA-Net architecture and demonstrating its viability on numerical test problems including the Darcy flow and viscous Burgers equations, the authors of [14] also prove that PCA-Net is universal for operators mapping between infinite-dimensional Hilbert spaces, with approximation error measured in the Bochner L2(μ)-norm with respect to the input measure μ. This initial analysis was developed and sharpened considerably in [72]; as an example of this we quote [72, Proposition 31].
+Theorem 4.4 (PCA-Net universality). Let U and V be separable Hilbert spaces and let μ ∈ P(U) be a probability measure on U. Let Ψ† : U → V be a μ-measurable mapping. Assume the following moment conditions,
+Eu∼μ[∥u∥2
+U ], Eu∼μ[∥Ψ†(u)∥2
+V ] < ∞.
+Then for any ε > 0, there are dimensions dU , dV , a requisite amount of data N , a neural network ψ depending on this data, such that the PCA-Net, Ψ = GV ◦ ψ ◦ FU , satisfies E{uj}∼μ⊗N Eu∼μ ∥Ψ†(u) − Ψ(u; {uj }N
+j=1)∥2
+V < ε,
+where the outer expectation is with respect to the iid data samples u1, . . . , uN ∼ μ, which determine the empirical PCA encoder and reconstruction. ♢
+4.2. Neural Operators. The Fourier neural operator (FNO) is a specific instance of a more general notion of neural operators [68]. The general structure of such neural operators is identical to that of the FNO, i.e. a composition
+ΨNO(u; θ) = Q ◦ LL ◦ · · · ◦ L2 ◦ L1 ◦ R(u), ∀ u ∈ U ,
+Ll(v)(x; θ) = σ (Wlv(x) + bl + K(v)(x; γl)) ,
+(4.2)
+except that the convolutional operator in each layer is replaced by a more general integral operator,
+K(v)(x; γ) =
+ˆ
+D
+κ(x, y; γ)v(y) dy.
+Here, the integral kernel κ(x, y; γ) is a matrix-valued function of x and y, parametrized by γ. Additional nonlinear dependency on the input function is possible yielding, for example, κ = κ(x, y, u(x), u(y); γ); this structure is present in transformer models [136]. Different concrete implementations of such neural operators mostly differ in their choice of the parametrized integral kernel. For example, [83] uses Fourier basis, [135] uses wavelet basis, and [16] uses spherical harmonics. Other approaches restrict the support of κ [82] or assume it decays quickly away from its diagonal [71, 84]. For a more thorough review of this methodology, we refer to [68]. The universality of the FNO has first been established in [67], using ideas from Fourier analysis and, in particular, building on the density of Fourier series to show
+
+
+that FNO can approximate a wide variety of operators. Given the great variety of possible alternative neural operator architectures, which differ from the FNO essentially only in their choice of the parametrized kernel, a proof of universality that does not explicitly rely on Fourier analysis, and which applies to a wide range of choice for the integral kernel is desirable. This has been accomplished in [73], where the authors remove from the FNO all non-essential components, from the perspective of universal approximation, yielding a minimal architecture termed the “averaging neural operator” (ANO).
+4.2.1. Averaging Neural Operator. Up to non-essential details, the ANO introduced in [73] is a composition of nonlinear layers of the form,
+L(v; γl)(x) = σ Wlv(x) + bl(x) + Vl
+ˆ
+D
+v(y) dy , (l = 1, . . . , L),
+where Wl, Vl ∈ Rdc×dc are matrices, and bl(x) is a bias function. In the present work, to parametrize the bias functions, we consider bias of the form bl(x) = Alx+cl for matrix Al ∈ Rdc×d and bias vector cl ∈ Rdc . With this choice, the nonlinear layer v 7→ L(v) takes the form,
+L(v; γl)(x) = σ Wlv(x) + Alx + cl + Vl
+ˆ
+D
+v(y) dy .
+The parameter γl = {Wl, Vl, Al, cl} collects the tunable parameters of the l-th layer. To define an operator Ψ : U (D; Rdi ) → V(D; Rdo ), we combine these nonlinear layers with linear input and output layers R : u(x) 7→ Ru(x) and Q : v(x) 7→ Qv(x), obtained by multiplication with matrices R ∈ Rdc×di and Q ∈ Rdo×dc , respectively. The resulting ANO is an operator of the form,
+Ψ(u; θ) = Q ◦ LL ◦ · · · ◦ L1 ◦ R(u),
+with θ collecting the tunable parameters in each hidden layer, and the input and output layers. The ANO can be though of as a special case of FNO, where the convolutional integral kernel is constant, leading to the last term in each hidden layer being an integral or “average” of the input function. Similarly, the ANO is a special case of many other parametrizations of the integral kernel in neural operator architectures. Despite its simplicity, the ANO can nevertheless be shown to have a universal approximation property. We here cite a special case for operator mapping between continuous functions, and refer to [73] for more general results:
+Theorem 4.5. Suppose that σ ∈ C(R) is a non-polynomial activation function. Let D ⊂ Rd be a compact domain with Lipschitz boundary. Let Ψ† : C(D) → C(D) be a continuous operator. Fix a compact set K ⊂ C(D). Then for any ε > 0, there exists an ANO Ψ : C(D) → C(D) such that
+sup
+u∈K
+∥Ψ†(u) − Ψ(u)∥C(D) < ε.
+♢
+As an immediate consequence, we have the following corollary which implies universality of neural operators for a wide range of choices:
+Corollary 4.6. Consider any neural operator architecture of the form (4.2) with parametrized integral kernel κ(x, y; γ). If for any channel dimension dc and matrix V ∈ Rdc×dc , there exists a parameter γV such that κ(x, y; γV ) ≡ V , then the neural operator architecture is universal in the sense of Theorem 4.5. ♢
+
+
+u(x) ∈ U
+φ
+α(u) ∈ Rdc
+ψ
+Ψ(u)(x) ∈ V
+Figure 5. Special case of an averaging neural operator, illustrated as a nonlinear encoder-decoder architecture; with encoder u 7→ α =
+ ́
+D φ(u(y), y) dy, and decoder α 7→ ψ(α, · ).
+The last corollary applies in particular to the FNO. Universality of the FNO was first established in [67], there restricting attention to a periodic setting but allowing for operators mapping between general Sobolev spaces. The idea of the averaging neural operator can be found in [73], where it was used to prove universality for a wide range of neural operator architectures, and for a class of operators mapping between general Sobolev spaces, or spaces of continuously differentiable functions.
+Intuition. We would like to provide further intuition for the universality of ANO. A simple special case of the ANO is the two-layer ANO obtained as follows. We consider neural operators which can be written as a composition of two shallow neural networks φ : Rdi × D → Rdc , ψ : Rdc × D → Rdo and an additional integral (average):
+
+
+
+α(u) =
+ˆ
+D
+φ(u(y), y) dy,
+Ψ(u)(x) = ψ (α(u), x) ,
+where
+φ(w, x) = C1σ(A1w + B1x + d1),
+and
+ψ(z, x) = C2σ(A2z + B2x + d2).
+Note that the above composition, i.e.
+Ψ(u)(x) = ψ
+ˆ
+D
+φ(u(y), y) dy, x ,
+indeed defines a special case of ANO that can be written as a composition of a trivial input layer, two hidden layers and an output layer:
+L1(u)(x) = σ (W1u(x) + b1(x)) , b1(x) = B1x + d1, W1 = A1,
+L2(v)(x) = σ b2(x) + V2
+ˆ
+v(y) dy , b2(x) = B2x + d2, V2 = A2C1
+Q(v)(x) = Qv(x), Q = C2.
+As depicted in Figure 5, such shallow ANO can be interpreted as a composition of an nonlinear encoder α : U → Rdc , u 7→ α(u) defined via spatial averaging of φ, and mapping the input function to a finite-dimensional latent space, and a nonlinear decoder ψ : Rdc → V, α 7→ ψ(α, · ). This interpretation opens up a path for analysis, based on which universality can be established for the ANO, and any neural operator architecture that contains such ANO as a special case, such as the Fourier neural operator.
+
+
+5. Quantitative Error and Complexity Estimates
+The theoretical contributions outlined in the previous section are mostly focused on methodological advances and a discussion of the universality of the resulting architectures. Universality of neural operator architectures, i.e. the ability to approximate a wide class of operators, is arguably a necessary condition for their success. But since universality is inherently qualitative, it cannot explain the efficiency of these methods in practice. Improving our understanding of the efficiency of neural operators in practice requires a quantitative theory of operator learning, providing explicit error and complexity estimates: given a desired accuracy ε > 0, what is the model size or the number of samples that is required to achieve such accuracy?
+5.1. Linear Operators. Learning a linear operator can be formulated as solving a linear inverse problem with a non-compact forward operator [36, 98]. We take this point of view and broadly describe the results from [36]. We consider the problem of learning Ψ† = L†, a linear operator, when U = V is a separable Hilbert space. Studying the linear problem enables a thorough analysis of the complexity of operator learning and hence sheds light on the problem in the more general setting. The work proceeds by assuming that L† can be diagonalized in a known
+Schauder basis of U denoted {φj}∞
+j=1. Given input data {un}nN=1
+i.i∼.d. μ, the noisy observations are assumed to be of the form
+vn = L†un + γξn
+where γ > 0 and the sequence {ξn}nN=1
+i.i∼.d. N (0, IU ) comes from a Gaussian white noise process that is independent of the input data {un}. In what follows here, we assume that μ = N (0, Γ), the measure on the input data, is Gaussian with a strictly positive covariance Γ and that this covariance is also diagonalizable by {φj}; note, however, that [36] treats the more general case without assuming simultaneous diagonalizability of L† and Γ. Note that {l†
+j , φj} uniquely determines L†. Thus the problem as formulated
+here can be stated as learning the eigenvalue sequence {l†
+j }∞
+j=1 of L† from the noisy observations
+vjn = ⟨φj , un⟩U l†
+j + ξjn, j ∈ N, n = 1, . . . , N
+where {ξjn} i.i∼.d. N (0, γ2). In this problem statement, the noise is crucial for obtaining meaningful estimates on the amount of data needed for learning. Indeed, without noise, the eigenvalues can simply be recovered as
+l†
+j = vj1
+⟨φj , u1⟩U
+for all j ∈ N from a single data point u1 since the basis {φj} is assumed to be known. While, in practice, the observations might not be noisy, the noise process can be used to model round-off or discretization errors which occur in computation. Assuming a Gaussian prior on the sequence {l†
+j } ∼ ⊗∞
+j=1N (0, σ2
+j ), one may obtain a Bayesian estimator of L†, given the data {vjn}, {un} . The Bayesian posterior is characterized as an infinite Gaussian product for the sequence of eigenvalues. We take as an estimator the mean of this Gaussian which is given as
+lj = γ−2σ2
+j
+PN
+n=1 vjn⟨φj , un⟩U
+1 + γ−2σ2
+j
+PN
+n=1 ⟨φj , un⟩U
+2.
+Then our estimator is the operator Ψ, diagonalized in basis {φj} with eigenvalues {lj}. To quantify the smoothness of L†, we assume that {l†
+j } lives in an appropriately
+
+
+weighted l2 space, in particular,
+∞
+X
+j=1
+j2s|l†
+j |2 < ∞
+for some s ∈ R. Then the following theorem holds [36, Theorem 1.3].
+Theorem 5.1. Suppose that for some α > 1/2 and p ∈ R, we have ⟨φj, Γφj⟩U ≍ j−2α and σ2
+j ≍ j−2p. Let α′ ∈ [0, α + 1/2) and assume that min{α, α′} + min{p − 1/2, s} > 0. Then, as N → ∞, we have
+E
+∞
+X
+j=1
+j−2α′ |lj − l†
+j |2 ≲ N − α′+min{p−1/2,s}
+α+p
+where the expectation is taken over the product measure defining the input data and noise. ♢
+Theorem 5.1 quantifies the amount of data needed, on average, for the estimator {lj} to achieve ε-error in approximating {l†
+j } measured in a squared weighted l2 norm. In particular, we have
+N ∼ ε− α+p
+α′+min{p−1/2,s} .
+The exact dependence of this rate on the parameters defining the smoothness of the truth, the input, the prior, and the error metric elucidates the optimal design choices for the estimator and sheds light on which pieces are most important for the learning process. We refer to [36] for an in-depth discussion. Within machine learning and functional data analysis, many works have focused on learning integral kernel operators [1,33,59,119,138]. The operator leaning problem can then be reduced to approximation of the kernel function and is typically studied in a Reproducing Kernel Hilbert Space setting. In numerical PDEs, some recent works have studied the problem of learning the Green’s function arising from some elliptic, parabolic and hyperbolic problems [17–19, 137].
+5.2. Holomorphic Operators. Going beyond the linear case, holomorphic operators represent a very general class of operators for which efficient quantitative error and complexity estimates can be established. We mention the influential work by Cohen, DeVore and Schwab [29, 30], as well as further developments [3–7, 25, 26, 52, 94, 103, 124, 125]. A detailed review, from 2015, can be found in [28]. We will only describe a few main ideas. We mention in passing also the works [70, 80], which study the neural network approximation of parametric operators in a related setting. Holomorphic operators have mostly been studied in a parametrized setting, where the input functions can be identified with the coefficients in a suitable basis (frame) expansion. A prototypical example is the elliptic Darcy flow equation (2.5), where the coefficient field a = a( · ; y) is parametrized by a sequence y = (y1, y2, . . . ) ∈ [−1, 1]N, e.g. in the form of a linear expansion,
+a(x; y) = a(x) +
+∞
+X
+j=1
+yjφj(x), x ∈ D,
+where a ∈ U and φ1, φ2, · · · ∈ U are fixed. The operator Ψ† : a 7→ u can then (loosely) be identified with the parametrized mapping,
+F : [−1, 1]N → V, F(y) := Ψ†(a( · ; y)).
+
+
+In the above prototypical setting, and assuming that the sequence b with coefficients bj = ∥φj∥V decays sufficiently fast, it can be shown [28] that F possesses a holo
+morphic extension to a subset of the infinite product CN = Q∞
+j=1 C = C × C × . . . of the complex plane C. More precisely, there exists a holomorphic extension
+F:
+∞
+Y
+j=1
+(5.1) Eρj → VC, z 7→ F(z).
+Here, for ρj > 1, the set Eρj = 1
+2 z + z−1 z ∈ C, 1 ≤ |z| ≤ ρj ⊂ C denotes the Bernstein ellipse with focal points ±1 and major and minor semi-axes lengths
+1
+2 (ρj ± ρ−1
+j ), and VC is the complexification of the Banach space V. In general, given a non-negative sequence b ∈ [0, ∞)N and ε > 0, a parametrized operator F : [−1, 1]N → V is called (b, ε)-holomorphic, if it possesses a holomorphic extension (5.1) for any ρ = (ρ1, ρ2, . . . ) ∈ [1, ∞)N, s.t.
+∞
+X
+j=1
+ρj + ρ−1
+j
+2 −1
+!
+(5.2) bj ≤ ε.
+As reviewed in [5, Chapter 4], a number of parametric differential equations of practical interest give rise to (b, ε)-holomorphic operators. The approximation theory of this class of operators is well-developed [5,28]. The underlying reason why efficient approximation of such operators is possible is that holomorphic operators possess convergent expansions in multi-variate polynomial bases, where each polynomial basis element only depends on a finite number of the components of the complex input z = (z1, z2, . . . ). A standard setting considers b ∈ lp(N), for some 0 < p < 1. For example, if bj ∼ j−s decays algebraically, then b ∈ lp(N) for s > p−1 > 1. Assuming that b ∈ lp(N), it can be shown (e.g. [28, Corollary 3.11]) that the best n-term polynomial approximation to F converges at rate n1−1/p in a sup-norm setting, and rate n1/2−1/p in a Bochner L2(μ)-setting, with specific input measure μ on [−1, 1]N. Importantly, these convergence rates are polynomial in the number of degrees of freedom n, even in this infinite-dimensional parametric setting. When restricting to a finite-dimensional input space with d input components, i.e. considering only inputs of the form z = (z1, . . . , zd, 0, 0, . . . ), this fact implies that convergence rates independent of the dimension d can be obtained, and thus such approximation of (b, ε)-holomorphic operators can provably overcome the curse of dimensionality [28]. The above mentioned results in the parametrized setting can also be used to prove efficient approximation of holomorphic operators by operator learning frameworks in a non-parametric setting [52, 74, 103, 124, 125]. For example, [52] consider the DeepONet approximation of holomorphic operators with general Riesz frame encoders and decoders, demonstrating algebraic error and complexity estimates; Under suitable conditions, the authors prove that ReLU deep operator networks (DeepONet) approximating holomorphic operators can achieve convergence rates arbitrarily close to n1−s in a worst-error setting (supremum norm) and at rate n1/2−s in a Bochner L2(μ)-norm setting. Here n denotes the number of tunable parameters of the considered DeepONet, and the parameter s determines the decay of the coefficients in the frame expansion of the considered input functions. Under the (loose) identification s ∼ 1/p, these rates for DeepONet recover the rates discussed above. These results show that there exist operator surrogates which essentially achieve the approximation rates afforded by best n-term approximation schemes mentioned above.
+
+
+The complementary question of the sample complexity of operator learning for holomorphic operators has been studied in [6, 7, 9]. Building on the theory of N widths, the authors of [6,7] show that on the class (b, ε)-holomorphic operators and in a Bochner L2-setting, data-driven methods relying on N samples cannot achieve convergence rates better than N 1/2−1/p. In addition, it is shown that the optimal rate can be achieved up to logarithmic terms. We refer to [6, 7] for further details. To summarize: holomorphic operators represent a class of operators of practical interest for which approximation theory by neural operator learning frameworks can be developed. The approximation theory of this class of operators is welldeveloped, especially in the parametrized setting. In a parametrized setting, these operators allow for efficient approximation by multi-variate (sparse) polynomials. This fact can be leveraged to show that efficient approximation by neural networkbased methods is possible, and such results can be extended beyond a parametric setting, e.g. via frame expansions. Optimal approximation rates, and methods achieving these optimal rates, up to logarithmic terms, are known under specific assumptions.
+5.3. General (Lipschitz) Operators. The last two sections provide an overview of theoretical results on the approximation of linear and holomorphic operators. While these classes of operators include several operators of practical interest and allow for the development of general approximation theory, not all operators of relevance are holomorphic (or indeed linear). Examples of non-holomorphic operators include the solution operator associated with nonlinear hyperbolic conservation laws such as the compressible Euler equations. Solutions of such equations can develop shocks in finite time, and it can be shown that the associated solution operators themselves are not holomorphic. It is therefore of interest to extend the approximation theory of operator learning frameworks beyond the restrictive class of holomorphic operators. A general and natural class of nonlinear operators are general Lipschitz continuous operators, the approximation theory of which has been considered from an operator learning perspective e.g. in [14, 45, 47, 90, 123]. We present a brief outline of the general approach and mention relevant work on model complexity estimates in the following subsections 5.3.1–5.3.3. Relevant results on the data complexity of operator learning in this setting are summarized in subsection 5.3.4.
+5.3.1. Error Decomposition. Encoder-decoder-net architectures arguably follow the basic mathematical intuition of how to approach the operator approximation problem most closely, and most theoretical work has focused on this approach. We recall that within this framework, the infinite-dimensional input and output spaces U, V are first encoded through suitable finite-dimensional latent spaces. This involves an encoder/decoder pair (FU , GU ) on U ,
+FU : U → RdU , GU : RdU → U ,
+and another encoder/decoder pair (FV , gV ) on V,
+FV : V → RdV , GV : RdV → V.
+We recall that the composition GU ◦ FU , GV ◦ FV are interpreted as approximations to the identity on U and V, respectively. These encode/decoder pairs in turn imply an encoding of the underlying infinite-dimensional operator Ψ† : U → V, resulting in a finite-dimensional function
+φ : RdU → RdV , φ(α) = FV ◦ Ψ† ◦ GU (α),
+as depicted earlier, in Figure 3.
+
+
+While the encoder and decoder of these architectures perform dimension reduction, the neural network ψ : RdU → RdV at the core of encoder-decoder-net architectures is interpreted as approximating this resulting finite-dimensional function φ : RdU → RdV . To summarize, an encoder-decoder-net can conceptually be interpreted as involving three steps:
+(1) Dimension reduction on the input space U ≈ RdU , (2) Dimension reduction on the output space V ≈ RdV , (3) Encoding of the operator Ψ† yielding φ : RdU → RdV , approximated by neural network ψ : RdU → RdV .
+Each part of this conceptual decomposition, the encoding of U ≈ RdU , the decoding RdV ≈ V and the approximation ψ ≈ φ, represents a source of error, and the total encoder-decoder-net approximation error E is bounded by three contributions E ≲ EU + Eψ + EV , where
+EU = sup
+u
+∥u − GU ◦ FU (u)∥U ,
+quantifies the encoding error, with supremum taken over the relevant set of input functions u,
+EV = sup
+v
+∥v − GV ◦ FV (v)∥V ,
+quantifies the decoding error, and
+Eψ = sup
+α
+(5.3) ∥FV ◦ Ψ† ◦ GU (α) − ψ(α)∥,
+is the neural network approximation error. Given this decomposition, the derivation of error and complexity estimates for encoder-decoder-net architectures thus boils down to the estimation of encoding error EU , neural network approximation error Eψ and reconstruction error EV , respectively.
+Encoding and Reconstruction Errors. Encoding and reconstruction errors are relatively well understood on classical function spaces such as Sobolev and Besov spaces, by various linear and nonlinear methods of approximation [40]. For linear encoder/decoder pairs, the analysis of encoding and reconstruction errors amounts to principal component analysis (PCA) when measuring the error in the Bochner norm L2μ, or to Kolmogorov n-widths when measuring the error in the sup-norm over a compact set. Relevant discussion of PCA in the context of operator learning is given in [14] (see also [74] and [72]). In certain settings, such as for PDEs with discontinuous output functions, it has been shown [75] that relying on linear reconstruction imposes fundamental limitations on the approximation accuracy of operator methodologies, which can be overcome by methods with nonlinear reconstruction; specifically, it was shown both theoretically and experimentally in [75] that FNO and shift-DeepONet, a variant of DeepONet with nonlinear reconstruction, achieve higher accuracy than vanilla DeepONet for prototypical PDEs with discontinuous solutions. We also mention closely related work on the nonlinear manifold decoder architecture of [126].
+Neural Network Approximation Error. At their core, encoder-decoder-net architectures employ a neural network to approximate the encoded version FV ◦ Ψ† ◦ GU of the underlying operator Ψ† (cp. (5.3)). The practical success of these frameworks thus hinges on the ability of ordinary neural networks to approximate the relevant class of high-dimensional functions in the latent-dimensional spaces, which are obtained through the encoding of such operators. While the empirical success of neural networks in high-dimensional approximation tasks is undeniable, our theoretical understanding and the mathematical foundation underpinning this empirical success remains incomplete.
+
+
+General approximation theoretic results on the neural network approximation of functions have been obtained, and some available quantitative bounds in operator learning [45,47] build on these results to estimate the neural network approximation error Eψ. Notably, the seminal work [142] of D. Yarotsky presents general error and complexity estimates for functions with Lipschitz continuous derivatives:
+Theorem 5.2. A function f ∈ W k,∞([0, 1]d) can be approximated to uniform accuracy ε > 0,
+sup
+x∈[0,1]d
+|f (x) − ψ(x)| ≤ ε,
+by a ReLU neural network ψ with at most O(ε−d/k log(ε−1)) tunable parameters.
+♢
+Remark 5.3. Note that the relevant dimension in the operator learning context is the latent dimension d = dU . Neglecting logarithmic terms, we note that each component of the function G : RdU → RdV can be approximated individually by a neural network of size at most O(ε−dU /k), and hence, we expect that G can be approximated to accuracy ε by a neural network ψ of size at most O(dV ε−dU /k). ♢
+Without aiming to provide a comprehensive overview of this very active research direction on neural network approximation theory, adjacent to operator learning theory, we mention that similar error and complexity estimates can also be obtained on more general Sobolev spaces, e.g. [130, 144]. Lower bounds illuminating the limitations of neural networks on model classes are for example discussed in [2, 15, 142]. Approximation rates leveraging additional structure beyond smoothness have also been considered, e.g. compositional structure is explored in [96, 122, 128].
+Non-standard Architectures and Hyperexpressive Activations. While the general research area of neural network approximation theory is too broad to adequately summarize here, we mention relevant work on hyperexpressive activations, which can formally break the curse of dimensionality observed Theorem 5.2; it has been shown that neural networks employing non-standard activations can formally achieve arbitrary convergence on model function classes [85,109,129,143], when the complexity is measured in terms of number of tunable parameters. This is not true for the ReLU activation [142]. Another way to break the curse of dimensionality is via architectures with non-standard “three-dimensional” structure [148]. While non-standard architectures can overcome the curse of dimensionality in the sense that the number of parameters does not grow exponentially with d (or is independent of d), it should be pointed out that this necessarily comes at the expense of the number of bits that are required to represent each parameter in a practical implementation. Indeed, from work on quantized neural networks [15] (with arbitrary activation function), it can be inferred that the total number of bits required to store all parameters in such architectures is lower bounded by the Kolmogorov ε-entropy of the underlying model class; For the specific model class W k,∞([0, 1]d), this entropy scales as ε−d/k. Hence, architectures which achieve error ε with a number of parameters that scales strictly slower than ε−d/k must do so at the expense of the precision that is required to represent each individual parameter in a practical implementation, keeping the total number of bits above the entropy limit. For related discussion, we e.g. refer to [144, section 7] or [130, discussion on page 5]. Another implication of this fact is that the constructed non-standard architectures are necessarily very sensitive to minute changes in the network parameters.
+
+
+5.3.2. Upper Complexity Bounds. Quantitative error estimates for operator learning based on the general approach outlined in the last subsection 5.3.1 have been derived in a number of recent works [14, 45, 47, 56, 90, 95].
+Relevant work. The two papers [14, 74], analyzing PCA-Net and DeepONet respectively, both introduce a splitting of the error into encoder, neural network approximation and reconstruction errors. A similar error analysis is employed in [56] for so-called “basis operator network”, a variant of DeepONet. An in-depth analysis of DeepONets with various encoder/decoder pairs, including generalization error estimates, is given in [90]. Quantitative approximation error estimates for convolution neural networks applied to operator learning are derived in [45]. General error estimates motivated by infinite-dimensional dynamical systems in stochastic analysis can be found in [47]. An alternative approach to operator learning with explicit algorithms for all weights is proposed in [95], including error estimates for this approach.
+Alternative Decompositions. Finally, we point out that while the error decomposition in encoding, neural network approximation and reconstruction errors is natural, alternative error decompositions, potentially more fine-grained, are possible. We mention the work [105] which proposes a mimetic neural operator architecture inspired by the weak variational form of elliptic PDEs, discretized by the finite-element method; starting from this idea, the authors arrive at an architecture that can be viewed as a variant of DeepONet, including a specific mixed nonlinear and linear branch network structure and a nonlinear trunk net. In this work, an a priori error analysis is conducted resulting in a splitting of the overall approximation in numerical approximation, stability, training and quadrature errors depending on the data-generation with a numerical scheme (no access to the actual operator), the Lipschitz stability of the underlying operator, the finite number of training samples and quadrature errors to approximate integrals, respectively.
+5.3.3. Lower Complexity Bounds. Operator learning frameworks are based on neural networks and provide highly nonlinear approximation [38]. Despite their astonishing approximation capabilities, even highly nonlinear approximation methods have intrinsic limitations.
+Combined Error Analysis for Encoder-Decoder-Nets. To illustrate some of these intrinsic limitations, we first outline the combined error analysis that results from the decomposition summarized in the last section. To this end, we combine the encoding, reconstruction and neural network analysis to derive quantitative error and complexity estimates within the encoder-decoder-net paradigm. Firstly, under reasonable assumptions on the input functions, the encoding error can often be shown to decay at an algebraic rate in the dU , e.g.
+EU ≲ d−α
+(5.4) U .
+For example, if we assume that the input functions are defined on a bounded domain D ⊂ Rd and subject to a smoothness constraint such as a uniform bound on their kth derivative, then a decay rate α = k/d can be achieved (depending on the precise setting); For dimension reduction by principal component analysis, the exponent α instead relates to the decay rate of the eigenvalues of the covariance operator of the input distribution. Under similar assumptions on the set of output functions, depending on the properties of the underlying operator Ψ†, the reconstruction error on the output space often also decays algebraically,
+EV ≲ d−β
+(5.5) V ,
+
+
+where the decay rate β can e.g. be estimated in terms of the smoothness of the output functions under Ψ†, or could be related to the decay of the PCA eigenvalues of the output distribution (push-forward under Ψ†). Finally, given latent dimensions dU and dV , the size of the neural network ψ that is required to approximate the encoded operator mapping G : RdU → RdV , with NN approximation error bound,
+Eψ ≤ ε,
+roughly scales as (cp. Remark 5.3),
+(5.6) size(ψ) ∼ dV ε−dU /k,
+when the only information on the underlying operator is captured by its degree of smoothness k (k = 1 corresponding to Lipschitz continuity). Note that this is the scaling consistent with Kolmogorov entropy bounds. Given the error decomposition E ≲ EU + Eψ + EV , we require each error contribution individually to be bounded by ε. In view of (5.4) and (5.5), this can be achieved provided that dU ∼ ε−1/α, dV ∼ ε−1/β. Inserting such choice of dU , dV in (5.6), we arrive at a neural network size of roughly the form,
+size(ψ) ∼ ε−1/β ε−cε−1/α/k.
+In particular, we note the exponential dependence on ε−1, resulting in a size estimate,
+size(ψ) ≳ exp cε−1/α
+(5.7) k .
+As pointed out after (5.4), when the set of input functions consists of functions defined on a d-dimensional domain with uniformly bounded s-th derivatives (in a suitable norm), then we expect a rate α = s/d, in which case we obtain,
+size(ψ) ≳ exp cε−d/s
+(5.8) k .
+For operator learning frameworks, this super-algebraic (even exponential) dependence of the complexity on ε−1 has been termed the “curse of dimensionality” in [67, 74] or more recently “curse of parametric complexity” in [72]. The latter term was introduced to avoid confusion, which may arise because in these operator learning problems, there is no fixed dimension to speak of. The curse of parametric complexity can be viewed as an infinite-dimensional scaling limit of the finite-dimensional curse of dimensionality, represented by the dU -dependency of the bound ε−dU /k, and arises from the finite-dimensional CoD by observing that the required latent dimension dU itself depends on ε, with scaling dU ∼ ε−1/α. We note in passing that even if dU ∼ log(ε−1) were to scale only logarithmically in ε−1, the complexity bound implied by (5.6) would still be super-algebraic, consistent with the main result of [72].
+Nonlinear n-width Estimates. The rather pessimistic complexity bound outlined in (5.7) is based on an upper bound on the operator approximation error E , and is not necessarily tight. One may therefore wonder if more careful estimates could yield complexity bounds that do not scale exponentially in ε−1. In this context, we would like to highlight the early work on operator approximation by Mhaskar and Hahm [97] which presents first quantitative bounds for the approximation of nonlinear functionals; most notably, this work identifies the continuous nonlinear n-widths of spaces of Ho ̈lder continuous functionals defined on L2-spaces; it is shown that the relevant n-widths decay only (poly-)logarithmically in n, including both upper and lower bounds.
+
+
+We will presently state a simplified version of the main result of [97], and refer to the original work for the general version. To this end, we recall that the continuous nonlinear n-width dN (K; ∥ · ∥X ) [39] of a subset K ⊂ X , with (X , ∥ · ∥X ) Banach, is defined as the optimal reconstruction error,
+dN (K; ∥ · ∥X ) = inf
+(a,M )
+sup
+f ∈K
+∥f − M (a(f ))∥X ,
+where the infimum is over all encoder/decoder pairs (a, M ), consisting of a continuous map a : K → Rn and general map M : Rn → X . To derive lower n-width bounds, we consider spaces of nonlinear Lipschitz functionals Ψ† ∈ Fd, where d denotes the spatial dimension of the input functions. More, precisely define
+Fd = Ψ† : L2([−1, 1]d) → R ∥Ψ†(u)∥Lip ≤ 1 ,
+with
+∥Ψ†∥Lip := sup
+u∈L2
+|Ψ†(u)| + sup
+u,v∈L2
+|Ψ†(u) − Ψ†(v)| ∥u − v∥L2
+.
+Given a smoothness parameter s > 0, we consider approximation of Ψ† ∈ Fd, uniformly over a compact set of input functions Ks ⊂ L2([−1, 1]d), obtained as follows: we expand input functions f ∈ L2([−1, 1]d) in a Legendre expansion, f (x) = P
+k∈Nd fbkPk(x), and consider functionals defined on the “Sobolev” ball,
+Ks :=
+
+
+
+f ∈ L2([−1, 1]d)
+X
+k∈Nd
+|k|2sfbk|2 ≤ 1
+
+
+
+.
+We measure the approximation error between Ψ†, Ψ : Ks ⊂ L2 → R with respect to the supremum norm over Ks,
+∥Ψ† − Ψ∥C(Ks) = sup
+u∈K s
+|Ψ†(u) − Ψ(u)|.
+It follows from the main results of [97] that the continuous nonlinear n-widths of the set of functionals Fd decay only (poly-)logarithmically, as
+dn(Fd)C(Ks) ∼ log(n)−s/d.
+In particular, to achieve uniform approximation accuracy ε > 0 with a continuous encoder/decoder pair (a, M ), requires at least
+(5.9) n ≳ exp cε−d/s ,
+parameters. This last lower bound should be compared with (5.8) (for k = 1); the lower n-width bound (5.9) would imply (5.8) under the assumption that the architecture of ψ = ψ( · ; θ) was fixed and assuming that the weight assignment Ψ† 7→ θΨ† from the functional Ψ† and the optimal tuning of neural network parameters θΨ† was continuous. The latter assumption may not be satisfied if parameters are optimized using gradient descent.
+Curse of Parametric Complexity. Given the result outlined in the previous paragraph, one may wonder if the pessimistic bound (5.9) and (5.7), i.e. the “curse of parametric complexity”, can be broken by (a) a dis-continuous weight assignment, and (b) an adaptive choice of architecture optimized for specific Ψ†. This question has been raised in [72, 78]. It turns out that, with operator learning frameworks such as DeepONet, FNO or PCA-Net, and relying on standard neural network architectures, it is not possible to overcome the curse of parametric complexity when considering approximation on the full class of Lipschitz continuous or Fr ́echet differentiable operators. We mention
+
+
+the following illustrative result for DeepONet, which follows from [78, Example 2.17]:
+Proposition 5.4 (Curse of Parametric Complexity). Let D ⊂ Rd be a domain. Let k ∈ N be given, and consider the compact set of input functions,
+K = u ∈ Ck(D) ∥u∥Ck ≤ 1 ⊂ U := C(D).
+Fix α > 2 + k
+d . Then for any r ∈ N, there exists a r-times Fr ́echet differentiable
+functional Ψ† : U → R and constant c, ε > 0, such that approximation to accuracy ε ≤ ε by a DeepONet Ψ : U → R with ReLU activation,
+sup
+u∈K
+(5.10) |Ψ†(u) − Ψ(u)| ≤ ε,
+with linear encoder E and neural network ψ, implies complexity bound
+(5.11) size(ψ) ≥ exp(cε−1/αr).
+Here c, ε > 0 are constants depending only on k, α and r. ♢
+As mentioned above, analogous lower complexity bounds can be obtained for PCA-Net, Fourier neural operator and many other architectures, and the more general version of this lower complexity bound applies to Sobolev input functions and beyond. We refer to [78] for a detailed discussion.
+Remark 5.5. In [78], no attempt was made to optimize the exponent of ε−1 in (5.11). It would be interesting to know whether the appearance of the degree of operator F ́echet differentiability, i.e. the parameter r, in the lower bound is merely an artifact of the proof in [78]. The back-of-the-envelope calculation leading to (5.7) indicates that r should not appear in the exponent, and that the factor α = k/d + 2 + δ could be replaced by k/d + δ. ♢
+Breaking the Curse of Parametric Complexity with Non-Standard Architectures. As mentioned in a previous section, there exist non-standard neural network architectures which either employ non-standard activations [109, 129, 143], or impose a non-standard “three-dimensional” connectivity [148] which can overcome the curse of dimensionality in finite dimensions. In particular, encoderdecoder-nets based on such non-standard architectures can achieve neural network approximation error Eψ ≤ ε with a complexity (as measured by the number of tunable degrees of freedom) that grows much slower than the rough scaling we considered in (5.6). Based on such architectures, it has recently been shown [123] that DeepONets can achieve approximation rates for general Lipschitz and H ̈older continuous operators which break the curse of parametric complexity implied by (5.11). In fact, such architectures achieve algebraic expression rate bounds for general Lipschitz and H ̈older continuous operators.
+5.3.4. Sample Complexity Results. There is a rapidly growing body of work on the approximation theory of operator learning with focus on parametric complexity. The complementary question of the sample complexity of operator learning, i.e. how many samples are needed to achieve a given approximation accuracy, has not received as much attention. The work described in subsection 5.1 addresses this question in the setting of learning linear operators, and the question is also addressed in subsection 5.2 for holomorphic operators. We now develop this subject further. Of particular note in the general Lipschitz setting of this subsection is the paper [90], as well as related recent work in [23], which studies the nonparametric error estimation of Lipschitz operators for general encoder-decoder-net architectures. In [90], non-asymptotic upper bounds for the generalization error of empirical risk minimizers on suitable classes of operator networks are derived. The results are
+
+
+stated in a Bochner L2(μ) setting with input functions drawn from a probability measure μ, and variants are derived for general (Lipschitz) encoder/decoder pairs, for fixed basis encoder/decoder pairs, and for PCA encoder/decoder pairs. The analysis underlying the approximation error estimates in [90] is based on a combination of best-approximation error estimates (parametric complexity) which are combined with statistical learning theory to derive sample complexity bounds. For detailed results applicable to more general settings, we refer the reader to [90]. Here, we restrict attention to a representative result for fixed basis encoder/decoder pair [90, Corollary 3], obtained by projection onto a trigonometric basis. To state this simplified result, consider a Lipschitz operator Ψ† : U → V, mapping between spaces U , V = L2([−1, 1]d). We assume that there exists a constant C > 0, such that the probability measure μ ∈ P(U) and its push-forward Ψ†
+#μ ∈ P(V) are supported on periodic, continuously differentiable functions belonging to the set,
+K := u ∈ L2([−1, 1]d) u is periodic, ∥u∥Ck,α ≤ C .
+Then the squared approximation error
+E 2 := EdataEu∼μ∥DY ◦ ψ ◦ EX (u) − Ψ†(u)∥2
+L2
+satisfies the upper bound,
+E 2 ≲ dV
+4+dU
+2+dU N − 2
+2+dU log6(n) + dU − 2s
+d + dV − 2s
+(5.12) d ,
+where N is the number of samples and s = k + α is the smoothness on the input and output spaces. The neural network ψ is a ReLU network of depth L and width p, satisfying (up to logarithmic terms),
+Lp ∼ dV
+dU
+4+2dU N
+dU
+4+2dU .
+Comparing with (5.4) and (5.5), we can identify the last two terms in (5.12) as the encoding and reconstruction errors. The first term corresponds to a combination of neural network approximation and generalization errors. To ensure that the total error E ≤ ε is below accuracy threshold ε, we first choose dU , dV ∼ ε−d/s, consistent with our discussion in subsection 5.3.3. And according to the above estimate, we choose a number of samples of roughly the size N ∼ ε−(2+dU )/2. Note that, once more, the additional ε-dependency of dU implies that
+N ≳ exp cε−d/s ,
+exhibits an exponential curse of complexity. This time, the curse is reflected by an exponential number of samples N that are required to achieve accuracy ε, rather than the parametric complexity. In turn, this implies that the size of the product Lp of the depth L and width p of the neural network ψ satisfies the lower bound,
+Lp ≳ exp cε−d/s ,
+consistent with the expected curse of parametric complexity, (5.7). It is likely that the results of [90] cannot be substantially improved in the considered setting of Lipschitz operators. Extending their work to a slightly different setting, the authors of [90] also raise the question of low dimensional structure in operator learning, and derive error bounds decaying with a fast rate under suitable conditions, relying on low-dimensional latent structure of the input space. In a related direction, the authors of [62] provide estimates on the Rademacher complexity of FNO. Generalization error estimates are derived based on these Rademacher complexity estimates, and the theoretical insights are compared with
+
+
+the empirical generalization error and the proposed capacity of FNO, in numerical experiments. Out-of-distribution risk bounds for neural operators with focus on the Helmholtz equation are discussed in depth in [13]. We finally mention the recent work [100], where a connection is made between the number of available samples n and the required size of the DeepONet reconstruction dimension dV . It is shown that when only noisy measurements are available, a
+scaling of the number of trunk basis functions dV ≳ √n is required to achieve accurate approximation.
+5.4. Structure Beyond Smoothness. The results summarized in the previous sections indicate that, when relying on standard neural network architectures, efficient operator learning on general spaces of Lipschitz continuous, or Fre ́chet differentiable, operators may not be possible: the class of all such operators on infinitedimensional Banach spaces is arguably too rich, and operator learning on this class suffers from a curse of parametric complexity, requiring exponential model sizes of the form ≳ exp(cε−γ). This is in contrast to operator learning for (b, ε)-holomorphic operators, for which approximation to accuracy ε is possible with a parametric complexity O(ε−γ) scaling only algebraically in ε−1. In this case, the curse of parametric complexity is broken by the extraordinary amount of smoothness of the underlying operators, going far beyond Lipschitz continuity or Fr ́echet differentiability. These contrasting results rely only on the smoothness of the approximated operator: Is such smoothness the deciding factor for the practical success of operator learning methodologies? While we currently cannot provide a theoretical answer to this important question, we finally would like to mention several approximation theoretic results addressing how operator learning frameworks can break the curse of parametric complexity by leveraging structure beyond holomorphy.
+Operator Barron Spaces. A celebrated result in the study of shallow neural networks on finite-dimensional spaces is Barron’s discovery [10] of a function space
+on which dimension-independent Monte-Carlo approximation rates O(1/√n) can be obtained. In particular, the approximation, by shallow neural networks, of functions belonging to this Barron class does not suffer from the well-known curse of dimensionality. In the recent paper [64], a suitable generalization of the Barron spaces is in
+troduced, and it is shown that Monte-Carlo approximation rates O(1/√n) can be obtained even in this infinite-dimensional setting, under precisely specified conditions. Quantitative error estimates (convergence rates) for the approximation of nonlinear operators are obtained by extending earlier results [8, 41, 42] from the finite-dimensional setting f : Rd → R to the vector-valued and infinite-dimensional case f : U → V, where U and V are Banach spaces. The operator Barron spaces identified in [64] represent a general class of operators, distinct from the holomorphic operators discussed in a previous section, which allow for efficient approximation by a class of “shallow neural operators”. Unfortunately, a priori, it is unclear which operators of practical interest belong to this class, leaving the connection between these theoretical results and the practically observed efficiency of neural operator somewhat tenuous. In passing, we also mention the operator reproducing kernel Hilbert spaces (RKHS) considered in the context of the random feature model in [101], for which similar Monte-Carlo convergence rates have been derived in [76].
+Representation Formulae and Emulation of Numerical Methods. To conclude our discussion of complexity and error bounds, we mention work focused on additional structure, separate from smoothness and the above-mentioned idea of
+
+
+Barron spaces, which can be leveraged by operator learning frameworks to achieve efficient approximation: these include operators with explicit representation formulae, and operators for which efficient approximation by traditional numerical schemes is possible. Such representations by classical methods can often be efficiently emulated by operator learning methodologies, resulting in error and complexity estimates that beat the curse of parametric complexity. The complexity estimates for DeepONets in [37] are mostly based on explicit representation of the solution; most prominently, this is achieved via the Cole-Hopf transformation for the viscous Burgers equation. Results employing emulation of numerical methods to prove that operator learning frameworks such as DeepONet, FNO and PCA-Net can overcome the curse of parametric complexity for specific operators of interest can be found in [67, 72, 74, 94]; specifically, such results have e.g. been obtained for the Darcy flow equation, the Navier-Stokes equations, reaction-diffusion equations and the inviscid Burgers equation. For the solution operators associated with these PDEs, it has been shown that operator learning frameworks can achieve approximation accuracy ε with a total number of tunable degrees of freedom which either only scales algebraically in ε, i.e. with size(ψ) = O(ε−γ), or scales only logarithmically, size(ψ) = O(| log ε|γ) in certain settings [94]. This should be contrasted with the general curse of dimensionality (5.7). It is expected that the underlying ideas apply to many other PDEs. Results in this direction are currently only available for very specific operators, and an abstract characterization of the relevant structure that can be exploited by operator learning frameworks is not available. First steps towards a more general theory have been proposed in [120], where generic bounds for operator learning are derived, relating the approximation error for physics-informed neural networks (PINNs) and operator learning architectures such as DeepONets and FNOs.
+5.4.1. Discussion. Ultimately, the overarching theme behind many of the above cited results is that neural operators, or neural networks more generally, can efficiently emulate numerical algorithms, which either result from bespoke numerical methods or are a consequence of explicit representation formulae. The total complexity of a neural network emulator, and reflected by its size, is composed of the complexity of the emulated numerical algorithm and an additional overhead cost of emulating this algorithm by a neural network (translation to neural network weights). From an approximation-theoretic point of view, it could be conjectured that, for a suitable definition of “numerical algorithm”, neural networks can efficiently approximate all numerical algorithms, hence implying efficient approximation of a great variety of operators, excluding only those operators for which no efficient numerical algorithms exist. Formalizing a suitable notion of numerical algorithm and proving that neural networks can efficiently emulate any such algorithm would be of interest and could provide a general way for proving algebraic expression rate bound for a general class of operators that can be approximated by a numerical method with algebraic memory and run-time complexity (i.e. any “reasonable” approximation method).
+6. Conclusions
+Neural operator architectures employ neural networks to approximate nonlinear operators mapping between Banach spaces of functions. Such operators often arise from physical models which are expressed as partial differential equations (PDEs). Despite their empirical success in a variety of applications, our theoretical understanding of neural operators remains incomplete. This review article summarizes
+
+
+recent progress and the current state of our theoretical understanding of neural operators, focusing on an approximation theoretic point of view. The starting point of the theoretical analysis is universal approximation. Very general universal approximation results are now available for many of the proposed neural operator architectures. These results demonstrate that, given a sufficient number of parameters, neural operators can approximate a very wide variety of infinite-dimensional operators, providing a theoretical underpinning for diverse applications. Such universal approximation is arguably a necessary but not sufficient condition for the success of these architectures. In particular, universal approximation is inherently qualitative and does not guarantee that approximation to a desired accuracy is feasible at a practically realistic model size. A number of more recent works thus aim to provide quantitative bounds on the required model size and the required number of input-/output-samples to achieve a desired accuracy ε. Most such results consider one of three settings: general Lipschitz (or Fr ́echet differentiable) operators, holomorphic operators, or specific PDE operators. While Lipschitz operators are a natural and general class to consider, it turns out that approximation to error ε with standard architectures requires an exponential (in ε−1) number of tunable parameters, bringing into question whether operator learning at this level of generality is possible. In contrast, the class of holomorphic operators allows for complexity bounds that scale only algebraically in ε−1, both in terms of models size as well as sample complexity. Holomorphic operators represent a general class of operators of practical interest, for which rigorous approximation theory has been developed building on convergent (generalized) polynomial expansions. Going beyond notions of operator smoothness, it has been shown that operator learning frameworks can leverage intrinsic structure of (PDE-) operators to achieve algebraic convergence rates in theory; this intrinsic structure is distinct from holomorphy. Available results in this direction currently rely a case-by-case analysis and often leverage emulation of traditional numerical methods. The authors of the present article view the development of a general approximation theory, including a characterization of the relevant structure that can be leveraged by neural operators, as one of the great challenges of this field.
+Acknowledgments. The authors are grateful to Dima Burov and Edo Calvello for creating Figures 1a and 1b, 2a, 2b respectively. They are also grateful to Nick Nelsen for reading, and commenting on, a draft of the paper. NBK is grateful to the NVIDIA Corporation for full time employment. SL is grateful for support from the Swiss National Science Foundation, Postdoc.Mobility grant P500PT-206737. AMS is grateful for support from a Department of Defense Vannevar Bush Faculty Fellowship.
+References
+[1] J. Abernethy, F. Bach, T. Evgeniou, and J.-P. Vert. A new approach to collaborative filtering: Operator estimation with spectral regularization. The Journal of Machine Learning Research, 10:803––826, 2009. [2] E. M. Achour, A. Foucault, S. Gerchinovitz, and F. Malgouyres. A general approximation lower bound in Lp norm, with applications to feed-forward neural networks. In Advances in Neural Information Processing Systems, 2022.
+[3] B. Adcock, S. Brugiapaglia, N. Dexter, and S. Moraga. Near-optimal learning of Banach-valued, high-dimensional functions via deep neural networks. arXiv preprint arXiv:2211.12633, 2022.
+[4] B. Adcock, S. Brugiapaglia, N. Dexter, and S. Moraga. On efficient algorithms for computing near-best polynomial approximations to high-dimensional, Hilbert-valued functions from limited samples. arXiv preprint arXiv:2203.13908, 2022.
+
+
+[5] B. Adcock, S. Brugiapaglia, and C. G. Webster. Sparse polynomial approximation of highdimensional functions, volume 25. SIAM, 2022.
+[6] B. Adcock, N. Dexter, and S. Moraga. Optimal approximation of infinite-dimensional holomorphic functions. arXiv preprint arXiv:2305.18642, 2023.
+[7] B. Adcock, N. Dexter, and S. Moraga. Optimal approximation of infinite-dimensional holomorphic functions ii: recovery from iid pointwise samples. arXiv preprint arXiv:2310.16940, 2023. [8] F. Bach. Breaking the curse of dimensionality with convex neural networks. The Journal of Machine Learning Research, 18(1):629–681, 2017.
+[9] M. Bachmayr and A. Cohen. Kolmogorov widths and low-rank approximations of parametric elliptic PDEs. Mathematics of Computation, 86(304):701–724, 2017. [10] A. R. Barron. Universal approximation bounds for superpositions of a sigmoidal function. IEEE Transactions on Information theory, 39(3):930–945, 1993.
+[11] F. Bartolucci, E. de Be ́zenac, B. Raonic ́, R. Molinaro, S. Mishra, and R. Alaifari. Are neural operators really neural operators? Frame theory meets operator learning. arXiv preprint arXiv:2305.19913, 2023.
+[12] P. Batlle, M. Darcy, B. Hosseini, and H. Owhadi. Kernel methods are competitive for operator learning. Journal of Computational Physics, 496:112549, 2024. [13] J. A. L. Benitez, T. Furuya, F. Faucher, A. Kratsios, X. Tricoche, and M. V. de Hoop. Out-of-distributional risk bounds for neural operators with applications to the Helmholtz equation. arXiv preprint arXiv:2301.11509, 2023.
+[14] K. Bhattacharya, B. Hosseini, N. B. Kovachki, and A. M. Stuart. Model reduction and neural networks for parametric PDEs. The SMAI Journal of Computational Mathematics, 7:121–157, 2021. [15] H. Bolcskei, P. Grohs, G. Kutyniok, and P. Petersen. Optimal approximation with sparsely connected deep neural networks. SIAM Journal on Mathematics of Data Science, 1(1):8–45, 2019. [16] B. Bonev, T. Kurth, C. Hundt, J. Pathak, M. Baust, K. Kashinath, and A. Anandkumar. Spherical fourier neural operators: learning stable dynamics on the sphere. In Proceedings of the 40th International Conference on Machine Learning, 2023.
+[17] N. Boulle ́, C. J. Earls, and A. Townsend. Data-driven discovery of Green’s functions with human-understandable deep learning. Scientific reports, 12(1):4824, 2022. [18] N. Boulle ́, S. Kim, T. Shi, and A. Townsend. Learning Green’s functions associated with time-dependent partial differential equations. The Journal of Machine Learning Research, 23(1):9797–9830, 2022. [19] N. Boull ́e and A. Townsend. Learning elliptic partial differential equations with randomized linear algebra. Foundations of Computational Mathematics, 23(2):709–739, 2023.
+[20] S. L. Brunton and J. N. Kutz. Machine learning for partial differential equations. arXiv preprint arXiv:2303.17078, 2023.
+[21] J. Castro. The Kolmogorov infinite dimensional equation in a Hilbert space via deep learning methods. Journal of Mathematical Analysis and Applications, 527(2):127413, 2023.
+[22] J. Castro, C. Mu ̃noz, and N. Valenzuela. The Calder ́on’s problem via DeepONets. arXiv preprint arXiv:2212.08941, 2022.
+[23] K. Chen, C. Wang, and H. Yang. Deep operator learning lessens the curse of dimensionality for pdes. arXiv preprint arXiv:2301.12227, 2023.
+[24] T. Chen and H. Chen. Universal approximation to nonlinear operators by neural networks with arbitrary activation functions and its application to dynamical systems. IEEE Transactions on Neural Networks, 6(4):911–917, 1995.
+[25] A. Chkifa, A. Cohen, R. DeVore, and C. Schwab. Sparse adaptive taylor approximation algorithms for parametric and stochastic elliptic PDEs. ESAIM: Mathematical Modelling and Numerical Analysis, 47(1):253–280, 2013.
+[26] A. Chkifa, A. Cohen, and C. Schwab. Breaking the curse of dimensionality in sparse polynomial approximation of parametric PDEs. Journal de Math ́ematiques Pures et Appliqu ́ees, 103(2):400–428, 2015. [27] A. Cohen, W. Dahmen, O. Mula, and J. Nichols. Nonlinear reduced models for state and parameter estimation. SIAM/ASA Journal on Uncertainty Quantification, 10(1):227–267, 2022. [28] A. Cohen and R. DeVore. Approximation of high-dimensional parametric PDEs. Acta Numerica, 24:1–159, 2015. [29] A. Cohen, R. DeVore, and C. Schwab. Convergence rates of best n-term galerkin approximations for a class of elliptic SPDEs. Foundations of Computational Mathematics, 10(6):615646, 2010.
+
+
+[30] A. Cohen, R. Devore, and C. Schwab. Analytic regularity and polynomial approximation of parametric and stochastic elliptic PDEs. Analysis and Applications, 9(01):11–47, 2011. [31] M. J. Colbrook and A. Townsend. Rigorous data-driven computation of spectral properties of Koopman operators for dynamical systems. Communications on Pure and Applied Mathematics, 77(1):221–283, 2024. [32] S. Cotter, G. Roberts, A. Stuart, and D. White. MCMC methods for functions: Modifying old algorithms to make them faster. Statistical Science, 28, 02 2012. [33] C. Crambes and A. Mas. Asymptotics of prediction in functional linear regression with functional outputs. Bernoulli, 19(5B):2627 – 2651, 2013. [34] G. Cybenko. Approximation by superpositions of a sigmoidal function. Mathematics of control, signals and systems, 2(4):303–314, 1989.
+[35] M. De Hoop, D. Z. Huang, E. Qian, and A. M. Stuart. The cost-accuracy trade-off in operator learning with neural networks. Journal of Machine Learning, 1:3:299–341, 2022. [36] M. V. de Hoop, N. B. Kovachki, N. H. Nelsen, and A. M. Stuart. Convergence rates for learning linear operators from noisy data. SIAM/ASA Journal on Uncertainty Quantification, 11(2):480–513, 2023. [37] B. Deng, Y. Shin, L. Lu, Z. Zhang, and G. E. Karniadakis. Convergence rate of DeepONets for learning operators arising from advection-diffusion equations. arXiv preprint arXiv:2102.10621, 2021.
+[38] R. A. DeVore. Nonlinear approximation. Acta Numerica, 7:51–150, 1998. [39] R. A. DeVore, R. Howard, and C. Micchelli. Optimal nonlinear approximation. Manuscripta mathematica, 63:469–478, 1989. [40] R. A. DeVore and G. G. Lorentz. Constructive approximation, volume 303. Springer Science & Business Media, 1993. [41] W. E, C. Ma, and L. Wu. The Barron space and the flow-induced function spaces for neural network models. Constructive Approximation, 55(1):369–406, 2022. [42] W. E and S. Wojtowytsch. Representation formulas and pointwise properties for Barron functions. Calculus of Variations and Partial Differential Equations, 61(2):1–37, 2022.
+[43] P. Enflo. A counterexample to the approximation problem in Banach spaces. Acta Mathematica, 130:309–316, 1973. [44] L. C. Evans. Partial differential equations, volume 19. American Mathematical Soc., 2010. [45] N. R. Franco, S. Fresca, A. Manzoni, and P. Zunino. Approximation bounds for convolutional neural networks in operator learning. Neural Networks, 161:129–141, 2023. [46] T. Furuya, M. Puthawala, M. Lassas, and M. V. de Hoop. Globally injective and bijective neural operators. In Thirty-eight Conference on Neural Information Processing Systems, 2024. [47] L. Galimberti, A. Kratsios, and G. Livieri. Designing universal causal deep learning models: The case of infinite-dimensional dynamical systems from stochastic analysis. arXiv preprint arXiv:2210.13300, 2022.
+[48] C. R. Gin, D. E. Shea, S. L. Brunton, and J. N. Kutz. Deepgreen: Deep learning of Green’s functions for nonlinear boundary value problems. arXiv preprint arXiv:2101.07206, 2020. [49] I. Goodfellow, Y. Bengio, and A. Courville. Deep Learning. MIT press, 2016. [50] J. K. Gupta and J. Brandstetter. Towards multi-spatiotemporal-scale generalized PDE modeling. arXiv preprint arXiv:2209.15616, 2022.
+[51] M. Hairer, A. M. Stuart, and S. J. Vollmer. Spectral gaps for a Metropolis–Hastings algorithm in infinite dimensions. The Annals of Applied Probability, 24(6):2455–2490, 2014. [52] L. Herrmann, C. Schwab, and J. Zech. Neural and GPC operator surrogates: Construction and expression rate bounds. arXiv preprint arXiv:2207.04950, 2022. [53] J. S. Hesthaven and S. Ubbiali. Non-intrusive reduced order modeling of nonlinear problems using neural networks. Journal of Computational Physics, 363:55–78, 2018. [54] M. Hinze, R. Pinnau, M. Ulbrich, and S. Ulbrich. Optimization with PDE constraints, volume 23. Springer Science & Business Media, 2008. [55] K. Hornik, M. Stinchcombe, and H. White. Multilayer feedforward networks are universal approximators. Neural networks, 2(5):359–366, 1989. [56] N. Hua and W. Lu. Basis operator network: A neural network-based model for learning nonlinear operators via neural basis. Neural Networks, 164:21–37, 2023. [57] D. Z. Huang, N. H. Nelsen, and M. Trautner. An operator learning perspective on parameterto-observable maps. arXiv preprint arXiv:2402.06031, 2024.
+[58] D. Z. Huang, K. Xu, C. Farhat, and E. Darve. Learning constitutive relations from indirect observations using deep neural networks. Journal of Computational Physics, 416:109491, 2020. [59] J. Jin, Y. Lu, J. Blanchet, and L. Ying. Minimax optimal kernel operator learning via multilevel training. In Eleventh International Conference on Learning Representations, 2022.
+
+
+[60] P. Jin, S. Meng, and L. Lu. Mionet: Learning multiple-input operators via tensor product. SIAM Journal on Scientific Computing, 44(6):A3490–A3514, 2022. [61] J. Kaipio and E. Somersalo. Statistical and Computational Inverse Problems, volume 160. Springer Science & Business Media, 2006. [62] T. Kim and M. Kang. Bounding the rademacher complexity of Fourier neural operator. arXiv preprint arXiv:2209.05150, 2022.
+[63] I. Klebanov and T. Sullivan. Aperiodic table of modes and maximum a posteriori estimators. arXiv preprint arXiv:2306.16278, 2023.
+[64] Y. Korolev. Two-layer neural networks with values in a banach space. SIAM Journal on Mathematical Analysis, 54(6):6358–6389, 2022. [65] V. Kostic, P. Novelli, A. Maurer, C. Ciliberto, L. Rosasco, and M. Pontil. Learning dynamical systems via Koopman operator regression in reproducing kernel hilbert spaces. In Thirtysixth Annual Conference on Neural Information Processing Systems, 2022.
+[66] N. B. Kovachki. Machine Learning and Scientific Computing. PhD thesis, California Institute of Technology, 2022. [67] N. B. Kovachki, S. Lanthaler, and S. Mishra. On universal approximation and error bounds for Fourier neural operators. Journal of Machine Learning Research, 22(1), 2021. [68] N. B. Kovachki, Z. Li, B. Liu, K. Azizzadenesheli, K. Bhattacharya, A. Stuart, and A. Anandkumar. Neural operator: Learning maps between function spaces with applications to PDEs. Journal of Machine Learning Research, 24(89), 2023.
+[69] B. Kramer, B. Peherstorfer, and K. E. Willcox. Learning nonlinear reduced models from data with operator inference. Annual Review of Fluid Mechanics, 56(1):521–548, 2024. [70] G. Kutyniok, P. Petersen, M. Raslan, and R. Schneider. A theoretical analysis of deep neural networks and parametric PDEs. Constructive Approximation, 55(1):73–125, 2022. [71] R. Lam, A. Sanchez-Gonzalez, M. Willson, P. Wirnsberger, M. Fortunato, F. Alet, S. Ravuri, T. Ewalds, Z. Eaton-Rosen, W. Hu, A. Merose, S. Hoyer, G. Holland, O. Vinyals, J. Stott, A. Pritzel, S. Mohamed, and P. Battaglia. Learning skillful medium-range global weather forecasting. Science, 382(6677):1416–1421, 2023. [72] S. Lanthaler. Operator learning with PCA-Net: Upper and lower complexity bounds. Journal of Machine Learning Research, 24(318), 2023.
+[73] S. Lanthaler, Z. Li, and A. M. Stuart. The nonlocal neural operator: Universal approximation. arXiv preprint arXiv:2304.13221, 2023.
+[74] S. Lanthaler, S. Mishra, and G. E. Karniadakis. Error estimates for DeepONets: A deep learning framework in infinite dimensions. Transactions of Mathematics and Its Applications, 6(1), 2022. [75] S. Lanthaler, R. Molinaro, P. Hadorn, and S. Mishra. Nonlinear reconstruction for operator learning of PDEs with discontinuities. In Eleventh International Conference on Learning Representations, 2023.
+[76] S. Lanthaler and N. H. Nelsen. Error bounds for learning with vector-valued random features. In Thirty-seventh Conference on Neural Information Processing Systems, 2023.
+[77] S. Lanthaler, T. K. Rusch, and S. Mishra. Neural oscillators are universal. In Thirty-seventh Conference on Neural Information Processing Systems, 2023.
+[78] S. Lanthaler and A. M. Stuart. The curse of dimensionality in operator learning. arXiv preprint arXiv:2306.15924, 2023.
+[79] K. Lee and K. T. Carlberg. Model reduction of dynamical systems on nonlinear manifolds using deep convolutional autoencoders. Journal of Computational Physics, 404:108973, 2020. [80] Z. Lei, L. Shi, and C. Zeng. Solving parametric partial differential equations with deep rectified quadratic unit neural networks. Journal of Scientific Computing, 93(3):80, 2022. [81] Q. Li, F. Dietrich, E. M. Bollt, and I. G. Kevrekidis. Extended dynamic mode decomposition with dictionary learning: A data-driven adaptive spectral decomposition of the Koopman operator. Chaos: An Interdisciplinary Journal of Nonlinear Science, 27(10):103111, 2017. [82] Z. Li, N. B. Kovachki, K. Azizzadenesheli, B. Liu, K. Bhattacharya, A. M. Stuart, and A. Anandkumar. Neural operator: Graph kernel network for partial differential equations. arXiv preprint arXiv:2003.03485, 2020.
+[83] Z. Li, N. B. Kovachki, K. Azizzadenesheli, B. Liu, K. Bhattacharya, A. M. Stuart, and A. Anandkumar. Fourier neural operator for parametric partial differential equations. In Ninth International Conference on Learning Representations, 2021.
+[84] Z. Li, N. B. Kovachki, K. Azizzadenesheli, B. Liu, A. M. Stuart, K. Bhattacharya, and A. Anandkumar. Multipole graph neural operator for parametric partial differential equations. In Thirty-fourth Annual Conference on Neural Information Processing Systems, 2020. [85] S. Liang, L. Lyu, C. Wang, and H. Yang. Reproducing activation function for deep learning. arXiv preprint arXiv:2101.04844, 2021.
+
+
+[86] J. Lindenstrauss and L. Tzafriri. Classical Banach Spaces I: Sequence Spaces. Ergebnisse der Mathematik und ihrer Grenzgebiete. 2. Folge. Springer Berlin Heidelberg, 2013. [87] J. Ling, A. Kurzawski, and J. Templeton. Reynolds averaged turbulence modelling using deep neural networks with embedded invariance. Journal of Fluid Mechanics, 807:155–166, 2016. [88] P. Lippe, B. Veeling, P. Perdikaris, R. Turner, and J. Brandstetter. PDE-refiner: Achieving accurate long rollouts with neural PDE solvers. In Thirty-seventh Annual Conference on Neural Information Processing Systems, 2024.
+[89] O. Litany, T. Remez, E. Rodola, A. Bronstein, and M. Bronstein. Deep functional maps: Structured prediction for dense shape correspondence. In Proceedings of the IEEE international conference on computer vision, pages 5659–5667, 2017.
+[90] H. Liu, H. Yang, M. Chen, T. Zhao, and W. Liao. Deep nonparametric estimation of operators between infinite dimensional spaces. Journal of Machine Learning Research, 25(24):167, 2024. [91] X. Liu, S. Tian, F. Tao, and W. Yu. A review of artificial neural networks in the constitutive modeling of composite materials. Composites Part B: Engineering, 224:109152, 2021. [92] L. Lu, P. Jin, G. Pang, Z. Zhang, and G. E. Karniadakis. Learning nonlinear operators via DeepONet based on the universal approximation theorem of operators. Nature Machine Intelligence, 3(3):218–229, 2021. [93] D. Luo, T. O’Leary-Roseberry, P. Chen, and O. Ghattas. Efficient PDE-constrained optimization under high-dimensional uncertainty using derivative-informed neural operators. arXiv preprint arXiv:2305.20053, 2023.
+[94] C. Marcati and C. Schwab. Exponential convergence of deep operator networks for elliptic partial differential equations. SIAM Journal on Numerical Analysis, 61(3):1513–1545, 2023. [95] H. Mhaskar. Local approximation of operators. Applied and Computational Harmonic Analysis, 64:194–228, 2023. [96] H. Mhaskar and T. Poggio. Function approximation by deep networks. Communications on Pure and Applied Analysis, 19(8):4085–4095, 2020.
+[97] H. N. Mhaskar and N. Hahm. Neural networks for functional approximation and system identification. Neural Computation, 9(1):143–159, 1997. [98] M. Mollenhauer, N. Mu ̈cke, and T. Sullivan. Learning linear operators: Infinite-dimensional regression as a well-behaved non-compact inverse problem. arXiv preprint arXiv:2211.08875, 2022. [99] J. Morton, F. D. Witherden, A. Jameson, and M. J. Kochenderfer. Deep dynamical modeling and control of unsteady fluid flows. In Proceedings of the 32nd International Conference on Neural Information Processing Systems, 2018.
+[100] A. Mukherjee and A. Roy. Size lowerbounds for deep operator networks. arXiv preprint arXiv:2308.06338, 2023.
+[101] N. H. Nelsen and A. M. Stuart. The random feature model for input-output maps between Banach spaces. SIAM Journal on Scientific Computing, 43(5):A3212–A3243, 2021. [102] T. O’Leary-Roseberry, P. Chen, U. Villa, and O. Ghattas. Derivative-informed neural operator: An efficient framework for high-dimensional parametric derivative learning. Journal of Computational Physics, 496:112555, 2024.
+[103] J. A. Opschoor, C. Schwab, and J. Zech. Exponential ReLU DNN expression of holomorphic maps in high dimension. Constructive Approximation, 55(1):537–582, 2022. [104] M. Ovsjanikov, M. Ben-Chen, J. Solomon, A. Butscher, and L. Guibas. Functional maps: A flexible representation of maps between shapes. ACM Trans. Graph., 31(4), 2012. [105] D. Patel, D. Ray, M. R. Abdelmalik, T. J. Hughes, and A. A. Oberai. Variationally mimetic operator networks. Computer Methods in Applied Mechanics and Engineering, 419:116536, 2024. [106] R. G. Patel and O. Desjardins. Nonlinear integro-differential operator regression with neural networks. arXiv preprint arXiv:1810.08552, 2018.
+[107] R. G. Patel, N. A. Trask, M. A. Wood, and E. C. Cyr. A physics-informed operator regression framework for extracting data-driven continuum models. Computer Methods in Applied Mechanics and Engineering, 373:113500, 2021.
+[108] B. Peherstorfer and K. Willcox. Data-driven operator inference for nonintrusive projectionbased model reduction. Computer Methods in Applied Mechanics and Engineering, 306:196215, 2016. [109] A. Pinkus. Approximation theory of the mlp model in neural networks. Acta Numerica, 8:143–195, 1999. [110] M. Prasthofer, T. De Ryck, and S. Mishra. Variable-input deep operator networks. arXiv preprint arXiv:2205.11404, 2022.
+
+
+[111] E. Qian, I.-G. Farcas, and K. Willcox. Reduced operator inference for nonlinear partial differential equations. SIAM Journal on Scientific Computing, to appear, 2022. [112] E. Qian, B. Kramer, B. Peherstorfer, and K. Willcox. Lift & Learn: Physics-informed machine learning for large-scale nonlinear dynamical systems. Physica D: Nonlinear Phenomena, 406:132401, 2020. [113] M. Raghu and E. Schmidt. A survey of deep learning for scientific discovery. arXiv preprint arXiv:2003.11755, 2020.
+[114] A. Rahimi and B. Recht. Random features for large-scale kernel machines. In Twenty-First Annual Conference on Neural Information Processing Systems, 2007.
+[115] M. A. Rahman, Z. E. Ross, and K. Azizzadenesheli. U-NO: U-shaped neural operators. Transactions on Machine Learning Research, 2023.
+[116] J. O. Ramsay and C. Dalzell. Some tools for functional data analysis. Journal of the Royal Statistical Society Series B: Statistical Methodology, 53(3):539–561, 1991.
+[117] B. Raonic, R. Molinaro, T. Rohner, S. Mishra, and E. de Bezenac. Convolutional neural operators. In ICLR 2023 Workshop on Physics for Machine Learning, 2023.
+[118] B. Raonic, R. Molinaro, T. D. Ryck, T. Rohner, F. Bartolucci, R. Alaifari, S. Mishra, and E. de Bezenac. Convolutional neural operators for robust and accurate learning of PDEs. In Thirty-seventh Conference on Neural Information Processing Systems, 2023.
+[119] L. Rosasco, M. Belkin, and E. D. Vito. On learning with integral operators. The Journal of Machine Learning Research, 11:905–934, 2010.
+[120] T. D. Ryck and S. Mishra. Generic bounds on the approximation error for physics-informed (and) operator learning. In Thirty-sixth Annual Conference on Neural Information Processing Systems, 2022.
+[121] J. Sacks, W. J. Welch, T. J. Mitchell, and H. P. Wynn. Design and analysis of computer experiments. Statistical Science, 4(4):409 – 423, 1989. [122] J. Schmidt-Hieber. Nonparametric regression using deep neural networks with ReLU activation function. The Annals of Statistics, 48(4):1875 – 1897, 2020. [123] C. Schwab, A. Stein, and J. Zech. Deep operator network approximation rates for Lipschitz operators. arXiv preprint arXiv:2307.09835, 2023.
+[124] C. Schwab and J. Zech. Deep learning in high dimension: Neural network expression rates for generalized polynomial chaos expansions in UQ. Analysis and Applications, 17(01):19–55, 2019. [125] C. Schwab and J. Zech. Deep learning in high dimension: Neural network expression rates for analytic functions in L2(Rd, γd). SIAM/ASA Journal on Uncertainty Quantification, 11(1):199–234, 2023. [126] J. Seidman, G. Kissas, P. Perdikaris, and G. J. Pappas. NOMAD: Nonlinear manifold decoders for operator learning. In Thirty-sixth Annual Conference on Neural Information Processing Systems, 2022.
+[127] N. Sharp, S. Attaiki, K. Crane, and M. Ovsjanikov. Diffusionnet: Discretization agnostic learning on surfaces. ACM Transactions on Graphics, 2022.
+[128] Z. Shen, H. Yang, and S. Zhang. Nonlinear approximation via compositions. Neural Networks, 119:74–84, 2019. [129] Z. Shen, H. Yang, and S. Zhang. Neural network approximation: Three hidden layers are enough. Neural Networks, 141:160–173, 2021. [130] J. W. Siegel. Optimal approximation rates for deep ReLU neural networks on Sobolev and Besov spaces. Journal of Machine Learning Research, 24(357):1–52, 2023.
+[131] A. Stanziola, S. R. Arridge, B. T. Cox, and B. E. Treeby. A Helmholtz equation solver using unsupervised learning: Application to transcranial ultrasound. Journal of Computational Physics, 441:110430, 2021. [132] G. Stepaniants. Learning partial differential equations in reproducing kernel hilbert spaces. Journal of Machine Learning Research, 24(86):1–72, 2023.
+[133] A. M. Stuart. Inverse problems: A Bayesian perspective. Acta Numerica, 19:451–559, 2010. [134] R. Swischuk, L. Mainini, B. Peherstorfer, and K. Willcox. Projection-based model reduction: Formulations for physics-based machine learning. Computers & Fluids, 179:704–717, 2019. [135] T. Tripura and S. Chakraborty. Wavelet neural operator for solving parametric partial differential equations in computational mechanics problems. Computer Methods in Applied Mechanics and Engineering, 404:115783, 2023.
+[136] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. Kaiser, and I. Polosukhin. Attention is all you need. In Thirty-first Annual Conference on Neural Information Processing Systems, 2017.
+[137] C. Wang and A. Townsend. Operator learning for hyperbolic partial differential equations. arXiv preprint arXiv:2312.17489, 2023.
+
+
+[138] D. Wang, Z. Zhao, Y. Yu, and R. Willett. Functional linear regression with mixed predictors. The Journal of Machine Learning Research, 23(1):12181–12274, 2022.
+[139] J.-X. Wang, J.-L. Wu, and H. Xiao. Physics-informed machine learning approach for reconstructing Reynolds stress modeling discrepancies based on DNS data. Phys. Rev. Fluids, 2:034603, 2017. [140] J.-L. Wu, H. Xiao, and E. Paterson. Physics-informed machine learning approach for augmenting turbulence models: A comprehensive framework. Phys. Rev. Fluids, 3:074602, 2018. [141] K. Xu, D. Z. Huang, and E. Darve. Learning constitutive relations using symmetric positive definite neural networks. Journal of Computational Physics, 428:110072, 2021. [142] D. Yarotsky. Error bounds for approximations with deep ReLU networks. Neural Networks, 94:103–114, 2017. [143] D. Yarotsky. Elementary superexpressive activations. In Thirty-eighth International Conference on Machine Learning, 2021.
+[144] D. Yarotsky and A. Zhevnerchuk. The phase diagram of approximation rates for deep neural networks. In Thirty-fourth Annual Conference on Neural Information Processing Systems, 2020. [145] E. Yeung, S. Kundu, and N. Hodas. Learning deep neural network representations for Koopman operators of nonlinear dynamical systems. In 2019 American Control Conference (ACC), 2019.
+[146] L. Yi, H. Su, X. Guo, and L. J. Guibas. Syncspeccnn: Synchronized spectral CNN for 3D shape segmentation. In Proceedings of the IEEE conference on computer vision and pattern recognition, 2017.
+[147] O. Zahm, P. G. Constantine, C. Prieur, and Y. M. Marzouk. Gradient-based dimension reduction of multivariate vector-valued functions. SIAM Journal on Scientific Computing, 42(1):A534–A558, 2020. [148] S. Zhang, Z. Shen, and H. Yang. Neural network architecture beyond width and depth. In Thirty-sixth Annual Conference on Neural Information Processing Systems, 2022.
+[149] Z. Zhang, L. Tat, and H. Schaeffer. BelNet: Basis enhanced learning, a mesh-free neural operator. Proceedings of the Royal Society A, 479, 2023.

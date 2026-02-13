@@ -1,0 +1,51 @@
+Skip to main content
+Computer Science > Computer Vision and Pattern Recognition
+[Submitted on 17 Nov 2025]
+Back to Basics: Let Denoising Generative Models Denoise
+Tianhong Li, Kaiming He
+Today's denoising diffusion models do not "denoise" in the classical sense, i.e., they do not directly predict clean images. Rather, the neural networks predict noise or a noised quantity. In this paper, we suggest that predicting clean data and predicting noised quantities are fundamentally different. According to the manifold assumption, natural data should lie on a low-dimensional manifold, whereas noised quantities do not. With this assumption, we advocate for models that directly predict clean data, which allows apparently under-capacity networks to operate effectively in very high-dimensional spaces. We show that simple, large-patch Transformers on pixels can be strong generative models: using no tokenizer, no pre-training, and no extra loss. Our approach is conceptually nothing more than "\textbf{Just image Transformers}", or \textbf{JiT}, as we call it. We report competitive results using JiT with large patch sizes of 16 and 32 on ImageNet at resolutions of 256 and 512, where predicting high-dimensional noised quantities can fail catastrophically. With our networks mapping back to the basics of the manifold, our research goes back to basics and pursues a self-contained paradigm for Transformer-based diffusion on raw natural data.
+Comments:	Tech report. Code at this https URL
+Subjects:	Computer Vision and Pattern Recognition (cs.CV)
+Cite as:	arXiv:2511.13720 [cs.CV]
+ 	(or arXiv:2511.13720v1 [cs.CV] for this version)
+ 	
+https://doi.org/10.48550/arXiv.2511.13720
+Focus to learn more
+Submission history
+From: Tianhong Li [view email]
+[v1] Mon, 17 Nov 2025 18:59:57 UTC (42,916 KB)
+
+Access Paper:
+View PDFHTML (experimental)TeX Source双语版本(沉浸式翻译)
+view license
+Current browse context: cs.CV
+< prev next >
+
+newrecent2025-11
+Change to browse by: cs
+References & Citations
+NASA ADS
+Google Scholar
+Semantic Scholar
+Export BibTeX Citation
+Bookmark
+Bibliographic Tools
+Code, Data, Media
+Demos
+Related Papers
+Recommenders and Search Tools
+Link to Influence Flower
+Influence Flower (What are Influence Flowers?)
+Core recommender toggle
+CORE Recommender (What is CORE?)
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax (What is MathJax?)
+About
+Help
+Contact
+Subscribe
+Copyright
+Privacy Policy
+Web Accessibility Assistance
+
+arXiv Operational Status 

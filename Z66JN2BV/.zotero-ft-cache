@@ -1,0 +1,567 @@
+
+View Online
+
+Export Citation
+RESEARCH ARTICLE | MARCH 10 2025
+Extracting interaction kernels for many-particle systems by a two-phase approach 
+Special Collection: 250 Years of Brownian Motion
+Yangxuan Shi (石泱烜) ; Wuyue Yang (杨武岳)  ; Liu Hong (洪柳) 
+Physics of Fluids 37, 033331 (2025) https://doi.org/10.1063/5.0255706
+Articles You May Be Interested In
+KoopmanLab: Machine learning for solving complex physics equations
+APL Mach. Learn. (September 2023)
+Experimental realization of a quantum classification: Bell state measurement via machine learning
+APL Mach. Learn. (September 2023)
+10 March 2025 14:12:02
+
+
+Extracting interaction kernels for many-particle systems by a two-phase approach
+Cite as: Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706
+Submitted: 31 December 2024 . Accepted: 14 February 2025 . Published Online: 10 March 2025
+Yangxuan Shi (石泱烜),1 Wuyue Yang (杨武岳),2,a) and Liu Hong (洪柳)1,a)
+AFFILIATIONS
+1School of Mathematics, Sun Yat-sen University, Guangzhou 510275, China 2Beijing Institute of Mathematical Sciences and Applications, Beijing, 101408, China
+Note: This paper is part of the Special Topic, 250 Years of Brownian Motion.
+a)Authors to whom correspondence should be addressed: yangwuyue@bimsa.cn and hongliu@sysu.edu.cn
+ABSTRACT
+This paper presents a two-phase method for learning interaction kernels of stochastic many-particle systems. After transforming stochastic trajectories of every particle into the particle density function by the kernel density estimation method, the first phase of our approach combines importance sampling with an adaptive threshold strategy to identify key terms in the kernel function, while the second phase uses the whole dataset to refine the coefficients. During the implementation of our method, the mean-field equation plays a key role in reformulating the task of extracting the interaction kernels into a learnable regression problem. We demonstrate the outstanding performance of our approach through extensive numerical examples, including interacting particle systems with a cubic potential, power-law repulsion-attraction potential, double-well potential, and piecewise linear potential, as well as a two-dimensional radially symmetric potential.
+Published under an exclusive license by AIP Publishing. https://doi.org/10.1063/5.0255706
+I. INTRODUCTION
+A stochastic interacting particle system (IPS) is a large number of particles or agents interacting through nonlinear dynamics while being subject to stochastic noise. From microscopic molecular motions to macroscopic phenomena in artificial intelligence, interacting particle systems are ubiquitous both in nature and in social science. Traditional applications range from collective cell migration to human population dynamics, while emerging applications in large language models (LLMs) and multi-agent AI systems open up new directions for this framework.1 In these AI systems, individual agents, whether different instances of language models or specialized AI agents, interact and collaborate through complex mechanisms to accomplish tasks, exhibiting collective behaviors quite similar to that of classical collective systems. Mining and modeling such systems requires identifying possible interaction mechanisms between individuals. However, these interaction rules are usually unknown and need to be inferred from observed data. This belongs to the class of inverse problems, which however is particularly difficult in the current case, since the IPS involves a large number of interacting agents under the impacts of intrinsic and extrinsic stochastic effects. In recent years, data-driven approaches have become a powerful tool for addressing these issues. For example, SINDy
+and its variants have been successfully applied to discover governing equations in different fields.2 They identify sparse representations of nonlinear dynamical systems from data, often revealing interpretable physical laws. Data-driven methods have also been applied to parameter inference and model discovery
+for interacting particle systems.3–5 Peng et al. discussed the potential of combining multiscale modeling with machine learning. By reviewing some typical case studies, they demonstrated the striking power of machine learning to extract macro- behaviors from micro-data.6 The research by Vlachas et al. focused on learning effective models of complex systems. They successfully extracted simplified macroscopic models from microscopic simulation data by using machine learning techniques, significantly enhancing the understanding and simulation efficiency of complex systems.7 A continuum description is essential for understanding the collective phenomena in active matters. By using a physically informed data-driven approach, Golden et al. constructed a complete mathematical model of an active nematic based on experimental data, revealing dynamics controlled by active and friction stresses with no role for elastic effects.8 In the above-mentioned studies, the mean-field theory plays a role in analyzing the complex dynamics of IPS, providing a
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-1
+Published under an exclusive license by AIP Publishing
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+10 March 2025 14:12:02
+
+
+simplified framework to describe the macroscopic behaviors arising from microscopic interactions.9,10 Despite its success, deriving accurate mean-field equations for interacting particle systems remains a challenging task, especially under dynamically changing environments.11 In this paper, we propose a two-phase method for learning the interaction kernels of IPS. Our starting point is the stochastic trajectories of every particle in the IPS, which are obtained either by experimental measurements or by numerical simulations. Then using the kernel density estimation approach, the empirical distribution function is constructed, which is supposed to be the solution to the corresponding mean-field equation. The interaction kernel function constitutes an essential part of the mean-field equation and determines the collective dynamics of the IPS. Now we apply importance sampling with an adaptive threshold strategy to identify the key terms in the interaction kernel, which later will be fine-tuned by making use of the whole dataset. This is the key steps of our method. To provide a detailed explanation on the algorithms of our method, as well as applications to several concrete examples, the remainder of the paper is structured as follows: Sec. II establishes the theoretical foundation for the mean-field equations and their connections to the stochastic interacting particle systems. Section III presents our Two-Phase methodology for learning interaction kernels in detail. In Sec. IV, we test our approach through a series of numerical experiments. The last section concludes with a summary of the findings and potential future directions.
+II. MEAN-FIELD THEORY FOR INTERACTING PARTICLE SYSTEMS
+Here, we focus on how to derive many-body mean-field equations from the individual stochastic dynamics of interacting particles. Consider the following system of N interacting particles (IPS):
+dXN
+i 1⁄41
+N
+N X
+j1⁄41
+KðXN
+i ; XN
+j Þdt þ 1
+N
+N X
+j1⁄41
+rðXN
+i ; XN
+j Þ dWi
+t; (1)
+where XiN 1⁄4 XiN ðtÞ 2 Rd represents the position of the i’th particle
+in a d-dimensional space at time t. K : Rd Rd ! Rd denotes the drift term, r : Rd Rd ! Rd Rd represents the diffusion term, and Wit (1 i N) are N independent d-dimensional Wiener processes. We aim to derive the mean-field limit of this interacting particle system as N ! 1. Introduce the empirical distribution function
+uN ðx; tÞ 1
+N
+N X
+j1⁄41
+dðx XN
+j Þ: (2)
+Then, by the strong law of large numbers, we have
+uðx; tÞ 1⁄4 Nli!m1 uN ðx; tÞ; (3)
+as the density function of the particles at position x and time t. Similarly, it can be shown that
+1 N
+XN
+j1⁄41 Kð ; XN
+j ðtÞÞ N !!1 ð
+Kð ; xÞuðx; tÞdx; (4)
+1 N
+XN
+j1⁄41 rð ; XN
+j ðtÞÞ N !!1 ð
+rð ; xÞuðx; tÞdx: (5)
+Substituting these formulas into the stochastic differential equation (SDE) for the IPS [Eq. (1)] we obtain the so-called McKean-Vlasov SDE (MVE),12
+dXiðtÞ 1⁄4
+ð
+Rd
+KðXiðtÞ; yÞuðy; tÞdy dt
+þ
+ð
+Rd rðXiðtÞ; yÞuðy; tÞdy dWi
+t: (6)
+Based on the coupling method, it becomes possible to establish rigorous convergence results between the solutions of IPS and MVE in mathematics.13
+Lemma II.1. For K; r 2 W1;1 \ L1, there exists a constant c > 0, such that
+E max
+0 s t jXN
+i ðsÞ XiðsÞj2
+h ic
+N ect; (7)
+where XiN ðsÞ and XiðsÞ represent the solutions to IPS and MVE, respectively.
+Theorem II.2. As a consequence, we have
+ðXN
+i ðtÞÞt21⁄20;T N !!1 ðXiðtÞÞt21⁄20;T in probability: (8)
+Let gðxÞ 2 C2ðRdÞ be the test function. Applying It^o’s formula and taking expectations on both sides, the MVE yields
+E gðXiðtÞÞ E gðXið0ÞÞ
+1⁄4E
+ðt
+0
+g 0 ðX i ðsÞÞ
+ð
+Rd
+KðXiðsÞ; yÞuðy; sÞdyds
+"#
+þ1
+2E
+ðt
+0
+g00ðXiðsÞÞ :
+ð
+Rd
+rðXiðsÞ; yÞuðy; sÞdy
+T
+"
+ð
+Rd
+rðXiðsÞ; yÞuðy; sÞdy ds : (9)
+Taking an average of the N equations in (9), we obtain
+ð
+Rd gðxÞuðx; tÞdx
+ð
+Rd gðxÞuðx; 0Þdx
+1⁄4
+ð
+Rd
+ðt
+0
+g0ðxÞ
+ð
+Rd Kðx; yÞuðy; sÞdy ds
+"#
+uðx; tÞdx
+þ1
+2
+ð
+Rd
+ðt
+0
+g00ðxÞ :
+ð
+Rd
+rðx; yÞuðy; sÞdy
+T
+ð
+Rd
+rðx; yÞuðy; sÞdy ds uðx; tÞdx: (10)
+Using Fubini’s theorem to interchange the order of integration, we differentiate above equation by t, which gives
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-2
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02
+
+
+ð
+Rd gðxÞ @
+@t uðx; tÞdx
+1⁄4
+ð
+Rd g0ðxÞ
+ð
+Rd
+Kðx; yÞuðy; tÞdy uðx; tÞdx
+þ1
+2
+ð
+Rd g00ðxÞ :
+ð
+Rd
+rðx; yÞuðy; tÞdy
+T
+ð
+Rd
+rðx; yÞuðy; tÞdy uðx; tÞdx
+1⁄4
+ð
+Rd gðxÞrx uðx; tÞ
+ð
+Rd
+Kðx; yÞuðy; tÞdy dx
+þ1
+2
+ð
+Rd gðxÞDx : uðx; tÞ
+ð
+Rd rðx; yÞuðy; tÞdy
+T
+"
+ð
+Rd rðx; yÞuðy; tÞdy dx: (11)
+The last equality holds by integration by parts. Due to the arbitrariness of the test function, the mean-field equation reads @
+@t uðx; tÞ þ rx 1⁄2uðx; tÞðK uðx; tÞÞ
+1⁄41
+2 Dx : 1⁄2uðx; tÞðr uðx; tÞÞT ðr uðx; tÞÞ ; (12)
+where K uðx; tÞ 1⁄4 Ð
+Rd Kðx; yÞuðy; tÞdy and r uðx; tÞ 1⁄4 Ð
+Rd
+rðx; yÞuðy; tÞdy represent convolution operations. Equation (12) is also known as the McKean–Vlasov equation. Particularly, when the diffusion term rðXiN ; XjN Þ 1⁄4 rcId d is a constant matrix, we have @
+@t uðx; tÞ þ rx 1⁄2uðx; tÞðK uðx; tÞÞ 1⁄4 rc2
+2 Dxuðx; tÞ: (13)
+This is the main equation we will consider in the following sections. During the above procedure, we have derived the mean-field Eq. (12) in a formal way. It becomes crucial to establish the conditions under which the empirical measure of the IPS converges to its meanfield limit. This is given through the following statement according to Kac: Theorem II.3 (Propagation of Chaos). The particles become asymptotically independent as N ! 1. Specifically, for any fixed
+k 2 Nþ, we have
+ðXN
+1 ðtÞ; ...; XN
+k ðtÞÞ N !!1 uðx; tÞ k in distribution; (14)
+where XN
+i ðtÞ is the solution to IPS, uðx; tÞ is the probability density
+solving Eq. (12), and uðx; tÞ k denotes the direct products of k probability density functions.
+III. A TWO-PHASE METHOD FOR LEARNING INTERACTION KERNELS
+With respect to the McKean–Vlasov equation in (13), our primary goal is to extract the explicit form of the drift term K 1⁄4 Kðx; yÞ based on a knowledge of stochastic trajectories of every particles. Here we restrict ourselves to a specific form of K, which is supposed to be the gradient of a radial interaction potential U,
+Kðx; yÞ 1⁄4 rUðjjx yjj2Þ 1⁄4 /ðjjx yjj2Þ x y
+jjx yjj2
+: (15)
+Here, /ðrÞ 1⁄4 U0ðrÞ is called the interaction kernel, in which r 1⁄4 jjx yjj2 represents the distance between two particles at positions x and y. Our learning framework consists of two phases. In phase I, by combining importance sampling with an adaptive threshold strategy, we can identify the key terms in the kernel function through sparse regression. In phase II, we fix the equation structure and utilize the complete dataset to perform fine tuning of the model parameters, thereby obtaining the final kernel function. This two-phase design effectively balances model sparsity and accuracy while maintaining high computational efficiency.
+A. Phase I: Sparsification with importance sampling
+1. Dictionary representation of interaction kernels
+In order to get the explicit form of /ðrÞ, we will expand it in terms of basis functions,
+/ðrÞ ~/ðr; fÞ 1⁄4 M X
+k1⁄41
+fkwkðrÞ; (16)
+where w1ðrÞ; ...; wM are basis functions we chose and f 1⁄4 f1ðrÞ; ...; fM are coefficients to be learned. Here, we consider two different forms of basis functions. The first is a polynomial basis,
+Dpoly 1⁄4 rp1 ; rp2 ; ...jp1; p2; ... 2 Z :
+Physically, the positive powers ðpi > 0Þ represent long-range interactions, negative powers ðpi < 0Þ represents short-range interactions, while the case pi 1⁄4 0 represents constant interactions independent of distance. The second is a physics-informed dictionary basis
+Dphys 1⁄4 sinðrÞ; cosðrÞ; er; e r; e r=r; sgnðr rcÞr 1; ... ;
+which incorporates various common interactions in physics. We define an objective function that measures the discrepancy between the observed system evolution and predictions based on kernel function estimation
+mfin
+@u
+@t þ rx uð ~Kð ; fÞ uÞ rc2
+2 Dxu
+2
+2
+þ kjjfjj1; (17)
+where K~ ðx; y; fÞ 1⁄4 /~ ðr; fÞ x y
+r with r 1⁄4 jjx yjj2, f are coefficients for the interaction kernel /ðrÞ, k is the regularization parameter, and jj jj1 denotes the L1 norm for sparsity. The spatial derivatives are approximated by using centered finite differences
+Dxu uðx þ Dx; tÞ 2uðx; tÞ þ uðx Dx; tÞ
+ðDxÞ2 :
+The temporal derivative is approximated by using forward differences
+@u @t
+uðx; t þ DtÞ uðx; tÞ
+Dt :
+The interaction term is computed using discrete convolution
+ðK~ ð ; fÞ uÞðx; tÞ 1 X
+j1⁄41
+X
+jjy xjj21⁄4jDx
+~/ðjDx; fÞuðy; tÞ x y
+j:
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-3
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02
+
+
+2. Importance sampling and sparse regression
+In the first phase, we need to correctly identify the interaction kernel and improve the sparsity of the coefficients. To achieve this goal, we use an iterative optimization process combined with important sampling to effectively explore the time domain. Specifically, instead of optimizing with respect to all available time steps, we only sample a subset of time steps according to their relative importance, where the sampling probability pn for each time step n is determined by the following formula:
+pn 1⁄4 En
+PNt
+k1⁄41 Ek
+; (18)
+where En indicates the error of the n’th time step. This method ensures that those time steps with large errors will get more chances to be sampled during the optimization procedure.
+To improve the sparsity of coefficients, we implement a mechanism of adaptive thresholds. During the k’th iteration, the threshold sk is determined by
+sk 1⁄4 amax jfðkÞ
+1 j; ...; jfðkÞ
+Mj
+no
+; (19)
+where a is the sparsity intensity and fðkÞ
+i is the i’th coefficient during
+the k’th iteration. Record a binary mask matrix m 2 0; 1
+f gM, which will be updated according to the following rule on threshold:
+mðkþ1Þ
+i 1⁄4 1; if jfðkÞ
+i j sk;
+0; if jfðkÞ
+i j < sk:
+8<
+: (20)
+B. Phase II: Refinement with frozen structure
+The second phase focuses on refining the coefficients of the identified kernel function in phase I while still maintaining its sparsity (keeping the mask matrix unchanged). Unlike phase I, this phase is optimized using all available time steps, with the objective function set as
+mfin
+N Xt
+n1⁄41
+@u
+@t ð ; tnÞ þ rx uð ; tnÞðK~ ð ; f mÞ uÞ
+rc2
+2 Dxuð ; tnÞ
+2
+2
+þ kjjf mjj1; (21)
+where tn represents the n’th time step, m is the binary mask matrix determined in phase I, and f m 1⁄4 ðf1m1; ...; fMmMÞ represents sparse coefficients by masking. The detailed implementation steps including phase I and phase II are provided in Algorithm 1.
+C. Results assessment
+We evaluate the results using three different criteria: comparison of the estimated values with the ground truth, the Wasserstein distance between the estimated and true solutions, and the estimated and true free energy flows.
+1. Estimated and true kernels
+We compare the true and estimated kernels either by plotting their numerical values side-by-side or by calculating their relative errors on the coefficients when explicit expressions are available. Such a comparison allows us to visualize their similarities and differences.
+2. Wasserstein distance
+To quantify the difference between the solutions calculated based on the true and estimated interaction kernels, we refer to the 2Wasserstein distance between them. The 2-Wasserstein distance W2ðf ; gÞ measures the optimal transport cost between two probability density functions f and g over the spatial domain X, which is defined as
+W2ðf ; gÞ :1⁄4 inf
+c2Cðf ;gÞ
+ð
+XX
+jx yj2dcðx; yÞ
+1=2
+;
+where Cðf ; gÞ denotes the set of all couplings between the two densities f and g. The Wasserstein distance provides a rigorous metric for assessing the accuracy of the estimated solutions compared to the true
+ALGORITHM 1. A Two-Phase Method for Learning Interaction Kernels with Importance Sampling and Sparsity Frozen.
+Require: Total number of particles N, time interval dt, space grid x Ensure: Optimized coefficients f for the kernel function
+1: #Data Generation: Generate particle trajectories through SDEs
+2: Initialize the N particle system Xið0Þ N
+i1⁄41
+3: for each time step t do
+4: Update particle positions XiðtÞ N
+i1⁄41 according to Eq. (1) 5: Store particle positions for each time step t 6: end for
+7: Use Kernel Density Estimation (KDE) to estimate particle density function uðx; tÞ at each time step 8: Generate candidate basis function dictionary W1ðxÞ; ...; WMðxÞ 9: #Phase I: Importance sampling with sparsity regression 10: Initialize coefficients f randomly 11: Initialize the mask matrix m as a boolean array with all true values
+12: repeat
+13: Compute time derivative @tu and space derivative @xu 14: Compute error En at each time step
+15: Calculate sampling probability: pn 1⁄4 En= PNt
+k1⁄41 Ek
+16: Sample time steps according to pn
+17: Compute adaptive thresholds sk 1⁄4 amax jfðkÞ
+1 j; ...; jfðkÞ
+Mj
+no
+18: Update coefficients f by using sampled time steps 19: Update the mask matrix:
+mðkþ1Þ
+i 1⁄4 1ðjfðkÞ
+i j skÞ or 0ðjfðkÞ
+i j < skÞ
+20: until convergence or all coefficients in f are masked 21: # Phase II: Refinement with fixed mask matrix 22: Using fixed mask matrix obtained from Phase I
+23: Minimize loss function PNt
+n1⁄41 jj @u
+@t ð ; tnÞ þ rx ðuð ; tnÞð ~Kð ; f mÞ
+uÞÞ rc2
+2 Dxuð ; tnÞjj2
+2 þ kjjf mjj1 with all time steps 24: return optimized f
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-4
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02
+
+
+solutions, which is particularly useful when the differences are not visually apparent.
+3. Free energy
+We also compare the true and estimated free energies. The free energy, whose Wasserstein gradient gives the mean-field equation, is defined by
+E1⁄2u; / ðtÞ 1⁄4 rc2
+2
+ð
+Rd u lnðuÞ dx þ
+ð
+Rd uðu UÞ dx;
+with UðrÞ 1⁄4
+ðr
+0
+/ðsÞ ds:
+The true and estimated free energies are denoted as E1⁄2u; / ðtÞ
+and E1⁄2^u; ^/ ðtÞ, respectively, allowing us to evaluate how well the estimated interaction kernel function captures the underlying dynamics of the IPS.
+D. Numerical setup
+All numerical computations have been carried out on a platform equipped with Intel Xeon Platinum 8474C CPU (15 vCPU), and 80GB system memory. The code has been implemented in Python 3.8 with acceleration provided by Numba’s Just-in-Time compilation (njit) and parallel processing capabilities (prange). This setup enables efficient handling of the interacting particle systems through parallel processing
+TABLE I. Summary on numerical setup for different cases.
+Parameters Cubic Power-law Double-well 2D radial Polarization Consensus
+Particles (N) 2 104 2 104 3 105 2 104 5 104 5 104 Time Step (dt) 1 10 4 1 10 4 1 10 4 1 10 4 1 10 4 1 10 4 Mesh Size (dx) 0.08 0.032 0.08 0.08 0.02 0.032 Initial Distribution Two Gaussians Mixture Gaussians Two Gaussians Two Gaussians Mixture Gaussians Mixture Gaussians Total Runtime(seconds) 510.50 34.26 306.8 12898.38 330.40 1096.81
+FIG. 1. Flowchart for interaction kernel extraction by our two-phase approach for many particle systems.
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-5
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02
+
+
+of multiple trajectories. The numerical parameters and computational time for different cases are summarized in Table I.
+IV. NUMERICAL EXPERIMENTS
+Here, we consider a stochastic system composed of N particles moving in space with two-body non-local interactions among them. The dynamics of this system are described by a group of coupled SDEs in Eq. (1). As we have shown, in the mean-field limit N ! 1, this system converges to the mean-field equation in Eq. (13). Now our primary goal is to learn the interaction kernels from the observational data of the system, the trajectories of particles to be exact (Fig. 1).
+A. Cubic potential
+In the first case, we consider particles confined in a onedimensional tube with a cubic potential /ðrÞ 1⁄4 3r2 as the interaction kernel, where r is the distance between any two particles. Meanwhile, the diffusion coefficient rc is a constant. To perform numerical simulations, we set up a system composed of 20 000 particles, whose initial positions are sampled from the following bimodal distribution:
+1
+2 ðN ð1; s2Þ þ N ð 1; s2ÞÞ;
+FIG. 2. Evolution of particle densities based on IPS, exact and learned mean-field equations, with error analysis. (a–d): Cubic potential case. (e–h): Power-law repulsion-attraction potential case. (a, e) Paricle density evolution from simulations of stochastic interacting particles. (b, f) Numerical solutions of the exact mean-field equation. (c, g) Solutions of the mean-field equation using learned interaction kernels. (d, h) Absolute errors between solutions of the exact and learned mean-field equations.
+FIG. 3. Identification of interaction kernels and parameter sensitivity analysis for the cubic potential case. (a) The learned interaction kernel /ðrÞ based on either stochastic trajectories or the particle density with an inset showing their absolute errors. (b) Comparison on the free energy for both true and learned dynamics. (c) Convergence rates with and without importance sampling in Phase I. (d) Coefficients evolution during the procedure of sparse regression. Wasserstein distance W2ðu; u^Þ between predicted and exact
+particle densities under varying parameters: (e) number of interacting particles N, (f) time step size Dt, (g) variance s2, and (h) diffusion coefficient rc2.
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-6
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02
+
+
+where N denotes the normal distribution and s2 is the variance of each normal distribution. Here, we set s2 1⁄4 0:25 and rc2 1⁄4 2. Then, by
+using the Euler–Maruyama scheme, the IPS described in Eq. (1) is simulated over the time interval [0, 1] with a time step dt 1⁄4 10 4. To estimate the particle density uðx; tÞ, we adopt the kernel density estimation (KDE) on a spatial grid within the range 1⁄2 4; 4 , discretized into 100 intervals. On the other hand, we solve the mean-field equation numerically by using the fourth-order Runge-Kutta scheme to calculate time derivatives and the forward Euler scheme for spatial derivatives. The meanfield equation is discretized on the spatial domain 1⁄2 4; 4 with a mesh size dx 1⁄4 0:05 and the temporal domain [0, 1] with a time step dt 1⁄4 10 3. Through comparing Figs. 2(a) and 2(b), we can see an excellent agreement on the results of stochastic particle simulations and the mean-field equation, as long as the particle number is large enough. The performance of our two-phase method is demonstrated through a direct comparison on both the form of the interaction kernel /ðrÞ in Fig. 3(a) and the free energy in Fig. 3(b). The inset shows that the absolute errors of the learned interaction kernel function remain consistently below 10 2. The significance of phase I is highlighted in Fig. 3(c), which reveals the adoption of importance sampling could effectively reduce the computation time by an order of magnitude. The procedure of sparsity regression is drawn in the last plot. After about ten rounds of iteration, it can be seen that only the coefficient for x2 term remains significant and fluctuates around its exact value 3, matching the true cubic potential.
+The robustness of our method is examined through the Wasserstein distance under various parameters in Fig. 3(e). By increasing the particle number N 1⁄4 5000, 10 000, and 20 000, the accuracy of our method is improved by above two orders of magnitude, which can be attributed to the discrepancy between the IPS and its mean-field limit. In our approach, we implement a multi-scale framework by downsampling the data in space and time to generate a coarser mesh. The coarser time step is defined as Dt 1⁄4 kdt, where k 2 1; 2; 5; 10; 50; 100
+f g. As shown in Fig. 3(f), smaller time steps (e.g., Dt 1⁄4 10 4) are more accurate with a Wasserstein distance around 10 4, while larger time steps (e.g., Dt 1⁄4 10 2) result in higher errors around 10 2. We also explore the impacts of the initial variance s2 in the bimodal distribution, with values ranging from 0.25 to 1.0, and the diffusion coefficient rc2 in Figs. 3(g) and 3(h), both showing that smaller values of variance and diffusion coefficient will lead to better predictions.
+B. Power-law repulsion-attraction potential
+A classic example of a long-range interaction in physics is the Coulomb’s law,14 which states that the electrostatic force between two charged particles is proportional to r 2. Inspired by this physical law, we consider the following interaction potential:
+/ðrÞ 1⁄4 r r 1:5;
+where the first term r represents linear long-range attraction and the second term r 1:5 becomes singular as r ! 0. To address this problem, we introduce a modified potential with a cutoff radius rc,
+FIG. 4. Results for the power-law repulsion-attraction potential. (a) Comparison between true and learned interaction kernels /ðrÞ. (b) Wasserstein distance W2ðu; u^Þ between true and learned solutions over time. (c) The scaling relationship between the L2 error and particle numbers. (d) The average loss as a function of the optimization steps, with an inset displaying the convergence rate. (e) The procedure of sparse regression.
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-7
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02
+
+
+/ðrÞ 1⁄4 r r 1:5; r > rc;
+r rc 1:5; r rc:
+In this case, we set the cutoff radius rc 1⁄4 0:05. By implementing the above modified potential to simulations of both SDE and the mean-field equation, we can see that it correctly
+reproduces the attractive forces at large distances and repulsive forces at short distances, as illustrated in Figs. 2(e), 2(f), and 4(a). For the SDE simulation, we use N 1⁄4 20; 000 particles and a time step Dt 1⁄4 10 4 up to the final time T 1⁄4 1:0. The diffusion constant is rc2 1⁄4 0:02; while for the numerical solvation of the mean-field equa
+tion, we choose a spatial domain 1⁄2 7; 7 with the mesh size Dx 1⁄4 0:05
+FIG. 5. 2D radial symmetric potential. (a) Evolution of the density distribution estimated based on stochastic simulations of 20 000 particles. (b) Free energy under different initial conditions. (c) Comparison between true and learned coefficients in the dictionary representation of the kernel function.
+TABLE II. Summary on the learned interaction kernel functions from data based on IPS simulations.
+Power Series Candidate x0 x1 x2 x3 ex e x sinðxÞ cosðxÞ x p
+Case A True 0 0 3 0 0 0 0 0
+Learned 0 0 3.003 0 0 0 0 0 Case B True 0 1 0 0 0 0 0 0 1
+Learned 0 0.986 0 0 0 0 0 0 0.815 Case C True 0 0 3 0 0 0 0 0
+Learned 0 0 2.916 0 0 0 0 0 Case D True 0 4 0 4 0 0 0 0
+Learned 0 3.892 0 3.927 0 0 0 0
+Legendre polynomials x0 x1 2
+3 x2 1
+2
+5
+2 x3 3
+2 x 45
+8 x4 15
+4 x2 þ 8
+3 Case D True 10.625 23.125 15.625 3.125 0
+Learned 10.431 22.275 15.420 2.655 0
+Chebyshev polynomials x0 x1 2x2 1 4x3 3x 8x4 8x2 þ 1 Case D True 14.531 24.297 11.719 1.953 0
+Learned 14.410 22.572 11.914 1.211 0.524
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-8
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02
+
+
+and a time region [0, 1] with the time step dt 1⁄4 10 3. The initial condition is given by
+uðx; 0Þ 1⁄4 1
+2 ðN ð2; 0:25Þ þ N ð 3; 1ÞÞ:
+The Wasserstein distance between the estimated and true density distributions in Fig. 4(b) demonstrates that our two-phase method could maintain low errors below 10 2. Meanwhile, the average loss function, defined as
+Ldata 1⁄4 1
+Nt Nx
+jjuðx; tÞ u^ðx; tÞjj2
+2;
+converges after 20 rounds of iteration in the current case. Here, Nt Nx denote the total number of time-space points used for evaluation, u and ^u represent the true and estimated particle density functions, respectively. Furthermore, the increase in particle numbers could help to reduce the error between the estimated and true particle density functions, which highlights the key role of an accurate density function for the following procedure of interaction kernel extraction. Data in Fig. 4(c) give Ldata N 0:39.
+C. 2D radial symmetric potential
+In the next example, we extend our studies to the twodimensional IPS. The interaction kernel /ðrÞ is supposed to depend
+only on the distance between two particles, making it radially symmetric. In particular, we set /ðrÞ 1⁄4 3r2 and the diffusion constant rc2 1⁄4 2. Here, three initial conditions, including two Gaussians, four Gaussians, and a ring-like distribution, are explored, whose concrete forms are given by
+Two Gaussians : u0
+1ðx; yÞ 1⁄4 1
+2
+1
+2ps2 exp ðx 1Þ2 þ y2
+2s2
+þ1
+2ps2 exp ðx þ 1Þ2 þ y2
+2s2
+!
+;
+Four Gaussians : u0
+2ðx; yÞ 1⁄4 1
+4
+X
+m;n1⁄461
+1 2ps2
+exp ðx mÞ2 þ ðy nÞ2
+2s2 ;
+Ring like : u0
+3ðx; yÞ 1⁄4 1
+2ps2 exp
+ffiffiffiffiffiffiffiffiffiffiffiffiffiffiffi
+x2 þ y2
+p1
+2
+2s2
+0
+@
+1
+A;
+where s2 1⁄4 0:25. The numerical results based on stochastic particle simulations are given in Fig. 5(a), which shows that the particle
+FIG. 6. Results for the double-well potential case. (a) Illustration on the double-well potential. Evolution of particle density calculated by (b) stochastic IPS or (c) mean-field equation. Comparison between true and learned interaction kernels /ðrÞ using different basis functions: (d) Legendre polynomials, (e) Chebyshev polynomials, and (f) power series, with insets showing their absolute errors. Wasserstein distance W2ðu; u^Þ between true and learned solutions over time for (g) SDE-based and (h) MFE-based data. (i) Average loss comparison during optimization process using different basis functions.
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-9
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02
+
+
+density function starting with a bimodal distribution will evolve toward a single peak due to the existence of long-range attractive forces. Alternative initial conditions, including four Gaussian functions and ring-like distributions, would lead to diverse twodimensional patterns, but they all eventually converge to a single Gaussian peak at equilibrium, with free energies approaching the same value of 0.6034 [see Fig. 5(b) and Fig. S2 in SI]. These diverse
+evolutions could be well captured by our two-phase method. And with respect to the candidate dictionary of basis functions, our approach correctly identifies the true term and its concrete coefficient. All remaining redundant terms are eliminated during the procedure of sparse regression. The result based on data from the mean-field equation is slightly better than that based on data of SDEs, see Fig. 5(c) for details.
+FIG. 7. Opinion dynamics with discontinuities. (a–c) Polarization and (d–f) consensus cases: evolution of opinion density distribution calculated based on (a,d) stochastic IPS, (b,e) mean-field equation, and (c,f) absolute errors between solutions of the exact and learned mean-field equations. Bottom two panels demonstrate results on the interaction kernel: (g–i) for polarization case and (j–l) for consensus case. (g,j) Comparison between true and learned interaction functions by using DNN. (h,k) Gradient of learned interaction functions f ðrÞ. (i,l) Comparison between true and learned interaction functions f ðrÞ by applying our approach.
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-10
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02
+
+
+D. Double-well potential
+It is questionable whether the selection of different basis function may influence the regression results in our two-phase approach to a great extent. To address this issue, here we take a scenario involving a
+double well potential UðrÞ 1⁄4 ðr2 1Þ2 as an illustration. The corresponding interaction kernel is /ðrÞ 1⁄4 4rðr2 1Þ, which includes both attractive and repulsive regions. We expand the interaction kernel with three different kinds of polynomial basis functions: Legendre polynomials PnðrÞ, Chebyshev polynomials TnðrÞ, and original power series. For each basis, we construct the approximation up to degree 4
+/ðrÞ 4 X
+k1⁄40
+nkBkðrÞ; (22)
+where BkðrÞ represents the chosen basis functions and nk are the coefficients to be learned. For the Legendre polynomial basis, we first normalize the space radius r to the interval 1⁄2 1; 1 through the transformation r~ 1⁄4 2r=rmax 1, where rmax 1⁄4 2:5. The interaction
+kernel is then approximated as /ðrÞ P4
+k1⁄40 nkPkðr~Þ, where Pk are Legendre polynomials. For the Chebyshev polynomial basis, we similarly normalize the spatial variable to 1⁄2 1; 1 and the interaction kernel
+can be expressed as /ðrÞ P4
+k1⁄40 nkTkðr~Þ, where Tk represents Chebyshev polynomials. Finally, for the original power series, we construct a dictionary that includes both polynomial and non-polynomial terms. As shown in Table II, our method successfully identifies the true coefficients of every term in the cubic potential. No obvious distinction has been observed among three different basis functions, see Figs. 6(d)–6(f) for a clear illustration. The performance measured through the Wasserstein distance W2ðu; ^uÞ as shown in Figs. 6(g) and 6(h) further supports this conclusion, where the learning based on SDE data converges to an error around 10 3, and the learning based on MFE data achieves a better accuracy of 10 4. Therefore, we conclude that for usual applications the selection of different basis functions has no significant impact on the accuracy of final results, though the adoption of appropriate basis functions may indeed accelerate the convergence rate. As shown in Fig. 6(i), among all three basis functions, the Legendre polynomials demonstrate the fastest convergence on average, followed by the Chebyshev polynomials with a slightly slower convergence, while the power series basis requires more iterations to achieve the same levels of accuracy.
+E. Opinion dynamics with discontinuities
+The IPS in Eq. (1) is also suitable for describing the spreading of opinions among people. Let Xi 2 R be the opinion of the i’th agent.
+According to Motsch and Tadmor,11 we consider two types of interaction kernels /ðrÞ 1⁄4 f ðrÞr, i.e.,
+1. Polarization
+f1ðrÞ 1⁄4
+0:5; 0 r 1:5 1:0; 1:5 < r 2 0; r > 2;
+8<
+:
+2. Consensus
+f2ðrÞ 1⁄4
+0:1; 0 r 2 1:0; 2 < r 3 0; r > 3:
+8<
+:
+As shown in Figs. 7(a) and 7(b), for the polarization case, the dynamics reveals a two-cluster pattern, so that opinions of agents will separate into two stable clusters; while for the consensus case, initially diverse opinions converge to a single cluster, meaning agents will reach a consensus at last. To robustly determine the exact locations of discontinuities, we take additional steps in complement to our two-phase method, which are summarized as follows:
+(1) Constructing the probability density function by KDE; (2) Employing Deep Neural Networks (DNN) to approximate the interaction function f ðrÞ, which are optimized through minimizing the residue loss function for the mean-field equation, i.e.,
+L MFE 1⁄4 @uðx; tÞ
+@t
+rc2 2
+@2uðx; tÞ @x2
+@
+@x uðx; tÞ ^/ðjy xjÞ ðy xÞ uðy; tÞ
+n h io 2
+2
+:
+(3) Calculating the gradient of f ðrÞ by automatic differentiation of DNN, ranking these values and clustering the top 50 points to determine the most probable locations for discontinuities; (4) Making symbolic regression of f ðrÞ piece by piece based on a pre-knowledge of discontinuities.
+During the above procedure, the determination of discontinuities plays a role and saves us from the hard task of approximating discontinuous functions as a whole. Actually, from Figs. 7(g) and 7(j), we can observe that DNN fails to capture the exact locations of discontinuities of these interaction kernels. In contrast, our two-phase approach combined with discontinuity determination by gradients not only converges significantly
+TABLE III. Piecewise linear functions learned for the opinion dynamics.
+Opinion dynamics 1 1I1ðxÞ x 1I1ðxÞ 1 1I2ðxÞ x 1I2ðxÞ 1 1I3ðxÞ x 1I3ðxÞ
+Polarization True 0.5 0 1.0 0 0 0
+Learned 0.506 0 1.006 0 0 0 Consensus True 0.1 0 1 0 0 0
+Learned 0.113 0 0.996 0 0 0
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-11
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02
+
+
+faster than the DNN approach, but also successfully reconstructs the discontinuous interaction kernels, specifically for cases of polarization (I1 : x 1:5, I2 : 1:5 < x 2, I3 : x > 2) and consensus (I1 : x 2, I2 : 2 < x 3, I3 : x > 3). As shown in Table III, our learned coefficients closely match their respect true values. Here, 1IiðxÞ represents the indicator function for region i and the terms x 1IiðxÞ represent linear functions within each region. 0 indicates terms that were correctly eliminated through Phase I.
+V. CONCLUSION AND DISCUSSIONS
+The interacting particle systems are widely known for their intrinsic complexity and fruitful phenomena. How to extract their underlying dynamics, especially the roles governing interactions between particles, is a challenging issue in the field of data-driven science. In this paper, we have developed a two-phase method to reveal the interaction kernels for many-particle systems. In phase I, we combine importance sampling with adaptive sparsification to identify the key terms of the kernel functions, and phase II performs refined parameter estimation with respect to the whole dataset. During the implementation of our approach, the kernel density estimation and the mean-field equation play key roles in constructing the particle density function from stochastic trajectories of interacting particles, and transforming the task of extracting the interaction kernels into a learnable linear regression problem, respectively. Through diverse numerical experiments, it has been shown that our method could successfully reconstruct various interaction kernels, including cubic potential, power-low repulsion-attraction potential, potential function with discontinuities, etc., in an accurate and robust way. While our proposed two-phase approach shows good performance in learning interaction kernels for low-dimensional systems, challenges arise when applied to high-dimensional systems. The major obstacle is that the kernel-based methods become less efficient with the increase in problem dimension. To address this issue, we may turn to either sample-based methods15 or weak-form-based approaches.16 Related works are going on. As our method based on the knowledge of empirical density function and mean-field equations, a large number of interacting particles are required to make sure the validity of the mean-field approximation, which undoubtedly puts a heavy burden on the study. How to extract the interaction kernel with respect to a small amount data of particle trajectories puts a challenge on our future studies. An alternative exciting application of our method would be the datasets of intelligent agents, similar to the foundation models of ASAL for discovering artificial life simulations.17 This could help us to understand the collective behaviors from the particle-based insights to intelligent agent-based insights.
+SUPPLEMENTARY MATERIAL
+See the supplementary material for additional figures on the convergence of loss functions, different initial conditions for the 2D IPS simulations, and particle dynamics under power-law potential.
+ACKNOWLEDGMENTS
+This work was supported by the National Key R&D Program of China (Grant No. 2023YFC2308702), the National Natural Science Foundation of China (Grant No. 12301617), and the
+Guangdong Basic and Applied Basic Research Foundation (Grant No. 2023A1515010157).
+AUTHOR DECLARATIONS Conflict of Interest
+The authors have no conflicts to disclose.
+Author Contributions
+Yangxuan Shi: Data curation (equal); Methodology (equal); Software (equal); Validation (equal); Visualization (equal); Writing – original draft (equal). Wuyue Yang: Conceptualization (equal); Data curation (equal); Formal analysis (equal); Funding acquisition (equal); Investigation (equal); Methodology (equal); Software (equal); Supervision (equal); Validation (equal); Visualization (equal); Writing – original draft (equal); Writing – review & editing (equal). Liu Hong: Conceptualization (equal); Formal analysis (equal); Funding acquisition (equal); Investigation (equal); Methodology (equal); Resources (equal); Supervision (equal); Validation (equal); Writing – original draft (equal); Writing – review & editing (equal).
+DATA AVAILABILITY
+The data that support the findings of this study are available from the corresponding authors upon reasonable request. The code is available at https://github.com/DLforS/IPSLearning.
+REFERENCES
+1Z. Xi, W. Chen, X. Guo, W. He, Y. Ding, B. Hong, M. Zhang, J. Wang, S. Jin, E. Zhou et al., “The rise and potential of large language model based agents: A survey,” Sci. China Inf. Sci. 68, 121101 (2025). 2S. L. Brunton, J. L. Proctor, and J. N. Kutz, “Discovering governing equations from data by sparse identification of nonlinear dynamical systems,” Proc. Natl. Acad. Sci. U. S. A. 113, 3932–3937 (2016). 3D. A. Messenger, G. E. Wheeler, X. Liu, and D. M. Bortz, “Learning anisotropic interaction rules from individual trajectories in a heterogeneous cellular population,” J. R. Soc. Interface 19, 20220412 (2022). 4R. Supekar, B. Song, A. Hastewell, G. P. Choi, A. Mietke, and J. Dunkel, “Learning hydrodynamic equations for active matter from particle simulations and experiments,” Proc. Natl. Acad. Sci. U. S. A. 120, e2206994120 (2023). 5Q. Lang and F. Lu, “Learning interaction kernels in mean-field equations of first-order systems of interacting particles,” SIAM J. Sci. Comput. 44, A260A285 (2022). 6G. C. Peng, M. Alber, A. Buganza Tepole, W. R. Cannon, S. De, S. DuraBernal, K. Garikipati, G. Karniadakis, W. W. Lytton, P. Perdikaris et al., “Multiscale modeling meets machine learning: What can we learn?,” Arch. Comput. Methods Eng. 28, 1017–1037 (2021). 7P. R. Vlachas, G. Arampatzis, C. Uhler, and P. Koumoutsakos, “Multiscale simulations of complex systems by learning their effective dynamics,” Nat. Mach. Intell. 4, 359–366 (2022). 8M. Golden, R. O. Grigoriev, J. Nambisan, and A. Fernandez-Nieves, “Physically informed data-driven modeling of active nematics,” Sci. Adv. 9, eabq6120 (2023). 9H. Chate, F. Ginelli, G. Gregoire, F. Peruani, and F. Raynaud, “Modeling collective motion: Variations on the vicsek model,” Eur. Phys. J. B 64, 451–456 (2008). 10D. Helbing, “Traffic and related self-driven many-particle systems,” Rev. Mod. Phys. 73, 1067 (2001). 11S. Motsch and E. Tadmor, “Heterophilious dynamics enhances consensus,” SIAM Rev. 56, 577–621 (2014). 12H. P. McKean, Jr., “A class of Markov processes associated with nonlinear parabolic equations,” Proc. Natl. Acad. Sci. U. S. A. 56, 1907–1911 (1966).
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-12
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02
+
+
+13A.-S. Sznitman, “Topics in propagation of chaos,” Ecole d’ete de probabilites de Saint-Flour XIX—1989 1464, 165–251 (1991). 14P. G. Huray, Maxwell’s Equations (John Wiley & Sons, 2009). 15X. Chen, L. Yang, J. Duan, and G. E. Karniadakis, “Solving inverse stochastic problems from discrete particle observations using the Fokker–Planck equation and physics-informed neural networks,” SIAM J. Sci. Comput. 43, B811–B830 (2021).
+16L. Lu, Z. Zeng, Y. Jiang, Y. Zhu, and P. Hu, “Weak collocation regression method: Fast reveal hidden stochastic dynamics from high-dimensional aggregate data,” J. Comput. Phys. 502, 112799 (2024). 17A. Kumar, C. Lu, L. Kirsch, Y. Tang, K. O. Stanley, P. Isola, and D. Ha, “Automating the search for artificial life with foundation models,” arXiv:2412.17799 (2024).
+Physics of Fluids ARTICLE pubs.aip.org/aip/pof
+Phys. Fluids 37, 033331 (2025); doi: 10.1063/5.0255706 37, 033331-13
+Published under an exclusive license by AIP Publishing
+10 March 2025 14:12:02

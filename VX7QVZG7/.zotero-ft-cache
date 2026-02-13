@@ -1,0 +1,665 @@
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Max van Spengler 1 Pascal Mettes 1
+Abstract
+Embedding tree-like data, from hierarchies to ontologies and taxonomies, forms a well-studied problem for representing knowledge across many domains. Hyperbolic geometry provides a natural solution for embedding trees, with vastly superior performance over Euclidean embeddings. Recent literature has shown that hyperbolic tree embeddings can even be placed on top of neural networks for hierarchical knowledge integration in deep learning settings. For all applications, a faithful embedding of trees is needed, with combinatorial constructions emerging as the most effective direction. This paper identifies and solves two key limitations of existing works. First, the combinatorial construction hinges on finding highly separated points on a hypersphere, a notoriously difficult problem. Current approaches achieve poor separation, degrading the quality of the corresponding hyperbolic embedding. We propose highly separated Delaunay tree embeddings (HS-DTE), which integrates angular separation in a generalized formulation of Delaunay embeddings, leading to lower embedding distortion. Second, low-distortion requires additional precision. The current approach for increasing precision is to use multiple precision arithmetic, which renders the embeddings useless on GPUs in deep learning settings. We reformulate the combinatorial construction using floating point expansion arithmetic, leading to superior embedding quality while retaining utility on accelerated hardware.
+1. Introduction
+Tree-like structures such as hierarchies are key for knowledge representation, from biological taxonomies (Padial et al., 2010) and phylogenetics (Kapli et al., 2020) to natural language (Miller, 1995; Tifrea et al., 2018; Yang et al., 2016), social networks (Freeman, 2004), visual understand
+1VIS Lab, University of Amsterdam, The Netherlands. Correspondence to: Max van Spengler <m.w.f.vanspengler@uva.nl>.
+ArXiv preprint.
+ing (Desai et al., 2023) and more. To obtain faithful embeddings, Euclidean space is ill-equiped; even simple trees lead to high distortion (Sonthalia & Gilbert, 2020). On the other hand, the exponential nature of hyperbolic space makes it a natural geometry for embedding trees (Nickel & Kiela, 2018). This insight has led to rapid advances in hyperbolic learning, with superior embedding (Sala et al., 2018) and clustering (Chami et al., 2020) of tree-like data.
+Recent literature has shown that hyperbolic tree embeddings are not only useful on their own, they also form powerful target embeddings on top of deep networks to unlock hierarchical representation learning (Peng et al., 2021; Mettes et al., 2024). Deep learning with hyperbolic tree embeddings has made it possible to effectively perform action recognition (Long et al., 2020), knowledge graph completion (Kolyvakis et al., 2020), hypernymy detection (Tifrea et al., 2018) and many other tasks in hyperbolic space. These early adoptions of hyperbolic embeddings have shown a glimpse of the powerful improvements that hierarchically aligned representations can bring to deep learning.
+The rapid advances in hyperbolic deep learning underline the need for hyperbolic tree embeddings compatible with GPU accelerated software. Current tree embedding algorithms can roughly be divided in two categories; optimization-based and constructive methods. The optimization-based methods, e.g. Poincar ́e embeddings (Nickel & Kiela, 2017), hyperbolic entailment cones (Ganea et al., 2018), and distortion optimization (Yu et al., 2022b), train embeddings using some objective function based on the tree. While these approaches are flexible due to minimal assumptions, the optimization can be unstable, slow and result in heavily distorted embeddings. Conversely, constructive methods traverse a tree once, placing the children of each node on a hypersphere around the node’s embedding (Sarkar, 2011; Sala et al., 2018). These methods are fast, require no hyperparameter tuning and have great error guarantees. However, they rely on hyperspherical separation, a notoriously difficult problem (Saff & Kuijlaars, 1997), and on multiple precision floating point arithmetic, which is incompatible with GPUs and other accelerated hardware.
+Our goal is to embed trees in hyperbolic space with minimal distortion yet with the ability to operate on accelerated GPU hardware even when using higher precision. We do so in
+1
+arXiv:2502.17130v1 [cs.LG] 24 Feb 2025
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+two steps. First, we outline HS-DTE, a new generalization of Delaunay tree embeddings (Sarkar, 2011) to arbitrary dimensionality through hyperspherical separation. Second, we propose HypFPE, a floating point expansion arithmetic approach to enhance our constructive hyperbolic tree embeddings. We develop new routines for computing hyperbolic distances on floating point expansions and outline how to use these on hyperbolic embeddings. Furthermore, we provide theoretical results demonstrating the effectiveness of these floating point expansion routines. Floating point expansions allow for higher precision similar to multiple precision arithmetic. However, our routines can be implemented using standard floating point operations, making these compatible with GPUs. Experiments demonstrate that HS-DTE generates higher fidelity embeddings than other hyperbolic tree embeddings and that HypFPE further increases the embedding quality for HS-DTE and other methods. We will make two software libraries available, one for arbitrary-dimensional hyperbolic tree embeddings and one for GPU-compatible floating point expansions.
+2. Preliminaries and related work
+2.1. Hyperbolic geometry preliminaries
+To help explain existing constructive hyperbolic embedding algorithms and our proposed approach, we outline the most important hyperbolic functions here. For a more thorough overview, we refer to (Cannon et al., 1997; Anderson, 2005). Akin to (Nickel & Kiela, 2017; Ganea et al., 2018; Sala et al., 2018), we focus on the Poincar ́e ball model of hyperbolic space. For n-dimensional hyperbolic space, the Poincar ́e ball model is defined as the Riemannian manifold (Dn, gn), where the manifold and Riemannian metric are defined as
+Dn = x ∈ Rn : ||x||2 < 1 ,
+gn = λxIn, λx = 2
+1 − ||x||2 . (1)
+Using this model of hyperbolic space, we can compute distances between x, y ∈ Dn either as
+dD(x, y) = cosh−1 1 + 2 ||x − y||2
+(1 − ||x||2)(1 − ||y||2) , (2)
+or as
+dD(x, y) = 2 tanh−1 || − x ⊕ y|| , (3)
+where
+x ⊕ y = (1 + 2⟨x, y⟩ + ||y||2)x + (1 − ||x||2)y
+1 + 2⟨x, y⟩ + ||x||2||y||2 , (4)
+is the M ̈obius addition operation. These formulations are theoretically equivalent, but suffer from different numerical errors. This distance represents the length of the straight line or geodesic between x and y with respect to the Riemannian metric gn. Geodesics of the Poincar ́e ball are
+Euclidean straight lines through the origin and circular arcs perpendicular to the boundary of the ball. We will use some isometries of hyperbolic space. More specifically, we will use reflections in geodesic hyperplanes. A geodesic hyperplane is an (n − 1)-dimensional manifold consisting of all geodesics through some point x ∈ Dn which are orthogonal to a normal geodesic through x or, equivalenty, orthogonal to some normal tangent vector v ∈ TxDn. For the Poincare ́ ball these are the Euclidean hyperplanes through the origin and the (n − 1)-dimensional hyperspherical caps which are perpendicular to the boundary of the ball. We will denote a geodesic hyperplane by Hx,v. Reflection in a geodesic hyperplane H0,v through the origin can be defined as in Euclidean space, so as a Householder transformation
+RH0,v (y) = (In − 2vvT )y, (5)
+where ||v|| = 1. Reflection in the other type of geodesic hyperplane is a spherical inversion:
+RHx,v (y) = m + r2
+||y − m||2 (y − m), (6)
+with m ∈ Rn, r > 0 the center and radius of the hypersphere containing the geodesic hyperplane. We will denote a reflection mapping some point x ∈ Dn to another point y ∈ Dn by Rx→y. The specific formulations and derivations of the reflections that we use are in Appendix A.
+2.2. Related work
+Hyperbolic tree embedding algorithms. Existing embedding methods can be divided into two categories: optimization-based methods and constructive methods. The optimization methods typically use the tree to define some loss function and use a stochastic optimization method such as SGD to directly optimize the embedding of each node, e.g. Poincar ́e embeddings (Nickel & Kiela, 2017), hyperbolic entailment cones (Ganea et al., 2018) and distortion optimization (Sala et al., 2018; Yu et al., 2022b). Poincar ́e embeddings use a contrastive loss where related nodes are pulled together and unrelated nodes are pushed apart. Hyperbolic entailment cones attach an outwards radiating cone to each node embedding and define a loss that forces children of nodes into the cone of their parent. Distortion optimization directly optimizes for a distortion loss to embed node pairs. Such approaches are flexible, but do not lead to arbitrarily low distortion and optimization is slow. Constructive methods are either combinatorial methods (Sarkar, 2011; Sala et al., 2018) or eigendecomposition methods (Sala et al., 2018). Combinatorial methods first place the root of a tree at the origin of the hyperbolic space and then traverse down the tree, iteratively placing nodes as uniformly as possible on a hypersphere around their parent. (Sarkar, 2011) proposes a 2-dimensional approach, where the points have to be separated on a circle; a trivial task. For higher dimensions,
+2
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+(Sala et al., 2018) place points on a hypercube inscribed within a hypersphere, which leads to suboptimal distribution. We also follow a constructive approach, where we use an optimization method for the hyperspherical separation, leading to significantly higher quality embeddings. The eigendecomposition method h-MDS (Sala et al., 2018) takes a graph or tree metric and uses an eigendecomposition of the corresponding distance matrix to generate low-distortion embeddings. However, it collapses nodes within some subtrees to a single point, leading to massive local distortion.
+Deep learning with hyperbolic tree embeddings. In computer vision, a wide range of works have recently shown the potential and effectiveness of using a hyperbolic embedding space (Khrulkov et al., 2020). Specifically, hierarchical prior knowledge can be embedded in hyperbolic space, after which visual representations can be mapped to the same space and optimized to match this hierarchical organization. (Long et al., 2020) show that such a setup improves hierarchical action recognition, while (Liu et al., 2020) use hierarchies with hyperbolic embeddings for zeroshot learning. Deep visual learning with hyperbolic tree embeddings has furthermore shown to improve image segmentation (Ghadimi Atigh et al., 2022), skin lesion recognition (Yu et al., 2022b), video understanding (Li et al., 2024), hierarchical visual recognition (Ghadimi Atigh et al., 2021; Dhall et al., 2020), hierarchical model interpretation (Gulshad et al., 2023), open set recognition (Dengxiong & Kong, 2023), continual learning (Gao et al., 2023), few-shot learning (Zhang et al., 2022), and more. Since such approaches require freedom in terms of embedding dimensionality, they commonly rely on optimization-based approaches to embed the prior tree-like knowledge. Similar approaches have also been investigated in other domains, from audio (Petermann et al., 2023) and text (Dhingra et al., 2018; Le et al., 2019) to multimodal settings (Hong et al., 2023). In this work, we provide a general-purpose and unconstrained approach for low-distortion embeddings with the option to scale to higher precisions without losing GPU-compatibility.
+Floating point expansions. Floating point expansions (FPEs) to increase precision in hyperbolic space was proposed by (Yu & De Sa, 2021) and implemented in a PyTorch library (Yu et al., 2022a). However, their methodology is based on older FPE arithmetic definitions and routines by (Priest, 1991; 1992; Richard Shewchuk, 1997). In the field of FPEs, more efficient and stable formulations have been proposed over the years with improved error guarantees (Joldes et al., 2014; 2015; Muller et al., 2016). In this paper, we build upon the most recent arithmetic framework detailed in (Popescu, 2017). We have implemented this framework for PyTorch and extend its functionality to work with hyperbolic embeddings.
+3. HS-DTE
+Setting and objective. We are given a (possibly weighted) tree T = (V, E), where the nodes in V contain the concepts of our hierarchy and the edges in E represent parent-child connections. The goal is to find an embedding φ : V → Dn that accurately captures the semantics of the tree T , so where T can be accurately reconstructed from φ(V ). An embedding φ is evaluated by first defining the graph metric dT (u, v) on the tree as the length of the shortest path between the nodes u and v and then checking how much φ distorts this metric. More specifically, for evaluation we use the average relative distortion (Sala et al., 2018), the worst-case distortion (Sarkar, 2011) and the mean average precision (Nickel & Kiela, 2017). Further details on these metrics can be found in Appendix B.
+Constructive solution for hyperbolic embeddings. The starting point of our method is the Poincare ́ ball implementation of Sarkar’s combinatorial construction (Sarkar, 2011) as outlined by (Sala et al., 2018). A generalized formulation of this approach is outlined in Algorithm 1. The scaling factor τ > 0 is used to scale the tree metric dT . A larger τ allows for a better use of the curvature of hyperbolic space, theoretically making it easier to find strong embeddings. Lower values can help avoid numerical issues that arise near the boundary of the Poincar ́e ball. When the dimension of the embedding space satisfies n ≤ log(degmax) + 1 and the scaling factor is set to
+τ = 1+ε
+ε log 4 degmax
+1
+n−1 , (7)
+with degmax the maximal degree of T , then the construction leads to a worst-case distortion bounded by 1 + ε, given that the points on the hypersphere are sufficiently uniformly distributed (Sala et al., 2018). When the dimension is n > log(degmax)+1, the scaling factor should be τ = Ω(1), so it can no longer be reduced by choosing a higher dimensional embedding space (Sala et al., 2018). The number of bits required for the construction is O( 1
+ε
+l
+n log(degmax)) when
+n ≤ log(degmax)+1 and O( l
+ε ) when n > log(degmax)+1, where l is the longest path in the tree.
+The difficulty of distributing points on a hypersphere. The construction in Algorithm 1 provides a nice way of constructing embeddings in n-dimensional hyperbolic space with arbitrarily low distortion. However, the bound on the distortion for the τ in Equation 7 is dependent on our ability to generate uniformly distributed points on the ndimensional hypersphere. More specifically, given generated points x1, . . . , xdegmax , the error bound relies on the assumption that
+im̸=ijn sin ∠(xi, xj ) ≥ degmax
+−1
+n−1 . (8)
+3
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Algorithm 1 Generalized Sarkar’s Dalaunay tree embedding
+1: Input: Tree T = (V, E) and scaling factor τ > 0. 2: for v ∈ V do
+3: p ← parent(v) 4: c1, . . . , cdeg(v)−1 ← children(v) 5: Reflect φ(p) with Rφ(v)→0 6: Generate x1, . . . , xdeg(v) uniformly distributed points on a hypersphere with radius 1 7: Get rotation matrix A such that Rφ(v)→0 φ(p) is aligned with Axdeg(v) and rotate
+8: Scale points by γ = eτ −1
+eτ +1
+9: Reflect rotated and scaled points back: φ(ci) ← Rφ(v)→0(γAxi), i = 1, . . . , deg(v) − 1 10: end for
+While this assumption can theoretically always be achieved (Sala et al., 2018), generating points that actually satisfy it is not straightforward. In practice it is important to keep the scaling factor τ as small as possible, since the required number of bits increases linearly with τ . Increasing the minimal angle beyond the condition in Equation 8 allows for a smaller τ . This problem of maximizing the minimal pairwise angle is commonly known as the Tammes problem (Tammes, 1930; Mettes et al., 2019) and it has been studied extensively, with many analytical and approximate solutions given for various specific combinations of dimensions n and number of points that have to be placed (Cohn, 2024). However, there exists no general closed-form solution that encompasses all possible combinations.
+(Sala et al., 2018) propose to generate points by placing them on the vertices of an inscribed hypercube. This approach comes with three limitations. First, the maximum number of points that can be generated with this method is 2n, which is limited for small n. Second, for most configurations this method results in a sub-optimal distribution, leading to an unnecessarily high requirement on τ . Third, this method depends on finding binary sequences of length n with maximal Hamming distances (see Appendix C), which is in general not an easy problem to solve. Their solution is to use the Hadamard code. This can only be used when the dimension is a power of 2 and at least degmax; a severe restriction, often incompatible with downstream tasks.
+Delaunay tree embeddings with separation. We propose to improve the construction by distributing the points on the hypersphere in step 6 of Algorithm 1 through optimization. Specifically, we use projected gradient descent to find x1, . . . , xk ∈ Sn−1 such that
+x1, . . . , xk = arg min
+w1,...,wk ∈ Sn−1
+L(w1, . . . , wk), (9)
+where L : (Sn−1)k → R is some objective function. Common choices for this objective are the hyperspherical energy
+functions (Liu et al., 2018), given by
+Es(w1, . . . , wk) =
+
+   
+   
+k
+P
+i=1
+P
+j̸=i
+||wi − wj||−s, s > 0,
+k
+P
+i=1
+P
+j̸=i
+log ||wi − wj||−1 , s = 0,
+(10) where s is a nonnegative integer parameterizing this set of functions. Minimizing these objective functions pushes the hyperspherical points apart, leading to a more uniform distribution. However, these objectives are aimed at finding a large mean pairwise angle, allowing for the possibility of having a small minimum pairwise angle. Having a small minimum pairwise angle leads to the corresponding nodes and their descendants being placed too close together, leading to large distortion, as shown in the experiments. Therefore, we advocate the minimal angle maximization (MAM) objective, aimed at maximizing this minimal angle
+E(w1, . . . , wk) = −
+k
+X
+i=1
+jm̸=iin ∠(wi, wj), (11)
+which pushes each wi away from its nearest neighbour and essentially optimizes directly for the objective of the Tammes problem. We find that this method results in strong separation when compared to highly specialized existing methods used for specific cases of the Tammes problem (Cohn, 2024). More importantly, it leads to better separation than the method used in current hyperbolic embeddings (Sala et al., 2018), allowing for the use of a smaller τ . Moreover, this optimization method places no requirements on the dimension, making it a suitable choice for downstream tasks. We refer to the resulting construction as the highly separated Delaunay tree embedding (HS-DTE).
+When performing the construction using MAM, the output of the optimization can be cached and reused each time a node with the same degree is encountered. Using this approach, the worst-case number of optimizations that has
+to be performed is O(√N ) as shown by Theorem 3.1.
+Theorem 3.1. The worst-case number of optimizations p that has to be performed when embedding a tree with the combinatorial construction in Algorithm 1 with any objective using caching is
+p≤
+l1
+2 (1 + √16N − 15)
+m
+. (12)
+Proof. See Appendix D.
+In practice we find the number of optimizations to be lower due to frequent occurrence of low degree nodes for which cached points can be used, as shown in Appendix L.
+MAM optimization details. MAM is an easily optimizable objective, that we train using projected gradient descent for
+4
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+450 iterations with a learning rate of 0.01, reduced by a factor of 10 every 150 steps, for every configuration. This optimization can generally be performed in mere seconds which, if necessary, can be further optimized through hyperparameter configurations, early stopping, parallelization or hardware acceleration. As a result, the increase in computation time of our method compared to (Sala et al., 2018) is minimal. Moreover, when compared to methods such as Poincar ́e embeddings (Nickel & Kiela, 2017) which use stochastic gradient descent to directly optimize the embeddings, we find that our method is orders of magnitude faster, while avoiding the need for costly hyperparameter tuning.
+4. HypFPE: High-precision GPU-compatible hyperbolic embeddings
+While hyperbolic space enjoys numerous potential benefits, it is prone to numerical error when using floating point arithmetic. Especially as points move away from the origin, floating point arithmetic struggles to accurately represent or perform computations with these points. For larger values of τ or maximal path lengths l, the embeddings generated by the construction often end up in this problematic region of the Poincar ́e ball. As such, the precision required for hyperbolic embeddings is often larger than the precision provided by the floating point formats supported on GPUs. Increased precision can be attained by switching to arbitrary precision arithmetic. However, this makes the result incompatible with existing deep learning libraries.
+Here, we propose HypFPE, a method to increase the precision of constructive hyperbolic approaches through floating point expansion (FPE) arithmetic. In this framework, numbers are represented as unevaluated sums of floating point numbers, typically of a fixed number of bits b. In other words, a number f ∈ R is represented by a floating point expansion f ̃ as
+f ≈ f ̃ =
+t
+X
+i=1
+f ̃i, (13)
+where the f ̃i are floating point numbers with a fixed number of bits and where t is the number of terms that the floating point expansion f ̃ consists of. Each term f ̃i is in the form of a GPU supported float format, such as float16, float32 or float64. Moreover, to ensure that this representation is unique and uses bits efficiently, it is constrained to be ulpnonoverlapping (Popescu, 2017).
+Definition 4.1. A floating point expansion f ̃ = f ̃1 +. . .+f ̃t
+is ulp-nonoverlapping if for all 2 ≤ i ≤ t, |f ̃i| ≤ ulp(f ̃i−1),
+where ulp(f ̃i−1) is the unit in the last place of f ̃i−1.
+A ulp-nonoverlapping FPE consisting of t terms each with b bits precision has at worst t(b − 1) + 1 bits of precision, since exactly t − 1 overlapping bits can occur. The corre
+sponding arithmetic requires completely different routines for computing basic operations, many of which have been introduced by (Joldes et al., 2014; 2015; Muller et al., 2016; Popescu, 2017). An overview of these routines can be found in Appendix N. For an overview of the error guarantees we refer to (Popescu, 2017). Each of these routines can be defined using ordinary floating point operations that exist for tensors in standard tensor libraries such as PyTorch, which are completely GPU compatible. Here, we have generalized all routines to tensor operations and implemented them in PyTorch by adding an extra dimension to each tensor containing the terms of the floating point expansion.
+Applying FPEs to the construction. In the constructive method the added precision is warranted whenever numerical errors lead to large deviations with respect to the hyperbolic metric. In other words, if we have some x ∈ Dn and its floating point representation x ̃, then it makes sense to increase the precision if
+dD(x, x ̃) ≫ 0. (14)
+For the Poincare ́ ball, this is the case whenever x lies somewhere close to the boundary of the ball. In our construction, this means that generation and rotation of points on the unit hypersphere can be performed in normal floating point arithmetic, since the representation error in terms of dD will be negligible. However, for large τ , the scaling of the hypersphere points and the hyperspherical inversion require increased precision as these map points close to the boundary of Dn. Specifically, steps 5, 8 and 9 of Algorithm 1 may require increased precision. Note that these operations can be performed using the basic operation routines shown in Appendix N. From the basic operations, more complicated nonlinear operations can be defined through the Taylor series approximations that are typically used for floating point arithmetic. To compute the distortion of the resulting embeddings, the distances between the embedded nodes must be computed either through the inverse hyperbolic cosine formulation of Equation 2 or through the inverse hyperbolic tangent formulation of Equation 3. We show how to accurately compute distances using either formulation.
+4.1. The inverse hyperbolic cosine formulation
+For Equation 2, normal floating point arithmetic may cause the denominator inside the argument of cosh−1 to become 0 due to rounding. To solve this, we can use FPE arithmetic to compute the argument of cosh−1 and then approximate the distance by applying cosh−1 to the largest magnitude term of the FPE. This allows accurate computation of distances even for points near the boundary of the Poincar ́e ball, as shown by Theorem 4.2 and Proposition 4.3.
+Theorem 4.2. Given x, y ∈ Dn with ||x|| < 1 − εt−1 and ||y|| < 1 − εt−1, an approximation d to equation 2 can be
+5
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+computed with FPE representations with t terms and with a largest magnitude approximation to cosh−1 such that, for some small ε∗ > 0,
+d − cosh−1 1 + 2 ||x − y||2
+(1 − ||x||2)(1 − ||y||2) < ε∗. (15)
+Proof. See Appendix E.
+Proposition 4.3. The range of the inverse hyperbolic tangent formulation increases linearly in the number of terms t of the FPEs being used.
+Proof. See Appendix F.
+Theorem 4.2 shows that we can accurately compute distances on a larger domain than with normal floating point arithmetic. Proposition 4.3 shows that the effective radius of the Poincar ́e ball in which we can represent points and compute distances increases linearly in the number of terms of our FPE expansions. Therefore, this effective radius increases linearly with the number of bits. The same holds for arbitrary precision floating point arithmetic, so FPE expansions require a similar number of bits for constructive methods as arbitrary precision floating point arithmetic.
+4.2. The inverse hyperbolic tangent formulation
+For Equation 3, the difficulty lies in the computation of tanh−1. With normal floating point arithmetic, due to rounding errors, this function can only be evaluated on [−1 + ε, 1 − ε], where ε is the machine precision. This severely limits the range of values, i.e., distances, that we can compute. Therefore, we need to be able to compute the inverse hyperbolic tangent with FPEs. Inspired by (Felker & musl Contributors, 2024), we propose a new routine for this computation, given in Algorithm 13 of Appendix N. Here, we approximate the logarithm in steps 7 and 9 as log(f ̃) ≈ log(f ̃1), which is accurate enough for our purposes. This algorithm can be used to accurately approximate tanh−1 while extending the range linearly in the number of terms t as shown by Theorem 4.4 and Proposition 4.5.
+Theorem 4.4. Given a ulp-nonoverlapping FPE x =
+Pt
+i=1 xi ∈ [−1 + εt−1, 1 − εt−1] consisting of floating point numbers with a precision b > t, Algorithm 13 leads to an approximation y of the inverse hyperbolic tangent of x that, for small ε∗ > 0, satisfies
+|y − tanh−1(x)| ≤ ε∗. (16)
+Proof. See Appendix G.
+Proposition 4.5. The range of algorithm 13 increases linearly in the number of terms t.
+Proof. See Appendix H.
+Method dim Dave Dwc MAP
+(Sala et al., 2018) ‡ 8 0.734 1143 0.154 (Sala et al., 2018) ⋆ 10 0.361 18.42 0.998 E0 10 0.219 1.670 1.000 E1 10 0.204 1.686 1.000 E2 10 0.190 1.642 1.000 MAM 10 0.188 1.635 1.000
+Table 1. Comparing hyperspherical separation methods for the constructive hyperbolic embedding of a binary tree with a depth of 8 edges when using float32 representations (24 bits precision) in 10 dimensions. Note that the Hadamard method (‡) cannot be applied in 10 dimensions, so there 8 is used instead.
+Based on these results, either formulation could be a good choice for computing distances with FPEs. In practice, we find that the tanh−1 formulation leads to larger numerical errors, which is likely due to catastrophic cancellation errors in the dot product that is performed in Equation 4. Therefore, we use the cosh−1 formulation in our experiments.
+5. Experiments
+5.1. Ablations
+Minimal angle maximization. To test how well the proposed methods for hyperspherical separation perform, we generate points w1, . . . , wk on an 8-dimensional hypersphere for various numbers of points k and compute the minimal pairwise angle mini̸=j ∠(wi, wj). We compare to the Hadamard generation method from (Sala et al., 2018) and the method that is used in their implementation, which precomputes 1000 points using the method from (Lovisolo & Da Silva, 2001) and samples from these precomputed points. Note that a power of 2 is chosen for the dimension to be able to make a fair comparison to the Hadamard construction, since this method cannot be used otherwise. The results are shown in Figure 1a. These results show that our MAM indeed leads to high separation in terms of the minimal pairwise angle, that the precomputed approach leads to poor separation and that the Hadamard method only performs moderately well when the number of points required is close to the dimension of the space.
+To verify that this minimal pairwise angle is important for the quality of the construction, we perform the construction on a binary tree with a depth of 8 edges using each of the hypersphere generation methods. The construction is performed in 10 dimensions except for the Hadamard method, since this cannot generate 10 dimensional points. Additional results for dimensions 4, 7 and 20 are shown in Appendix I. Each method is applied using float32 representations and a scaling factor of τ = 1.33. The results are shown in Table 1. These findings support our hypothesis that the minimal pairwise angle is important for generating high quality embeddings and that the MAM is an excellent objective function for performing the separation.
+6
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+(a) Minimal hyperspherical energy ablation. (b) Floating point expansion ablation.
+Figure 1. Ablation studies on our construction and floating point expansion. (a) Minimal pairwise angle (↑) of the hyperspherical points generated in step 6 of Algorithm 1 using the various generation methods. The dimension of the space is set to 8, so the Hadamard method cannot generate more than 8 points. The MAM objective consistently leads to a higher separation angle. (b) The worst-case distortion (↓, Dwc) of the constructed embedding of the phylogenetic tree with the maximal admissable τ given the number of bits. The vertical dashed line shows the limit with standard GPU floating point formats (float64). The horizontal dashed line is the best possible result Dwc = 1. FPE representations are required to get high quality embeddings without losing GPU-compatibility.
+Figure 2. Pairwise relative distortions of h-MDS (top) and HS-DTE (bottom) applied to the 5-ary tree with a scaling factor τ = 5.0. Axes are ordered using a breadth-first search of the tree.
+FPEs versus standard floating points. To demonstrate the importance of using FPEs for increasing precision, we perform the construction on a phylogenetic tree expressing the genetic heritage of mosses in urban environments (Hofbauer et al., 2016), made available by (Sanderson et al., 1994), using various precisions. This tree has a maximum path length l = 30, which imposes sharp restrictions on the value of τ that we can choose before encountering numerical errors. We perform the construction either with normal floating point arithmetic using the usual GPU-supported float formats or with FPEs, using multiple float64 terms. The scaling factor τ is chosen to be close to the threshold where numerical problems appear in order to obtain optimal results for the given precision. The results in terms of Dwc are shown in Figure 1b. As can be seen from these results, around 100 bits of precision are needed to obtain decent results, which can be achieved using FPEs with 2 float64 terms. Without FPE expansions, the largest GPU-compatible precision is 53 bits, obtained by using float64. This precision yields a Dwc of 9.42, which is quite poor. These results illustrate the importance of FPEs for high quality GPU-compatible embeddings.
+5.2. Embedding complete m-ary trees
+To demonstrate the strong performance of the combinatorial constructions compared to other methods, we perform embeddings on several complete m-ary trees with a max path length of l = 8 and branching factors m = 3, 5, 7. Due to the small l, each experiment can be performed with normal floating point arithmetic using float64 representations. We compare our method with Poincar ́e embeddings
+(PE) (Nickel & Kiela, 2017), hyperbolic entailment cones (HEC) (Ganea et al., 2018), distortion optimization (DO) (Sala et al., 2018; Yu et al., 2022b), h-MDS (Sala et al., 2018) and the combinatorial method with Hadamard (Sala et al., 2018) or precomputed hyperspherical points (Lovisolo & Da Silva, 2001). For the constructive methods and for h-MDS, a larger scaling factor improves performance, so we use τ = 5. For DO we find that increasing the scaling factor does not improve performance, so we use τ = 1.0. PE and HEC are independent of the scaling factor.
+The results on the various trees in 10 dimensions are shown in table 2 and additional results for dimensions 4, 7 and 20 are shown in Appendix J. These illustrate the strength of the combinatorial constructions. The optimization methods PE, HEC and DO perform relatively poor for all evaluation metrics. This performance could be increased through hyperparameter tuning and longer training. However, the results will not come close to those of the other methods. The h-MDS method performs well in terms of Dave, but very poorly on Dwc and MAP. This is because h-MDS collapses leaf nodes, leading to massive local distortion within the affected subtrees. However, between subtrees this distortion is much smaller, explaining the low Dave. Figure 2 illustrates the issue with h-MDS and the superiority of our approach. Each of the white squares in the h-MDS plot corresponds to a collapsed subtree, which renders the embeddings unusable for downstream tasks since nearby leaf nodes cannot be distinguished. We conclude that HS-DTE obtains the strongest embeddings overall.
+7
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+3-tree 5-tree 7-tree
+Dave Dwc MAP Dave Dwc MAP Dave Dwc MAP
+(Nickel & Kiela, 2017) 0.17 169 0.8 0.31 NaN 0.58 0.84 NaN 0.24 (Ganea et al., 2018) 0.51 184 0.27 0.81 604 0.24 0.96 788 0.15 (Yu et al., 2022b) 0.16 31.9 0.57 0.52 545 0.30 0.93 3230 0.05
+(Sala et al., 2018) † 0.03 NaN 0.52 0.04 NaN 0.1 0.03 NaN 0.05
+(Sala et al., 2018) ‡ 0.11 1.14 1.00 0.12 1.14 1.00 0.12 1.14 1.00 (Sala et al., 2018) ⋆ 0.09 1.18 1.00 0.13 1.30 1.00 0.13 1.31 1.00 HS-DTE 0.06 1.07 1.00 0.09 1.09 1.00 0.10 1.12 1.00
+Table 2. Comparison of hyperbolic embedding algorithms on m-ary trees with a maximum path length of l = 8. The h-MDS method is represented by †. The ‡ method is the combinatorial construction with the hyperspherical points being generated using the Hadamard construction, whereas the ⋆ method samples hyperspherical points from the precomputed points generated with the hyperspherical separation method from (Lovisolo & Da Silva, 2001). The h-MDS method outperforms the other methods in terms of Dave, but collapses nodes, leading to NaN values of the Dwc and making the embeddings unusable. HS-DTE has the second best Dave and outperforms all methods in terms of Dwc. Each combinatorial construction has a perfect MAP.
+Precision Mosses Weevils Carnivora Lichen
+bits Dave Dwc Dave Dwc Dave Dwc Dave Dwc
+(Nickel & Kiela, 2017) 53 0.68 44350 0.45 NaN 0.96 NaN 151 NaN (Ganea et al., 2018) 53 0.90 1687 0.77 566 0.99 NaN 162 NaN (Yu et al., 2022b) 53 0.83 163 0.57 79.8 0.99 NaN - 
+(Sala et al., 2018) † 53 0.04 NaN 0.06 NaN 0.11 NaN 0.13 NaN
+(Sala et al., 2018) ‡ 53 - - 0.79 330 0.26 35.2 0.49 79.6 (Sala et al., 2018) ⋆ 53 0.78 122 0.54 34.3 0.23 18.8 0.55 101 HS-DTE 53 0.40 9.42 0.27 2.03 0.12 11.7 0.30 23.5
+HypFPE + (Sala et al., 2018) ‡ 417 - - 0.07 1.09 0.05 6.76 0.12 43.4 HypFPE + (Sala et al., 2018) ⋆ 417 0.08 1.14 0.05 1.11 0.03 4.87 0.11 6.42 HypFPE + HS-DTE 417 0.04 1.06 0.03 1.04 0.03 2.03 0.05 3.30
+Table 3. Comparison of hyperbolic embedding algorithms on various trees. † represents h-MDS, ‡ the construction with Hadamard hyperspherical points and ⋆ the construction with points sampled from a set precomputed with (Lovisolo & Da Silva, 2001). The best float64 performance is underlined and the best FPE performance is in bold. All embeddings are performed in a 10-dimensional space. Hadamard generation cannot be used for the mosses tree, since it has a degmax greater than 8. Distortion optimization (Yu et al., 2022b) does not converge for the lichen tree due to large variation in edge weights. Overall, combining HypFPE and HS-DTE works best.
+5.3. Embedding phylogenetic trees
+Lastly, we compare hyperbolic embeddings on phylogenetic trees. Moreover, we show how adding HypFPE to our method and the other combinatorial methods increases the embedding quality when requiring GPU-compatibility. The phylogenetic trees describe mosses (Hofbauer et al., 2016), weevils (Marvaldi et al., 2002), the European carnivora (Roquet et al., 2014), and lichen (Zhao et al., 2016), obtained from (McTavish et al., 2015). The latter two trees are weighted trees which can be embedded by adjusting the scaling in step 8 of Algorithm 1. Each of the embeddings is performed in 10-dimensional space. Other dimensions are given in Appendix K. The h-MDS method and the combinatorial constructions are performed with the largest τ that can be used with the given precision. The results are shown in Table 3. When using float64, HS-DTE outperforms each of the optimization-based methods and the other combinatorial approaches from (Sala et al., 2018). While h-MDS obtains high average distortion, it collapses entire subtrees, leading to massive local distortion. Therefore, the HS-DTE embeddings are of the highest quality. When adding HypFPE on
+top of the combinatorial approaches, all performances go up, with the combination of HS-DTE and HypFPE leading to the best performance on both Dave and Dwc. Additional results on graph-like data are shown in Appendix M.
+6. Conclusion
+In this paper we introduce HS-DTE, a novel way of constructively embedding trees in hyperbolic space, which uses an optimization approach to effectively separate points on a hypersphere. Empirically, we show that HS-DTE outperforms existing methods, while maintaining the computational efficiency of the combinatorial approaches. We also introduce HypFPE, a framework for floating point expansion arithmetic on tensors, which is adapted to extend the effective radius of the Poincar ́e ball. This framework can be used to increase the precision of computations, while benefiting from hardware acceleration, paving the way for highly accurate hyperbolic neural networks. It can be added on top of any of the combinatorial methods, leading to low-distortion and GPU-compatible hyperbolic tree embeddings.
+8
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Acknowledgements
+Max van Spengler acknowledges the University of Amsterdam Data Science Centre for financial support.
+References
+Abraham, I., Balakrishnan, M., Kuhn, F., Malkhi, D., Ramasubramanian, V., and Talwar, K. Reconstructing approximate tree metrics. In Proceedings of the twenty-sixth annual ACM symposium on Principles of distributed computing, pp. 43–52, 2007.
+Anderson, J. W. Hyperbolic Geometry. Springer Undergraduate Mathematics Series. Springer, London, 2nd edition, 2005. ISBN 978-1-85233-934-0.
+Cannon, J. W., Floyd, W. J., Kenyon, R., Parry, W. R., et al. Hyperbolic geometry. Flavors of geometry, 31(59-115): 2, 1997.
+Chami, I., Gu, A., Chatziafratis, V., and R ́e, C. From trees to continuous embeddings and back: Hyperbolic hierarchical clustering. Advances in Neural Information Processing Systems, 33:15065–15076, 2020.
+Cohn, H. Table of spherical codes, 2024. URL https: //hdl.handle.net/1721.1/153543.
+De Nooy, W., Mrvar, A., and Batagelj, V. Exploratory social network analysis with Pajek: Revised and expanded edition for updated software, volume 46. Cambridge university press, 2018.
+Dengxiong, X. and Kong, Y. Ancestor search: Generalized open set recognition via hyperbolic side information learning. In Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision, pp. 4003–4012, 2023.
+Desai, K., Nickel, M., Rajpurohit, T., Johnson, J., and Vedantam, S. R. Hyperbolic image-text representations. In International Conference on Machine Learning, pp. 7694–7731. PMLR, 2023.
+Dhall, A., Makarova, A., Ganea, O., Pavllo, D., Greeff, M., and Krause, A. Hierarchical image classification using entailment cone embeddings. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition workshops, pp. 836–837, 2020.
+Dhingra, B., Shallue, C., Norouzi, M., Dai, A., and Dahl, G. Embedding text in hyperbolic spaces. In Proceedings of the Twelfth Workshop on Graph-Based Methods for Natural Language Processing, pp. 59–69, 2018.
+Felker, R. and musl Contributors. musl libc: A lightweight implementation of the standard library for linux systems,
+2024. URL https://musl.libc.org. Version 1.2.5, retrieved on September 30, 2024.
+Freeman, L. The development of social network analysis. A Study in the Sociology of Science, 1(687):159–167, 2004.
+Ganea, O., B ́ecigneul, G., and Hofmann, T. Hyperbolic entailment cones for learning hierarchical embeddings. In International conference on machine learning, pp. 16461655. PMLR, 2018.
+Gao, Z., Xu, C., Li, F., Jia, Y., Harandi, M., and Wu, Y. Exploring data geometry for continual learning. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pp. 24325–24334, 2023.
+Ghadimi Atigh, M., Keller-Ressel, M., and Mettes, P. Hyperbolic busemann learning with ideal prototypes. Advances in neural information processing systems, 34:103–115, 2021.
+Ghadimi Atigh, M., Schoep, J., Acar, E., Van Noord, N., and Mettes, P. Hyperbolic image segmentation. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pp. 4453–4462, 2022.
+Goh, K.-I., Cusick, M. E., Valle, D., Childs, B., Vidal, M., and Barab ́asi, A.-L. The human disease network. Proceedings of the National Academy of Sciences, 104 (21):8685–8690, 2007.
+Gulshad, S., Long, T., and van Noord, N. Hierarchical explanations for video action recognition. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 3703–3708, 2023.
+Hofbauer, W. K., Forrest, L. L., Hollingsworth, P. M., and Hart, M. L. Preliminary insights from dna barcoding into the diversity of mosses colonising modern building surfaces. Bryophyte Diversity and Evolution, 38(1):1–22, 2016.
+Hong, J., Hayder, Z., Han, J., Fang, P., Harandi, M., and Petersson, L. Hyperbolic audio-visual zero-shot learning. In Proceedings of the IEEE/CVF international conference on computer vision, pp. 7873–7883, 2023.
+Joldes, M., Muller, J.-M., and Popescu, V. On the computation of the reciprocal of floating point expansions using an adapted newton-raphson iteration. In 2014 IEEE 25th International Conference on Application-Specific Systems, Architectures and Processors, pp. 63–67. IEEE, 2014.
+Joldes, M., Marty, O., Muller, J.-M., and Popescu, V. Arithmetic algorithms for extended precision using floatingpoint expansions. IEEE Transactions on Computers, 65 (4):1197–1210, 2015.
+9
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Kapli, P., Yang, Z., and Telford, M. J. Phylogenetic tree building in the genomic age. Nature Reviews Genetics, 21(7):428–444, 2020.
+Khrulkov, V., Mirvakhabova, L., Ustinova, E., Oseledets, I., and Lempitsky, V. Hyperbolic image embeddings. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pp. 6418–6428, 2020.
+Kolyvakis, P., Kalousis, A., and Kiritsis, D. Hyperbolic knowledge graph embeddings for knowledge base completion. In The Semantic Web: 17th International Conference, ESWC 2020, Heraklion, Crete, Greece, May 31–June 4, 2020, Proceedings 17, pp. 199–214. Springer, 2020.
+Le, M., Roller, S., Papaxanthos, L., Kiela, D., and Nickel, M. Inferring concept hierarchies from text corpora via hyperbolic embeddings. arXiv preprint arXiv:1902.00913, 2019.
+Li, Y.-L., Wu, X., Liu, X., Wang, Z., Dou, Y., Ji, Y., Zhang, J., Li, Y., Lu, X., Tan, J., et al. From isolated islands to pangea: Unifying semantic space for human action understanding. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 16582–16592, 2024.
+Liu, S., Chen, J., Pan, L., Ngo, C.-W., Chua, T.-S., and Jiang, Y.-G. Hyperbolic visual embedding learning for zero-shot recognition. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pp. 9273–9281, 2020.
+Liu, W., Lin, R., Liu, Z., Liu, L., Yu, Z., Dai, B., and Song, L. Learning towards minimum hyperspherical energy. Advances in neural information processing systems, 31, 2018.
+Long, T., Mettes, P., Shen, H. T., and Snoek, C. G. Searching for actions on the hyperbole. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 1141–1150, 2020.
+Lovisolo, L. and Da Silva, E. Uniform distribution of points on a hyper-sphere with applications to vector bit-plane encoding. IEE Proceedings-Vision, Image and Signal Processing, 148(3):187–193, 2001.
+MacWilliams and Sloane. The theory of error-correcting codes. Elsevier Science Publishers BV google schola, 2: 39–47, 1977.
+Marvaldi, A. E., Sequeira, A. S., O’Brien, C. W., and Farrell, B. D. Molecular and morphological phylogenetics of weevils (coleoptera, curculionoidea): do niche shifts accompany diversification? Systematic biology, 51(5): 761–785, 2002.
+McTavish, E. J., Hinchliff, C. E., Allman, J. F., Brown, J. W., Cranston, K. A., Holder, M. T., Rees, J. A., and Smith, S. A. Phylesystem: a git-based data store for communitycurated phylogenetic estimates. Bioinformatics, 31(17): 2794–2800, 2015.
+Mettes, P., Van der Pol, E., and Snoek, C. Hyperspherical prototype networks. Advances in neural information processing systems, 32, 2019.
+Mettes, P., Ghadimi Atigh, M., Keller-Ressel, M., Gu, J., and Yeung, S. Hyperbolic deep learning in computer vision: A survey. International Journal of Computer Vision, pp. 1–25, 2024.
+Miller, G. A. Wordnet: a lexical database for english. Communications of the ACM, 38(11):39–41, 1995.
+Muller, J.-M., Popescu, V., and Tang, P. T. P. A new multiplication algorithm for extended precision using floatingpoint expansions. In 2016 IEEE 23nd Symposium on Computer Arithmetic (ARITH), pp. 39–46. IEEE, 2016.
+Nickel, M. and Kiela, D. Poincare ́ embeddings for learning hierarchical representations. Advances in neural information processing systems, 30, 2017.
+Nickel, M. and Kiela, D. Learning continuous hierarchies in the lorentz model of hyperbolic geometry. In International conference on machine learning, pp. 3779–3788. PMLR, 2018.
+Padial, J. M., Miralles, A., De la Riva, I., and Vences, M. The integrative future of taxonomy. Frontiers in zoology, 7:1–14, 2010.
+Peng, W., Varanka, T., Mostafa, A., Shi, H., and Zhao, G. Hyperbolic deep neural networks: A survey. IEEE Transactions on pattern analysis and machine intelligence, 44 (12):10023–10044, 2021.
+Petermann, D., Wichern, G., Subramanian, A., and Le Roux, J. Hyperbolic audio source separation. In ICASSP 2023-2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), pp. 1–5. IEEE, 2023.
+Popescu, V. Towards fast and certified multiple-precision librairies. PhD thesis, Universite ́ de Lyon, 2017.
+Priest, D. M. Algorithms for arbitrary precision floating point arithmetic. University of California, Berkeley, 1991.
+Priest, D. M. On properties of floating point arithmetics: numerical stability and the cost of accurate computations. University of California, Berkeley, 1992.
+10
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Richard Shewchuk, J. Adaptive precision floating-point arithmetic and fast robust geometric predicates. Discrete & Computational Geometry, 18:305–363, 1997.
+Roquet, C., Lavergne, S., and Thuiller, W. One tree to link them all: a phylogenetic dataset for the european tetrapoda. PLoS currents, 6, 2014.
+Saff, E. B. and Kuijlaars, A. B. Distributing many points on a sphere. The mathematical intelligencer, 19:5–11, 1997.
+Sala, F., De Sa, C., Gu, A., and Re ́, C. Representation tradeoffs for hyperbolic embeddings. In International Conference on Machine Learning, pp. 4460–4469. PMLR, 2018.
+Sanderson, M. J., Donoghue, M. J., Piel, W., and Eriksson, T. Treebase: a prototype database of phylogenetic analyses and an interactive tool for browsing the phylogeny of life. American Journal of Botany, 81(6):183, 1994.
+Sarkar, R. Low distortion delaunay embedding of trees in hyperbolic plane. In International Symposium on Graph Drawing, pp. 355–366. Springer, 2011.
+Sonthalia, R. and Gilbert, A. Tree! i am no tree! i am a low dimensional hyperbolic embedding. Advances in Neural Information Processing Systems, 33:845–856, 2020.
+Tammes, P. M. L. On the origin of number and arrangement of the places of exit on the surface of pollen-grains. Recueil des travaux botaniques n ́eerlandais, 27(1):1–84, 1930.
+Tifrea, A., B ́ecigneul, G., and Ganea, O.-E. Poincar\’e glove: Hyperbolic word embeddings. arXiv preprint arXiv:1810.06546, 2018.
+Yang, Z., Yang, D., Dyer, C., He, X., Smola, A., and Hovy, E. Hierarchical attention networks for document classification. In Proceedings of the 2016 conference of the North American chapter of the association for computational linguistics: human language technologies, pp. 1480–1489, 2016.
+Yu, T. and De Sa, C. M. Representing hyperbolic space accurately using multi-component floats. Advances in Neural Information Processing Systems, 34:15570–15581, 2021.
+Yu, T., Guo, W., Li, J. C., Yuan, T., and De Sa, C. Mctensor: A high-precision deep learning library with multi-component floating-point. arXiv preprint arXiv:2207.08867, 2022a.
+Yu, Z., Nguyen, T., Gal, Y., Ju, L., Chandra, S. S., Zhang, L., Bonnington, P., Mar, V., Wang, Z., and Ge, Z. Skin lesion recognition with class-hierarchy regularized hyperbolic embeddings. In International conference on medical
+image computing and computer-assisted intervention, pp. 594–603. Springer, 2022b.
+Zhang, B., Jiang, H., Feng, S., Li, X., Ye, Y., and Ye, R. Hyperbolic knowledge transfer with class hierarchy for few-shot learning. In IJCAI, pp. 3723–3729, 2022.
+Zhao, X., Leavitt, S. D., Zhao, Z. T., Zhang, L. L., Arup, U., Grube, M., P ́erez-Ortega, S., Printzen, C.,  ́Sliwa, L., Kraichak, E., et al. Towards a revised generic classification of lecanoroid lichens (lecanoraceae, ascomycota) based on molecular, morphological and chemical evidence. Fungal Diversity, 78:293–304, 2016.
+11
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+A. Geodesic hyperplane reflections
+In this paper we will make use of reflections in geodesic hyperplanes through the origin to align points on a hypersphere centered at the origin with some existing point on the hypersphere. More specifically, if we have points w, z ∈ Dn with ||w|| = ||z|| and we want to reflect w to z, then we can use a Householder reflection with v = (z−w)
+||z−w|| , so
+Rw→z(y) = In − 2(z − w)(z − w)T
+||z − w||2 y. (17)
+To see that this maps w to z, we can simply enter w into this map to see that
+Rw→z(w) = In − 2(z − w)(z − w)T
+||z − w||2 w (18)
+= w − 2(⟨z, w⟩ − ||w||2)
+||z||2 − 2⟨z, w⟩ + ||w||2 (z − w) (19)
+= w + ||z||2 − 2⟨z, w⟩ + ||w||2 + ||w||2 − ||z||2
+||z||2 − 2⟨z, w⟩ + ||w||2 (z − w) (20)
+= w + 1 + ||w||2 − ||z||2
+||z||2 − 2⟨z, w⟩ + ||w||2 (z − w) (21)
+= w + z − w = z. (22)
+We make use of reflections in geodesic hyperplanes not through the origin that reflect some given point w ∈ Dn to the origin. This can be done through reflection in the hyperplane contained in the hypersphere with center m = w
+||w||2 and
+radius r =
+q1
+||w||2 − 1. We easily verify that this hyperspherical inversion maps w to the origin.
+Rw→0(w) = w
+||w||2 +
+1
+||w||2 − 1
+||w − w
+||w||2 || w − w
+||w||2 (23)
+=w
+||w||2 + 1 − ||w||2
+||w||4 − 2||w||2 + 1 1 − 1
+||w||2 w (24)
+=w
+||w||2 + 1
+1 − ||w||2 · ||w||2 − 1
+||w||2 w (25)
+=w
+||w||2 − w
+||w||2 = 0. (26)
+To show that this is a reflection in a geodesic hyperplane and, therefore, an isometry, we need to show that the hypersphere defined by m and r is orthogonal to the boundary of Dn. This is the case when all the triangles formed by the line segments between 0, m and any point v in the intersection of the hypersphere and the boundary of Dn are right triangles. This is exactly the case when the Pythagorean theorem holds for each of these triangles. For each v we have that ||v|| = 1 and ||v − m|| = r, so
+||v − 0||2 + ||v − m||2 = 1 + r2 (27)
+=1
+||w||2 (28)
+= ||w||2
+||w||4 (29)
+= ||m − 0||2, (30)
+which shows that the Pythagorean theorem holds and, thus, that this hyperspherical inversion is a geodesic hyperplane reflection, so an isometry.
+12
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+B. Evaluation metrics
+We will use two distortion based evaluation metrics. The first one is the average relative distortion (Sala et al., 2018), given as
+Dave(φ) = 1
+N (N − 1)
+X
+u̸=v
+|dD(φ(u), φ(v)) − dT (u, v)|
+dT (u, v) , (31)
+where N = |V | is the number of nodes. A low value for this metric is a necessary, but not sufficient condition for a high quality embedding, as it still allows for large local distortion. Therefore, we use a second distortion based metric, the worst-case distortion (Sarkar, 2011), given by
+Dwc(φ) = max
+u̸=v
+dD(φ(u), φ(v))
+dT (u, v) min
+u̸=v
+dD(φ(u), φ(v)) dT (u, v)
+−1
+. (32)
+Dave ranges from 0 to infinity and Dwc ranges from 1 to infinity, with smaller values indicating strong embeddings. A large Dave indicates a generally poor embedding, while a large Dwc indicates that at least some part of the tree is poorly embedded. Both values should be close to their minimum if an embedding is to be used for a downstream task. Lastly, another commonly used evaluation metric for unweighted trees is the mean average precision (Nickel & Kiela, 2017), given by
+MAP(φ) = 1
+N
+X
+u∈V
+1
+deg(u)
+X
+v∈NV (u)
+NV (u) ∩ φ−1 BD(u, v)
+φ−1 BD(u, v)
+, (33)
+where deg(u) denotes the degree of u in T , NV (u) denotes the nodes adjacent to u in V and where BD(u, v) ⊂ Dn denotes the closed ball centered at φ(u) with hyperbolic radius dD(φ(u), φ(v)), so which contains v itself. The MAP reflects how well we can reconstruct neighborhoods of nodes while ignoring edge weights, making it less appropriate for various downstream tasks.
+C. Placing points on the vertices of a hypercube
+The discussion here is heavily based on (Sala et al., 2018). We include it here for completeness. When placing a point on the vertex of an n-dimensional hypercube, there are 2n options, so each option can be represented by a binary sequence of length n. For example, on a hypercube where each vertex v has ||v||∞ = 1, each vertex is of the form (±1, . . . , ±1)T , so we can represent v as some binary sequence s. The distance between two such vertices can then be expressed in terms of the Hamming distance between the corresponding sequences as
+d(v1, v2) =
+q
+4dHamming(s1, s2),
+which shows that points placed on vertices of a hypercube are maximally separated if this Hamming distance is maximized. This forms an interesting and well studied problem in coding theory where the objective is to find k binary sequences of length n which have maximal pairwise Hamming distances. There are some specific combinations of n and k for which optimal solutions are known, such as the Hadamard code. However, for most combinations of n and k, the solution is still an open problem (MacWilliams & Sloane, 1977). Therefore, properly placing points on the vertices of a hypercube currently relies on the solution to an unsolved problem, making it difficult in practice.
+D. Proof of Theorem 3.1
+Proof. For a tree T = (V, E) with N = |V |, we know that the degrees of the vertices satisfy
+X
+v∈V
+deg(v) = 2|E| = 2(N − 1). (34)
+Suppose W1, . . . , Wp ⊂ Sn−1 are the sets of points on the hypersphere generated by the p optimizations that need to be ran to perform the construction, then |Wi| ̸= |Wj|, since we use the cached result whenever nodes have the same degree. Moreover, |Wi| is equal to the degree of the node for which the points are generated, so
+p
+X
+i=1
+|Wi| ≤
+X
+v∈V
+deg(v) = 2(N − 1). (35)
+13
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Given this constraint, the largest possible value of p is when we can fit as many |Wi|’s in this sum as possible, which is when |W1|, . . . , |Wp| = 1, . . . , p. In that case
+p
+X
+i=1
+|Wi| =
+p
+X
+i=1
+i = p(p + 1)
+2 ≤ 2(N − 1). (36)
+Solving for integer p yields
+p≤
+l1
+2 (√16N − 15 − 1)
+m
+. (37)
+Note that this bound can be sharpened slightly by observing that each node v with deg(v) > 1 forces the existence of
+deg(v) − 1 leaf nodes with degree 1. However, the asymptotic behaviour remains O(√N ).
+E. Proof of Theorem 4.2
+Theorem. Given x, y ∈ Dn with ||x|| < 1 − εt−1 and ||y|| < 1 − εt−1, an approximation d to equation 2 can be computed with FPE representations with t terms and with a largest magnitude approximation to cosh−1 such that
+d − cosh−1 1 + 2 ||x − y||2
+(1 − ||x||2)(1 − ||y||2) < ε∗, (38)
+for some small ε∗ > 0.
+Proof. We begin by noting that the accuracy of the largest magnitude approximation to cosh−1 depends on the underlying floating point algorithm used for computing the inverse hyperbolic cosine. While this function cannot be computed up to machine precision on its entire domain due to the large derivative near the lower end of its domain, it can still be computed quite accurately, i.e. there exists some small ε1∗ > 0 such that
+cosh−1(x) − cosh−1(x ̃) < ε∗
+1, (39)
+where x ∈ [1, R], where R is the greatest representable number and x ̃ is the floating point approximation to x, so for which
+we have
+|x ̃ − x|
+|x| < ε. (40)
+For example, in PyTorch when using float64, we have ε1∗ ≈ 2.107 ∗ 10−8. If we can approximate the argument inside
+cosh−1 sufficiently accurately, then the largest magnitude approximation will be close enough to guarantee a small error. More specifically, let
+z = 1 + 2 ||x − y||2
+(1 − ||x||2)(1 − ||y||2) , (41)
+and let z ̃ = z ̃1 + . . . + z ̃t with |z ̃i| > |z ̃j| for each i ̸= j be the approximation to z obtained through FPE arithmetic. If
+|z − z ̃|
+|z| = |z − Pt
+i=1 z ̃i|
+|z| < 2ε, (42)
+where ε is the machine precision of the corresponding floating point format, then
+|z − z ̃1| ≤ |z − z ̃| +
+t
+X
+i=2
+z ̃i (43)
+< 2ε + 2ε|z ̃1| (44)
+≤ 4ε|z| + 2ε|z − z ̃1|, (45)
+14
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+where we use that |z ̃2| ≤ ulp(z ̃1) = ε|z ̃1|, so that | Pt
+i=2 z ̃i| < 2ε|z ̃1|. Now, we can rewrite to see that
+|z − z ̃1|
+|z| < 4ε
+1 − 2ε < 8ε. (46)
+Therefore, by repeatedly using equation 39, we see that the largest magnitude approximation error is bounded by 16ε1∗. Our ability to approximate the argument z as precisely as in equation 42 using FPEs follows from the error bounds of the FPE arithmetic routines from (Popescu, 2017). This shows that the statement holds for ε∗ = 16ε1∗.
+F. Proof of Proposition 4.3
+Proposition. The range of the inverse hyperbolic tangent formulation increases linearly in the number of terms t of the FPEs being used.
+Proof. When we use FPEs with t terms, we can represent points x, y ∈ Dn such that ||x|| = 1 − εt−1 and ||y|| = 1 − εt−1. If we set −y = x = (1 − εt−1, 0, . . . , 0)T , then
+cosh−1 1 + 2 ||x − y||2
+(1 − ||x||2)(1 − ||y||2) = cosh−1 1 + 4 (1 − εt−1)2
+(1 − (1 − εt−1)2)2 (47)
+≥ cosh−1 1 + 2
+4ε2t−2 − 4ε3t−3 + ε4t−4 (48)
+≥ cosh−1 1 + 2
+ε2t−2 (49)
+= log 1 + 1
+2ε2t−2 +
+r
+1+ 1
+2ε2t−2
+2
+− 1 (50)
+≥ log 1
+εt−1 (51)
+= (1 − t) log(ε) (52)
+= (t − 1)| log(ε)|, (53)
+which shows that we can compute a distance that is bounded from below by O(t). Similar steps can be used to show that the distance is also bounded from above by a O(t) term.
+G. Proof of Theorem 4.4
+Theorem. Given a ulp-nonoverlapping FPE x = Pt
+i=1 xi ∈ [−1 + εt−1, 1 − εt−1] consisting of floating point numbers with a precision b > t, Algorithm 13 leads to an approximation y of the inverse hyperbolic tangent of x that satisfies
+|y − tanh−1(x)| ≤ ε∗, (54)
+for some small ε∗ > 0.
+Proof. The accuracy of the x ∈ (−0.5, 0.5) branch of the algorithm follows easily from the accuracy of the algorithm for normal floating point numbers and the error bounds of the FPE routines from (Popescu, 2017), similar to the proof in Appendix E. The other branch can be a bit more problematic, due to the large derivatives near the boundary of the domain. For 0.5 ≤ |x| < 1 − εt−1, we use
+tanh−1(x) = 0.5 · sign(x) · log 1 + 2|x|
+1 − |x| . (55)
+Let z denote the argument of the logarithm, so
+z = 1 + 2|x|
+1 − |x| , (56)
+15
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+and let z ̃ = z ̃1 + . . . + z ̃t denote that approximation of z obtained through FPE operations. Due to the error bounds given in (Popescu, 2017), for FPEs with t terms on the domain 0.5 ≤ |x| < 1 − εt−1 we can assume that
+|z − z ̃|
+|z| < 2ε, (57)
+where ε is the machine precision of the floating point terms. Now, since |z ̃2| ≤ ulp(z ̃1) = ε|z ̃1|, we can write
+|z − z ̃1| ≤ |z − z ̃| +
+t
+X
+i=2
+z ̃i (58)
+≤ 2ε|z| + 2|z ̃2| (59)
+≤ 2ε|z| + 2ε|z ̃1| (60)
+≤ 4ε|z| + 2ε|z ̃1 − z|, (61)
+which can be rewritten as
+|z − z ̃1| ≤ 4ε
+1 − 2ε |z| ≤ 8ε|z|. (62)
+This shows that we can write z ̃1 = (1 + δ)z, with |δ| < 8ε. Now, the error of the largest magnitude term approximation of the logarithm is
+y − 0.5 · sign(x) · log(z) = 0.5 · sign(x ̃) · log(z ̃1) − 0.5 · sign(x) · log(z) (63)
+= 0.5 · log z
+z ̃ (64)
+= 0.5 · log z ̃1
+z (65)
+= 0.5 · log (1 + δ)z
+z (66)
+= 0.5 · | log(1 + δ)| (67)
+≤ 0.5 · |δ| (68)
+≤ 4ε. (69)
+Lastly, we introduce some error through the approximation of the natural logarithm. However, as long as no overflow occurs, this error is typically bounded by the machine precision. Therefore, if we can approximate z well enough, then we can guarantee an accurate computation of tanh−1. So combining this result with the error bounds from (Popescu, 2017) concludes the proof.
+H. Proof of Proposition 4.5
+Proposition. The range of algorithm 13 increases linearly in the number of terms t.
+Proof. The maximal values that we can encounter occur near the boundary of the domain, so set x = 1 − εt−1. Then,
+0.5 · sign(x) · log 1 + 2|x|
+1 − |x| = 0.5 · log 1 + 2 − 2εt−1
+εt−1 (70)
+≤ 0.5 · log εt−1 + 2
+εt−1 (71)
+≤ 0.5 · log e
+εt−1 (72)
+= 0.5 · (1 − (t − 1) log(ε)) (73)
+= 0.5 · (1 + (t − 1)| log(ε)|), (74)
+which shows that the range is bounded from above by O(t). A similar argument leads to a O(t) lower bound, showing that the range indeed increases linearly in the number of terms t.
+16
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+I. Binary tree embedding results for varying dimensions
+Table 4 shows results of the embedding of a binary tree with float32 representations in 4, 7, 10 or 20 dimensions. Here, we have also tested an additional objective similar to MAM, where we use the cosines of the angles instead of the angles. We find that MAM generally leads to the best or close to the best results for each choice of dimensions.
+Dave Dwc
+4 7 10 20 4 7 10 20
+(Sala et al., 2018) ‡ 0.734 0.734 0.734 0.734 1143 1143 1143 1143 Sala et al. (2018) ⋆ 0.235 0.502 0.361 0.726 10.51 132 18.42 280.5 E0 0.192 0.188 0.219 0.189 1.655 1.625 1.670 1.640 E1 0.190 0.196 0.204 0.190 1.619 1.664 1.686 1.698 E2 0.194 0.198 0.190 0.198 1.666 1.687 1.642 1.680 Cosine similarity 0.189 0.189 0.188 0.188 1.636 1.637 1.635 1.633 MAM 0.188 0.188 0.188 0.189 1.632 1.623 1.635 1.631
+Table 4. Comparing hyperspherical separation methods for the constructive hyperbolic embedding of a binary tree with a depth of 8 edges using float32 representations in 4, 7, 10 or 20 dimensions. ‡ uses Hadamard generated hypersphere points and ⋆ uses precomputed points from (Lovisolo & Da Silva, 2001).
+J. Embedding m-ary trees in varying dimensions
+Tables 5 and 6 show results of the embedding of various m-ary trees in dimensions 4, 7, 10 and 20, similar to Table 2. We find that MS-DTE gives the best results overall.
+Dave
+3-tree 5-tree 7-tree 4 7 10 20 4 7 10 20 4 7 10 20
+(Sala et al., 2018) † 0.09 0.07 0.03 0.01 0.18 0.05 0.04 0.03 0.16 0.13 0.03 0.02
+(Sala et al., 2018) ‡ 0.11 0.11 0.11 0.11 - - 0.12 0.12 - - 0.12 0.12 (Sala et al., 2018) ⋆ 0.08 0.08 0.09 0.14 0.10 0.12 0.13 0.18 0.12 0.12 0.13 0.17 HS-DTE 0.06 0.06 0.06 0.06 0.09 0.09 0.09 0.09 0.10 0.10 0.10 0.10
+Table 5. Comparison of average distortion of hyperbolic embedding algorithms on m-ary trees with a maximum path length of l = 8. The h-MDS method is represented by †. The ‡ method is the combinatorial construction with the hyperspherical points being generated using the Hadamard construction, whereas the ⋆ method samples hyperspherical points from the precomputed points generated with the hyperspherical separation method from (Lovisolo & Da Silva, 2001). The h-MDS method outperforms the other methods for higher dimensions, but collapses nodes, making the embeddings unusable. HS-DTE has the best performance for smaller dimensions and second best performance for larger dimensions.
+K. Embedding phylogenetic trees in varying dimensions
+Additional experiments involving the phylogenetic trees with embedding dimensions 4, 7, 10 and 20 are shown in Tables 7, 8, 9 and 10. We observe that the precomputed points method struggles to separate points for higher dimensions, leading to higher distortion. Moreover, we find that HS-DTE gives the best results overall in every setting.
+17
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Dwc
+3-tree 5-tree 7-tree 4 7 10 20 4 7 10 20 4 7 10 20
+(Sala et al., 2018) † NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN
+(Sala et al., 2018) ‡ 1.14 1.14 1.14 1.14 - - 1.14 1.14 - - 1.14 1.14 (Sala et al., 2018) ⋆ 1.32 1.22 1.18 1.23 1.28 1.30 1.30 1.34 1.53 1.25 1.31 1.26 HS-DTE 1.07 1.07 1.07 1.07 1.14 1.10 1.10 1.10 1.14 1.13 1.12 1.12
+Table 6. Comparison of worst-case distortion of hyperbolic embedding algorithms on m-ary trees with a maximum path length of l = 8. The h-MDS method is represented by †. The ‡ method is the combinatorial construction with the hyperspherical points being generated using the Hadamard construction, whereas the ⋆ method samples hyperspherical points from the precomputed points generated with the hyperspherical separation method from (Lovisolo & Da Silva, 2001). HS-DTE has the best performance in all settings.
+Dave
+Mosses Weevils 4 7 10 20 4 7 10 20
+HypFPE + (Sala et al., 2018) ‡ - - - 0.09 - - 0.07 0.07 HypFPE + (Sala et al., 2018) ⋆ 0.06 0.10 0.08 0.10 0.03 0.05 0.05 0.10 HypFPE + HS-DTE 0.04 0.04 0.04 0.04 0.03 0.03 0.03 0.03
+Table 7. Comparison of average distortion of hyperbolic embedding algorithms on the mosses and weevils trees. ‡ represents the construction with Hadamard hyperspherical points and ⋆ the construction with points sampled from a set precomputed with (Lovisolo & Da Silva, 2001). The best performance is in bold. The embeddings are performed in a 4, 7, 10 or 20-dimensional space. Overall, we find that HS-DTE works best.
+Dave
+Carnivora Lichen 4 7 10 20 4 7 10 20
+HypFPE + (Sala et al., 2018) ‡ 0.04 0.04 0.04 0.04 0.12 0.12 0.12 0.12 HypFPE + (Sala et al., 2018) ⋆ 0.01 0.03 0.03 0.06 0.05 0.10 0.11 0.19 HypFPE + HS-DTE 0.02 0.02 0.03 0.02 0.06 0.06 0.05 0.05
+Table 8. Comparison of average distortion of hyperbolic embedding algorithms on the carnivora and lichen trees. ‡ represents the construction with Hadamard hyperspherical points and ⋆ the construction with points sampled from a set precomputed with (Lovisolo & Da Silva, 2001). The best performance is in bold. The embeddings are performed in a 4, 7, 10 or 20-dimensional space. Overall, we find that HS-DTE works best.
+L. Statistics of the trees used in the experiments
+Some statistics of the trees that are used in the experiments are shown in Table 11. Most notably, these statistics show that the true number of optimizations that has to be performed is significantly lower than the worst-case number of optimizations given by Theorem 3.1. To see this, note that an optimization step using MAM has to be performed each time a node is encountered with a degree that did not appear before. The result of this optimization step can then be cached and used for each node with the same degree.
+M. Graph and tree-like graph embedding results
+The graphs that we test our method on are a graph detailing relations between diseases (Goh et al., 2007) and a graph describing PhD advisor-advisee relations (De Nooy et al., 2018). In order to embed graphs with the combinatorial constructions, the graphs need to be embedded into trees first. Following (Sala et al., 2018), we use (Abraham et al., 2007) for the graph-to-tree embedding. The results of the subsequent tree embeddings are shown in Table 12. These distortions are with respect to the tree metric of the embedded tree instead of with respect to the original graph. This is to avoid mixing the influence of the tree-to-hyperbolic space embedding method with that of the graph-to-tree embedding.
+18
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Dwc
+Mosses Weevils 4 7 10 20 4 7 10 20
+HypFPE + (Sala et al., 2018) ‡ - - - 1.10 - - 1.09 1.09 HypFPE + (Sala et al., 2018) ⋆ 1.36 1.21 1.14 1.16 1.25 1.12 1.11 1.13 HypFPE + HS-DTE 1.09 1.07 1.06 1.07 1.05 1.05 1.04 1.04
+Table 9. Comparison of worst-case distortion of hyperbolic embedding algorithms on the mosses and weevils trees. ‡ represents the construction with Hadamard hyperspherical points and ⋆ the construction with points sampled from a set precomputed with (Lovisolo & Da Silva, 2001). The best performance is in bold. The embeddings are performed in a 4, 7, 10 or 20-dimensional space. Overall, we find that HS-DTE works best.
+Dwc
+Carnivora Lichen 4 7 10 20 4 7 10 20
+HypFPE + (Sala et al., 2018) ‡ 6.76 6.76 6.76 6.76 43.4 43.4 43.4 43.4 HypFPE + (Sala et al., 2018) ⋆ 3.50 4.06 4.87 13.0 4.73 5.44 6.43 36.0 HypFPE + HS-DTE 2.46 2.45 2.03 2.35 4.07 4.63 3.30 7.17
+Table 10. Comparison of worst-case distortion of hyperbolic embedding algorithms on the carnivora and lichen trees. ‡ represents the construction with Hadamard hyperspherical points and ⋆ the construction with points sampled from a set precomputed with (Lovisolo & Da Silva, 2001). The best performance is in bold. The embeddings are performed in a 4, 7, 10 or 20-dimensional space. Overall, we find that HS-DTE works best.
+From these results we again see that HypFPE + HS-DTE outperforms all other methods. However, it should be noted that graphs cannot generally be embedded with arbitrarily low distortion in hyperbolic space and that the graph to tree embedding method will introduce significant distortion. Hyperbolic space is not a suitable target for embedding a graph that is not tree-like. Therefore, we define our method as a tree embedding method and not as a graph embedding method.
+N. FPE arithmetic
+Algorithm 2 FPEAddition
+1: Input: FPEs x = x1 + . . . + xn, y = y1 + . . . + ym and number of output terms r. 2: f ← MergeFPEs(x, y) 3: s ← FPERenormalize(f, r) 4: return s = s1 + . . . + sr
+19
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Algorithm 3 MergeFPEs
+1: Input: FPEs x = x1 + . . . + xn, y = y1 + . . . + ym. 2: z ← Concatenate(x, y) 3: Sort terms in z in ascending order with respect to absolute value. 4: return Sorted z = {z1, . . . , zn+m}.
+Algorithm 4 FPERenormalize
+1: Input: List of floating point numbers x = x1, . . . , xn and number of output terms r. 2: e ← VecSum(x) 3: y ← VecSumErrBranch(e, r) 4: return y = y1 + . . . + yr
+Algorithm 5 VecSum
+1: Input: List of floating point numbers x1, . . . , xn. 2: s ← xn
+3: for i ∈ {n − 1, . . . , 1} do 4: (s, ei+1) ← 2Sum(xi, s) 5: end for 6: e1 ← s
+7: return e1, . . . , en
+Algorithm 6 VecSumErrBranch
+1: Input: List of floating point numbers e1, . . . , en and number of output terms m. 2: j ← 1 3: ε ← e1
+4: for i ∈ {1, n − 1} do
+5: (rj, ε) ← 2Sum(ε, ei+1) 6: if ε ̸= 0 then 7: if j ≥ m then
+8: return r1, . . . , rm 9: end if
+10: j ← j + 1 11: else 12: ε ← rj 13: end if 14: end for 15: if ε ̸= 0 and j ≤ m then 16: rj ← ε 17: end if
+18: return r0, . . . , rm
+Algorithm 7 2Sum
+1: Input: floating point numbers x and y. 2: s ← RN(x + y) where RN is rounding to nearest 3: x′ ← RN(s − y) 4: y′ ← RN(s − x′) 5: δx ← RN(x − x′) 6: δy ← RN(y − y′) 7: e ← RN(δx + δy) 8: return (s, e)
+20
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Algorithm 8 Fast2Sum
+1: Input: Floating point numbers x and y with ⌊log2 |x|⌋ ≥ ⌊log2 |y|⌋ 2: s ← RN(x + y) 3: z ← RN(s − x) 4: e ← RN(y − z) 5: return (s, e)
+Algorithm 9 FPEMultiplication
+1: Input: FPEs x = x1 + . . . + xn, y = y1 + . . . + ym, number of output terms r, bin size b and precision p (for float64: b = 45, p = 53). 2: tx1 ← ⌊log2 |x1|⌋ 3: ty1 ← ⌊log2 |y1|⌋ 4: t ← tx1 + ty1 5: for i ∈ {1, . . . , ⌊r · p/b⌋ + 2} do 6: Bi ← 1.5 · 2t−ib+p−1 7: end for
+8: for i ∈ {1, . . . , min(n, r + 1)} do 9: for j ∈ {1, . . . , min(m, r + 1 − i)} do 10: (π′, e) ← 2Prod(xi, yj) 11: l ← t − txi − tyi 12: sh ← ⌊l/b⌋ 13: l ← l − sh · b
+14: B ← Accumulate(π′, e, B, sh, l) 15: end for 16: if j < m then 17: π′ ← xi · yj
+18: l ← t − txi − tyj 19: sh ← ⌊l/b⌋ 20: l ← l − sh · b
+21: B ← Accumulate(π′, 0, B, sh, l) 22: end if 23: end for
+24: for i ∈ {1, . . . , ⌊r · p/b⌋ + 2} do 25: Bi ← Bi − 1.5 · 2t−ib+p−1 26: end for
+27: π ← VecSumErrBranch(B, r) 28: return π1 + . . . + πr
+21
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Algorithm 10 Accumulate
+1: Input: Floating point numbers π′, e, list of floating point numbers B and integers sh, l. 2: c ← p − b − 1
+3: if l < b − 2c − 1 then
+4: (Bsh, π′) ← Fast2Sum(Bsh, π′)
+5: Bsh+1 ← Bsh+1 + π′
+6: (Bsh+1, e) ← Fast2Sum(Bsh+1, e)
+7: Bsh+2 ← Bsh+2 + e
+8: else if l < b − c then
+9: (Bsh, π′) ← Fast2Sum(Bsh, π′) 10: Bsh+1 ← Bsh+1 + π′
+11: (Bsh+1, e) ← Fast2Sum(Bsh+1, e) 12: (Bsh+2, e) ← Fast2Sum(Bsh+2, e)
+13: Bsh+3 ← Bsh+3 + e
+14: else 15: (Bsh, p) ← Fast2Sum(Bsh, π′) 16: (Bsh+1, π′) ← Fast2Sum(Bsh+1, π′) 17: Bsh+2 ← Bsh+2 + π′
+18: (Bsh+2, e) ← Fast2Sum(Bsh+2, e)
+19: Bsh+3 ← Bsh+3 + e
+20: end if 21: return B
+Algorithm 11 FPEReciprocal
+1: Input: FPE x = x1 + . . . + x2k an number of output terms 2q.
+2: r1 = RN( 1
+x1 )
+3: for i ∈ {1, . . . , q} do
+4: v ← FPEMultiplication(r, x, 2i+1) 5: w ← FPERenormalize(−v1, . . . , −v2i+1 , 2.0, 2i+1) 6: r ← FPEMultiplication(r, w, 2i+1) 7: end for 8: return r1 + . . . + r2q
+Algorithm 12 FPEDivision
+1: Input: FPEs x = x1 + . . . + xn, y = y1 + . . . + ym and number of output terms r. 2: z ← FPEReciprocal(y, m) 3: π ← FPEMultiplication(x, z, r) 4: return π
+Algorithm 13 FPEtanh−1
+1: Input: FPE f ̃ = f ̃1 + . . . + f ̃t.
+2: if |f ̃| > 1 then 3: return NaN 4: else if |f ̃| = 1 then 5: return ∞ 6: else if |f ̃| < 0.5 then
+7: return 0.5 · sign(f ̃) · log(1 + 2|f ̃| + 2|f ̃|·|f ̃|
+1−|f ̃| )
+8: else
+9: return 0.5 · sign(f ̃) · log(1 + 2|f ̃|
+1−|f ̃| )
+10: end if
+22
+
+
+Low-distortion and GPU-compatible Tree Embeddings in Hyperbolic Space
+Tree Nodes Unique degrees Theoretical worst-case degmax Longest path length
+m-ary trees Varying 2 Varying m + 1 varying Mosses 344 11 38 16 51 Weevils 195 5 29 8 29 Carnivora 548 3 45 4 192.4 Lichen 481 3 48 4 0.972
+Table 11. Statistics for the trees used in the experiments. The number of unique degrees is excluding nodes with a degree of 1. This number is equal to the total number of optimizations that has to be performed when embedding the tree using HS-DTE. The theoretical worst-case shows the worst-case number of optimizations that has to be performed according to Theorem 3.1. Note that the true number of optimizations is often significantly lower than this worst-case number.
+Precision Diseases CS PhDs
+Dave Dwc Dave Dwc
+(Nickel & Kiela, 2017) 53 0.40 NaN 0.72 NaN (Ganea et al., 2018) 53 0.85 4831 0.94 803 (Yu et al., 2022b) 53 0.72 1014 0.91 1220
+(Sala et al., 2018) † 53 0.06 NaN 0.08 NaN
+(Sala et al., 2018) ‡ 53 - - - (Sala et al., 2018) ⋆ 53 0.364 5.07 0.33 3.84 HS-DTE 53 0.28 2.28 0.29 2.76
+HypFPE + (Sala et al., 2018) ‡ 417 - - - HypFPE + (Sala et al., 2018) ⋆ 417 0.05 1.16 0.04 1.14 HypFPE + HS-DTE 417 0.04 1.14 0.04 1.09
+Table 12. Comparison of hyperbolic embedding algorithms on graphs. † represents the h-MDS method, ‡ the construction with Hadamard hyperspherical points and ⋆ the construction with points sampled from a set precomputed with (Lovisolo & Da Silva, 2001). The best float64 performance is underlined and the best FPE performance is in bold. All embeddings are performed in a 10-dimensional space. Hadamard generation cannot be used, since each embedded graph has a degmax greater than 8. HypFPE + HS-DTE outperforms all methods.
+23

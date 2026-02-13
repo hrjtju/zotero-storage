@@ -1,0 +1,230 @@
+首页
+知乎直答
+焕新
+知乎知学堂
+等你来答
+​
+提问
+​
+消息
+​
+26
+私信
+​
+创作中心
+MindSpore AI科学计算系列（6）：AI科学计算综述阅读
+首发于
+MindSpore模型算法创新
+MindSpore AI科学计算系列（6）：AI科学计算综述阅读
+于璠​
+华为MindSpore软件领域科学家/AI4S LAB主任
+​
+关注
+收录于 · MindSpore模型算法创新
+34 人赞同了该文章
+
+最近阅读了AI科学计算相关的几篇综述论文[1-3]，深受启发，在这里做一个阅读笔记，和大家分享一下。
+
+背景
+
+多物理和多尺度系统的动力学建模和预测仍然是一个开放的科学问题。以地球系统为例，它是一个独特的复杂系统，其动力学受到物理、化学和生物过程相互作用的复杂支配，这些过程发生在时空尺度上，跨度达17个数量级。在过去的50年里，通过使用有限差分、有限元、甚至无网格方法数值求解偏微分方程(partial differential equations，PDEs)，在从地球物理到生物物理的不同应用中，对多尺度物理的理解取得了巨大的进展。
+
+这些方法虽然可以解决低维问题(比如三维问题)，但随着维度的增加，事情很快变得更加困难。玻耳兹曼方程就是一个很好的例子：相空间的维数和碰撞核的非局域性使得用上述算法求解玻尔兹曼方程变得非常困难，即使它的维度远小于多体薛定谔方程。这就引出了我们所面临的许多难题的核心问题——维度灾难(curse of dimensionality，CoD)：随着维度的增长，复杂性(或计算成本)也呈指数增长[1]。
+
+多尺度建模
+
+克服上述困难的一个重要思想是多尺度建模[2]：通过将小尺度下的无关紧要的自由度整合起来，人们应当能够直接使用更可靠的微观尺度模型，为我们感兴趣的宏观尺度过程提出更为有效的算法。这种方法适用于广泛的科学学科。然而至今为止，多尺度模型并没有像20年前预期的那样取得引人注目的成功，因为它面临以下挑战：
+
+1. 微型模型往往不是那么可靠。例如，在研究裂纹扩展时，我们经常使用分子动力学作为微尺度模型。但是，分子动力学模型对于涉及断键的动态过程的准确性常常是值得怀疑的。
+
+2. 尽管多尺度建模可以大大减少所需的微尺度模拟的大小，但它仍然超出了我们目前的能力。
+
+3. 我们利用多尺度建模的主要好处是分离了问题的微观和宏观尺度。但对于最有趣和最具挑战性的问题，这种方法通常会失效。
+
+4. 在技术层面上，高效的多尺度建模需要有效的算法从微尺度模拟中提取所需的相关信息。这是一个尚未得到充分解决的数据分析问题。
+
+机器学习带来转机
+
+机器学习的最新进展为我们逼近多变量的函数提供了前所未有的能力。深度学习已经成功地解决了高维问题，如高分辨率的图像分类、语言建模和高维偏微分方程。这种成功的一个原因是神经网络可以在目标函数是局部函数的层次组成的条件下打破维度灾难。这让我们可以回到所有因CoD而变得困难的问题。它还提供了一个机会，通过添加一个新的维度来重新检查上面讨论的问题。机器学习有很多不同的方法可以用来帮助解决科学和工程领域出现的问题，我们将集中讨论以下问题：
+
+如何使用机器学习来找到新的可解释的和真正可靠的物理模型？
+
+纯数据驱动的机器学习模型可能可以完美拟合观测结果，但由于推断或观测偏差可能导致较差的泛化性能，预测可能在物理上不一致或不可信。以下是在机器学习的帮助下构建新的物理模型的基本要求[1]：
+
+1. 模型应满足以下要求：
+
+（1）表达基本的物理原理(例如守恒定律) ，
+
+（2）遵守物理约束(如对称性、框架无差异)，
+
+（3）尽可能做到普遍准确 ，
+
+（4）具有物理意义(可解释)；
+
+2. 用来构建模型的数据集应该能够很好地表示模型所要用于的所有实际情况；
+
+3. 为了减少人工干预，构建模型的过程应该是端到端的。
+
+物理知识与机器学习融合
+
+将物理知识与机器学习融合相当于引入适当的观察、归纳或学习偏差，从而引导学习过程，以找到物理上一致的解决方案[3]。
+
+· 观测偏差
+
+观察数据可能是最近机器学习取得成功的基础。当给定的数据可以覆盖学习任务的输入域时，机器学习方法在实现点之间的精确插值方面显示了非凡的能力，即使是在高维任务中。特别是对于物理系统，传感器网络的快速发展使得获取大量的观测数据和监测复杂现象跨越多个时空尺度的演变成为可能。这些观测数据可以反映指示其生成的潜在物理原理，原则上可以作为一种弱机制，在机器学习模型的训练阶段将这些原理嵌入到模型中[4]-[7]。
+
+然而，特别是对于过度参数化的深度学习模型，通常需要大量的数据来强化这些偏差，并生成符合某些对称性和守恒定律的预测。在这种情况下，一个直接的困难与数据获取的成本有关。对于物理和工程科学的许多应用来说，数据获取的成本可能是非常大的，因为观测数据需要通过昂贵的实验或大规模的计算模型产生。
+
+· 归纳偏差
+
+设计专门的神经网络架构，将与给定预测任务相关的任何先验知识和归纳偏差嵌入架构。以卷积神经网络为例，通过巧妙地遵循自然图像中对称组和分布模式表示的不变性，彻底改变了计算机视觉领域。卷积网络可以推广到旋转、反射和更一般的规范对称变换。这使得在只依赖于内在几何的流形上开发一类非常通用的神经网络架构成为可能，从而为涉及医学图像、气候模式分割等计算机视觉任务提供非常有效的模型。平移不变表示也可以通过基于小波的散射变换来构造，这种变换对形变是稳定的，并且可以保留高频信息。另一个例子是协变神经网络（covariant NNs）[8]，专为符合多体系统中存在的旋转和平移不变性而定制。尽管这些方法具有显著的效果，但目前这些方法仅在相对简单且定义良好的物理或对称群任务中有效，并且需要通过精细的设计来实现。此外，将它们扩展到更复杂的任务是具有挑战性的，因为许多物理系统的基本不变性或守恒定律往往难以理解，或难以在神经体系结构中进行隐式编码。
+
+广义卷积并不是把归纳偏差嵌入架构的唯一选择。例如，神经网络输入变量交换下的反对称性可以通过矩阵值函数的行列式得到[9]；在大规模原子模型中，将基于物理的键序势模型与神经网络相结合，将结构参数分为局部和全局两部分来预测原子间势能面[10]；采用不变张量基将伽利略不变性嵌入到网络结构中，显著提高了湍流建模中神经网络的预测精度[11]；通过修改自动编码器来代表库普曼算子，从而识别坐标变换，将非线性动力学重新转换为近似的线性动力学[12]。
+
+当神经网络用于求解微分方程，可以通过修改结构来完全满足所需的初始条件[13]，Dirichlet边界条件[14]，Neumann边界条件[15, 16]，Robin边界条件[17]，周期边界条件[18,19]和界面条件[17]。此外，如果偏微分方程解的一些特征是预先知道的，也可以将它们编码到网络结构中，例如，多尺度特征[20, 21]、偶/奇对称和能量守恒[22]、高频[23]等等。
+
+· 学习偏差
+
+学习偏差可以通过选择合适的损失函数、约束和推理算法引入，这些算法可以调节机器学习模型的训练阶段，使其收敛到符合基本物理知识的解决方案。通过使用和调整这种软惩罚约束，基本的物理定律可以被近似地满足。这提供了一个非常灵活的方案来引入一类广泛的基于物理的偏差，这些偏差可以以积分、微分甚至分数方程的形式表示。代表性的例子包括deep Galerkin方法[24]和PINNs及其变体[25-28]。PINNs的框架如下图所示，它将偏微分方程及其初始条件和边界条件作为损失函数来训练神经网络。
+
+这些使机器学习算法倾向于物理一致的解决方案并不是相互排斥的，可以有效地组合，从而产生非常广泛的混合方法，用于构建物理知识与机器学习相融合的模型。
+
+展望
+
+尽管最近物理知识与机器学习融合取得一定的成功，但作为一个新兴领域，它仍然面临巨大挑战：
+
+· 新的算法和计算框架
+
+基于物理的机器学习模型通常需要训练具有复杂损失函数的大规模神经网络，这些神经网络通常由多个项组成，因此是高度非凸优化问题。在训练过程中，损失函数中的各项可能会相互竞争，训练过程可能不是鲁棒和足够稳定的，无法保证收敛到全局最小值。为了解决这个问题，需要开发更加鲁棒的网络结构和训练算法。与经典的分类或回归任务梯度下降时只需要计算一阶导数不同，基于物理知识与机器学习融合的方法通常涉及高阶导数。目前，TensorFlow、PyTorch等流行的软件框架并没有很好地支持它们的高效计算。一个高效计算高阶导数的计算框架可以大大降低计算成本，促进物理知识与机器学习融合的方法在不同学科中的应用。除了整数阶导数，积分算子，甚至分数阶导数在物理知识的学习中也是非常有用的。
+
+· 数据生成和通用的评价指标
+
+在科学计算领域，很多数据无法通过实验获得（例如密度泛函理论和分子动力学模拟、湍流的直接数值模拟等），它们需要消耗大量的时间和计算资源。因此，应该仔细考虑如何使这些数据公开可用，如何管理这些有价值的数据，以及如何包括生成这些数据库所需的物理模型和所有参数。此外，还需要研究人员共同努力来设计有意义的基准，以测试新提出的基于物理的算法的准确性和速度，这是一项非平凡的任务。
+
+参考文献
+
+[1] Weinan E, Jiequn Han, & Linfeng Zhang, Integrating Machine Learning with Physics-Based Modeling, Preprint at arXiv(2020).
+
+[2] Weinan E, The Dawning of a New Era in Applied Mathematics, Notice of the American Mathematical Society (2021).
+
+[3] George Em Karniadakis, Ioannis G. Kevrekidis, Lu Lu, Paris Perdikaris, Sifan Wang, & Liu Yang, Physics-informed machine learning, Nature Reviews Physics, 3: 422–440 (2021).
+
+[4] Lu, L., Jin, P., Pang, G., Zhang, Z. & Karniadakis, G. E. Learning nonlinear operators via DeepONet based on the universal approximation theorem of operators. Nat. Mach. Intell. 3, 218–229 (2021).
+
+[5] Kashefi, A., Rempe, D. & Guibas, L. J. A point- cloud deep learning framework for prediction of fluid flow fields on irregular geometries. Phys. Fluids 33, 027104 (2021).
+
+[6] Li, Z. et al. Fourier neural operator for parametric partial differential equations. in Int. Conf. Learn. Represent. (2021).
+
+[7] Yang, Y. & Perdikaris, P. Conditional deep surrogate models for stochastic, high- dimensional, and multi- fidelity systems. Comput. Mech. 64, 417–434, (2019).
+
+[8] Kondor, R., Son, H. T., Pan, H., Anderson, B. & Trivedi, S. Covariant compositional networks for learning graphs. Preprint at arXiv.org e-Print archive(2018).
+
+[9] Pfau, D., Spencer, J. S., Matthews, A. G. & Foulkes, W. M. C. Ab initio solution of the manyelectron Schrödinger equation with deep neural networks. Phys. Rev. Res. 2, 033429 (2020).
+
+[10] Pun, G. P., Batra, R., Ramprasad, R. & Mishin, Y. Physically informed artificial neural networks for atomistic modeling of materials. Nat. Commun. 10, 1–10 (2019).
+
+[11] Ling, J., Kurzawski, A. & Templeton, J. Reynolds averaged turbulence modelling using deep neural networks with embedded invariance. J. Fluid Mech. 807, 155–166 (2016).
+
+[12] Lusch, B., Kutz, J. N. & Brunton, S. L. Deep learning for universal linear embeddings of nonlinear dynamics. Nat. Commun. 9, 4950 (2018).
+
+[13] Lagaris, I. E., Likas, A. & Fotiadis, D. I. Artificial neural networks for solving ordinary and partial differential equations. IEEE Trans. Neural Netw. 9, 987–1000
+
+(1998).
+
+[14] Sheng, H. & Yang, C. PFNN: A penalty- free neural network method for solving a class of second- order boundary- value problems on complex geometries. J. Comput. Phys. 428, 110085 (2021).
+
+[15] McFall, K. S. & Mahan, J. R. Artificial neural network method for solution of boundary value problems with exact satisfaction of arbitrary boundary conditions.
+
+IEEE Transac. Neural Netw. 20, 1221–1233 (2009).
+
+[16] Beidokhti, R. S. & Malek, A. Solving initial- boundary value problems for systems of partial differential equations using neural networks and optimization
+
+techniques. J. Franklin Inst. 346, 898–913 (2009).
+
+[17] Lagari, P. L., Tsoukalas, L. H., Safarkhani, S. & Lagaris, I. E. Systematic construction of neural forms for solving partial differential equations inside rectangular domains, subject to initial, boundary and interface conditions. Int. J. Artif. Intell. Tools 29, 2050009 (2020).
+
+[18] Zhang, D., Guo, L. & Karniadakis, G. E. Learning in modal space: solving time- dependent stochastic PDEs using physics- informed neural networks. SIAM J. Sci.
+
+Comput. 42, A639–A665 (2020).
+
+[19] Dong, S. & Ni, N. A method for representing periodic functions and enforcing exactly periodic boundary conditions with deep neural networks. J. Comput.
+
+Phys. 435, 110242 (2021).
+
+[20] Wang, B., Zhang, W. & Cai, W. Multi- scale deep neural network (MscaleDNN) methods for oscillatory stokes flows in complex domains. Commun. Comput. Phys.
+
+28, 2139–2157 (2020).
+
+[21] Liu, Z., Cai, W. & Xu, Z. Q. J. Multi- scale deep neural network (MscaleDNN) for solving Poisson–Boltzmann equation in complex domains. Commun. Comput. Phys. 28, 1970–2001 (2020).
+
+[22] Mattheakis, M., Protopapas, P., Sondak, D., Di Giovanni, M. & Kaxiras, E. Physical symmetries embedded in neural networks. Preprint at arxiv (2019).
+
+[23] Cai, W., Li, X. & Liu, L. A phase shift deep neural network for high frequency approximation and wave problems. SIAM J. Sci. Comput. 42, A3285–A3312 (2020).
+
+[24] Sirignano, J. & Spiliopoulos, K. DGM: a deep learning algorithm for solving partial differential equations. J. Comput. Phys. 375, 1339–1364 (2018).
+
+[25] Raissi, M., Perdikaris, P. & Karniadakis, G. E. Physics- informed neural networks: a deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations. J. Comput. Phys. 378, 686–707 (2019).
+
+[26] Kissas, G. et al. Machine learning in cardiovascular flows modeling: predicting arterial blood pressure from non- invasive 4D flow MRI data using physicsinformed
+
+neural networks. Comput. Methods Appl. Mech. Eng. 358, 112623 (2020).
+
+[27] Zhu, Y., Zabaras, N., Koutsourelakis, P. S. & Perdikaris, P. Physics- constrained deep learning for high- dimensional surrogate modeling and uncertainty
+
+quantification without labeled data. J. Comput. Phys. 394, 56–81 (2019).
+
+[28] Geneva, N. & Zabaras, N. Modeling the dynamics of PDE systems with physics- constrained deep auto- regressive networks. J. Comput. Phys. 403, 109056 (2020).
+
+所属专栏 · 2022-01-30 16:01 更新
+MindSpore模型算法创新
+于璠
+35 篇内容 · 1372 赞同
+订阅
+最热内容 ·
+一文带你初识MindSpore深度概率学习
+发布于 2021-09-07 10:46
+神经网络
+AI技术
+​
+赞同 34​
+​
+添加评论
+​
+分享
+​
+喜欢
+​
+收藏
+​
+申请转载
+​
+发首评
+
+
+还没有评论，发表第一个评论吧
+关于作者
+于璠​
+华为MindSpore软件领域科学家/AI4S LAB主任
+回答
+2
+文章
+106
+关注者
+14,770
+​
+关注
+​
+发私信
+推荐阅读
+MindSpore AI科学计算系列（12）：采用数据驱动的主导平衡模型识别复杂物理过程
+
+我们身处一个真实的物理世界，包含许多复杂的物理过程，一般难以对其进行完整的物理建模。然而纵观整个科学发展史，即使再复杂的物理过程也存在其所对应的简洁控制方程组。甚至针对局部时空…
+
+于璠
+发表于MindS...
+[DeepLearning - Math]深度学习-数学之流形结构（上）
+Pascal算法摆渡人
+(KDD2024) 从几何的视角理解自监督学习中的冗余消除
+张一一
+类脑计算开启大模型计算新范式？
+IcyO

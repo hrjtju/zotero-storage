@@ -1,0 +1,72 @@
+Skip to main content
+Computer Science > Computer Vision and Pattern Recognition
+arXiv:2310.00426 (cs)
+[Submitted on 30 Sep 2023 (v1), last revised 29 Dec 2023 (this version, v3)]
+PixArt-
+α
+: Fast Training of Diffusion Transformer for Photorealistic Text-to-Image Synthesis
+Junsong Chen, Jincheng Yu, Chongjian Ge, Lewei Yao, Enze Xie, Yue Wu, Zhongdao Wang, James Kwok, Ping Luo, Huchuan Lu, Zhenguo Li
+View PDF
+The most advanced text-to-image (T2I) models require significant training costs (e.g., millions of GPU hours), seriously hindering the fundamental innovation for the AIGC community while increasing CO2 emissions. This paper introduces PIXART-
+α
+, a Transformer-based T2I diffusion model whose image generation quality is competitive with state-of-the-art image generators (e.g., Imagen, SDXL, and even Midjourney), reaching near-commercial application standards. Additionally, it supports high-resolution image synthesis up to 1024px resolution with low training cost, as shown in Figure 1 and 2. To achieve this goal, three core designs are proposed: (1) Training strategy decomposition: We devise three distinct training steps that separately optimize pixel dependency, text-image alignment, and image aesthetic quality; (2) Efficient T2I Transformer: We incorporate cross-attention modules into Diffusion Transformer (DiT) to inject text conditions and streamline the computation-intensive class-condition branch; (3) High-informative data: We emphasize the significance of concept density in text-image pairs and leverage a large Vision-Language model to auto-label dense pseudo-captions to assist text-image alignment learning. As a result, PIXART-
+α
+'s training speed markedly surpasses existing large-scale T2I models, e.g., PIXART-
+α
+ only takes 10.8% of Stable Diffusion v1.5's training time (675 vs. 6,250 A100 GPU days), saving nearly $300,000 ($26,000 vs. $320,000) and reducing 90% CO2 emissions. Moreover, compared with a larger SOTA model, RAPHAEL, our training cost is merely 1%. Extensive experiments demonstrate that PIXART-
+α
+ excels in image quality, artistry, and semantic control. We hope PIXART-
+α
+ will provide new insights to the AIGC community and startups to accelerate building their own high-quality yet low-cost generative models from scratch.
+Comments:	Project Page: this https URL
+Subjects:	Computer Vision and Pattern Recognition (cs.CV)
+Cite as:	arXiv:2310.00426 [cs.CV]
+ 	(or arXiv:2310.00426v3 [cs.CV] for this version)
+ 	
+https://doi.org/10.48550/arXiv.2310.00426
+Focus to learn more
+Submission history
+From: Enze Xie [view email]
+[v1] Sat, 30 Sep 2023 16:18:00 UTC (15,215 KB)
+[v2] Mon, 16 Oct 2023 14:57:05 UTC (15,214 KB)
+[v3] Fri, 29 Dec 2023 16:42:08 UTC (15,633 KB)
+
+Access Paper:
+View PDFTeX SourceOther Formats
+view license
+Current browse context: cs.CV
+< prev next >
+
+newrecent2023-10
+Change to browse by: cs
+References & Citations
+NASA ADS
+Google Scholar
+Semantic Scholar
+Export BibTeX Citation
+Bookmark
+Bibliographic Tools
+Bibliographic and Citation Tools
+Bibliographic Explorer Toggle
+Bibliographic Explorer (What is the Explorer?)
+Connected Papers Toggle
+Connected Papers (What is Connected Papers?)
+Litmaps Toggle
+Litmaps (What is Litmaps?)
+scite.ai Toggle
+scite Smart Citations (What are Smart Citations?)
+Code, Data, Media
+Demos
+Related Papers
+About arXivLabs
+Which authors of this paper are endorsers? | Disable MathJax (What is MathJax?)
+About
+Help
+Contact
+Subscribe
+Copyright
+Privacy Policy
+Web Accessibility Assistance
+
+arXiv Operational Status 
+Get status notifications via email or slack

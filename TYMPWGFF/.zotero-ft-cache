@@ -1,0 +1,600 @@
+Hyperbolic Fine-tuning for Large Language Models
+Menglin Yang1, Aosong Feng1, Bo Xiong2, Jihong Liu3, Irwin King3, Rex Ying1 1Yale University 2University of Stuttgart 3The Chinese University of Hong Kong
+Email:mlyang.yale@outlook.com
+ABSTRACT
+Large language models (LLMs) have demonstrated remarkable performance on various tasks. However, it remains an open question whether the default Euclidean space is the most suitable choice for embedding tokens in LLMs. In this study, we first investigate the non-Euclidean characteristics of LLMs. Our findings reveal that token frequency follows a power-law distribution, with high-frequency tokens clustering near the origin and low-frequency tokens positioned farther away. Additionally, token embeddings exhibit a high degree of hyperbolicity, indicating a latent tree-like structure in the embedding space. Building on the observation, we propose to efficiently fine-tune LLMs in hyperbolic space to better exploit the underlying complex structures. However, we found that this fine-tuning in hyperbolic space cannot be achieved with naive application of exponential and logarithmic maps, when the embedding and weight matrices both reside in Euclidean space. To address this technique issue, we introduce a new method called hyperbolic low-rank efficient fine-tuning, HypLoRA, that performs low-rank adaptation directly on the hyperbolic manifold, avoiding the cancellation effect caused by the exponential and logarithmic maps, thus preserving the hyperbolic modeling capabilities. Through extensive experiments, we demonstrate that HypLoRA significantly enhances the performance of LLMs on reasoning tasks, particularly for complex reasoning problems. In particular, HypLoRA improves the performance in the complex AQuA dataset by up to 13.0%, showcasing its effectiveness in handling complex reasoning challenges.1
+1 Introduction
+Large language models (LLMs) such as GPT-4 (Achiam et al., 2023), LLaMA (Touvron et al., 2023), and Gemma (Gemma Team, 2024) have demonstrated remarkable capabilities in understanding and generating human-like text (Qin et al., 2023; Shen et al., 2024). Despite their impressive capabilities, these models often rely on Euclidean geometry for learning text representations, which may not always be the complex, hierarchical nature of real-world data structures (Bronstein et al., 2017; Bachmann et al., 2020). For example, in language, words are often organized into categories that reflect varying levels of abstraction. These relationships naturally form a tree-like structure, where general or abstract concepts, such as "fruits," sit at the top of the hierarchy, while more specific or concrete terms, like "apples" or "bananas," reside at the lower levels. Representing such structures effectively is crucial for understanding the semantics of language in LLMs.
+Recent advancements suggest that non-Euclidean geometries, particularly hyperbolic spaces, offer promising alternatives for modeling hierarchical data. Hyperbolic space, distinguished by its negative curvature, is especially well-suited for representing tree-like data due to its exponential volume growth, enabling efficient embeddings of hierarchies (Nickel & Kiela, 2017; 2018; Ganea et al., 2018a; Khrulkov et al., 2020; Cetin et al., 2022). However, a significant research gap remains: existing works have not attempted to study LLM embeddings in the context of non-Euclidean geometry.
+Proposed Analysis Framework In this work, we first delve deep into how LLMs interact with token embeddings and explore to what extent these embeddings exhibit non-Euclidean characteristics. We
+1https://github.com/marlin-codes/HypLLM
+1
+arXiv:2410.04010v1 [cs.LG] 5 Oct 2024
+
+
+approach this from both a global and local perspective. At the global level, we analyze the overall distribution of tokens by frequency, examining how these frequency maps are distributed across the embedding space. At the local level, we measure the hyperbolicity (Borassi et al., 2015; Kennedy et al., 2013) of the metric space spanned by each input prompt, where the embedding hyperbolicity serves as a proxy to assess the similarity of the underlying embedding structure to a tree structure.
+Figure 1: Illustration of a reasoning task with hyperbolic geometry on LLMs. The figure shows that a fruit store has 510 fruits (apples and bananas), and knowing that there are 100 bananas, we determine the number of apples to be 410. In token embedding, frequent and abstract tokens (like, "fruit, how many, and numbers") are represented closer to the origin, while specific and less frequent tokens (like "apples, bananas, numbers, 510, 110") appear further away, creating a tree-like structure. By this structure, hyperbolic space enables LLMs to map hierarchical relationships more efficiently, preserving the inherent structure of tokens, understanding the semantic meaning, and facilitating accurate reasoning.
+Our analysis in Section 4 reveals several key insights. First, token frequency follows a power-law distribution, as shown in Figure 2 (left). This distribution, where a small set of tokens appears frequently while most are rare, suggests an implicit hierarchy similar to a branching tree (Krioukov et al., 2010). High-frequency tokens (abstract concepts) tend to be located near the origin of the embedding space, while low-frequency tokens (specific terms) are farther away, as depicted in Figure 2 (right) and Table 1. Furthermore, our investigation of hyperbolicity (δ values) in Table 2 demonstrates that LLM token embeddings exhibit significant tree-like properties.
+Based on our findings above, a natural consideration is to develop hyperbolic LLMs that explicitly incorporate hyperbolic inductive bias, as shown in Figure 1. However, training LLMs from scratch can be resource-intensive (Loshchilov & Hutter, 2017; Rajbhandari et al., 2020). As a more resource-efficient alternative, we propose to build the first low-rank adaptation method in hyperbolic space. This approach is particularly advantageous given that existing LLMs are all Euclidean, and not all downstream tasks require hyperbolic geometry in their fine-tuning. Through employing hyperbolic adapters for specific tasks on an Euclidean foundation model, we can leverage the benefits of both geometries while maintaining computational efficiency.
+Challenges Adapting LLMs in non-Euclidean embedding spaces with classic techniques, i.e. applying exponential and logarithmic maps with tangent space (Chami et al., 2019; Ganea et al., 2018b; Yang et al., 2022c) for weight adaptation is problematic in this case. This approach fails to fully capture the hyperbolic geometry, as the exponential and logarithmic maps are mutually inverse and can be canceled with consecutive operations. Consequently, the inherent properties of the hyperbolic space are not effectively preserved, limiting the potential benefits of incorporating non-Euclidean geometries into the adaptation process.
+Hyperbolic Fine-tuning To address this limitation, we introduce HypLoRA to operate low-rank adaptation directly on the hyperbolic manifold without transformation to the tangent space, thus preserving hyperbolic modeling capabilities and counteracting the reduction. HypLoRA integrates hyperbolic geometry into existing LLMs, introducing implicitly high-order interaction and considering the token hierarchies, enabling them to benefit from hyperbolic characteristics while minimizing additional computational costs.
+To summarize, our main contributions are threefold: (1) We conduct a comprehensive investigation into the hyperbolic characteristics of token embeddings in LLMs, revealing their inherent tree-like structure and strong hyperbolic properties. (2) We propose HypLoRA, a parameter-efficient finetuning method that integrates hyperbolic geometry into LLMs while preserving hyperbolic modeling capabilities. We show that HypLoRA better understands complex reasoning tasks by implicitly incorporating high-order interactions and token norms, achieving improvements of up to 13% on the challenging AQuA dataset. Our work opens new avenues for exploring the role of geometry in LLMs and provides insights for developing geometrically informed models for reasoning tasks.
+2
+
+
+2 Related Work
+Hyperbolic Representation Learning and Deep Learning Hyperbolic geometry has been successfully applied to various neural network architectures and models (Yang et al., 2022b; Mettes et al., 2023; Peng et al., 2021), including shallow hyperbolic neural networks (Ganea et al., 2018a;b; Chen et al., 2021; Shimizu et al., 2020), hyperbolic CNNs (Bdeir et al., 2023; van Spengler et al., 2023), and hyperbolic attention networks or Transformers (Gulcehre et al., 2018; Chen et al., 2021; Shimizu et al., 2020; Yang et al., 2024). These models leverage the inductive biases of hyperbolic geometry to achieve remarkable performance on various tasks and applications (Chami et al., 2019; Yang et al., 2022a; Sun et al., 2021; Khrulkov et al., 2020; Cetin et al., 2022; Weng et al., 2021; Xiong et al., 2022; Yang et al., 2021). However, training LLMs from scratch remains computationally expensive (Kochurov et al., 2020; Smith, 2014). The computational complexity increases further when considering Riemannian optimization (Kochurov et al., 2020; Smith, 2014; Bécigneul & Ganea, 2018) and additional hyperbolic operations, like Möbius addition.
+Parameter Efficient Fine Tuning (PEFT) and LoRAs Fine-tuning LLMs (Foundation, 2022; 2023; Touvron et al., 2023) for downstream tasks poses significant challenges due to their massive number of parameters. To address this issue, PEFT methods have been proposed, which aim to train a small subset of parameters while achieving better performance compared to full fine-tuning. PEFT methods can be broadly categorized into prompt-based methods (Lester et al., 2021; Li & Liang, 2021; Qin et al., 2021), adapter-based methods (Houlsby et al., 2019; Zhu et al., 2021),and reparameterization-based methods (Hu et al., 2021; Aghajanyan et al., 2020; Edalati et al., 2022). Among these, LoRA (Hu et al., 2021) as the reparameterization-based method, has gained significant attention due to its simplicity, effectiveness, and compatibility with existing model architectures. Variants of LoRA, such as LoRA+(Hayou et al., 2024), DoRA (Liu et al., 2024), AdaLoRA (Zhang et al., 2023), have been proposed to improve its performance and efficiency. Recent research has also investigated ensembles of multiple LoRAs (Wang et al., 2023; Ren et al., 2024), and quantization techniques (Dettmers et al., 2024; Xu et al., 2023; Li et al., 2023). Despite these advances, existing methods operate within Euclidean space, ignoring the underlying structure represented by LLMs. The proposed method is as a foundational algorithm, potentially combined with various LoRA variants, to exploit their complementary strengths and achieve superior performance.
+3 Preliminary
+This section introduces the concepts utilized in our study, including the LoRA adapter, the Lorentz model of hyperbolic geometry, hyperbolic linear transformations, and the concept of hyperbolicity.
+LoRA Adapter The LoRA adapter offers an efficient approach for modifying large LLMs with minimal computational overhead. Instead of retraining the entire model, LoRA focuses on adjusting specific components within the model’s architecture to transform an input x into an output z. In practice, LoRA targets the weight matrices found in each Transformer layer of an LLM. Typically, the weight W of the Transformer, which resides in the dimensions Rd×k, is adapted through a low-rank approximation. This is achieved by introducing an additional term, ∆W , to the original weight matrix:
+z = WLoRA(x) = W x + ∆W x = W x + BAx. (1)
+Here, B ∈ Rd×r and A ∈ Rr×k represent two smaller, learnable matrices where r—the rank of these matrices—is significantly less than either d or k. This design choice ensures that r ≪ min(d, k), thereby reducing the complexity of the model adaptation. During the fine-tuning process, only the matrices A and B are adjusted, while the pre-existing weights W are kept frozen. This method significantly decreases the number of parameters that need to be trained, from dk to (d + k)r, enhancing the efficiency of the fine-tuning process. As a result, LoRA enables the targeted adaptation of LLMs, allowing them to transform an input x into an output z while maintaining high performance and adapting to new tasks or datasets with a fraction of the computational resources typically required.
+Hyperbolic Geometry Unlike the flat Euclidean geometry, hyperbolic geometry is characterized by a constant negative curvature. We utilize the Lorentz model, also known as the hyperboloid model, for our study due to its ability to effectively capture hierarchical structures and maintain numerical stability (Nickel & Kiela, 2018; Chen et al., 2021). The Lorentz model in n dimensions with curvature
+3
+
+
+100 101 102 103 Token Frequency (log scale)
+100
+101
+102
+103
+Count (log scale)
+GSM8K
+= 1.87
+0.4 0.6 Token Norm
+100
+101
+102
+103
+Token Frequency (log scale)
+GSM8K
+Figure 2: Token frequency distribution (left) and token frequency vs. norm (bottom row) of GSM8K datast in LLaMA3. The top row shows the power-law distribution of token frequencies with the decay rate (γ) annotated for each dataset. The bottom row illustrates the relationship between token frequency and token norm, binned and colored by frequency, where higher token norms correspond to lower frequencies. For more data illustration, please refer to Appendix A.
+−1/K(K > 0) is defined as:
+Ln
+K = {x ∈ Rn+1 : ⟨x, x⟩L = −K, x0 > 0}, (2)
+where ⟨·, ·⟩L is the Lorentzian inner product, given by: ⟨x, y⟩L = −x0y0 + Pn
+i=1 xiyi.
+Tangent Space In the Lorentz model Ln
+K , the tangent space at a point x is denoted as TxLn
+K . It is defined as the set of all vectors u that are orthogonal to x under the Lorentzian inner product:
+TxLn
+K := {u ∈ Rn+1 : ⟨u, x⟩L = 0}. (3)
+To facilitate projection between the hyperboloid and its tangent spaces, we utilize two critical mappings: the exponential and logarithmic maps. The exponential map at x, denoted expxK, projects
+a vector from the tangent space TxLn
+K back onto the hyperboloid. Conversely, the logarithmic map,
+denoted logK
+x , maps a point on the hyperboloid to the tangent space at x. The relevant formulas are given in Appendix C.
+4 Investigation
+In this section, we present an in-depth investigation of token embeddings in LLMs from both global and local perspectives. Our goal is to uncover the geometric structures underlying pretrained token representations, specifically examining the global distribution of token frequencies and their spatial arrangement, as well as the local hyperbolicity of token embeddings across various datasets.
+4.1 Global Token Statistics
+We begin by investigating the global distribution of token frequencies in the context of arithmetic reasoning datasets, focusing on datasets such as GSM8K (Cobbe et al., 2021), AQuA (Ling et al., 2017), MAWPS (Koncel-Kedziorski et al., 2016), and SVAMP (Patel et al., 2021). We also provide a broader analysis across different types of datasets and LLMs in Appendix A.
+Figure 2 (left) presents the distribution of token frequencies, with a power-law exponent of approximately γ ≈ 1.9, as estimated by the Powerlaw Package (Alstott et al., 2014). In such distributions, the exponent γ controls how quickly token frequencies decline: smaller values of γ (closer to 1) indicate a more gradual decay where frequent tokens dominate, while larger values signify a sharper decline, with most tokens being rare.
+This power-law behavior aligns with the hierarchical nature of language. High-frequency tokens often correspond to more abstract or general concepts, while low-frequency tokens represent specific or rare terms. This distribution naturally suggests a hierarchical organization of the token space, where general concepts serve as the "roots" and specific terms "branch out" as we move through the hierarchy.
+4
+
+
+Table 1: Tokens Across Norm Ranges
+Ranges Representative Tokens
+0.3 ∼ 0.4 to, in, have, that, and, is, for
+0.4 ∼ 0.5 how, much, many, time, cost
+0.5 ∼ 0.6 animals, fruit, numbers, items, colors
+0.6 ∼ 0.7 dog, cow, puppies, apple, bananas, hours,
+second, minute, dollars, shoes, purple
+To better understand the relationship between token frequency and their spatial arrangement within the embedding space, we calculate the average token frequency as a function of their distance from the origin. The results are shown in Figure 2 (right), indicating that more frequent tokens tend to have smaller norms and vice versa. Table 1 provides representative with different norm ranges within the embedding space. Tokens with smaller norms (ranging from 0.3 to 0.4) include common function words like "to," "in," and "that," which tend to occur frequently in language. As the norm increases, the tokens become more specific, with ranges from 0.4 to 0.5 including terms like "how," "much," and "time," and further up, with norms between 0.5 and 0.6, featuring more concrete nouns like "animals," "fruit," and "numbers." Tokens with the highest norms, between 0.6 and 0.7, are even more detailed, referring to items such as "dog," "apple," and "dollars."
+These findings suggest that the spatial organization of token embeddings reflects the inherent hierarchical relationships in language, supporting the hypothesis that LLMs exhibit a tree-like structure in their token embeddings, with spatial positioning aligned with token frequency and specificity.
+4.2 δ-Hyperbolicity of Token Embeddings
+To rigorously quantify the hierarchical nature of token embeddings, we examine the δ-hyperbolicity of space spanned by the token embedding. δ-Hyperbolicity, introduced by Gromov (Gromov, 1987), is a measure that captures the degree to which a metric space deviates from an exact tree structure. Lower values of δ imply a space more similar to a perfect tree, while higher values indicate deviation from a tree-like structure. A brief explanation of δ-hyperbolicity can be found on Wikipedia2.
+We compute δ-hyperbolicity using the four-point condition, which compares the Gromov products between any four points a, b, c, and w in the metric space. Specifically, the hyperbolicity is defined as:
+[a, c]w ≥ min([a, b]w, [b, c]w) − δ, (4)
+where the Gromov product [a, b]w is:
+[a, b]w = 1
+2 (d(a, w) + d(b, w) − d(a, b)). (5)
+To measure the hyperbolicity of token embeddings, we apply this algorithm to various open-source LLMs. Following the methodologies proposed by Khrulkov et al. (Khrulkov et al., 2020) and Cetin et al. (Cetin et al., 2022), we estimate δ-hyperbolicity using the efficient algorithm introduced by Fournier et al. (Fournier et al., 2015). To ensure scale invariance, we normalize δ by the diameter of the embedding space, diam(X), yielding a relative measure: δrel = 2δ
+diam(X) . This relative measure ranges from 0 to 1, with values closer to 0 indicating a highly hyperbolic (tree-like) structure, and values near 1 indicating a non-hyperbolic, flat structure. Following previous works (Khrulkov et al., 2020), we employ Euclidean distance as a measure of the shortest distance. To further validate the correctness of this approach, we generate a series of random graphs with predefined hyperbolicity, embed them using a graph neural network (GNN), and then compute the hyperbolicity in Euclidean space. Details of this process are provided in Appendix B. Our experiments reveal a positive correlation between the hyperbolicity of the embeddings and the original graphs. Consequently, we utilize this method as a proxy for estimating the hyperbolicity of token embeddings.
+In our analysis, we calculate hyperbolicity at the prompt level, treating each token within a prompt as a point in the metric space spanned by the embeddings. By averaging the hyperbolicity across all prompts, we assess the overall hyperbolic structure of token embeddings in each dataset. Our results, as shown in Table 2, reveal that token embeddings exhibit significant hyperbolicity, suggesting that the embedding space has a strong tree-like structure. This observation further corroborates our findings from the global token statistics, where the arrangement of tokens in the embedding space mirrors hierarchical relationships seen in language data.
+2https://en.wikipedia.org/wiki/Hyperbolic_metric_space
+5
+
+
+Table 2: Comparison of δ-Hyperbolicity across various metric spaces and datasets. The left table provides reference values for baseline metric spaces, allowing for a clearer interpretation of hyperbolicity in the analyzed datasets in the right table.
+Metric Space Hyperbolicity(δ)
+Sphere Space 0.99 ± 0.01 Random Graph 0.62 ± 0.34 PubMed Graph 0.40 ± 0.04 Scale-free Graph 0.00 Tree Graph 0.00
+Hyperbolicity(δ) MAWPS SVAMP GSM8K AQuA
+LLaMA-7B 0.08 ± 0.02 0.09 ± 0.01 0.10 ± 0.01 0.10 ± 0.01 LLaMA-13B 0.08 ± 0.01 0.09 ± 0.01 0.09 ± 0.01 0.10 ± 0.01 Gemma-7B 0.11 ± 0.01 0.11 ± 0.01 0.11 ± 0.01 0.12 ± 0.01 LLaMA3-8B 0.06 ± 0.01 0.07 ± 0.01 0.07 ± 0.01 0.08 ± 0.01
+Average 0.08 ± 0.01 0.09 ± 0.01 0.09 ± 0.01 0.10 ± 0.01
+Conclusion of investigation Through these analyses, we demonstrate that token embeddings in LLMs exhibit a power-law frequency distribution and significant hyperbolicity, both of which reflect a tree-like hierarchical structure. This understanding not only sheds light on the geometric nature of token embeddings but also motivates the development of methods that better capture and preserve these underlying geometric properties.
+5 Hyperbolic Fine-tuning for LLMs
+The core technique in the LoRA adapter involves linear transformations. One of the primary methods for implementing linear transformations on the Lorentz model of hyperbolic geometry (Ganea et al., 2018b; Chami et al., 2019) is based on the tangent space when considering the learnable weights are in Euclidean. Given a hyperbolic vector xH and a transformation matrix W , this method first maps xH to the tangent space at a local reference point, typically the origin, using the logarithmic map. The matrix W is then applied within this tangent space, resulting in:
+W ⊗ xH = exp(W logK
+o (xH )). (6)
+Technical Challenge However, the input from LLMs and the transformation results are in Euclidean space, we need to apply an additional exponential map and a logarithmic map on the basis of Equation (1) to align the Euclidean representation. This leads to the expression:
+zE = WLoRA(xE) = W xE + ∆W xE
+= W xE + logK
+o (expK
+o (BA
+xE
+z }| {
+logK
+o (expK
+o (xE))
+| {z }
+Transformation on xE
+))
+= W xE + BAxE,
+(7)
+which simplifies back to the original LoRA, rendering the method ineffective for our purposes.
+Direct Lorentz Low-rank Transformation (LLR) To address this challenge, we perform low-rank adaptation directly on the hyperbolic manifold without utilizing tangent space:
+zE = WLoRA(xE) = W xE + ∆W xE
+= W xE + logK
+o (LLR(BA,
+xH
+z }| {
+expK
+o (xE))
+| {z }
+Transformation on xH
+),
+(8)
+where LLR represents the direct Lorentz Low-Rank Transformation which operate the hyperbolic representation xH directly,
+LLR(BA, xH ) = (
+q
+∥ByH
+∗ ∥22 + K, ByH
+∗ ), where yH = (
+q
+∥AxH
+∗ ∥22 + K, AxH
+∗ ), (9)
+We consider two transformations in our design, with u representing both x and y: (1) u∗H = us. (2)
+u∗H = u. The first transformation only modifies the space-like dimension in special relativity, akin to a Lorentz rotation. The second transformation affects both time-like and space-like dimensions, similar to a Lorentz boost. In both cases, it can be verified that LLR(BA, xH ) ∈ Ln. The linear
+6
+
+
+transformation is inspired by hyperbolic neural networks (Chen et al., 2021; Yang et al., 2024; Dai et al., 2021). For efficient integration with LLMs, the transformation removes normalization and nonlinear activation term in (Chen et al., 2021), varying curvatures in (Yang et al., 2024), and orthogonal constraints in (Dai et al., 2021). Our main contribution lies in applying hyperbolic low-rank adaptation for LLMs, while the specific linear transformation itself is flexible—other transformations on the manifold could also be compatible with our approach.
+In summary, our proposed method, HypLoRA, initially uses the exponential map to project the original Euclidean representation into hyperbolic space, applies a low-rank Lorentz transformation, and then employs the logarithmic map to revert to Euclidean space. By adapting in the hyperbolic domain, HypLoRA captures more complex hierarchical relationships than traditional Euclidean-based methods, as detailed in Proposition 5.1. Additionally, the low-rank nature of the adaptation matrices A and B promotes parameter efficiency, making HypLoRA well-suited for LLMs.
+Time Complexity HypLoRA has similar theoretical time complexity as the Euclidean LoRA, which is O(r · (d + k)), where d and k represent the input and output dimensions, respectively. However, in practical implementation, HypLoRA introduces additional computations due to the logarithmic and exponential maps. These additional operations, nevertheless, can be completed within O(N ) where the N is the number of input tokens.
+Proposition 5.1. Let x represent the input token embeddings, with ∥x∥ denoting their norms. HypLoRA modifies the query and key updates by introducing higher-order terms that depend on ∥x∥. This dependence enables HypLoRA to capture the hierarchical relationships in token embeddings. As a result, HypLoRA aligns with the intrinsic geometry of token embeddings.
+5.1 Experimental Settings
+Dataset The experimental setup closely follows the methodology in (Hu et al., 2023). The fine-tuning training set is composed of data from GSM8K (Cobbe et al., 2021), MAWPS, MAWPS-single (KoncelKedziorski et al., 2016), and 1,000 examples from AQuA (Ling et al., 2017). To further enhance reasoning capabilities, step-by-step rationales generated by ChatGPT are incorporated into the training samples, as done in (Hu et al., 2023). This results in a dataset of 10K math reasoning samples, named Math-10K, for training purposes. The test datasets include GSM8K (Cobbe et al., 2021), AQuA (Ling et al., 2017), MAWPS (Koncel-Kedziorski et al., 2016), and SVAMP (Patel et al., 2021). While the same datasets are used for training, there is no overlap between the training and test sets.
+Model Comparison We include the LLaMA-7B and LLaMA-13B base models, as discussed in (Hu et al., 2023), along with the recently released Gemma-7B and LLaMA3-8B models, which are fine-tuned using LoRA for comparison. For fine-tuning methods, we evaluate several techniques, including Prefix-Tuning (Li & Liang, 2021), Series Adapter (Houlsby et al., 2019), LoRA (Hu et al., 2021), and Parallel Adapter (He et al., 2021). Additionally, we compare with DoRA (Liu et al., 2024), a recent competitive method.
+Implementation Details The exponential map transforms the original input space using an exponential operator, as also noted in (Desai et al., 2023). To prevent numerical overflow, we first apply L2 normalization to the input before using the exponential map in Equation (8), then rescale it with a learnable norm scaling factor. The curvature for our proposed HypLoRA is treated as a hyperparameter, with values searched from the set {0.1, 0.5, 1.0, 2.0}. Following the procedure in (Chami et al., 2019), to correctly use the exponential map, we append a zero to the beginning of the input vector x, forming xE. After applying the logarithmic map, the output vector z will have an additional dimension with a zero value. To maintain consistency with the original input space, we remove this extra dimension from z. It is important to note that the final results are micro-averaged across datasets, which contain varying numbers of questions, such as 1,319 in GSM8K and 238 in MAWPS. In micro-averaging, each prompt is treated equally. For the LoRA implementation, we insert it into both the Multi-head Attention and MLP layers of the base model. All experiments are conducted on a single GPU, using either the A40 (40G) or A100 (80G).
+5.2 Experimental Results
+Table 3 summarizes our key experimental outcomes, highlighting both the baseline model performance and the improvements from incorporating adapters. Since our experimental setup and dataset selection
+7
+
+
+Table 3: Accuracy comparison of various LLMs using PEFT methods on arithmetic reasoning tasks. Results marked with an asterisk (*) are sourced from Hu et al. (Hu et al., 2023).(†) denotes our reproduced results on LoRA. The LoRA results for LLaMA3-8B and Gemma-7B are derived using the hyperparameters specified in the same study. The percentage following each dataset indicates the proportion of prompts relative to the total number of inference prompts. M.AVG represents the micro-average accuracy. OOT denotes evaluations exceeding 24 hours on an A100 GPU, while None refers to the base model without any PEFT method applied. NA stands for Not Applicable.
+Model PEFT Method MAWPS(8.5%) SVAMP(35.6%) GSM8K(46.9%) AQuA(9.0%) M.AVG
+GPT-3.5 None 87.4 69.9 56.4 38.9 62.3
+LLaMA-7B
+None 51.7 32.4 15.7 16.9 24.8 Prefix* 63.4 38.1 24.4 14.2 31.7 Series* 77.7 52.3 33.3 15.0 42.2 Parallel* 82.4 49.6 35.3 18.1 42.8 LoRA* 79.0 52.1 37.5 18.9 44.6 LoRA† 81.9 48.2 38.3 18.5 43.7 DoRA 80.0 48.8 39.0 16.4 43.9 HypLoRA (Ours) 79.0 49.1 39.1 20.5 44.4
+LLaMA-13B
+None 65.5 37.5 32.4 15.0 35.5 Prefix* 66.8 41.4 31.1 15.7 36.4 Series* 78.6 50.8 44.0 22.0 47.4 Parallel* 81.1 55.7 43.3 20.5 48.9 LoRA* 83.6 54.6 47.5 18.5 50.5 LoRA† 83.5 54.7 48.5 18.5 51.0 DoRA 83.0 54.6 OOT 18.9 NA HypLoRA (Ours) 83.2 54.8 49.0 21.5 51.5
+Gemma-7B
+None 76.5 60.4 38.4 25.2 48.3 LoRA 91.6 76.2 66.3 28.9 68.6 DoRA 91.7 75.9 65.4 27.7 68.0 HypLoRA (Ours) 91.5 78.7 69.5 32.7 71.3
+LLaMA3-8B
+None 79.8 50.0 54.7 21.0 52.1 LoRA 92.7 78.9 70.8 30.4 71.9 DoRA 92.4 79.3 71.3 33.1 72.5 HypLoRA (Ours) 91.6 80.5 74.0 34.2 74.2
+closely align with those used by Hu et al. (Hu et al., 2023), we reference their results directly. For the new base models, like Gemma-7B and LLaMA3-8B, we maintained the same training strategy for consistency. Each experiment was run three times, and we reported the average results. We have the following findings:
+Overall Performance of HypLoRA and Challenging Datasets The accuracy from GPT-3.5 indicates that GSM8K and AQuA are among the more challenging datasets in this evaluation. The performance of the models and the fine-tuned results is strongly related to the difficulty level of the datasets. It is as complex problems require more complex reasoning and a better understanding of the underlying structure of the problem. Nonetheless, HypLoRA consistently outperforms the baseline methods across various base models. Notably, the overall performance improvement reaches up to 2.3% on LLaMA3-8B and 3.9% on Gemma-7B against the best competitors. In addition, HypLoRA method excels on these complex datasets, AQuA and GSM8K, where it achieves an improvement of up to 13.0% on the AQuA dataset and 4.8% on the GSM8K dataset with the Gemma-7B model. This significant gain reflects the advantage of introducing hyperbolic geometry, as its inherent geometric properties make it better suited for capturing complex, hierarchical structured data. The analysis in Appendix D demonstrates that HypLoRA implicitly introduces high-order interaction terms and highlights higher-order terms proportional to the token norm, correlating with more specific tokens in the token hierarchy. This enables the model to focus on more tokens and better comprehend complex relationships. Consequently, HypLoRA effectively leverages the hierarchical and hyperbolic structure of the data, resulting in improved performance on challenging reasoning tasks.
+Performance with DoRA and on MAWPS Dataset The computational complexity of DoRA leads to timeouts in evaluations, such as for GSM8K on LLaMA-13B. Despite this, HypLoRA consistently performs as well or better than DoRA in completed evaluations, offering comparable results with much lower computational overhead. On the MAWPS dataset, the performance improvements of HypLoRA are less pronounced compared to other datasets, and in some instances, it falls below the baseline results. This may be attributed to using the same curvature during fine-tuning, which might not be suitable for all datasets. To address this, future work will focus on prompt-adaptive curvature
+8
+
+
+techniques. Despite this limitation, HypLoRA has demonstrated significant improvements over the base model across the majority of datasets evaluated.
+5.3 Ablation Study and Parameter Analysis
+Table 4: Ablation Study
+Model Methods MAWPS SVAMP GSM8K AQuA M.AVG
+Gemma 7B Tangent 91.2 77.9 67.6 30.5 69.9 HypLoRA (I) 93.2 78.3 68.5 33.2 70.9 HypLoRA (II) 91.5 78.7 69.5 32.7 71.3
+LLaMA 8B Tangent 91.2 79.2 72.3 30.3 72.6 HypLoRA (I) 91.6 80.2 74.1 33.8 74.1 HypLoRA (II) 91.6 80.5 74.0 34.2 74.2
+Ablation Study We use the tangent-space method described in Equation (7) as a basis for conducting an ablation study. The primary difference between the tangent-space method and the proposed HypLoRA lies in the approach used for the Low-rank Transformation. Through this comparison, we can determine the effectiveness and benefits of the direct Lorentz Low-rank approach. Furthermore, compared to the Euclidean LoRA, both Equation (7) and the proposed HypLoRA incorporates an additional rescaling operation, as discussed in Section 5.1. Considering that the tangent-space method can be reduced to the general LoRA form, it can be viewed as an additional rescaling operation combined with the vanilla LoRA. By making these comparisons, we can evaluate the effectiveness of normal rescaling.
+Table 4 presents our results. HypLoRA (I) denotes the first transformation (Lorentz rotation) on space-like dimensions and HypLoRA (II) denotes the second transformation (Lorentz boost) on the whole dimensions. We observe that the tangent space method shows improvement over the original LoRA, which is expected since the rescaling step introduces more flexibility. Due to the exponential effects in hyperbolic geometry, this rescaling step is necessary. Comparing the results of HypLoRA with the tangent space method, we can see the significant impact of introducing hyperbolic geometry, with the main improvements attributed to this incorporation. We also observe that these two transformations obtain similar performances.
+Table 5: Results for varying of K
+K 0.1 0.5 1.0 2.0
+MAWPS 89.8 91.7 91.5 90.8 SVAMP 78.1 77.3 78.7 78.6 GSM8K 68.5 67.5 69.5 68.5 AQuA 31.9 34.3 32.7 31.1
+The Impact of Curvature on Performance Curvature in hyperbolic space is a key hyperparameter in HypLoRA, directly affecting its capacity to model underlying structures and geometries. To evaluate its impact, we experimented with different curvature values on the Gemma 7B model, as shown in Table 5, where curvature is defined as −1/K. Our results demonstrate that overall model performance remains relatively stable across various curvature settings. Notably, determining the optimal curvature value was straightforward, with a final value of 1.0 proving to be the best. In future work, we will consider exploring the datainformed curvature method to make the fine-tuning more adaptive.
+Inference Efficiency In Section 5, we analyze the time complexity of our approach, which remains consistent with that of LoRA. However, during actual inference, HypLoRA incurs additional computational overhead due to operations such as the exponential and logarithmic mappings. These operations introduce some additional runtime, particularly for larger models. The GPU hours for inference on four datasets are presented in Figure 3. Despite this overhead, our method demonstrates improved efficiency when compared to the previous competitive model, DoRA. Notably, HypLoRA still outperforms DoRA in terms of both runtime and overall efficiency. In future work, we plan to investigate more efficient approaches to further reduce this computational cost, with the goal of minimizing the impact of these transformations on overall inference time.
+Case Study The introduction of hyperbolic space allows the model to capture more token information and accurately comprehend the semantics of the prompt, leading to more effective solutions for complex reasoning tasks. Table 6 provides examples to demonstrate HypLoRA’s capabilities. In this case, LoRA fails to grasp the true nature of the computational task, while HypLoRA correctly interprets the problem by recognizing the three-week timeframe and appropriately distributing the
+9
+
+
+required time. This highlights the superior ability of semantics understanding and the ability to handle multi-step reasoning.
+GSM8K SVAMP AQUA MAWPS
+0
+5
+10
+15
+GPU Hours
+Gemma 7B
+LoRA HypLoRA DoRA
+GSM8K SVAMP AQUA MAWPS
+0
+2
+4
+6
+8
+10
+12
+GPU Hours
+LLaMA3 8B
+LoRA HypLoRA DoRA
+Figure 3: Illustration of GPU (A100) hours during inference
+Furthermore, the introduction of hyperbolic space enhances the model’s ability to comprehend hierarchical relationships between tokens, providing better separation of long-tail tokens for prediction. This is due to the exponential growth properties of hyperbolic space, which fit these tokens more effectively and yield more accurate reasoning outcomes. Additional case studies are provided in Appendix E.
+Table 6: Example problem with solutions from LoRA and HypLoRA
+Question It takes 240 minutes of walking to break in a new pair of shoes. Jason wants to try out for the track team in three weeks. If he can walk 4 days a week to break in the new shoes, how long does he have to spend walking each day? Answer: 20.0 minutes
+LoRA To find out how long Jason has to spend walking each day, we need to divide the total number of minutes it takes to break in the shoes by the number of days he has to do it. Jason has 240 minutes divided by 4 days per week. This results in 60 minutes per day. Answer: 60.
+HypLoRA First, we need to find how many minutes Jason needs to walk in total to break in the new shoes: 240 minutes. Next, we find how many minutes Jason needs to walk each week over three weeks: 240 minutes divided by 3 weeks equals 80 minutes per week. Then, to find how many minutes he needs to walk each day: 80 minutes per week divided by 4 days equals 20 minutes per day. Answer: 20.
+6 Conclusion
+In this study, we investigated the non-Euclidean properties of token embeddings in LLMs. Our analysis token embedding has strong hyperbolic characteristics. Building on these findings, we proposed HypLoRA, a hyperbolic low-rank adaptation method that incorporates hyperbolic geometry into the fine-tuning process of LLMs. Extensive experiments showed that HypLoRA significantly improves LLM performance on arithmetic reasoning tasks, particularly on complex datasets. By leveraging the hyperbolic structure of the data, HypLoRA enhances the model’s ability to capture and utilize intricate relationships, leading to better reasoning capabilities.
+Limitation and Future Work In this study, we employed a consistent curvature across all prompts during fine-tuning, which simplified the implementation and enhanced efficiency. However, this uniform approach may not be optimal when applied to different datasets simultaneously. Our future work will explore more adaptive fine-tuning techniques that can better accommodate the unique characteristics of different prompts. Additionally, due to the computational overhead introduced by the exponential and logarithmic maps, this is inevitable when transitioning from the original Euclidean space to a hyperbolic space. We will explore more efficient methods to reduce this computational cost in future work.
+Despite these challenges, our research provides a thorough examination of token embedding distributions from a non-Euclidean perspective and offers valuable insights. The fine-tuning method we proposed holds significant potential for advancing geometrically inspired models, contributing to the ongoing development of more effective LLMs.
+10
+
+
+References
+Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Florencia Leoni Aleman, Diogo Almeida, Janko Altenschmidt, Sam Altman, Shyamal Anadkat, et al. GPT-4 Technical Report. arXiv preprint arXiv:2303.08774, 2023.
+Armen Aghajanyan, Luke Zettlemoyer, and Sonal Gupta. Intrinsic dimensionality explains the effectiveness of language model fine-tuning. arXiv preprint arXiv:2012.13255, 2020.
+Jeff Alstott, Ed Bullmore, and Dietmar Plenz. powerlaw: a python package for analysis of heavy-tailed distributions. PloS one, 9(1):e85777, 2014.
+Gregor Bachmann, Gary Bécigneul, and Octavian Ganea. Constant curvature graph convolutional networks. In International conference on machine learning, pp. 486–496. PMLR, 2020.
+Ahmad Bdeir, Kristian Schwethelm, and Niels Landwehr. Hyperbolic geometry in computer vision: A novel framework for convolutional neural networks. arXiv preprint arXiv:2303.15919, 2023.
+Gary Bécigneul and Octavian-Eugen Ganea. Riemannian adaptive optimization methods. arXiv preprint arXiv:1810.00760, 2018.
+Michele Borassi, Alessandro Chessa, and Guido Caldarelli. Hyperbolicity measures democracy in real-world networks. Physical Review E, 92(3):032812, 2015.
+Michael M Bronstein, Joan Bruna, Yann LeCun, Arthur Szlam, and Pierre Vandergheynst. Geometric deep learning: going beyond euclidean data. IEEE Signal Processing Magazine, 34(4):18–42, 2017.
+Edoardo Cetin, Benjamin Chamberlain, Michael Bronstein, and Jonathan J Hunt. Hyperbolic deep reinforcement learning. arXiv preprint arXiv:2210.01542, 2022.
+Ines Chami, Zhitao Ying, Christopher Ré, and Jure Leskovec. Hyperbolic graph convolutional neural networks. Advances in neural information processing systems, 32, 2019.
+Weize Chen, Xu Han, Yankai Lin, Hexu Zhao, Zhiyuan Liu, Peng Li, Maosong Sun, and Jie Zhou. Fully hyperbolic neural networks. arXiv preprint arXiv:2105.14686, 2021.
+Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, et al. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168, 2021.
+Jindou Dai, Yuwei Wu, Zhi Gao, and Yunde Jia. A hyperbolic-to-hyperbolic graph convolutional network. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pp. 154–163, 2021.
+Karan Desai, Maximilian Nickel, Tanmay Rajpurohit, Justin Johnson, and Ramakrishna Vedantam. Hyperbolic Image-Text Representations. In Proceedings of the International Conference on Machine Learning, 2023.
+Tim Dettmers, Artidoro Pagnoni, Ari Holtzman, and Luke Zettlemoyer. Qlora: Efficient finetuning of quantized llms. Advances in Neural Information Processing Systems, 36, 2024.
+Ali Edalati, Marzieh Tahaei, Ivan Kobyzev, Vahid Partovi Nia, James J Clark, and Mehdi Rezagholizadeh. Krona: Parameter efficient tuning with kronecker adapter. arXiv preprint arXiv:2212.10650, 2022.
+OpenAI Foundation. Introducing chatgpt. https://openai.com/index/chatgpt, November 2022.
+OpenAI Foundation. Gpt-4 technical report. arXiv preprint arXiv:2303.08774, 2023.
+Hervé Fournier, Anas Ismail, and Antoine Vigneron. Computing the gromov hyperbolicity of a discrete metric space. Information Processing Letters, 115(6-8):576–579, 2015.
+11
+
+
+Octavian Ganea, Gary Bécigneul, and Thomas Hofmann. Hyperbolic entailment cones for learning hierarchical embeddings. In International Conference on Machine Learning, pp. 1646–1655. PMLR, 2018a.
+Octavian Ganea, Gary Bécigneul, and Thomas Hofmann. Hyperbolic neural networks. Advances in neural information processing systems, 31, 2018b.
+Google Deepmind Gemma Team. Gemma: Open models based on gemini research and technology. arXiv preprint arXiv:2403.08295, 2024.
+Mikhael Gromov. Hyperbolic groups. In Essays in group theory, pp. 75–263. Springer, 1987.
+Caglar Gulcehre, Misha Denil, Mateusz Malinowski, Ali Razavi, Razvan Pascanu, Karl Moritz Hermann, Peter Battaglia, Victor Bapst, David Raposo, Adam Santoro, et al. Hyperbolic attention networks. arXiv preprint arXiv:1805.09786, 2018.
+Aric A. Hagberg, Daniel A. Schult, and Pieter J. Swart. Exploring network structure, dynamics, and function using networkx. In Gäel Varoquaux, Travis Vaught, and Jarrod Millman (eds.), Proceedings of the 7th Python in Science Conference (SciPy2008), pp. 11–15. Pasadena, CA USA, 2008.
+Soufiane Hayou, Nikhil Ghosh, and Bin Yu. Lora+: Efficient low rank adaptation of large models. arXiv preprint arXiv:2402.12354, 2024.
+Junxian He, Chunting Zhou, Xuezhe Ma, Taylor Berg-Kirkpatrick, and Graham Neubig. Towards a unified view of parameter-efficient transfer learning. arXiv preprint arXiv:2110.04366, 2021.
+Neil Houlsby, Andrei Giurgiu, Stanislaw Jastrzebski, Bruna Morrone, Quentin De Laroussilhe, Andrea Gesmundo, Mona Attariyan, and Sylvain Gelly. Parameter-efficient transfer learning for nlp. In International conference on machine learning, pp. 2790–2799. PMLR, 2019.
+Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen. Lora: Low-rank adaptation of large language models. arXiv preprint arXiv:2106.09685, 2021.
+Zhiqiang Hu, Yihuai Lan, Lei Wang, Wanyu Xu, Ee-Peng Lim, Roy Ka-Wei Lee, Lidong Bing, and Soujanya Poria. Llm-adapters: An adapter family for parameter-efficient fine-tuning of large language models. arXiv preprint arXiv:2304.01933, 2023.
+W Sean Kennedy, Onuttom Narayan, and Iraj Saniee. On the hyperbolicity of large-scale networks. arXiv preprint arXiv:1307.0031, 2013.
+Valentin Khrulkov, Leyla Mirvakhabova, Evgeniya Ustinova, Ivan Oseledets, and Victor Lempitsky. Hyperbolic image embeddings. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pp. 6418–6428, 2020.
+Max Kochurov, Rasul Karimov, and Serge Kozlukov. Geoopt: Riemannian optimization in pytorch. arXiv preprint arXiv:2005.02819, 2020.
+Rik Koncel-Kedziorski, Subhro Roy, Aida Amini, Nate Kushman, and Hannaneh Hajishirzi. Mawps: A math word problem repository. In Proceedings of the 2016 conference of the north american chapter of the association for computational linguistics: human language technologies, pp. 11521157, 2016.
+Dmitri Krioukov, Fragkiskos Papadopoulos, Maksim Kitsak, Amin Vahdat, and Marián Boguná. Hyperbolic geometry of complex networks. Physical Review E—Statistical, Nonlinear, and Soft Matter Physics, 82(3):036106, 2010.
+Brian Lester, Rami Al-Rfou, and Noah Constant. The power of scale for parameter-efficient prompt tuning. arXiv preprint arXiv:2104.08691, 2021.
+Xiang Lisa Li and Percy Liang. Prefix-tuning: Optimizing continuous prompts for generation. arXiv preprint arXiv:2101.00190, 2021.
+12
+
+
+Yixiao Li, Yifan Yu, Chen Liang, Pengcheng He, Nikos Karampatziakis, Weizhu Chen, and Tuo Zhao. Loftq: Lora-fine-tuning-aware quantization for large language models. arXiv preprint arXiv:2310.08659, 2023.
+Wang Ling, Dani Yogatama, Chris Dyer, and Phil Blunsom. Program induction by rationale generation: Learning to solve and explain algebraic word problems. arXiv preprint arXiv:1705.04146, 2017.
+Shih-Yang Liu, Chien-Yi Wang, Hongxu Yin, Pavlo Molchanov, Yu-Chiang Frank Wang, KwangTing Cheng, and Min-Hung Chen. Dora: Weight-decomposed low-rank adaptation. arXiv preprint arXiv:2402.09353, 2024.
+Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization. arXiv preprint arXiv:1711.05101, 2017.
+Pascal Mettes, Mina Ghadimi Atigh, Martin Keller-Ressel, Jeffrey Gu, and Serena Yeung. Hyperbolic deep learning in computer vision: A survey. arXiv preprint arXiv:2305.06611, 2023.
+Maximillian Nickel and Douwe Kiela. Poincaré embeddings for learning hierarchical representations. In Advances in Neural Information Processing Systems, pp. 6338–6347, 2017.
+Maximillian Nickel and Douwe Kiela. Learning continuous hierarchies in the lorentz model of hyperbolic geometry. In International Conference on Machine Learning, pp. 3779–3788, 2018.
+Arkil Patel, Satwik Bhattamishra, and Navin Goyal. Are nlp models really able to solve simple math word problems? arXiv preprint arXiv:2103.07191, 2021.
+Wei Peng, Tuomas Varanka, Abdelrahman Mostafa, Henglin Shi, and Guoying Zhao. Hyperbolic deep neural networks: A survey. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2021.
+Chengwei Qin, Aston Zhang, Zhuosheng Zhang, Jiaao Chen, Michihiro Yasunaga, and Diyi Yang. Is chatgpt a general-purpose natural language processing task solver? arXiv preprint arXiv:2302.06476, 2023.
+Yujia Qin, Xiaozhi Wang, Yusheng Su, Yankai Lin, Ning Ding, Jing Yi, Weize Chen, Zhiyuan Liu, Juanzi Li, Lei Hou, et al. Exploring universal intrinsic task subspace via prompt tuning. arXiv preprint arXiv:2110.07867, 2021.
+Samyam Rajbhandari, Jeff Rasley, Olatunji Ruwase, and Yuxiong He. Zero: Memory optimizations toward training trillion parameter models. In SC20: International Conference for High Performance Computing, Networking, Storage and Analysis, pp. 1–16. IEEE, 2020.
+Pengjie Ren, Chengshun Shi, Shiguang Wu, Mengqi Zhang, Zhaochun Ren, Maarten de Rijke, Zhumin Chen, and Jiahuan Pei. Mini-ensemble low-rank adapters for parameter-efficient finetuning. arXiv preprint arXiv:2402.17263, 2024.
+Prithviraj Sen, Galileo Namata, Mustafa Bilgic, Lise Getoor, Brian Galligher, and Tina Eliassi-Rad. Collective classification in network data. AI magazine, 29(3):93–93, 2008.
+Yongliang Shen, Kaitao Song, Xu Tan, Dongsheng Li, Weiming Lu, and Yueting Zhuang. HuggingGPT: Solving AI Tasks with ChatGPT and its Friends in Hugging Face. Advances in Neural Information Processing Systems, 36, 2024.
+Ryohei Shimizu, Yusuke Mukuta, and Tatsuya Harada. Hyperbolic neural networks++. arXiv preprint arXiv:2006.08210, 2020.
+Steven Thomas Smith. Optimization techniques on riemannian manifolds. arXiv preprint arXiv:1407.5965, 2014.
+Jianing Sun, Zhaoyue Cheng, Saba Zuberi, Felipe Pérez, and Maksims Volkovs. HGCF: Hyperbolic graph convolution networks for collaborative filtering. In Proceedings of the Web Conference, pp. 593–601, 2021.
+13
+
+
+Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothée Lacroix, Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, et al. Llama: Open and efficient foundation language models. arXiv preprint arXiv:2302.13971, 2023.
+Max van Spengler, Erwin Berkhout, and Pascal Mettes. Poincaré resnet. In Proceedings of the IEEE/CVF International Conference on Computer Vision, pp. 5419–5428, 2023.
+Xi Wang, Laurence Aitchison, and Maja Rudolph. Lora ensembles for large language model finetuning. arXiv preprint arXiv:2310.00035, 2023.
+Zhenzhen Weng, Mehmet Giray Ogut, Shai Limonchik, and Serena Yeung. Unsupervised discovery of the long-tail in instance segmentation using hierarchical self-supervision. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pp. 2603–2612, 2021.
+Bo Xiong, Michael Cochez, Mojtaba Nayyeri, and Steffen Staab. Hyperbolic embedding inference for structured multi-label prediction. Advances in Neural Information Processing Systems, 35: 33016–33028, 2022.
+Yuhui Xu, Lingxi Xie, Xiaotao Gu, Xin Chen, Heng Chang, Hengheng Zhang, Zhensu Chen, Xiaopeng Zhang, and Qi Tian. Qa-lora: Quantization-aware low-rank adaptation of large language models. arXiv preprint arXiv:2309.14717, 2023.
+Menglin Yang, Min Zhou, Marcus Kalander, Zengfeng Huang, and Irwin King. Discrete-time temporal network embedding via implicit hierarchical learning in hyperbolic space. In Proceedings of the 27th ACM SIGKDD Conference on Knowledge Discovery & Data Mining, pp. 1975–1985, 2021.
+Menglin Yang, Zhihao Li, Min Zhou, Jiahong Liu, and Irwin King. Hicf: Hyperbolic informative collaborative filtering. In Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining, pp. 2212–2221, 2022a.
+Menglin Yang, Min Zhou, Zhihao Li, Jiahong Liu, Lujia Pan, Hui Xiong, and Irwin King. Hyperbolic graph neural networks: A review of methods and applications. arXiv preprint arXiv:2202.13852, 2022b.
+Menglin Yang, Min Zhou, Hui Xiong, and Irwin King. Hyperbolic temporal network embedding. IEEE Transactions on Knowledge and Data Engineering, 2022c.
+Menglin Yang, Harshit Verma, Delvin Ce Zhang, Jiahong Liu, Irwin King, and Rex Ying. Hypformer: Exploring efficient transformer fully in hyperbolic space. arXiv preprint arXiv:2407.01290, 2024.
+Qingru Zhang, Minshuo Chen, Alexander Bukharin, Pengcheng He, Yu Cheng, Weizhu Chen, and Tuo Zhao. Adaptive budget allocation for parameter-efficient fine-tuning. In The Eleventh International Conference on Learning Representations, 2023.
+Yaoming Zhu, Jiangtao Feng, Chengqi Zhao, Mingxuan Wang, and Lei Li. Counter-interference adapter for multilingual machine translation. arXiv preprint arXiv:2104.08154, 2021.
+A Investigation on More Datasets
+In the main text, we focused on token distribution for GSM8K datasets. Here, we provide more token distribution for the AQUA and MAWPS mathematical reasoning datasets. Besides, we extend this analysis to include common sense reasoning datasets, specifically OpenBookQA and WinoGrande. These results are shown in Figure 4. The findings align with the conclusions drawn in the main text.
+B Hyperbolicity on Different Metric Spaces
+Table 2 presents the hyperbolicity values in both continuous (i.e., Sphere Space) and discrete metric spaces (i.e., Tree Graph, Scale-free Graph and Random Graph). We employ a consistent processing method, akin to the one mentioned in Section (4) for embedding spaces. Specifically, we sample 1000 4-tuples, compute the delta value for each, and then take the maximum value.
+14
+
+
+100 101 102 103 Token Frequency (log scale)
+100
+101
+102
+103
+Count (log scale)
+GSM8K
+= 1.87
+100 101 102 103 Token Frequency (log scale)
+100
+101
+102
+103
+Count (log scale)
+AQuA
+= 1.89
+100 101 102 Token Frequency (log scale)
+100
+101
+102
+Count (log scale)
+MAWPS
+= 1.90
+100 101 102 103 Token Frequency (log scale)
+100
+101
+102
+Count (log scale)
+SVAMP
+= 1.95
+100 101 102 103 Token Frequency (log scale)
+100
+101
+102
+103
+Count (log scale)
+OpenBookQA
+= 1.97
+100 101 102 103 Token Frequency (log scale)
+100
+101
+102
+103
+Count (log scale)
+WinoGrande
+= 1.86
+0.4 0.6 Token Norm
+100
+101
+102
+103
+Token Frequency (log scale)
+GSM8K
+0.3 0.4 0.5 0.6 0.7 Token Norm
+100
+101
+102
+103
+Token Frequency (log scale)
+AQuA
+0.3 0.4 0.5 0.6 0.7 Token Norm
+100
+101
+102
+Token Frequency (log scale)
+MAWPS
+0.3 0.4 0.5 0.6 0.7 Token Norm
+101
+102
+103
+Token Frequency (log scale)
+SVAMP
+0.4 0.6 Token Norm
+100
+101
+102
+103
+Token Frequency (log scale)
+openbookqa
+0.4 0.6 Token Norm
+100
+101
+102
+103
+Token Frequency (log scale)
+winogrande
+Figure 4: Token frequency distribution (top two rows) and token frequency vs. norm (bottom two rows) across different datasets in LLaMA3. The top two row show the power-law distribution of token frequencies with the decay rate (γ) annotated for each dataset. The bottom two rows illustrates the relationship between token frequency and token norm, binned and colored by frequency, where higher token norms correspond to lower frequencies.
+15
+
+
+Figure 5: Correlation between graph and embedding hyperbolicity.
+For the sphere space, we use a two-dimensional model and calculate hyperbolicity based on their respective geodesic distances. The PubMed graph is sourced from Sen et al. (Sen et al., 2008). The tree graph and dense graph are generated using NetworkX (Hagberg et al., 2008). For these graphs, we first remove isolated nodes before performing our calculations in a consistent manner. The shortest path distance on the graph is used as the distance measure, analogous to the concept of geodesics in continuous spaces.
+In this study, we utilize the Euclidean distance to compute the hyperbolicity of token embeddings, following the approach proposed by Khrulkov et al. (2020). To further validate the correctness of this method, we embed graphs with varying degrees of hyperbolicity into Euclidean space using a graph neural network (GNN) model and compute hyperbolicity based on the distances between embeddings. The results, presented in Figure 5, indicate a positive correlation between the hyperbolicity of the original graphs and that of the embeddings, although the values do not exactly coincide. Building on this observed relationship, we calculate the hyperbolicity of token embeddings as a proxy for estimating their underlying geometric structure. In this context, lower hyperbolicity values suggest a more tree-like geometric configuration.
+C Exponential and Logarithmic Map
+The exponential and logarithmic maps serve as essential tools for projection between the local tangent space and the hyperbolic space. Consider a point x ∈ Ln
+K and a tangent vector u ∈ TxLn
+K . The
+exponential map, denoted as expxK : TxLn
+K → Ln
+K , assigns to u the point expxK (u) := γ(1), where γ represents the unique geodesic that satisfies the initial conditions γ(0) = x and γ ̇ (0) = u. The exponential map can be explicitly expressed as follows:
+expK
+x (u) = cosh ∥u∥L
+√K x +
+√
+K sinh ∥u∥L
+√K
+u ∥u∥L
+, (10)
+where cosh and sinh represent the hyperbolic cosine and sine functions, respectively, and ∥u∥L denotes the norm of the tangent vector u in the tangent space.
+The logarithmic map logK
+u (x) : Ln
+K → TuLn
+K plays an inverse role. It is defined by the equation:
+logK
+u (x) = cosh−1 − 1
+K ⟨u, x⟩L
+sinh cosh−1 − 1
+K ⟨u, x⟩L
+x+ 1
+K ⟨u, x⟩Lu . (11)
+The exponential and logarithmic maps establish a bijective projection between the tangent space and hyperbolic space. Notably, logK
+x (expxK (u)) = u and expuK (logK
+u (x)) = x. Consequently, Equation (7) will cancel out the hyperbolic operations. In addition, these operations are typically defined locally. However, in the context of hyperbolic representation and deep learning, for efficient
+computation, existing works usually use the origin point o := {√K, 0, . . . , 0} ∈ Ln
+K as a common reference point.
+D Transformation Analysis
+Proof. Let x ∈ Rn be an input token embedding, and A, B ∈ Rn×r be low-rank matrices with rank
+r ≪ n. Consider the hyperbolic space Hn with curvature C = − 1
+R2 , where R > 0 is the radius of
+curvature.
+(1) Exponential Map at the Origin (o):
+For a tangent vector v ∈ ToHn:
+expo(v) = cosh ∥v∥
+R , R sinh ∥v∥
+R
+v
+∥v∥ (12)
+16
+
+
+(2) Logarithmic Map at the Origin (o):
+For xH = (x0, xspace) ∈ Hn:
+logo(xH ) = R · arcosh x0
+R
+xspace
+px20 − R2 (13)
+(3) Applying Low-Rank Transformations: For simplicity, we analysis about the transformation on space-like coordinates First Transformation:
+yH
+space = A⊤xH
+space,
+yH
+0=
+q
+R2 + ysHpace
+2.
+(14)
+Second Transformation:
+zH
+space = B⊤yH
+space,
+zH
+0=
+q
+R2 + zsHpace
+2.
+(15)
+(4) Mapping Back to Euclidean Space:
+The update to the query vector is:
+∆QHyp = R · arcosh z0H
+R
+zH
+space
+zsHpace
+(16)
+(5) Approximations Incorporating Token Norms:
+From the investigation, we know that token norms ∥x∥ are correlated with their specificity in the hierarchical structure: tokens with larger norms represent more specific concepts.
+For small ∥x∥
+R , we use the Taylor series expansions:
+• cosh z
+R ≈ 1 + z2
+2R2 .
+• sinh z
+R ≈z
+R + z3
+6R3 .
+Therefore, the exponential map becomes:
+expo(v) ≈ R + ∥v∥2
+2R , R ∥v∥
+R + ∥v∥3
+6R3
+v
+∥v∥ . (17)
+Simplify the spatial component:
+R ∥v∥
+R + ∥v∥3
+6R3
+v
+∥v∥ = v + ∥v∥2
+6R2 v . (18)
+Therefore, the exponential map simplifies to:
+expo(v) ≈ R + ∥v∥2
+2R , v + ∥v∥2
+6R2 v . (19)
+(6) Applying the Transformations:
+First Transformation:
+17
+
+
+yH
+space ≈ A⊤x + ∥x∥2
+6R2 A⊤x (20)
+Second Transformation:
+zH
+space ≈ (BA)x + ∥x∥2
+6R2 (BA)x (21)
+(7) Approximating the Logarithmic Map:
+Compute z0H :
+zH
+0=
+q
+R2 + zsHpace
+2 ≈ R + zH
+space
+2
+2R (22)
+Compute arcosh z0H
+R:
+For small δ = zH
+space
+2
+2R2 :
+arcosh (1 + δ) ≈
+√
+2δ = zH
+space
+R (23)
+Final Expression for ∆QHyp:
+∆QHyp ≈ zH
+space. (24)
+(8) Comparing HypLoRA and LoRA Updates:
+HypLoRA Update:
+∆QHyp ≈ (BA)x + ∥x∥2
+6R2 (BA)x. (25)
+LoRA Update:
+∆QLoRA = (BA)x. (26)
+Difference:
+∆QHyp − ∆QLoRA = ∥x∥2
+6R2 (BA)x. (27)
+(9) Impact of Token Norms on Higher-Order Terms:
+Since ∥x∥ reflects the specificity of the token in the hierarchical structure (larger norms correspond to
+more specific tokens), the higher-order term ∥x∥2
+6R2 (BA)x becomes significant for tokens representing
+specific concepts.
+(10) Impact on Attention Scores:
+The HypLoRA attention scores are computed as:
+ScoresHypLoRA = Qorig + ∆QHyp Korig + ∆KHyp ⊤
+√dk
+. (28)
+18
+
+
+where ∆KHyp is derived similarly.
+The difference in attention scores includes higher-order terms dependent on ∥x∥2:
+∆ Scores = ScoresHypLoRA − ScoresLoRA . (29)
+These higher-order terms allow HypLoRA to capture more complex, hierarchical relationships, particularly for tokens with larger norms (more specific tokens).
+Remark D.1. Alignment with Token Hierarchy: The higher-order terms in HypLoRA’s updates are proportional to ∥x∥2, which, according to our investigation, correlates with the specificity of tokens in the hierarchical structure. This means HypLoRA places greater emphasis on more specific tokens, enhancing its ability to model detailed relationships.
+Role of Curvature C: The curvature scales the higher-order corrections, and in spaces with larger negative curvature (smaller R), these terms become more pronounced, aligning with the hyperbolic nature of token embeddings.
+Effectiveness of HypLoRA: By incorporating these higher-order terms, HypLoRA effectively leverages the inherent hierarchical and hyperbolic structure of token embeddings, leading to improved performance, especially the problems that require complex reasoning. This is also the reason why the proposed method has a better performance on more challenging datasets.
+E Case Study
+In this section, we present examples to demonstrate the advantages of incorporating HypLoRA. As the examples show in Table 7 and 8, HypLoRA consistently provides more accurate reasoning compared to LoRA. For instance, in Example 2, LoRA incorrectly calculates the sum of the test scores as 380 instead of the correct total of 400, which leads to an incorrect average. This mistake highlights a limitation of large models like LoRA, which do not perform arithmetic operations as precisely as computers but rather approximate probability distributions. While the values 380 and 400 may seem close in Euclidean space, the hyperbolic geometry utilized by HypLoRA more effectively handles such variations, particularly in "tail" distributions, allowing for greater separation between close values and thus leading to more accurate reasoning. A similar issue arises in Example 3, where LoRA incorrectly computes 11, 600 − 9, 800, resulting in a wrong conclusion about the load capacity of Gary’s truck. HypLoRA, on the other hand, correctly performs the calculation and arrives at the accurate answer. These examples demonstrate how the hyperbolic space used by HypLoRA enables better handling of complex reasoning tasks, improving both accuracy and reliability in such scenarios.
+Table 7: Case Study 2
+Question To have the car for the weekend, Wilson’s report card needs to show that he received 80 or higher in his math class. His math grade is calculated by the average of 5 test scores. On those tests, he received: 65, 94, 81, 86, and 74. What is his current math grade? Answer: 80.0
+LoRA To find Wilson’s current math grade, we need to take the average of his 5 test scores. First, we add up all 5 test scores: 65 + 94 + 81 + 86 + 74 = 380. Then, we divide the sum by the number of tests: 380 ÷ 5 = 76. Therefore, Wilson’s current math grade is 76. Answer: 76.
+HypLoRA To find Wilson’s current math grade, we need to take the average of his 5 test scores. To do this, we add up the scores and divide by 5: 65 + 94 + 81 + 86 + 74 = 400. Then, we divide by 5: 400 ÷ 5 = 80. Therefore, Wilson’s current math grade is 80. Answer: 80.
+19
+
+
+Table 8: Case Study 3
+Question Gissela, Gordy, and Gary are truck drivers. Gissela has a truck large enough to haul 4,000 pounds of gravel. Gordy’s truck can haul 800 pounds more than Gissela’s truck. When Gary brings his truck and joins Gissela and Gordy, the three trucks combined can haul a total of 11,600 pounds of gravel. How many pounds of gravel can Gary’s truck carry? Answer: 2,800 pounds
+LoRA Let’s start by assigning variables to represent the amount of gravel each truck can haul: Gissela’s truck hauls 4,000 pounds. Gordy’s truck hauls 4, 000 + 800 = 4, 800 pounds. Now, we set up an equation for the total amount of gravel the three trucks can haul: 4, 000 + 4, 800 + x = 11, 600, where x is the amount Gary’s truck hauls. Simplifying the equation: 9, 800 + x = 11, 600, we subtract 9, 800 from both sides to get x = 11, 600 − 9, 800 = 1, 800. Therefore, Gary’s truck hauls 1,800 pounds. Answer: 1,800.
+HypLoRA Gissela’s truck can haul 4,000 pounds of gravel. Gordy’s truck can haul 800 more pounds than Gissela’s truck, so it can haul 4,800 pounds of gravel. Together, Gissela and Gordy’s trucks can haul 8,800 pounds of gravel. If the three trucks combined can haul 11,600 pounds, then Gary’s truck can haul 11, 600 − 8, 800 = 2, 800 pounds of gravel. Answer: 2,800.
+20

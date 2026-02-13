@@ -1,0 +1,157 @@
+ON THE EQUIVALENCE OF OPTIMAL TRANSPORT PROBLEM AND ACTION MATCHING WITH OPTIMAL VECTOR FIELDS
+Nikita Kornilov1,2, Alexander Korotin1∗
+Abstract. Flow Matching (FM) method in generative modeling maps arbitrary probability distributions by constructing an interpolation between them and then learning the vector field that defines ODE for this interpolation. Recently, it was shown that FM can be modified to map distributions optimally in terms of the quadratic cost function for any initial interpolation. To achieve this, only specific optimal vector fields, which are typical for solutions of Optimal Transport (OT) problems, need to be considered during FM loss minimization. In this note, we show that considering only optimal vector fields can lead to OT in another approach: Action Matching (AM). Unlike FM, which learns a vector field for a manually chosen interpolation between given distributions, AM learns the vector field that defines ODE for an entire given sequence of distributions.
+1 Background on related works
+In this section, we briefly recall the most related methods: Flow Matching method [3] that maps arbitrary distributions to each other, Action Matching method [4] that learns the whole given dynamics between distributions and Optimal Flow Matching method [2] that modifies FM to map the distributions optimally in terms of the quadratic transport cost.
+Flow Matching (FM) [3]. FM maps distribution p0 to p1 by integrating a specific vector field of an ordinary differential equation (ODE) over a time interval [0, 1]. It builds this specific vector field uπ
+F M : [0, 1] × RD → RD by
+minimizing the following loss Lπ
+F M (u) over vector fields u, namely,
+Lπ
+F M (u) :=
+Z1
+0
+Z
+RD ×RD
+∥ut(xt) − (x1 − x0)∥2π(x0, x1) dx0 dx1 dt,
+where π is a given transport plan between p0 and p1 (e.g., π = p0 × p1). If the obtained field uπ
+F M = arg minu Lπ
+F M (u) is integrated starting from x0 ∼ p0, the distribution of the endpoint x1(x0) at time t = 1 will exactly match p1, meaning that this mapping is indeed a transport one. Note that the properties of the final mapping depend on the initial plan π.
+∗1. Applied AI Institute, Moscow, Russia 2. Moscow Center for Advanced Studies, Russia
+1
+arXiv:2510.27385v1 [stat.ML] 31 Oct 2025
+
+
+Action Matching (AM) [4]. AM works with a sequence of distributions {pt}t∈[0,1], starting at p0 and ending at p1. The method builds an ODE vector
+u{pt}
+AM : [0, 1] × RD → RD which generates the whole probability sequence
+{pt}t∈[0,1]. For that it minimizes the following loss L{pt}
+AM (s) over scalar functions
+st : [0, 1] × RD → R, namely,
+L{pt}
+AM (s) =
+Z
+RD
+s0(x0)p0(x0)dx0 −
+Z
+RD
+s1(x1)p1(x1)dx1
++
+Z1
+0
+Z
+RD
+1
+2 ∥∇st(xt)∥2 + ∂st
+∂t (xt) pt(xt)dxtdt. (1)
+For the minimizer s{pt}
+AM := arg mins L{pt}
+AM (s), the corresponding vector field u{pt}
+AM
+is defined as u{pt}
+AM (xt, t) := ∇xt s{pt}
+AM (xt, t). Integrating this field starting from x0 ∼ p0 generates a process which marginal distributions at each time t coincide with pt. In particular, at t = 1, the integration yields a transport map from p0 to p1 which properties depend on {pt}.
+Optimal Transport (OT) [1] . Among all possible transport maps from p0 to p1, there exists one that optimally preserves proximity between input and output points in the mean-square sense. This map is known as the solution to the Optimal Transport (OT) problem with the quadratic cost function. One way to compute it is by minimizing the dual OT loss LOT (Ψ) over convex functions Ψ : RD → R:
+LOT (Ψ) :=
+Z
+RD
+Ψ(x0)p0(x0) dx0 +
+Z
+RD
+Ψ(x1)p1(x1) dx1, (2)
+where Ψ(x1) := supy∈RD [⟨x1, y⟩ − Ψ(y)] is the convex conjugate of Ψ. The
+optimal function Ψ∗ is called the Brenier potential [5], and the OT map itself is given by x0 7→ ∇Ψ∗(x0).
+Optimal Flow Matching (OFM) [2]. The authors of [2] propose OFM method, an adaptation of FM to solve the OT problem. They restrict the domain of FM loss minimization only to optimal vector fields which are typical for the solutions of the dynamic OT or the Benamou-Brenier problem. These fields are defined by convex functions Ψ: initial point z0 at t = 0 moves to ∇Ψ(z0) at t = 1, and intermediate point xt, t ∈ (0, 1) lies on the straight line between z0 and ∇Ψ(z0):
+xt = (1 − t)z0 + t∇Ψ(z0), uΨ
+t (xt) = ∇Ψ(z0) − z0.
+With notation Lπ
+OF M (Ψ) := Lπ
+F M (uΨ), for any plan π, the following relation holds
+Lπ
+OF M (Ψ) = 2LOT (Ψ) + Const(π).
+It means that the losses Lπ
+OF M and LOT share the same minimizers w.r.t. Ψ. As
+a consequence, unlike FM, the solution Ψ∗ = arg minΨ Lπ
+OF M (Ψ) in the OFM
+method does not depend on the initial plan π, and ∇Ψ∗ yields the OT map.
+2
+
+
+2 Equivalence of Optimal Transport and Action
+Matching
+In this section, we demonstrate that Action Matching loss (1), when considering only the optimal vector fields uΨ (more precisely their potentials sΨ), is equivalent to the OT dual loss (2) for any sequence {pt}.
+Theorem 1. Consider two probability distributions p0, p1 ∈ P2,ac(RD) and any sequence of distributions {pt}t∈(0,1) connecting them. Then, OT dual loss
+LOT (Ψ) and AM loss L{pt}
+AM (sΨ) match each other up to a constant.
+Proof. First, we find an explicit formula for sΨ which gradient equals uΨ, i.e., utΨ ≡ ∇stΨ. We note that, for point xt ∈ RD, initial point z0 ∈ RD satisfies
+xt = t∇Ψ(z0) + (1 − t)z0 ⇒ xt = ∇(tΨ(·) + (1 − t)∥ · ∥2/2)(z0) := ∇φt(z0).
+Then, z0 = ∇φt(xt) and vector field utΨ(xt) can be expressed via sΨ:
+uΨ
+t (xt) = ∇Ψ(z0) − z0 = xt − z0
+t = ∇( ∥ · ∥2
+2t − φt
+t )(xt),
+sΨ
+t (xt) := ∥xt∥2
+2t − φt(xt)
+t . (3)
+In particular, the corner cases t = 0 and t = 1 are s1Ψ(x1) = ∥x1∥2/2 −
+Ψ(x1), s0Ψ(x0) = Ψ(x0) − ∥x0∥2/2. Next, we put explicit values of the func
+tion sΨ from (3) into AM functional (1). For the time t ∈ (0, 1), the following equality holds ∥∇stΨ(xt)∥2/2 = ∥xt−z0∥2/2t2. If we take derivative from st w.r.t.
+t, the term ∥xt∥2/2t from (3) can be omitted:
+φt(xt)
+t =1
+t max
+z∈RD ⟨xt, z⟩ − tΨ(z) − (1 − t)
+2 ∥z∥2
+= max
+z∈RD
+⟨xt, z⟩
+t − Ψ(z) − (1 − t)
+2t ∥z∥2 . (4)
+Moreover, max is attained at the point z0. According to the Envelope Theorem, in order to take derivative from max w.r.t. t, one needs to differentiate maximized function and then put the point z0, at which maximum is attained, as an argument:
+∂(φt/t)
+∂t = − ⟨xt, z0⟩
+t2 + ∥z0∥2
+2t2 ,
+∂stΨ
+∂t = − ∥xt∥2
+2t2 + ⟨xt, z0⟩
+t2 − ∥z0∥2
+2t2 = − 1
+2
+∥xt − z0∥2
+t2 .
+Hence, in case of the optimal vector fields, the following holds for any t ∈ [0, 1] and xt ∈ RD:
+1
+2 ∥∇sΨ
+t (xt)∥2 + ∂stΨ
+∂t (xt) = 1
+2
+∥xt − z0∥2
+t2 − 1
+2
+∥xt − z0∥2
+t2 ≡ 0.
+3
+
+
+As a consequence, AM loss (1) with sΨ is completely independent from pt for t ∈ (0, 1) and equivalent to dual OT loss (2) up to the second moments p0, p1 (constants during minimization):
+L{pt}
+AM (sΨ) =
+Z
+RD
+Ψ(x0) − ∥x0∥2
+2 p0(x0)dx0+
+Z
+RD
+Ψ(x1) − ∥x1∥2
+2 p1(x1)dx1.
+Similar to Flow Matching, the optimal vector fields in Action Matching always lead to the Optimal Transport solution Ψ∗ regardless of the initial sequence {pt}. This highlights the potential of such fields in developing robust methods for solving OT problems in practice.
+References
+[1] V. I Bogachev and A. V Kolesnikov. The monge-kantorovich problem: achievements, connections, and perspectives. Russian Mathematical Surveys, 67(5):785, 2012.
+[2] Nikita Kornilov, Petr Mokrov, Alexander Gasnikov, and Aleksandr Korotin. Optimal flow matching: Learning straight trajectories in just one step. Advances in Neural Information Processing Systems, 37:104180–104204, 2024.
+[3] Xingchao Liu, Chengyue Gong, and Qiang Liu. Flow straight and fast: Learning to generate and transfer data with rectified flow. In The Eleventh International Conference on Learning Representations (ICLR), 2023.
+[4] Kirill Neklyudov, Rob Brekelmans, Daniel Severo, and Alireza Makhzani. Action matching: Learning stochastic dynamics from samples. In International conference on machine learning, pages 25858–25889. PMLR, 2023.
+[5] C ́edric Villani. Topics in optimal transportation, volume 58. American Mathematical Soc., 2021.
+4

@@ -1,0 +1,929 @@
+CONTRACTIVE DIFFUSION PROBABILISTIC MODELS
+WENPIN TANG AND HANYANG ZHAO
+Abstract. Diffusion probabilistic models (DPMs) have emerged as a promising technique in generative modeling. The success of DPMs relies on two ingredients: time reversal of diffusion processes and score matching. In view of possibly unguaranteed score matching, we propose a new criterion – the contraction property of backward sampling in the design of DPMs, leading to a novel class of contractive DPMs (CDPMs). Our key insight is that, the contraction property can provably narrow score matching errors and discretization errors, thus our proposed CDPMs are robust to both sources of error. For practical use, we show that CDPM can leverage weights of pretrained DPMs by a simple transformation, and does not need retraining. We corroborated our approach by experiments on synthetic 1-dim examples, Swiss Roll, MNIST, CIFAR-10 32×32 and AFHQ 64×64 dataset. Notably, CDPM steadily improves the performance of baseline score-based diffusion models.
+Key words: Contraction, diffusion probabilistic models, discretization, generative models, image synthesis, sampling, score matching, stochastic differential equations.
+1. Introduction
+Diffusion probabilistic models (DPMs) have emerged as a powerful framework for generative modeling, outperform generative adversarial networks (GANs) on image and audio synthesis [14, 30], and underpins the major accomplishment in text-to-image creators such as DALL·E 2 [43], Stable Diffusion [45], and the text-to-video generator Sora [40]. The concept of DPMs finds its roots in energy-based models [46], and is popularized by [22, 50, 53] in an attempt to produce from noise new samples (e.g. images, audio, text) that resemble the target data, while maintaining diversity. See [8, 54, 60] for a review on DPMs.
+DPMs relies on forward-backward Markov processes. The forward process starts with the target data distribution, and runs for some time until the signal is destroyed – this gives rise to noise or a non-informative prior. The backward process is then initiated with this prior, and reverses the forward process in time to generate samples whose distribution is close to the target distribution. In [2, 22, 50], DPMs are discrete time-indexed Markov chains; [10, 49, 53] model DPMs in continuous time as stochastic differential equations (SDEs). Nevertheless, there is no conceptual distinction between discrete and continuous DPMs, as continuous DPMs can be viewed as the continuum limits of discrete DPMs, and discrete DPMs are time discretizations of the latter. In this paper, we adopt a continuous-time score-based perspective, and algorithms are derived by discretization.
+There has been great interest in improving diffusion models further in terms of image/distribution quality, training cost, and generation speed. In this work, we focus on understanding and improving the choice of drift and diffusion coefficients of the governed SDE in the forward process, which will affect the generation quality of the DPMs. Popular examples include Ornstein-Uhlenbeck (OU) processes [13], variance exploding (VE) SDEs [50], variance preserving (VP) SDEs [22], and sub-variance preserving (subVP) SDEs [53] (see Table 1 for details). Despite the empirical success of diffusion models driven by these specific SDEs, theoretical understanding of these designs are limited and a fundamental question
+Date: October 15, 2024. Emails: {wt2319, hz2684}@columbia.edu, Department of Industrial Engineering and Operations Research, Columbia University.
+1
+arXiv:2401.13115v3 [cs.LG] 12 Oct 2024
+
+
+2 WENPIN TANG AND HANYANG ZHAO
+remains unanswered:
+How to design parameters of a DPM for better generation quality?
+There has been controversy around the best design of the diffusion model/SDE parameters, e.g. one should choose VP or VE for his own training of diffusion models. According to empirical studies, the design of exploding variance in VE could yield a better result for CIFAR10 and ImageNet synthesis, e.g. in EDM baseline [25]. However, the reason for this choice is highly empirical and with minimal theoretical justifications. Why VE SDE performs better than VP SDE? The purpose of this paper is to partly answer these questions theoretically and further improve the performance of diffusion models by our theorectical findings. Our proposal is, when facing score matching errors in score-based diffusion models:
+The backward process of the DPM shall be contractive.
+Here we explain the high-level idea of “contractive-ness". For a diffusion process, “contractive-ness” is related to the (long-time) convergence of the process to stationarity. By letting L be the infinitesimal generator, it is specified by the Lyapunov type condition: Lf ≤ −c (or a stronger form Lf ≤ −cf ) outside a compact domain, for some test function f and c > 0. When adapting to diffusion models, there are two tweaks: (1) the Lyapunov condition is implicitly satisfied for some diffusion coefficients, and (2) there are score matching errors. We further propose a simplified checkable necessary condition on diffusion coefficients to guarantee a contractive backward process, which we elaborate in Section 3.
+We call DPMs that yield a contractive backward process as contractive DPMs (CDPMs). At a high level, the contraction of the backward process will prevent score matching errors, which may be wild, from expanding over the time. The contributions of this work are summarized as follows.
+Methodology: We propose a new criterion for designing DPMs. This naturally leads to a novel class of DPMs, including contractive OU processes and contractive subVP SDEs. The idea of requiring the backward process to be contractive stems from sampling theory of SDEs, so our methodology is theory-oriented. To our best knowledge, this is the first paper to integrate contraction into the design of DPMs, with both theoretical guarantees and good empirical performance.
+Theory: We prove Wasserstein bounds between contractive DPM samplers and the target data distribution. While most previous work (e.g., [10, 13, 32]) focused on Kullback–Leibler (KL) or total variation bounds for OU processes, we consider the Wasserstein metric because it has shown to align with human judgment on image similarity [5], and the standard evaluation metric – Fréchet inception distance (FID) is based on Wasserstein distance. Early work [13, 31] gave Wasserstein bounds for the existing DPMs (OU processes, VE and VP SDEs) with exponential dependence on T . This was improved in recent studies [10, 20, 33] under various assumptions of pdata(·), where the bounds are typically of form:
+(noise inaccuracy) · e−T
+| {z }
+initialization error
++ (score mismatch) · Poly(T )
+| {z }
+score error
++ Poly(step size) · Poly(T )
+| {z }
+discretization error
+,
+with Poly(·) referring to polynomial in the variable. Our result gives a Wasserstein bound for CDPMs:
+(noise inaccuracy) · e−T
+| {z }
+initialization error
++ (score mismatch) · (1 − e−T )
+| {z }
+score error
++ Poly(step size)
+| {z }
+discretization error
+.
+Score matching is often trained using blackbox function approximations, and the errors incurred in this step may be large. So CDPMs are designed to be robust to score mismatch and discretization, at the cost of possible initialization bias.
+Experiments: We apply the proposed CDPMs to both synthetic and real data. In dimension one, we compare contractive OU with OU by adding a fixed noise to the true score function, which yields the same score matching error. Our result shows that contractive OU consistently beats OU, and
+
+
+CDPM 3
+is robust to different error levels and time discretization. We further compare the performance of different models via Wasserstein-2 distance of the SWISS Roll dataset and FIDs of MNIST, which show that CDPMs outperform other SDE models. On the task of CIFAR-10 unconditional generation, we obtain an FID score of 2.47 and an inception score of 10.18 for CDPM, which requires no retraining by transforming the pretrained weights of VE-SDE in [53], surpassing all other SDE models.
+Literature review. In the context of generative modeling, DPMs were initiated by [50] (SMLD) and [22] (DDPM) using forward-backward Markov chains. The work [49, 53] unified the previous models via a score-based SDE framework, which also led to deterministic ordinary differential equation (ODE) samplers. Since then the field has exploded, and lots of work has been built upon DPMs and their variants. Examples include DPMs in constrained domains [15, 17, 36, 44], DPMs on manifolds [7, 12, 41], DPMs in graphic models [37], variational DPMs [27, 56] and consistency models [48], just to name a few. Early theory [12, 13, 31] established the convergence of DPMs with exponential dependence on time horizon T and dimension d. Recently, polynomial convergence of various DPMs has been proved for stochastic samplers [3, 10, 20, 32, 33, 35] and deterministic samplers [4, 9, 11, 35], under suitable conditions on the target data distribution.
+The remainder of the paper is organized as follows. In Section 2, we provide background on score-based DPMs. Theoretical results for CDPMs are presented in Section 3, and connections to VE are discussed in Section 4. Experiments are reported in Section 5. We conclude with Section 6.
+2. Background on Score-based Diffusion Models
+2.1. Forward and Backward SDEs. In this work, we explain the formulation of diffusion models based on the Stochastic Differential Equations (SDEs) presented by [53]. Consider a fixed time horizon T , and an SDE-governed forward process {Xt}t∈[0,T ] that describes how data distribution evolves as:
+dXt = b(t, Xt)dt + σ(t)dBt, with X0 ∼ pdata(·), (2.1)
+where drift coefficient b : R+ × Rd → Rd and diffusion coefficient σ : R+ → R+ are hyper-parameters as part of the design space of diffusion models. Theorectically, some conditions on b(·, ·) and σ(·) are required so that the SDE (2.1) is at least well-defined (see [24, Chapter 5], [55, Section 3.1] for details).
+We further denote p(t, ·) be the probability density of Xt (then p(0, ·) = pdata(·) is the data distribution). Diffusion Models consider a time reversal Xt := XT −t for 0 ≤ t ≤ T of the original process Xt for generative sampling. Existing literature on the time reversal of SDEs [1, 21] have proved that X also satisfies an SDE (see proof in Appendix A.), such that
+dXt =  ̄b(t, Xt)dt + σ ̄(t)dBt, with X0 ∼ p(T, ·), (2.2)
+in which the drift and diffusion coefficient yield a closed-form (we denote ∇ the gradient w.r.p. x):
+σ(t) = σ(T − t), b(t, x) = −b(T − t, x) + σ2(T − t)∇ log p(T − t, x). (2.3)
+The term ∇ log p(·, ·) is also known as the Stein’s score function. However, scores are unknown, and the procedures or methods to estimate scores are referred as score matching.
+2.2. Score Matching. To estimate the scores, recently score-based diffusion models [50, 53] proposed to learn ∇ log p(t, x) by function approximations via deep neural networks. More precisely, denote by {sθ(t, x)}θ a family of functions on R+ × Rd parametrized by θ, the scores are approximated by minimizing a weighted L2 loss across time:
+mθin
+J ̃ESM(θ) = Et∈U(0,T )Ep(t,·) λ(t)|sθ(t, X) − ∇ log p(t, X)|2 . (2.4)
+where U(0, T ) denotes a uniform distribution on [0, T ], and λ : R → R+ is a positive weighting function. (2.4) is also known as the explicit score matching (ESM) objective. For efficiently solving (2.4) in
+
+
+4 WENPIN TANG AND HANYANG ZHAO
+which scores ∇ log p(t, X) are still unknown, existing works in denoising diffusion models [25, 53] solve an equivalent denoising score matching (DSM) objective
+J ̃DSM(θ) = Et∼U(0,T )
+n
+λ(t)EX0∼pdata(·)EXt|X0
+h
+|sθ(t, X(t)) − ∇Xt log p(t, Xt | X0)|2io
+.
+DSM objective has the advantage that the conditional distribution p(t, Xt | X0) is commonly tractable, and the scores yield a simple closed form when (2.1) is a linear SDE (which is a common choice in literature), i.e. b(t, x) = b(t) · x for some function b(t) : R+ → R. We discuss this equivalence and other score matching methods such as sliced score matching [52] in Appendix C.
+2.3. Designs of b and σ. After learning the scores by parameterization sθ∗ , diffusion models can move backward in time from p(T, ·) following (2.2), and sample XT ∼ pdata(·) at time T . However, here the distribution p(T, ·) still depends on the target distribution pdata(·) which is not tractable. A non-informative prior is needed to replace p(T, ·) for true generative sampling. In addition to the linear SDE design mentioned earlier, two popular choices of diffusion models, VP SDE [22] and VE SDE [53], both ensure the existence of prior. We denote all the priors as p∞ for simplicity following this criterion. We also list the coefficients of popular SDEs (VP, subVP, VE), and the prior distributions in Table 1 (More details are listed in Appendix B). Especially, VE and VP SDEs are the continuum limits of score matching with Langevin dynamics (SMLD) [50] and denoising diffusion probabilistic models (DDPMs) [22] respectively.
+SDEs b(t) σ(t) p∞ Remarks
+OU −θ σ N (0, I) θ, σ > 0 VP [22] − 1
+2 β(t) pβ(t) N (0, I) β(t) = βmin + t
+T (βmax − βmin), with βmin ≪ βmax
+subVP [53] − 1
+2 β(t)
+q
+β(t)(1 − e−2 R t
+0 β(s)ds) N (0, I) β(t) = βmin + t
+T (βmax − βmin), with βmin ≪ βmax
+VE [53] 0 σmin σmax
+σmin
+t
+T q2
+T log σmax
+σmin N 0, σ2maxI σmin ≪ σmax
+Table 1. Design space of b and σ for different SDEs.
+Finally, score-based diffusion models [53] replace ∇p(t, x) with the matched score sθ∗ (t, x) in (2.2), and also replace the marginal distribution at time T by the non-informative prior pnoise(·) to get the backward process for generative sampling:
+dXt = −b(T − t, Xt) + σ2(T − t) sθ∗ (T − t, Xt) dt + σ(T − t)dBt, X0 ∼ pnoise(·). (2.5)
+3. Theory for contractive DPMs
+In this section, we formally introduce the idea of CDPMs, and present supportive theoretical results. For a DPM specified by (2.1)-(2.5), we consider the Euler-Maruyama discretization of its backward process X. Fix δ > 0 as the step size, and set tk := kδ for k = 0, . . . , N := T
+δ . Let Xb0 = X0, and
+Xbk := Xbk−1 + (−b(T − tk, Xbk−1)+σ2(T − tk−1)sθ(T − tk−1, Xbk−1))δ
++ σ(T − tk−1)(Btk − Btk−1 ), for k = 1, . . . , N. (3.1)
+Our goal is to bound the Wasserstein-2 distance W2(pdata(·), XbN ). Clearly,
+W2(pdata(·), XbN ) ≤ W2(pdata(·), XT ) + E|XT − XbN |2
+1
+2 , (3.2)
+where the first term on the right side of (3.2) is the sampling error at the continuous level, and the second term is the discretization error. We will study these two terms in the next two subsections.
+
+
+CDPM 5
+3.1. Sampling error in continuous time. We are concerned with the term W2(pdata(·), XT ). Existing work [10, 13, 33] established W2 bounds for OU processes under a bounded support assumption. Closer to our result (and proof) is the concurrent work [20], where a W2 bound is derived for a class of DPMs with b(t, x) separable in t and x, under a strongly log-concavity assumption.
+Assumption 1. The following conditions hold:
+(1) There exists rb : [0, T ] → R such that (x − x′) · (b(t, x) − b(t, x′)) ≥ rb(t)|x − x′|2 for all t and x, x′.
+(2) There exists L > 0 such that |∇ log p(t, x) − ∇ log p(t, x′)| ≤ L|x − x′| for all t and x, x′.
+(3) There exists ε > 0 such that E|sθ(t, XT −t) − ∇ log p(t, XT −t)|2 ≤ ε2 for all t.
+The condition (1) assumes the monotonicity of b(t, ·) and (2) assumes the Lipschitz property of the score functions. In the previous examples, b(t, x) is linear in x so the density p(t, ·) is Gaussian-like, and its score is almost affine. Thus, it is reasonable to assume (2). Conditions (1) and (2) are used to quantify how a perturbation of the model parameters in an SDE affects its distribution. The condition (3) specifies how accurate Stein’s score is estimated by a blackbox estimation. There has been work (e.g. [7, 29, 39]) on the efficiency of score approximations. So it is possible to replace the condition (3) with those score approximation bounds.
+Theorem 2. Let Assumption 1 hold, and any h > 0. Define η := W2(p(T, ·), pnoise(·)), and
+u(t) :=
+ZT
+T −t
+−2rb(s) + (2L + 2h)σ2(s) ds. (3.3)
+Then we have
+W2(pdata(·), XT ) ≤
+s
+η2eu(T ) + ε2
+2h
+ZT
+0
+σ2(t)eu(T )−u(T −t)dt. (3.4)
+The proof of Theorem 2 is deferred to Appendix D. A similar result was given in [31] under an unconventional assumption that the score matching functions sθ(t, x), rather than the score functions ∇p(t, x), are Lipschitz. In fact, the (impractical) assumption that the score matching functions are Lipschitz is not needed at the continuous level, and can be replaced with the Lipschitz condition on the score functions. On the other hand, the Lipschitz property of the score matching functions are required, for technical purposes, to bound the discretization error in Section 3.2.
+It is possible to establish sharper bounds under extra (structural) conditions on (b(·, ·), σ(·)), and also specify the dependence in dimension d (e.g. [10, 20]). For instance, if we assume b(t, x) is separable in t and x and linear in x, and pdata(·) is strongly log-concave, then the term Lσ2(s) in (3.3) will become −L′σ2(s) for some L′ > 0. The dependence of L on the b and σ can also be readily relaxed given additional assumptions on the data distribution,we leave the full investigation of its theory to the future work.
+Now we explain contractive DPMs. Revisiting bound (3.4), the sampling error W2(pdata(·), XT ) is linear in the score matching error ε and the initialization error η, and these errors may be amplified in time T – in most aforementioned DPMs, rb(t) ≤ 0 so u(t) is positive and at least linear. As mentioned earlier, it is problematic if we don’t know how good a blackbox score matching sθ(t, x) is. Our idea is simply to make u(t) be negative, that is to set rb(t) > 0 sufficiently large, in order to prevent the score matching error from propagating in backward sampling. This yields the class of CDPMs, which is inherently different from existing DPMs in the sense that these DPMs often have contractive forward processes, while our proposal requires contractive backward processes. Quantitatively, we can set for some α > 0,
+contractive cond. inf
+0≤t≤T rb(t) − (L + h)σ2(t) ≥ α. (3.5)
+
+
+6 WENPIN TANG AND HANYANG ZHAO
+In practice, it suffices to design (b(·, ·), σ(·)) with a positive rb(t) for ant t ∈ [ε, T ], which we refer as a practical condition (actually a necessary condition) of contractiveness. We formally define CDPMs as diffusion models governed by SDEs that satisfy this practical version of contractiveness, i.e. rb(t) > 0. Notice that when b(t, x) = b(t) · x, this is equivalent to b(t) > 0. We present three examples, contractive OU processes, contractive VP SDEs, and contractive subVP SDEs in Table 2 :
+SDEs b(t) σ(t) p∞ Remarks
+COU θ σ N 0, σ2
+2θ (e2θT − 1)I θ > 0
+CVP 1
+2 β(t) pβ(t) N 0, (e T
+2 (βmax+βmin) − 1)I β(t) = βmin + t
+T (βmax − βmin), with βmin ≪ βmax
+CsubVP 1
+2 β(t)
+q
+β(t)(e2 R t
+0 β(s)ds − 1) N 0, (e T
+2 (βmax+βmin) − 1)2I β(t) = βmin + t
+T (βmax − βmin), with βmin ≪ βmax
+Table 2. Design space of b and σ for CDPMs.
+To illustrate the benefits of contractive-ness, we further give a bound for CVP. As in Table 2, the backward process of CVP SDE is:
+dXt = − 1
+2 β(T − t)Xt + β(T − t)∇ log p(T − t, Xt) dt
++
+pβ(T − t)dBt, X0 ∼ N 0, (e T
+2 (βmax+βmin) − 1)I .
+(3.6)
+Recall that a function l : Rd → R is κ-strongly concave if (∇l(x) − ∇l(y)) · (x − y) ≤ −κ|x − y|2.
+Theorem 3. Let (Xt, 0 ≤ t ≤ T ) be specified by (3.6) (the backward process of CVP). Assume that log pdata(·) is κ-strongly log-concave, and Epdata(·)|x|2 < ∞. For h < min( 1
+2, 1
+βmax T
+κ
+1+κ ), we have:
+W2
+2 (pdata(·), XT ) ≤ e−2( κ
+1+κ −βmaxhT +O(e−βminT ))Epdata(·)|x|2 + ε2
+2h(1 − 2h) . (3.7)
+The proof of Theorem 3 is given in Appendix E. It is easy to see from the theorem that CVP (which follows similarly for other CDPMs) allow to control the score matching error ε, at the possible cost of initialization error coming from η. Note that if βmaxT is asymptotically small, this error is bounded. This requires scaling the hyperparameters with respect to T in the model. We observe in the experiment that tuning a moderate level β is important to let CDPM benefit from contraction while not suffer from the initialization error. Also note that it is not necessary to send T → ∞, and T = 1 is taken in [53].
+3.2. Discretization error. We study the discretization error E|XT − XbN |2
+1
+2 for CDPMs. Classical
+SDE theory [28] indicates that E|XT − XbN |2
+1
+2 ≤ C(T )δ, with the constant C(T ) exponential in T .
+Here we show that by a proper choice of the pair (b(·, ·), σ(·)) leading to CDPMs, the constant C(T ) can be made independent of T . In other words, the discretization error will not expand over the time. We need some technical assumptions.
+Assumption 4. The following conditions hold:
+(1) There exists Lσ > 0 such that |σ(t) − σ(t′)| ≤ Lσ|t − t′| for all t, t′.
+(2) There exists Rσ > 0 such that σ(t) ≤ Rσ for all t.
+(3) There exists Lb > 0 such that |b(t, x) − b(t′, x′)| ≤ Lb(|t − t′| + |x − x′|) for all t, t′ and x, x′.
+(4) There exists Ls > 0 such that |sθ(t, x) − sθ(t′, x′)| ≤ Ls(|t − t′| + |x − x′|) for all t, t′ and x, x′.
+(5) There exists Rs > 0 such that |sθ(T, x)| ≤ Rs(1 + |x|) for all x.
+
+
+CDPM 7
+Next we introduce a contractive assumption that is consistent with (3.5).
+Assumption 5. There exists β > 0 such that
+ZT
+T −t
+(rb(s) − Lsσ2(s)) ds ≥ βt, for all t, (3.8)
+or simply
+β := inf
+0≤t≤T rb(t) − Lsσ2(t) > 0. (3.9)
+Theorem 6. Let Assumptions 1, 4 and 5 hold. Then there exists C > 0 (independent of δ, T ) such that for δ > 0 sufficiently small,
+E|XT − XbN |2
+1
+2 ≤C
+√
+δ. (3.10)
+The proof of Theorem 6 is given in Appendix F.
+4. Connections between CDPM and VE
+In this section, we draw connections between CDPM and VE. We first show that VE exhibits some hidden contractive property. Then we show how to exploit the pretrained models such as VE to achieve CDPM, which does not require retraining.
+4.1. VE is contractive at earlier denoising steps. We illustrate with an example that the backward process of VE also yields the contractive property at earlier stages of the denoising process. In Figure 1, the angles correspond to the scores of a normal distribution with mean 0 (the case of the VE prior). We see that the two points becomes closer after a denosing step , which provides an explanation of the hidden contraction. However, VE may lose this contractive property when the distribution is close to the target data distribution. The score matching error and discretization error near t ≈ T − ε in the backward process indeed plays a large impact as in the empirical studies [25], which motivates the design of CDPM.
+Figure 1. Contraction of VE Figure 2. Perturbation kernels
+4.2. CDPM can be transformed from VE. We show that CDPM, though different from existing DPMs, can be derived from VE via a time/space change of variable, so does not require pretraining the score matching objectives again. Note that for COU, CVP and CsubVP, the parameter b(t, x) is separate in t and x. We follow [25], and define the perturbation kernel of CDPM as:
+Xt | X0 ∼ N f (t)X0, f (t)2g(t)2I ,
+
+
+8 WENPIN TANG AND HANYANG ZHAO
+where
+f (t) = e t2
+4T (βmax−βmin)+ t
+2 βmin and g(t) = f (t) − f −1(t). (4.1)
+Figure 2 plots different perturbation kernels of SDE models: existing models lead to either a constant or a decreasing kernel, while we propose the kernel be increasing. This yields CsubVP and EDM+, which we will show in Section 5.3.
+Denote by pVE(t, ·) and pCsubVP(t, ·) the probability distribution of Xt following VE and CsubVP respectively. Assume that we have access to a pretrained VE score matching spre(t, x) ≈ ∇ log pV E(t, x). We can then compute the CDPM score by the following transformation, which is read from [25, Equation (12) and (19)].
+Theorem 7. Assume that σ2max − σ2
+min > g2(T ). We have for t ∈ [0, T ],
+pCsubVP(t, x) = f (t)−dpVE(τ (t), x/f (t)), (4.2)
+where
+τ (t) = T
+2
+log(1 + g2(t)
+σ2
+min
+)
+log(σmax/σmin) . (4.3)
+So it suffices to take ∇ log pCsubVP(t, x) ≈ spre(τ (t), x/f (t)), meaning that we can exploit existing score matching neural nets, or pretrained weights for CDPM sampling.
+5. Experiments
+In this section, we report empirical results on the proposed contractive approach and CDPMs. We conduct experiments on a 1-dimensional synthetic example, Swiss Roll, MNIST, CIFAR10 32×32 and AFHQv2 64×64 datasets.
+5.1. CDPM shows better performance with the same scoring matching error. The goal is to learn/generate a single point mass at x0 = −1 in dimension one. Since we can compute the score explicitly, we test the performance of different SDE models by adding the SAME noise level of error at each time/point. Implementation details are given in Appendix G.1. Table 3 compares the W2 errors for OU and COU, with different noise levels and time discretization. As is expected from the theory, COU is more robust to score matching error and time discretization.
+Noise Level \ W2 ↓ OU COU
+ε = 0.02 0.245 0.22 ε = 0.05 0.265 0.227 ε = 0.1 0.30 0.23 ε = 0.2 0.39 0.25 ε = 0.5 0.7 0.42 ε = 1 1.3 0.8
+(a) time discretization ∆t = 0.02
+Noise Level \W2 ↓ OU COU
+ε = 0.02 0.41 0.35 ε = 0.05 0.44 0.36 ε = 0.1 0.48 0.36 ε = 0.2 0.58 0.36 ε = 0.5 0.92 0.43 ε = 1 1.5 0.7
+(b) time discretization ∆t = 0.05
+Table 3. W2 distance under the same score matching error.
+5.2. Swiss Roll and MNIST datasets. We apply CsubVP to Swiss Roll and MNIST datasets. Implementation details are reported in Appendix G.2. Figure 4a shows the evolution process of CsubVP on the Swiss Roll data. Figure 4b provides image synthesis by CsubVP on MNIST. Table 4 shows a clear advantage of CDPMs over other SDE models in terms of W2 error and FID score.
+
+
+CDPM 9
+Model (SDE) W2 ↓ FIDs ↓
+OU 0.29 VP [53] 0.33 0.79 subVP [53] 0.34 0.52 VE [53] 0.18 0.20
+CDPMs
+COU 0.10 CsubVP 0.14 0.03
+Table 4. W2 metric on Swiss Roll and FIDs on MNIST synthesis.
+(a) Swiss Roll generation with 200, 400, 600, 800, 10000 iterations.
+(b) MNIST synthesis by CsubVP.
+5.3. CIFAR-10 dataset. We first test the performance of our proposed CsubVP on the task of unconditional synthesis of the CIFAR-10 dataset. We compute and compare FID and inception scores of CsubVP and other SDE models. Implementation details are given in Appendix G.3.
+Figure 3 provides image synthesis on CIFAR-10. From Table 5, CsubVP shows the best performance among all known classes of SDE-based diffusion models. In particular, it outperforms VE SDEs (non-deep version in [53]) by achieving both smaller FIDs and higher Inception Scores. (∗ the model evaluation is conducted on our own machine (4 4090RTX GPUs) given the checkpoints provided by [53]).
+Figure 3. CIFAR-10 Synthesis (CsubVP).
+Model Inception ↑ FID ↓
+PixelCNN [57] 4.60 65.9 IGEBM [16] 6.02 40.6 ViTGAN [34] 9.30 6.66 StyleGAN2-ADA [26] 9.83 2.92 NCSN [50] 8.87 25.32 NCSNv2 [51] 8.40 10.87 DDPM [22] 9.46 3.17 DDIM, T = 50 [47] - 4.67 DDIM, T = 100 [47] - 4.16
+NCSN++
+VP SDE [53] 9.58 2.55 subVP SDE [53] 9.56 2.61 VE SDE [53] 9.68∗ 2.50∗ CsubVP 10.18 2.47
+Table 5. Inception & FID.
+We also show how to improve the baseline pretrained models using our idea of contraction. Given the checkpoints of EDM [25] on CIFAR10 and AFHQv2 datasets, we modify the perturbation kernel to let s(0) = 1 − ε < 1, leading to an increasing function as in Figure 2. This simple technique, motivated by our contraction approach, yields improvement to the EDM baselines as in Table 6. Moreover, we
+
+
+10 WENPIN TANG AND HANYANG ZHAO
+observe the improvement of the sample quality by comparing the images generated by EDM and EDM with contraction, see Figure 4.
+Figure 4. (AFHQv2 sample) LEFT: EDM, RIGHT: EDM with contraction.
+Model/FID ↓ EDM*[25] ‘+’ Contraction NFE
+CIFAR10 32×32
+VP SDE (cond) 1.85 1.83 35 VE SDE (cond) 1.83 1.82 35 VP SDE (uncond) 1.96 1.94 35 VE SDE (uncond) 1.97 1.97 35
+AFHQv2 64×64
+VP SDE (uncond) 2.10 2.08 79 VE SDE (uncond) 2.24 2.20 79
+Table 6. FID scores (*our reruns).
+6. Conclusion
+In this paper, we propose a new criterion – the contraction of backward sampling in the design of SDE-based DPMs. This naturally leads to a novel class of contractive DPMs. The main takeaway is that the contraction of the backward process limits score matching errors from propagating, and controls discretization error as well. Our proposal is supported by theoretical considerations, and is corroborated by experiments. Notably, our proposed contractive subVP outperforms other SDE-based DPMs on CIFAR 10 dataset. Though the intention of this paper is not to beat SOTA diffusion models, CDPMs show promising results that we hope to trigger further research.
+There are a few directions to extend this work. First, we assume that score matching errors are bounded in L2 as in [10, 20, 33]. It is interesting to see whether this assumption can be relaxed to more realistic conditions given the application domain. Second, it is desirable to establish sharp theory for CDPMs, with dimension dependence. Finally, our formulation is based on SDEs, and hence stochastic samplers. We don’t look into ODE samplers as in [9, 35, 53, 59]. This leaves open the problems such as whether the proposed CDPMs perform well by ODE samplers, and why the ODE samplers derived from SDEs outperform those directly learnt, as observed in previous studies.
+Acknowledgement: We thank Jason Altschuler, Yuxin Chen, Sinho Chewi, Xuefeng Gao, Dan Lacker, Yuting Wei and David Yao for helpful discussions. We gratefully acknowledges financial support through NSF grants DMS-2113779 and DMS-2206038, and by a start-up grant at Columbia University.
+References
+[1] B. D. O. Anderson. Reverse-time diffusion equation models. Stochastic Process. Appl., 12(3):313326, 1982. [2] J. Austin, D. D. Johnson, J. Ho, D. Tarlow, and R. Van Den Berg. Structured denoising diffusion models in discrete state-spaces. In Neurips, volume 34, pages 17981–17993, 2021. [3] J. Benton, V. De Bortoli, A. Doucet, and G. Deligiannidis. Linear convergence bounds for diffusion models via stochastic localization. arXiv:2308.03686, 2023. [4] J. Benton, G. Deligiannidis, and A. Doucet. Error bounds for flow matching methods. arXiv:2305.16860, 2023.
+[5] A. Borji. Pros and cons of GAN evaluation measures. Comput. Vis. Image Underst., 179:41–65, 2019.
+
+
+CDPM 11
+[6] P. Cattiaux, G. Conforti, I. Gentil, and C. Léonard. Time reversal of diffusion processes under a finite entropy condition. Ann. Inst. Henri Poincaré Probab. Stat., 59(4):1844–1881, 2023. [7] M. Chen, K. Huang, T. Zhao, and M. Wang. Score approximation, estimation and distribution recovery of diffusion models on low-dimensional data. In ICML, volume 40, pages 4672–4712, 2023. [8] M. Chen, S. Mei, J. Fan, and M. Wang. An overview of diffusion models: applications, guided generation, statistical rates and optimization. 2024. arXiv:2404.07771. [9] S. Chen, S. Chewi, H. Lee, Y. Li, J. Lu, and A. Salim. The probability flow ode is provably fast. 2023. arXiv:2305.11798. [10] S. Chen, S. Chewi, J. Li, Y. Li, A. Salim, and A. R. Zhang. Sampling is as easy as learning the score: theory for diffusion models with minimal data assumptions. ICLR, 2023. [11] S. Chen, G. Daras, and A. Dimakis. Restoration-degradation beyond linear diffusions: A nonasymptotic analysis for ddim-type samplers. In ICML, volume 40, pages 4462–4484, 2023. [12] V. De Bortoli. Convergence of denoising diffusion models under the manifold hypothesis. arXiv:2208.05314, 2022.
+[13] V. De Bortoli, J. Thornton, J. Heng, and A. Doucet. Diffusion Schrödinger bridge with applications to score-based generative modeling. In Neurips, volume 34, pages 17695–17709, 2021. [14] P. Dhariwal and A. Nichol. Diffusion models beat GANs on image synthesis. In Neurips, volume 34, pages 8780–8794, 2021. [15] S. Dieleman, L. Sartran, A. Roshannai, N. Savinov, Y. Ganin, P. H. Richemond, A. Doucet, R. Strudel, C. Dyer, and C. Durkan. Continuous diffusion for categorical data. arXiv:2211.15089, 2022. [16] Y. Du, S. Li, J. Tenenbaum, and I. Mordatch. Improved contrastive divergence training of energy based models. arXiv:2012.01316, 2020. [17] N. Fishman, L. Klarner, V. D. Bortoli, E. Mathieu, and M. J. Hutchinson. Diffusion models for constrained domains. Transactions on Machine Learning Research, 2023.
+[18] H. Föllmer. An entropy approach to the time reversal of diffusion processes. In Stochastic differential systems (Marseille-Luminy, 1984), volume 69 of Lect. Notes Control Inf. Sci., pages 156–163. Springer, Berlin, 1985. [19] H. Föllmer. Time reversal on Wiener space. In Stochastic processes—mathematics and physics (Bielefeld, 1984), volume 1158 of Lecture Notes in Math., pages 119–129. Springer, Berlin, 1986. [20] X. Gao, H. M. Nguyen, and L. Zhu. Wasserstein convergence guarantees for a general class of score-based generative models. arXiv:2311.11003, 2023. [21] U. G. Haussmann and E. Pardoux. Time reversal of diffusions. Ann. Probab., 14(4):1188–1205, 1986. [22] J. Ho, A. Jain, and P. Abbeel. Denoising diffusion probabilistic models. In Neurips, volume 33, pages 6840–6851, 2020. [23] A. Hyvärinen. Estimation of non-normalized statistical models by score matching. J. Mach. Learn. Res., 6:695–709, 2005.
+[24] I. Karatzas and S. E. Shreve. Brownian motion and stochastic calculus, volume 113 of Graduate Texts in Mathematics. Springer-Verlag, New York, second edition, 1991. [25] T. Karras, M. Aittala, T. Aila, and S. Laine. Elucidating the design space of diffusion-based generative models. In Neurips, volume 35, pages 26565–26577, 2022. [26] T. Karras, M. Aittala, J. Hellsten, S. Laine, J. Lehtinen, and T. Aila. Training generative adversarial networks with limited data. In Neurips, volume 33, pages 12104–12114, 2020. [27] D. Kingma, T. Salimans, B. Poole, and J. Ho. Variational diffusion models. In Neurips, volume 34, pages 21696–21707, 2021.
+[28] P. E. Kloeden and E. Platen. Numerical solution of stochastic differential equations, volume 23 of Applications of Mathematics (New York). Springer-Verlag, Berlin, 1992.
+
+
+12 WENPIN TANG AND HANYANG ZHAO
+[29] F. Koehler, A. Heckett, and A. Risteski. Statistical efficiency of score matching: The view from isoperimetry. In ICLR, 2023. [30] Z. Kong, W. Ping, J. Huang, K. Zhao, and B. Catanzaro. Diffwave: A versatile diffusion model for audio synthesis. In ICLR, 2021. [31] D. Kwon, Y. Fan, and K. Lee. Score-based generative modeling secretly minimizes the Wasserstein distance. In Neurips, volume 35, pages 20205–20217, 2022. [32] H. Lee, J. Lu, and Y. Tan. Convergence for score-based generative modeling with polynomial complexity. In Neurips, volume 35, pages 22870–22882, 2022. [33] H. Lee, J. Lu, and Y. Tan. Convergence of score-based generative modeling for general data distributions. In ALT, pages 946–985. PMLR, 2023. [34] K. Lee, H. Chang, L. Jiang, H. Zhang, Z. Tu, and C. Liu. ViTGAN: Training GANs with vision transformers. In ICLR, 2022. [35] G. Li, Y. Wei, Y. Chen, and Y. Chi. Towards faster non-asymptotic convergence for diffusion-based generative models. arXiv:2306.09251, 2023. [36] A. Lou and S. Ermon. Reflected diffusion models. arXiv:2304.04740, 2023. [37] S. Mei and Y. Wu. Deep networks as denoising algorithms: Sample-efficient learning of diffusion models in high-dimensional graphical models. arXiv:2309.11420, 2023. [38] G. N. Milstein and M. V. Tretyakov. Stochastic numerics for mathematical physics. Scientific Computation. Springer-Verlag, Berlin, 2004. [39] K. Oko, S. Akiyama, and T. Suzuki. Diffusion models are minimax optimal distribution estimators. In ICML, volume 40, page 26517–26582, 2023. [40] OpenAI. Sora: Creating video from text. 2024. Available at https://openai.com/sora. [41] J. Pidstrigach. Score-based generative models detect manifolds. In Neurips, volume 35, pages 35852–35865, 2022. [42] J. Quastel. Time reversal of degenerate diffusions. In In and out of equilibrium (Mambucaba, 2000), volume 51 of Progr. Probab., pages 249–257. Birkhäuser Boston, Boston, MA, 2002. [43] A. Ramesh, P. Dhariwal, A. Nichol, C. Chu, and M. Chen. Hierarchical text-conditional image generation with clip latents. arXiv:2204.06125, 2022. [44] P. H. Richemond, S. Dieleman, and A. Doucet. Categorical SDEs with simplex diffusion. arXiv:2210.14784, 2022.
+[45] R. Rombach, A. Blattmann, D. Lorenz, P. Esser, and B. Ommer. High-resolution image synthesis with latent diffusion models. In CVPR, pages 10684–10695, 2022. [46] J. Sohl-Dickstein, E. Weiss, N. Maheswaranathan, and S. Ganguli. Deep unsupervised learning using nonequilibrium thermodynamics. In ICML, volume 32, pages 2256–2265, 2015. [47] J. Song, C. Meng, and S. Ermon. Denoising diffusion implicit models. In ICLR, 2021. [48] Y. Song, P. Dhariwal, M. Chen, and I. Sutskever. Consistency models. In ICML, volume 40, page 32211–32252, 2023. [49] Y. Song, C. Durkan, I. Murray, and S. Ermon. Maximum likelihood training of score-based diffusion models. In Neurips, volume 34, pages 1415–1428, 2021. [50] Y. Song and S. Ermon. Generative modeling by estimating gradients of the data distribution. In Neurips, volume 32, page 11918–11930, 2019. [51] Y. Song and S. Ermon. Improved techniques for training score-based generative models. In Neurips, volume 33, pages 12438–12448, 2020. [52] Y. Song, S. Garg, J. Shi, and S. Ermon. Sliced score matching: A scalable approach to density and score estimation. In UAI, volume 35, pages 574–584, 2020. [53] Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon, and B. Poole. Score-based generative modeling through stochastic differential equations. In ICLR, 2021. [54] W. Tang and H. Zhao. Score-based diffusion models via stochastic differential equations–a technical tutorial. 2024. arXiv:2402.07487.
+
+
+CDPM 13
+[55] W. Tang and X. Y. Zhou. Tail probability estimates of continuous-time simulated annealing processes. Numer. Algebra Control Optim., 13(3-4):473–485, 2023. [56] A. Vahdat, K. Kreis, and J. Kautz. Score-based generative modeling in latent space. In Neurips, volume 34, pages 11287–11302, 2021. [57] A. Van den Oord, N. Kalchbrenner, L. Espeholt, O. Vinyals, and A. Graves. Conditional image generation with pixelcnn decoders. In NIPS, volume 29, pages 4797–4805, 2016. [58] P. Vincent. A connection between score matching and denoising autoencoders. Neural Comput., 23(7):1661–1674, 2011. [59] Y. Xu, Z. Liu, M. Tegmark, and T. Jaakkola. Poisson flow generative models. In Neurips, volume 35, pages 16782–16795, 2022. [60] L. Yang, Z. Zhang, Y. Song, S. Hong, R. Xu, Y. Zhao, W. Zhang, B. Cui, and M.-H. Yang. Diffusion models: A comprehensive survey of methods and applications. ACM Comput. Surv., 56(4):1–39, 2023. [61] H. Zhao, W. Tang, and D. D. Yao. Policy optimization for continuous reinforcement learning. In Neurips, volume 36, 2023.
+
+
+14 WENPIN TANG AND HANYANG ZHAO
+Appendix
+A. Proof of SDE time reversal. The time reversal of SDEs [1, 21].
+Theorem 8. Under suitable conditions on b(·, ·), σ(·) and {p(t, ·)}0≤t≤T , we have
+σ(t) = σ(T − t), b(t, x) = −b(T − t, x) + σ2(T − t)∇ log p(T − t, x), (.1)
+where the term ∇ log p(·, ·) is called Stein’s score function.
+Proof. Here we give a heuristic derivation of the time reversal formula (.1). First, the infinitesimal generator of X is L := 1
+2 σ2(t)∆+b·∇. It is known that the density p(t, x) satisfies the the Fokker–Planck equation:
+∂
+∂t p(t, x) = L∗p(t, x), (.2)
+where L∗ := 1
+2 σ2(t)∆ − ∇ · b is the adjoint of L. Let p(t, x) := p(T − t, x) be the probability density of the time reversal X. By (.2), we get
+∂
+∂t p(t, x) = − 1
+2 σ2(t)∆p(t, x) + ∇ · (b(T − t, x) p(t, x)) . (.3)
+On the other hand, we expect the generator of X to be L := 1
+2 σ2(t)∆ + b · ∇. The Fokker-Planck equation for p(t, x) is
+∂
+∂t p(t, x) = 1
+2 σ2(t)∆p(t, x) − ∇ · b(t, x) p(t, x) . (.4)
+Comparing (.3) and (.4), we set σ(t) = σ(T − t) and then get
+b(T − t, x) + b(t, x) p(t, x) = σ2(T − t) ∇p(t, x).
+This yields the desired result. □
+Let’s comment on Theorem 8. [21] proved the result by assuming that b(·, ·) and σ(·, ·) are globally Lipschitz, and the density p(t, x) satisfies an a priori H1 bound. The implicit condition on p(t, x) is guaranteed if ∂t + L is hypoelliptic. These conditions were relaxed in [42]. In another direction, [18, 19] used an entropy argument to prove the time reversal formula in the case σ(t) = σ. This approach was further developed in [6] which made connections to optimal transport.
+B. Examples of DPMs. As in Table 1, we present a few examples of DPMs, here are their concrete details:
+(a) OU processes: b(t, x) = θ(μ − x) with θ > 0, μ ∈ Rd; σ(t) = σ > 0. The distribution of (Xt | X0 = x) is N (μ + (x − μ)e−θt, σ2
+2θ (1 − e−2θt)I), which is approximately N (μ, σ2
+2θ I) as t is large. The backward process specializes to
+dXt = (θ(Xt − μ) + σ2∇ log p(T − t, Xt))dt + σdBt, X0 ∼ N μ, σ2
+2θ I . (.5)
+(b) VE-SDE: b(t, x) = 0 and σ(t) = σmin σmax
+σmin
+t
+T q2
+T log σmax
+σmin with σmin ≪ σmax. The distri
+bution of (Xt | X0 = x) is N x, σ2
+min
+σmax σmin
+2t
+T − 1 I , which can be approximated by
+N (0, σ2maxI) at t = T . The backward process is:
+dXt = σ2(T − t))∇ log p(T − t, Xt) + σ(T − t)dBt, X0 ∼ N (0, σ2
+maxI). (.6)
+
+
+CDPM 15
+(c) VP-SDE: b(t, x) = − 1
+2 β(t)x and σ(t) = pβ(t), where β(t) := βmin + t
+T (βmax − βmin) with βmin ≪ βmax. The distribution of (Xt | X0 = x) is
+N (e− t2
+4T (βmax−βmin)− t
+2 βmin x, (1 − e− t2
+2T (βmax−βmin)−tβmin )I ),
+which can be approximated by N (0, I) at t = T . The backward process is:
+dXt = 1
+2 β(T − t)Xt + β(T − t)∇ log p(T − t, Xt) dt
++
+pβ(T − t))dBt, X0 ∼ N (0, I).
+(.7)
+(d) subVP-SDE: b(t, x) = − 1
+2 β(t)x and σ(t) =
+q
+β(t)(1 − e−2 R t
+0 β(s)ds). The distribution of
+(Xt | X0 = x) is N (e− t2
+4T (βmax−βmin)− t
+2 βmin x, (1 − e− t2
+2T (βmax−βmin)−tβmin )2I ), which can be ap
+proximated by N (0, I) at t = T . The backward process is:
+dXt = 1
+2 β(T − t)Xt + β(T − t)(1 − γ(T − t))∇ log p(T − t, Xt) dt
++
+pβ(T − t)(1 − γ(T − t))dBt, X0 ∼ N (0, I),
+(.8)
+where γ(t) := e−2 R t
+0 β(s)ds = e− t2
+T (βmax−βmin)−2tβmin .
+C. Score matching. (a) Sliced score matching. One way is that we further address the term ∇x · sθ(t, x) by random projections. The method proposed in [52] is called sliced score matching. Considering the Jacobian matrix ∇sθ(t, x) ∈ Rd×d, we have
+∇ · sθ(t, x) = Tr(∇sθ(t, x)) = Ev∼N (0,I) v⊤∇sθ(t, x)v .
+We can then rewrite the training objective as:
+mθin
+JeSSM(θ) = Et∈U(0,T )Evt∼N (0,I)Ep(t,·) λ(t) ∥sθ(t, X)∥2 + 2 v⊤∇(v⊤sθ(t, x)) . (.9)
+which can be computed easily. It requires only two times of back propagation, as v⊤sθ(t, x) can be seen as adding a layer of the inner product between v and sθ.
+(b) Denoising score matching. The second way is that we go back to the objective (2.4), and use a nonparametric estimation. The idea stems from [23, 58], in which it was shown that JESM is equivalent to the following denoising score matching (DSM) objective:
+J ̃DSM(θ) = Et∼U(0,T )
+n
+λ(t)EX0∼pdata(·)EXt|X0
+h
+|sθ(t, X(t)) − ∇Xt log p(t, Xt | X0)|2io
+Theorem 9. Let JDSM(θ) := EX0∼pdata(·)EXt|X0
+h
+|sθ(t, X(t)) − ∇Xt log p(t, Xt | X0)|2i
+. Under suit
+able conditions on sθ, we have JDSM(θ) = JESM(θ) + C for some C independent of θ. Consequently, the minimum point of JDSM and that of JESM coincide.
+Proof. We have
+JESM(θ) = Ep(t,·)|sθ(t, X) − ∇ log p(t, X)|2
+= Ep(t,·) |sθ(t, X)|2 − 2sθ(t, X)⊤∇ log p(t, X) + |∇ log p(t, X)|2 .
+
+
+16 WENPIN TANG AND HANYANG ZHAO
+Consider the inner product term, rewriting it as:
+Ep(t,·) sθ(t, X)⊤∇ log p(t, X) =
+Z
+x
+p(t, x)sθ(t, x)⊤∇ log p(t, x)dx
+=
+Z
+x
+sθ(t, x)⊤∇p(t, x)dx
+=
+Z
+x
+sθ(t, x)⊤∇
+Z
+x0
+p(0, x0)p(t, x|x0)dx0dx
+=
+Z
+x0
+Z
+x
+sθ(t, x)⊤p(0, x0)∇p(t, x|x0)dxdx0
+=
+Z
+x0
+p(0, x0)
+Z
+x
+sθ(t, x)⊤p(t, x|x0)∇ log p(t, x|x0)dxdx0
+= EX0∼p(0,·)EXt|X0 sθ(t, X(t))⊤∇Xt log p(t, Xt | X0) ,
+combining EX |sθ(t, X)|2 = EX0 EX|X0 |sθ(t, X)|2 concludes our proof. □
+The intuition of DSM is that following the gradient sθ of the log density at some corrupted point x ̃ should ideally move us towards the clean sample x. The reason that the objective JDSM is comparatively easy to solve is that conditional distribution usually satisfies a good distribution, like Gaussian kernel, i.e. p(Xt | X0) ∼ N Xt; μt(X0), σt2I , which is satisfied in many cases of DPM, we can explicitly compute that:
+∇Xt log p(t, Xt | X0) = 1
+σt2
+(μt(X0) − Xt).
+Direction 1
+σ2
+t
+(X0 − μt(X0)) clearly corresponds to moving from x ̃ back towards clean sample x, and we
+want sθ to match that as best it can. Moreover, empirically validated by e.g. [53], a good candidate of λ(t) is chosen as:
+λ(t) ∝ 1/E
+h
+|∇Xt log p(t, Xt | X0)|2i
+= σ2
+t
+Thus, our final optimization objective is:
+J ̃DSM(θ) = Et∼U(0,T )
+n
+σ2
+t EX0∼pdata(·)EXt|X0
+h
+|sθ(t, X(t)) − ∇Xt log p(t, Xt | X0)|2io
+= Et∼U(0,T )
+(
+EX0 ∼pdata (·) EXt |X0
+"
+σtsθ(t, X(t)) + Xt − μt(X0)
+σt
+2
+#)
+= Et∼U(0,T )
+n
+EX0∼pdata(·)Eεt∼N (0,I)
+h
+|σtsθ(t, μt(X0) + σtεt) + εt|2io
+where the second equality holds when Xt | X0 follows a conditionally normal and the third equality follows from a reparameterization/change of variables.
+D. Proof of Theorem 2. The idea relies on coupling, which is similar to [61, Lemma 4]. Consider the coupled SDEs:
+dYt = −b(T − t, Yt) + σ2(T − t)∇ log p(T − t, Yt) dt + σ(T − t)dBt, dZt = −b(T − t, Zt) + σ2(T − t)sθ(T − t, Zt) dt + σ(T − t)dBt,
+where (Y0, Z0) are coupled to achieve W2(p(T, ·), pnoise(·)), i.e. E|Y0 − Z0|2 = W2(p(T, ·), pnoise(·)). It is easy to see that
+W2
+2 (pdata(·), XT ) ≤ E|YT − ZT |2. (.10)
+
+
+CDPM 17
+So the goal is to bound E|YT − ZT |2. By Itô’s formula, we get
+d|Yt − Zt|2 = 2(Yt − Zt) · (−b(T − t, Yt) + σ2(T − t)∇ log p(T − t, Yt)
++ b(T − t, Zt) − σ2(T − t)sθ(T − t, Zt))dt
+which implies that
+d E|Yt − Zt|2
+dt = −2 E((Yt − Zt) · (b(T − t, Yt) − b(T − t, Zt))
+| {z }
+(a)
+)
++ 2 E((Yt − Zt) · σ2(T − t)(∇ log p(T − t, Yt) − sθ(T − t, Zt)))
+| {z }
+(b)
+. (.11)
+By Assumption 1 (1), we get
+(a) ≥ rb(T − t) E|Yt − Zt|2. (.12)
+Moreover,
+(b) = σ2(T − t) E((Yt − Zt) · (∇ log p(T − t, Yt) − ∇ log p(T − t, Zt)))
++ E((Yt − Zt) · (∇ log p(T − t, Zt) − sθ(T − t, Zt)))
+≤ σ2(T − t) L E|Yt − Zt|2 + hE|Yt − Zt|2 + 1
+4h ε2 ,
+(.13)
+where we use Assumption 1 (2)(3) in the last inequality. Combining (.11), (.12) and (.13), we have
+d E|Yt − Zt|2
+dt ≤ −2rb(T − t) + (2h + 2L)σ2(T − t) E|Yt − Zt|2 + ε2
+2h σ2(T − t). (.14)
+Applying Grönwall’s inequality, we have:
+E|YT − ZT |2 ≤ eu(T )E|Y0 − Z0|2 + ε2
+2h
+ZT
+0
+σ2(T − t)eu(T )−u(t)dt,
+which combined with (.10) yields (3.4).
+E. Proof of Theorem 3. Recall that rb(t) = 1
+2 β(t), σ(t) = pβ(t) and pnoise(·) ∼ N (0, (e T
+2 (βmax+βmin)−
+1)I). By [20, Proposition 10], if log pdata(·) is κ-strongly log-concave, then ∇ log p(T − t, ·) is
+κe
+R T −t
+0 β(s)ds + κ R T −t
+0e
+R T −t
+s β(v)dvβ(s)ds
+−1
+-strongly concave. Thus, the term E((Yt−Zt)·(∇ log p(T −
+t, Yt) − ∇ log p(T − t, Zt))) in (.13) is bounded from above by
+−κ e
+R T −t
+0 β(s)ds + κ R T −t
+0e
+R T −t
+s β(v)dvβ(s)ds E|Yt − Zt|2,
+instead of LE|Yt − Zt|2. Consequently, the bound (3.4) holds by replacing u(t) with
+uCVP(t) :=
+ZT
+T −t
+β(s) −1 + 2h − 2κ
+e
+Rs
+0 β(v)dv + κ R s
+0e
+Rs
+v β(u)duβ(v)dv
+!
+ds. (.15)
+Note that uCVP(T ) ≤ − R T
+0 β(s)ds + 2βmaxhT − 2κ
+κ+1 1 − e−βminT and uCVP(T ) − uCVP(T − t) ≤
+βmax(2h − 1)t. Moreover, W22(p(T, ·), pnoise(·)) ≤ e
+RT
+0 β(s)dsEpdata(·)|x|2. Combining (3.4) with the above estimates yields (3.7).
+
+
+18 WENPIN TANG AND HANYANG ZHAO
+F. Proof of Theorem 6. The analysis of the error E|XT − XbN |2
+1
+2 relies on the following lemmas.
+The lemma below proves the contraction of the backward SDE X.
+Lemma 10. Let (Xx
+t , 0 ≤ t ≤ T ) be defined by (2.5) with Xx
+0 = x. Let Assumptions 1, 4 and 5 hold. Then
+E|X x
+t − Xy
+t |2
+1
+2 ≤ E|x − y|2 1
+2 exp(−2βt), for all t, (.16)
+where Xx and Xy be coupled, i.e. they are driven by the same Brownian motion with (different) initial values x and y respectively (x and y represent two random variables).
+Proof. Note that
+d|X x
+s − Xy
+s |2 = 2 Xx
+s − Xy
+s · − b(T − s, Xx
+s ) + σ2(T − s)sθ(T − s, Xx
+s)
++ b(T − s, Xy
+s ) − σ2(T − s)sθ(Xy
+s ) ds.
+Thus,
+d
+ds E|Xx
+s − Xy
+s |2 = −2 E
+h
+(X x
+s − Xy
+s ) · (b(T − s, Xx
+s ) − b(T − s, Xy
+s ))
+i
+| {z }
+(a)
++2E
+h
+(X x
+s − Xy
+s )σ2(T − s)(sθ(T − s, Xx
+s ) − sθ(T − s, Xy
+s ))
+i
+| {z }
+(b)
+.
+(.17)
+By Assumption 1 (1), we get
+(a) ≥ rb(T − s)E|Xx
+s − Xy
+s |2. (.18)
+By Assumption 4 (4), we obtain
+(b) ≤ Lsσ2(T − s)E|Xx
+s − Xy
+s |2. (.19)
+Combining (.17), (.18) and (.19) yields
+d
+ds E|Xx
+s − Xy
+s |2 ≤ −2(rb(T − s) − Lsσ2(T − s))E|Xx
+s − Xy
+s |2.
+By Grönwall’s inequality, we have
+E|X x
+s − Xy
+s |2 ≤ E|x − y|2 exp −2
+Zt
+0
+(rb(T − s) − Lsσ2(T − s))ds ,
+which, by the condition (3.8), yields (.16) □
+Next we deal with the local (one-step) discretization error of the process X. Fixing t⋆ ≤ T − δ, the (one-step) discretization of X starting at Xt⋆ = x is:
+Xb t⋆,x
+1 = x + (−b(T − t⋆, x) + σ2(T − t⋆)sθ(T − t⋆, x))δ + σ(T − t⋆)(Bt⋆+δ − Bt⋆ ). (.20)
+The following lemma provides an estimate of the local discretization error.
+Lemma 11. Let (Xt⋆,x
+t , t⋆ ≤ t ≤ T ) be defined by (2.5) with Xt⋆,x
+t⋆ = x, and Xb t⋆,x
+1 be given by (.20). Let Assumption 4 hold. Then for δ sufficiently small (i.e. δ ≤ δ for some δ < 1), there exists C1, C2 > 0 independent of δ and x such that
+E|X t⋆ ,x
+t⋆+δ − Xb t⋆,x
+1 |2
+1
+2 ≤ (C1 + C2
+pE|x|2) 1
+2δ3
+2 , (.21)
+|E(X t⋆ ,x
+t⋆+δ − Xb t⋆,x
+1 )| ≤ (C1 + C2
+pE|x|2) 1
+2δ3
+2 . (.22)
+
+
+CDPM 19
+Proof. For ease of presentation, we write Xt (resp. Xb1) for Xt⋆,x
+t (resp. Xb t⋆,x
+1 ). Without loss of generality, set t⋆ = 0. We have
+Xδ = x +
+Zδ
+0
+−b(T − t, Xt) + σ2(T − t)sθ(T − t, Xt)dt +
+Zδ
+0
+σ(T − t)dBt,
+Xb1 = x +
+Zδ
+0
+−b(T, x) + σ2(T )sθ(T, x)dt +
+Zδ
+0
+σ(T )dBt.
+So
+E|Xδ − Xb1|2
+=E
+Zδ
+0
+b(T, x) − b(T − t, Xt)dt +
+Zδ
+0
+σ2(T − t)sθ(T − t, Xt) − σ2(T )sθ(T, x)dt
++
+Zδ
+0
+σ(T − t) − σ(T )dBt
+2
+≤ 3E
+Zδ
+0
+b(T, x) − b(T − t, Xt)dt
+2
++
+Zδ
+0
+σ2(T − t)sθ(T − t, Xt) − σ2(T )sθ(T, x)dt
+2
++
+Zδ
+0
+σ(T − t) − σ(T )dBt
+2
+≤3 δ
+Zδ
+0
+E|b(T, x) − b(T − t, Xt)|2dt
+| {z }
+(a)
++δ
+Zδ
+0
+E|σ2(T − t)sθ(T − t, Xt) − σ2(T )sθ(T, x)|2dt
+| {z }
+(b)
++
+Zδ
+0
+|σ(T − t) − σ(T )|2dt
+| {z }
+(c)
+,
+(.23)
+where we use the Cauchy–Schwarz inequality and Itô’s isometry in the last inequality. By Assumption 4 (1), we get
+(c) ≤
+Zδ
+0
+L2
+σt2dt = L2σ
+3 δ3. (.24)
+By Assumption 4 (3), we have
+(a) ≤
+Zδ
+0
+2L2
+b (t2 + E|Xt − x|2)dt = 2L2
+b
+δ3
+3+
+Zδ
+0
+E|Xt − x|2dt
+!
+.
+According to [28, Theorem 4.5.4], we have E|Xt − x|2 ≤ C(1 + E|x|2)teCt for some C > 0 (independent of x). Consequently, for t ≤ δ sufficiently small (bounded by δ < 1),
+E|Xt − x|2 ≤ C′(1 + E|x|2)t, for some C′ > 0 (independent of δ, x).
+We then get
+(a) ≤ 2L2
+b
+δ3
+3 + C′(1 + E|x|2)
+2 δ2 ≤ 2L2
+b
+1
+3 + C′
+2 + C′
+2 E|x|2 δ2. (.25)
+Similarly, we obtain by Assumption 4 (1)(2)(4)(5):
+(b) ≤ C′′(1 + E|x|2)δ2, for some C′′ > 0 (independent of δ, x). (.26)
+Combining (.23), (.24), (.25) and (.26) yields the estimate (.21).
+
+
+20 WENPIN TANG AND HANYANG ZHAO
+Next we have
+|E(Xδ − Xb1)|
+=E
+Zδ
+0
+b(T, x) − b(T − t, Xt)dt + E
+Zδ
+0
+σ2(T − t)sθ(T − t, Xt) − σ2(T )sθ(T, x)dt
+≤
+Zδ
+0
+E|b(T, x) − b(T − t, Xt)|dt +
+Zδ
+0
+E|σ2(T − t)sθ(T − t, Xt) − σ2(T )sθ(T, x)|dt
+≤ C′′′
+Zδ
+0
+t(1 + E|x|) + E|Xt − x| dt
+≤ C′′′′(1 + pE|x|2)δ 3
+2 , for some C′′′′ > 0 (independent of δ, x).
+where the third inequality follows from Assumption 4, and the last inequality is due to the fact that
+E|Xt − x| ≤ E|Xt − x|2 1
+2 ≤ pC′(1 + E|x|2)t. This yields the estimate (.22). □
+Proof of Theorem 6. The proof is split into four steps.
+Step 1. Recall that tk = kδ for k = 0, . . . , N . Denote Xk := Xtk , and let
+ek := E|Xk − Xbk|2
+1
+2.
+The idea is to build a recursion for the sequence (ek)k=0,...,N . Also write (Xt⋆,x
+t , t⋆ ≤ t ≤ T ) to
+emphasize that the reversed SDE (2.5) starts at Xt⋆,x
+t⋆ = x, so Xk+1 = Xtk,Xk
+tk+1 . We have
+e2
+k+1 = E X k+1 − X tk,Xbk
+tk+1 + X tk,Xbk
+tk+1 − Xbk+1
+2
+= E|Xk+1 − Xtk,Xbk
+tk+1 |2
+| {z }
+(a)
++ E|X tk,Xbk
+tk+1 − Xbk+1|2
+| {z }
+(b)
++2 E (Xk+1 − Xtk,Xbk
+tk+1 )(X tk,Xbk
+tk+1 − Xbk+1)
+| {z }
+(c)
+. (.27)
+Step 2. We analyze the term (a) and (b). By Lemma 10 (the contraction property), we get
+(a) = E|Xtk,Xk
+tk+1 − X tk,Xbk
+tk+1 |2 ≤ e2
+k exp(−2βδ). (.28)
+By (.21) (in Lemma 11), we have
+(b) ≤ C1 + C2E|Xbk|2 δ3. (.29)
+Step 3. We analyze the cross-product (c). By splitting
+X k+1 − X tk,Xbk
+tk+1 = (Xk − Xbk) + (Xk+1 − Xk) − (Xtk,Xbk
+tk+1 − Xbk)
+| {z }
+:=dδ (Xk,Xbk)
+,
+we obtain
+(c) = E (Xk − Xbk)(Xtk,Xbk
+tk+1 − Xbk+1)
+| {z }
+(d)
++ E dδ(Xk, Xbk)(Xtk,Xbk
+tk+1 − Xbk+1)
+| {z }
+(e)
+. (.30)
+
+
+CDPM 21
+For the term (d), we have
+(d) = E (Xk − Xbk) E(Xtk,Xbk
+tk+1 − Xbk+1|Fk)
+≤ ek E|E(Xtk,Xbk
+tk+1 − Xbk+1|Fk)|2
+1 2
+≤ ek C1 + C2
+q
+E|Xbk|2 δ 3
+2,
+(.31)
+where we use the tower property (of the conditional expectation) in the first equation, the CauchySchwarz inequality in the second inequality, and (.22) in the final inequality. According to [38, Lemma 1.3], there exists C0 > 0 (independent of δ, Xbk) such that
+Ed2
+δ(Xk, Xbk)
+1
+2 ≤ C0ek
+√
+δ. (.32)
+Thus,
+(e) ≤ Ed2
+δ(Xk, Xbk
+1
+2 E|X tk,Xbk
+tk+1 − Xbk+1|2
+1 2
+≤ C0ek C1 + C2
+q
+E|Xbk|2 δ2.
+(.33)
+where we use (.21) and (.32) in the last inequality. Combining (.30), (.31) and (.33) yields for δ sufficiently small,
+(c) ≤ ek C′
+1 + C′
+2
+q
+E|Xbk|2 δ 3
+2 , for some C′
+1, C′
+2 > 0 (independent of δ, Xbk). (.34)
+Step 4. Combining (.27) with (.28), (.29) and (.34) yields
+e2
+k+1 ≤ e2
+k exp(−2βδ) + C1 + C2E|Xbk|2 δ3 + ek C′
+1 + C′
+2
+q
+E|Xbk|2 δ 3
+2.
+A standard argument shows that Lemma 10 (the contraction property) implies E|Xt|2 ≤ C for some C > 0. Thus, E|Xbk|2 ≤ 2(C + e2
+k). As a result, for δ sufficiently small,
+e2
+k+1 ≤ e2
+k 1− 3
+4 βδ + D1δ3 + D2e2
+k δ3 + δ 3
+2 + D3ekδ 3
+2 , (.35)
+for some D1, D2, D3 > 0 (independent of δ). Note that
+D2e2
+k δ3 + δ 3
+2 ≤1
+4 e2
+kβδ, for δ sufficiently small,
+and
+D3ekδ 3
+2≤1
+4 e2
+kβδ + 2D32
+β δ2.
+Thus, the estimate (.35) leads to
+e2
+k+1 ≤ e2
+k 1− 1
+4 βδ + Dδ2, for some D > 0 (independent of δ). (.36)
+Unfolding the inequality (.36) yields the estimate (3.10). □
+As a remark, if we can improve the estimate in (.22) to
+|E(X t⋆ ,x
+t⋆+δ − Xb t⋆,x
+1 )| ≤ (C1 + C2
+pE|x|2) 1
+2 δ2, (.37)
+(i.e. δ2 local error instead of δ 3
+2 ), then the discretization error is Cδ.
+
+
+22 WENPIN TANG AND HANYANG ZHAO
+G. Experimental Details. We provide implementation details of the experiments in Section 5. All codes will soon be available at github.
+G.1. 1-dimensional data experiments. For this 1-dimensional experiments, we start from a single point mass, and the parameters of the DPMs (OU and COU) are chosen as θ ≡ 0.2, σ(t) ≡ 0.5.
+G.2. Swiss Roll and MNIST experiments. In both experiments, we use contractive subVP with predictor-corrector sampler. We recommend to use βmin = 0.01 and βmax = 8 for a good result. The signal-noise-ratio is set to be 0.2 for Swiss Roll, and 0.1 for MNIST. The Jupyter Notebooks can be found in the zip file of supplementary materials.
+G.3. CIFAR10 experiments. We use contractive subVP with predictor-corrector sampler. with all the other settings the same as VE SDE in [53]. We recommend to use βmin = 0.01 and βmax = 8 for a good result. The signal-noise-ratio is set to be 0.11 for the best result. The experiments based on NCSN++ [53] are as below in Table 5.
+For EDM [25] with contraction, we adopt f (0) = 0.98 to yield the best result by adding contraction, i.e. ε = 0.02. We find that f (0) = 0.97 or 0.99 also leads to better results than original EDM. Our denoising sampler is based on the deterministic sampler (2nd order scheme) of EDM paper and yields the same settings of sampling steps or other sampler constants. For computational resource, we used 4 L40S GPUs, and these results could readily be realized within 0.5 hours for each separate task.
+Parameter Value
+βmin 0.01
+βmax 8
+snr 0.11 gradclip 10
+αlr 5e−4
+Table 7. Parameters of the CDPM for CIFAR-10.
+G.4 More examples of CIFAR10 synthesis by CsubVP. Here we provide more examples of CIFAR10 32×32 synthesis by CsubVP SDEs in Figure 5.
+
+
+CDPM 23
+Figure 5. CsubVP CIFAR10 samples

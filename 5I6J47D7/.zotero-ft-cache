@@ -1,0 +1,3011 @@
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+arXiv:2404.15766v2 [cs.LG] 2 Jun 2024
+
+Kaiwen Xue * 1 Yuhao Zhou * 2 Shen Nie 1 Xu Min 3 Xiaolu Zhang 3 Jun Zhou 3 Chongxuan Li 1
+
+Abstract
+Bayesian flow networks (BFNs) iteratively refine the parameters, instead of the samples in diffusion models (DMs), of distributions at various noise levels through Bayesian inference. Owing to its differentiable nature, BFNs are promising in modeling both continuous and discrete data, while simultaneously maintaining fast sampling capabilities. This paper aims to understand and enhance BFNs by connecting them with DMs through stochastic differential equations (SDEs). We identify the linear SDEs corresponding to the noise-addition processes in BFNs, demonstrate that BFN’s regression losses are aligned with denoise score matching, and validate the sampler in BFN as a first-order solver for the respective reverse-time SDE. Based on these findings and existing recipes of fast sampling in DMs, we propose specialized solvers for BFNs that markedly surpass the original BFN sampler in terms of sample quality with a limited number of function evaluations (e.g., 10) on both image and text datasets. Notably, our best sampler achieves an increase in speed of 5 ∼ 20 times for free. Our code is available at https: //github.com/ML-GSAI/BFN-Solver.
+1. Introduction
+Deep generative models (DGMs) are effective in capturing complex data distributions and producing realistic samples, substantially influencing fields such as computer vision (Rombach et al., 2022; Ramesh et al., 2022; Podell
+*Equal contribution 1Gaoling School of AI, Renmin University of China, Beijing, China 2Department of Computer Science and Technology, Tsinghua University, Beijing, China 3Ant Group, Hangzhou, China. Correspondence to: Chongxuan Li <chongxuanli@ruc.edu.cn>.
+Proceedings of the 41 st International Conference on Machine Learning, Vienna, Austria. PMLR 235, 2024. Copyright 2024 by the author(s).
+
+et al., 2023) and natural language processing (Brown et al., 2020; OpenAI, 2023). The fundamental challenge in DGMs is to represent a flexible probability distribution that facilitates effective parameter learning and efficient inference simultaneously, greatly depending on the data (or modality).
+Autoregressive models (ARMs) (OpenAI, 2023), for example, excel in modeling sequential and discrete data (e.g., text) but face limitations in the inference speed, which is proportional to the number of variables. Diffusion models (DMs) (Sohl-Dickstein et al., 2015; Ho et al., 2020; Song et al., 2021), on the other hand, better balance generation quality and efficiency with a coarse-to-fine approach. Although considered state-of-the-art in image generation, DMs encounter challenges in handling discrete variables, where score matching algorithms (Hyva¨rinen, 2005; Vincent, 2011) do not directly apply.
+A new class of generative models, Bayesian Flow Networks (BFNs) (Graves et al., 2023), has been developed recently to overcome these challenges. While inspired by DMs, BFNs distinguish themselves by focusing on iteratively refining the parameters (instead of the samples) of a distribution set at different noise levels through Bayesian inference (see Sec. 3 for more details). This strategy enables BFNs to facilitate fast sampling and maintain a continuous nature, even when processing discrete data. With carefully designed regression losses, BFNs have shown considerable promise in both image and language modeling. Notably, BFN is primarily developed based on a message-sending process with minimum communication length, and the exact relation between BFNs and DMs remains unclear.
+As summarized in Table 1, this paper primarily contributes by unifying BFNs and DMs through stochastic differential equations (SDEs), a pivotal step in understanding their relationship and enhancing BFNs. Initially, by slightly truncating the time, we identify linear SDEs corresponding to the noise-adding processes in BFN on both continuous (see Sec. 4) and discrete data (see Sec. 5) and derive the reversetime SDEs for sampling. Note that the SDEs for discrete data operate on a set of latent variables, which the original BFN formulation marginalizes out, rather than distribution parameters. Furthermore, we demonstrate that, especially
+
+1
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+Table 1. Technical contributions of the paper include the theory on unifying BFN and DM (in red) and new samplers for BFN inspired by the theory (in blue). “SDE-solver1” means a first-order solver for the corresponding SDE and “Approx.” is a shorthand for “Approximate”.
+
+BFN ON CON-
+TINUOUS DATA
+BFN ON DIS-
+CREATE DATA
+
+NOISE-ADDING PROCESS
+CORRESPONDING SDE THEOREM 4.1
+CORRESPONDING SDE THEOREM 5.1
+
+LOSS FUNCTION
+EQUIVALENT TO DSM TRIVIAL
+EQUIVALENT TO DSM THEOREM 5.2
+
+ORIGINAL SAMPLER
+SDE-SOLVER1 PROPOSITION 4.2
+APPROX. SDE-SOLVER1 PROPOSITION 5.3
+
+NEW SAMPLERS
+BFN-SOLVERS ALGOS. 1-3 IN APPENDIX
+BFN-SOLVERS ALGOS. 4-7 IN APPENDIX
+
+on discrete data, BFN’s regression losses align with denoising score matching (DSM) (Vincent, 2011) w.r.t. variables in the corresponding SDE, positioning the trained networks to naturally parameterize the reverse-time SDEs. Finally, the original BFN sampler is proven as an (approximate) first-order solver for the corresponding reverse-time SDE.
+The explicit connection between BFNs and DMs brings immediate benefits, particularly in applying fast sampling methods (Lu et al., 2022b;c) from DMs to BFNs. We derive the corresponding probability flow ordinary differential equations (ODEs) (Song et al., 2021) for BFNs on both continuous and discrete data. We propose high-order solvers (named BFN-Solvers) tailored to BFNs’ special (e.g., semilinear) structure, for both SDEs and ODEs. Empirically, using the same pre-trained model, our best solver significantly outperforms the original BFN sampler with a few (e.g., 10) number of function evaluations (NFE) under sample quality on both the CIFAR10 and text8 datasets, achieving a 5 ∼ 20 times increase in speed for free (see Sec. 6 for details).
+We believe our discovery offers a rigorous and systematic perspective for analyzing and improving the training and inference processes of BFNs, grounded in the existing results of DMs, and may inspire future work as detailed in Sec. 7.
+2. Related Work
+Score-baesd DMs. Built upon the score matching algorithms (Hyva¨rinen, 2005; Vincent, 2011; Song et al., 2019; Pang et al., 2020), DMs (Sohl-Dickstein et al., 2015; Ho et al., 2020; Song et al., 2021) are currently SOTA to model continuous variables (Dhariwal & Nichol, 2021; Chen et al., 2020; Kong et al., 2020; Ho et al., 2022; Singer et al., 2022; Poole et al., 2022; Wang et al., 2023). In particular, largescale text-to-image models (Rombach et al., 2022; Ramesh et al., 2022; Saharia et al., 2022; Bao et al., 2023; Balaji et al., 2023; Xue et al., 2023b; Podell et al., 2023) have made remarkable progress and attracted significant attention.
+Solvers for DMs. Since Song et al. (2021) introduced the SDE and probability flow ODE formulation of DMs, there have been extensive solvers for both SDE (Ho et al., 2020; Song et al., 2021; Karras et al., 2022; Lu et al., 2022c; Bao
+
+et al., 2022b;a; Jolicoeur-Martineau et al., 2021; Xue et al., 2023a; Guo et al., 2023) and ODE (Song et al., 2020; Liu et al., 2022; Lu et al., 2022b;c; Zhang et al., 2022; Karras et al., 2022; Zhao et al., 2023) to improve the sampling process. In particular, ODE samplers are proven effective with limited NFEs while SDE samplers are robust to prior mismatch (Lu et al., 2022a; Nie et al., 2023) and perform better in a sufficient number of NFEs (Lu et al., 2022c).
+Discrete DMs. Several DMs have been proposed to model discrete data with discrete states (Sohl-Dickstein et al., 2015; Hoogeboom et al., 2021; Austin et al., 2023), depending on a probability transition matrix. It is nontrivial to leverage the features associated with continuous-state DMs, such as guidance and ODE fast sampling. Efforts have been made to define the score in the discrete state (Lou et al., 2023; Meng et al., 2023; Campbell et al., 2022; Sun et al., 2023); however, this remains a challenging endeavor. Other works (Chen et al., 2022; Dieleman et al., 2022; Li et al., 2022) have attempted to identify a continuous equivalent for discrete data and apply continuous DMs, but this may result in information loss during the transformation and greatly rely on the noise schedule (Ye et al., 2023). Mahabadi et al. (2023) defines a continuous-time diffusion process on continuous latent variables but is trained with cross-entropy loss rather than regression loss. Several studies (Richemond et al., 2022; Lou & Ermon, 2023) have attempted to establish the diffusion process using SDEs on discrete data. Specifically, Richemond et al. (2022) introduced an SDE defined on the probability simplex, but it suffers from intractability in high-dimensional space. Lou & Ermon (2023) proposed a diffusion SDE with an additional boundary constraint, which also increases the complexity of discretization (e.g., requiring thresholding in SDE).
+In comparison, this paper reveals that BFNs applied to discrete data solve a linear SDE and are trained using DSM, which aligns seamlessly with continuous DMs. Consequently, without changing the discrete data, BFNs are significantly simpler and more scalable and efficient than the related work, leveraging advancements in continuous DMs.
+
+2
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+3. Background
+In this section, we present the elementary notations and background of DMs and BFNs.
+
+3.1. Elementary Notations
+We use lowercase letters (e.g., t) and boldface lowercase letters (e.g., x) to denote scalars and vectors respectively. Variables indexed by uncountable indices are denoted in the form of functions, (e.g., β(t) and µ(t)). Given finite indices (e.g. {ti}M i=1), the corresponding variables are denoted with subscripts (e.g., µi).
+
+3.2. Score-based DMs
+Score-based DMs (Kingma et al., 2021) characterize the data distribution through a diffusion process {x(t) ∼ N (α(t)x, σ2(t)I)} indexed by a continuous-time variable t ∈ [0, T ] according to an Itoˆ SDE as follows
+
+dx = f (t)x dt + g(t) dw,
+
+(1)
+
+where w is the standard Wiener process, and f (t) =
+
+d log α(t) dt
+
+and
+
+g(t)
+
+=
+
+dσ 2 (t) dt
+
+−
+
+1 2
+
+d
+
+log α(t) dt
+
+σ2(t)
+
+are
+
+the
+
+drift
+
+and diffusion coefficients respectively. For instance, denois-
+
+ing diffusion probabilistic models (Ho et al., 2020) consider
+
+a process given by the following SDE:
+
+1
+
+dx = − β(t)x dt + β(t) dw,
+
+(2)
+
+2
+
+where 0 < β(t) < 1. Let pt(x) denote the marginal density of x(t). The generative process of score-based DMs is given by a reverse-time SDE (Song et al., 2021; Anderson, 1982)
+
+dx = [f (t)x − g(t)2∇x log pt(x)] dt + g(t) dw¯, (3)
+
+where w¯ is the time-reversed Wiener process. Then the score is parameterized with a time-dependent score-based model sˆ(x, t) and trained with the following denoising score matching loss (Vincent, 2011)
+
+LDSM = E [∥sˆ(x(t), t) − ∇x log p0t(x(t)|x(0))∥22],
+x(t),x(0)
+(4)
+
+where the conditional distribution p0t(x|x(0)) is designed as a Gaussian kernel with a closed form score function ∇x log p0t(x|x(0)). For fast sampling, Song et al. (2021) introduce the corresponding probability flow ODE of the reverse SDE in Eq. (3) as follows
+
+dx =
+
+f (t)x
+
+−
+
+1 2
+
+g(t)2∇x
+
+log
+
+pt(x)
+
+dt,
+
+(5)
+
+which produces the same data distribution as the corresponding SDE with infinitesimally small stepsize and enjoys a
+
+smaller discretization error with a large stepsize due to its deterministic nature (Kloeden et al., 1992). To solve the ODE in Eq. (5) efficiently, DPM-Solvers (Lu et al., 2022b;c) explicitly leverage the semi-linear property of Eq. (5) and further simplify it to an exponentially weighted integral of the neural network by applying change-of-variable. Consequently, the exact solution of ODE is given by
+
+α(t) x(t) = x(s) − α(t)
+α(s)
+
+λ(t)
+e−λeˆθ(xˆ(λ), λ) dλ,
+λ(s)
+
+(6)
+
+where λ(t) = log(α(t)/σ(t)) is the half of the log signalnoise ratio. DPM-Solver solves Eq. (6) numerically leading to a small discretization error. Taking DPM-Solver1 as an example, given time steps {ti}ni=1 and initial value x0, a sequence {xi}ni=1 can be solved iteratively as follows:
+
+xi
+
+=
+
+α(ti) α(ti−1
+
+)
+
+xi−1
+
+−
+
+σ(ti
+
+)(ehi
+
+−
+
+1)ϵˆθ (xi−1 ,
+
+ti−1)+O(h2i ),
+
+(7)
+
+where hi = λ(ti) − λ(ti−1). Empirically, DPM-Solver achieves excellent results with a limited number of NFEs and is widely adopted.
+
+3.3. Bayesian Flow Networks
+Due to the space limit, we briefly present the motivation and formulation of BFNs (Graves et al., 2023) here and please refer to the original paper for more details. Inspired by DMs, BFNs iteratively refine the parameters of a distribution set at different noise levels through Bayesian inference. This strategy enables BFNs to facilitate fast sampling and be differentiable on both continuous and discrete data.
+For D-dimensional continuous data1 x ∈ RD, a continuoustime BFN operates on parameters of a set of Gaussian distributions (of noisy data with different noise levels) with means {µ(t)}1t=0 and covariance matrices {ρ(t)I}1t=0. Equivalently, µ(t) can also be regarded as a noisy version of x by injecting a Gaussian noise and follows the distribution
+
+qF (µ(t)|x, γ(t)) = N (γ(t)x, γ(t)(1 − γ(t))I), (8)
+
+where γ(t) = 1 − σ12(1−t) is a schedule function2 and σ1 ∈
+
+(0, 1) is a hyperparameter. ρ(t) is has a closed form as
+
+ρ(t)
+
+=
+
+1 1−γ
+
+(t)
+
+.
+
+Similar
+
+to
+
+DMs,
+
+a
+
+BFN
+
+on
+
+continuous
+
+data
+
+trains a neural network ϵˆ(µ(t), t) to predict the injected
+
+1We say x is a continuous data if its distribution has density w.r.t. the Lebesgue measure.
+2For a clear alignment with DMs, we adopt a reverse time notation in this paper as originally used by Graves et al. (2023). Specifically, the schedule γ(t) in our paper is equivalent to γ(1−t) in Graves et al. (2023). We retain the other notational conventions for ease of reading, which do not affect our derivations.
+
+3
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+Gaussian noise ϵ by minimizing the following loss:
+
+qF
+
+E
+(µ(t)|x,γ(t)),t∼U
+
+(0,1)
+
+−
+
+ln σ1 σ12t
+
+∥ϵ
+
+−
+
+ϵˆ(µ(t),
+
+t)∥2.
+
+(9)
+
+x
+
+Given time steps {ti}ni=0 and i.i.d. noises {ui}ni=0 ∼ N (0, I), the BFN sampler (Graves et al., 2023) iterates
+as follows.
+
+µi = −
+
+γ
+
+γ(ti)−γ(ti−1) (ti−1)(1−γ(ti−1
+
+))
+
+ϵˆ(µi−1,
+
+ti−1
+
+)
+
++
+
+γ(ti) γ(ti−1)
+
+µi−1
+
+x
+
+Bayesian Flow Network on Continuous Data
+
+μn
+
+...
+
+μ2
+
+μ1
+
+μ0
+
+n→
+SDE on parameters of distribution μ(t)
+
+ dμ = F (t) μ(t) +
+
+G (t ) 2
+
+ ˆ( μ(t),t) dt
+
+μ(0)
+
+
+
+2  (t)(1−  (t))
+
+
+
+μ(1 −  )
+
++
+
+1−γ(ti) 1−γ(ti−1)
+
+(γ
+
+(ti)
+
+−γ
+
+(ti−1))ui.
+
+(10)
+
+On D-dimensional discrete data x ∈ {1, · · · , K}D, where K is the number of classes, the BFN operates on parameters θ(t) of the multivariate categorical distributions of noisy data. The distribution of θ is
+
+t=0 μ(0)
+
+dμ = F (t) μdt + G(t)dw
+
+t =1−
+μ(1 −  )
+
+qF (θ(t)|x, β(t)) = E δ(θ(t) − softmax(z(t))),
+q(z(t)|x,β(t))
+
+where δ(·) is the Dirac distribution, z(t) is a set of latent variables with Gaussian marginal distributions as
+
+q(z(t)|x, β(t)) = N (β(t)wx, Kβ(t)I), (11)
+
+and wx := Kex − 1, ex := {ex(1) , · · · , ex(D) } ∈ RKD where ej is the one-hot vector defined by (ej)k = δxjk and 1 is a vector of length KD filled with ones. β(t) = (1 − t)2β1 is a schedule function with a hyperparameter β1 > 0. A BFN on discrete data trains a neural network eˆ(θ(t), t) that predicts the data in a one-hot form given
+noisy inputs using the following regression loss
+
+L∞(x) =
+
+E
+
+Kβ1t∥ex − eˆ(θ(t), t)∥2.
+
+qF (θ|x,t),t∼U (0,1)
+
+(12)
+
+Let {ui}ni=0 ∼ N (0, I) be independent and use eˆs(z(t), t) as a shorthand for eˆ(softmax(z(t)), t). The sampling rule
+of BFN (Graves et al., 2023) can be written as follows
+
+ek ∼ Cat(eˆs(zi−1, ti−1)),
+
+(13)
+
+zi = zi−1 + αi(Kek − 1) + Kαiui, (14)
+
+where αi = β(ti) − β(ti−1) and Cat represents the one-hot categorical distribution.3
+
+Based on the formulation, BFNs have shown considerable promise in both image and language modeling. Although inspired by DMs, and the exact relation between BFNs and DMs remains unclear. To this end, this paper unifies them through stochastic differential equations (SDEs) for understanding and accelerating BFNs on both continuous data (see Sec. 4) and discrete data (see Sec. 5).
+
+3Originally, Graves et al. (2023) obtain samples through θ(t), while we present the equivalent form in terms of z(t) for convenience.
+
+Figure 1. Illustration of BFN on continuous data and the corresponding SDEs. The SDEs are defined w.r.t. µ on time [0, 1 − η].
+
+4. Continuous-time BFN on Continuous Data
+This section bridges BFNs on continuous data with DMs by establishing a linear SDE for noise modeling in BFN (Sec. 4.1), aligning training objectives with DSM (Sec. 4.2), and validating the sampler as discretization of the reversetime SDE (Sec. 4.3). Further, fast samplers are developed based on the recipe in DMs in Sec. 4.4.
+
+4.1. Formulating BFN on Continuous Data as SDEs
+
+As illustrated in Fig. 1, we establish that the (truncated) noise-adding process of the continuous-time BFN on continuous data in Eq. (8) uniquely solves a linear SDE, summarized as follows.
+Theorem 4.1 (Proof in Appendix A.1). Let η > 0 be an arbitrarily small constant. The BFN in Eq. (8) at time [0, 1 − η] is the unique solution of the following linear SDE:
+
+dµ = F (t)µ dt + G(t) dw.
+
+(15)
+
+Here w is a standard Wiener process and
+
+F (t)
+
+=
+
+γ′(t) γ(t)
+
+=
+
+2 1
+
+σ12(1−t) − σ12(1−t)
+
+ln σ1,
+
+(16)
+
+G(t)2 = −γ′(t) = −2σ12(1−t) ln σ1,
+
+(17)
+
+where σ1 ∈ (0, 1) is the hyperparameter defined in Eq. (8).
+
+The time t is truncated by 1 − η in Theorem 4.1 for two reasons. On one hand, the reverse-time SDE derived later (see Eq. (20)) is ill-defined at t = 1 since the distribution of µ collapses to a Dirac distribution whose score tends to infinity. On the other hand, it is convenient to satisfy certain
+
+4
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+regularity conditions for the uniqueness of the solution in Theorem 4.1, as detailed in the proof. The exact distribution of µ(1 − η) is unknown. We approximate it by an isotropic Gaussian with zero mean and small variance, as p(µ(t)) tends towards a Dirac delta function when t → 1. (see details in Sec. 6). As η is small (e.g., 10−3 ∼ 10−5) in our implementation, the effect of truncation is negligible.
+Here a linear SDE also applies to the latent variable z, a linear transformation of µ in Eq. (8). The choice of µ in Theorem 4.1 aligns with the sampling process in BFN (Graves et al., 2023), facilitating a later analysis in Sec. 4.3.
+The finding in Theorem 4.1 directly connects to DMs (Song et al., 2021; Kingma et al., 2021), which are formulated as an SDE in Eq. (1) with a different noise schedule. We believe this may inspire new classes of BFNs and leave a systematic comparison of the schedules for future work.
+Similar to Eq. (3), the linear SDE in Eq. (15) has an associated reverse-time SDE (Anderson, 1982; Song et al., 2021) in [0, 1 − η] for generative modeling:
+dµ = [F (t)µ − G(t)2∇µ log pt(µ)] dt + G(t) dw¯, (18)
+where ∇µ log pt(µ) is the (time-conditional) score function to be estimated and w¯ is the time-reversed Wiener process.
+
+4.2. Training as Parameterizing the Reverse-time SDE
+
+The continuous-time BFN on continuous data trains a neural network to optimize the mean square error in Eq. (9), which directly aligns with the widely employed DSM loss in Eq. (4). In other words, BFN equivalently parameterizes the reverse-time SDE in Eq. (18) by estimating the time-conditional score function as
+
+1
+
+sˆ(µ(t), t) = −
+
+ϵˆ(µ(t), t), (19)
+
+γ(t)(1 − γ(t))
+
+where sˆ(µ(t), t) and ϵˆ(µ(t), t) denote the estimate of the score function and the network trained by BFN, respectively, and γ(t) follows Eq. (8).
+
+4.3. Sampling as Discretizing the Reverse-time SDE
+Plugging Eq. (19) into Eq. (18), we get a parameterized reverse-time SDE in [0, 1 − η] for sampling as follows
+
+G(t)2ϵˆ(µ(t), t)
+
+dµ = F (t)µ(t)+
+
+dt+G(t) dw¯, (20)
+
+γ(t)(1 − γ(t))
+
+which is ill-defined at t = 1 because limt→1 γ(t) = 1. Interestingly, even without an explicit SDE formulation, the sampler proposed in the original BFN paper discretizes the reverse-time SDE, as characterized in the following Proposition 4.2.
+
+Proposition 4.2 (Proof in Appendix A.2). The BFN sampler in Eq. (10) is a first-order discretization of an equivalent form of the parameterized reverse-time SDE in Eq. (20).
+
+4.4. Probability Flow ODE and Faster Sampling
+
+Establishing an explicit connection between BFNs and DMs through SDEs yields an immediate and significant benefit: the fast sampling recipe from DMs directly applies to BFN.
+
+Formally, according to Eq. (5), we obtain the following equivalent probability flow ODE of the parameterized reverse-time SDE of Eq. (20):
+
+G(t)2
+
+dµ = F (t)µ(t)+
+
+ϵˆ(µ(t), t) dt.
+
+2 γ(t)(1 − γ(t))
+
+(21)
+
+Further, we propose BFN-Solver, a customized ODE solver
+
+for BFN in analogy to DPM-Solver in Eq. (7). As detailed
+
+in Appendix A.3, we integrate all linear terms and apply a
+
+change
+
+of
+
+variable
+
+from
+
+t
+
+to
+
+λ(t)
+
+=
+
+1 2
+
+log
+
+γ(t) 1−γ(t)
+
+to
+
+obtain
+
+a simplified exact solution of Eq. (21)
+
+γ(t) µ(t) = µ(s)−γ(t)
+γ(s)
+
+λ(t)
+e−λϵˆ(µ(tλ(λ)), tλ(λ)) dλ,
+λ(s)
+
+(22)
+
+where tλ(·) is the inverse function of λ(t) for 0 ≤ t < s < 1 − η. Eq. (22) differs from Eq. (6) only in certain coefficients. Given an initial value µ0 and time steps {ti}ni=0 from t0 = 1−η to tn = 0, BFN-Solver1 is derived similarly
+to Eq. (7) and given by
+
+µi = − γ(ti)(1 − γ(ti))(ehi − 1)ϵˆ(µi−1, ti−1)
+
++
+
+γ(ti) γ(ti−1)
+
+µi−1,
+
+(23)
+
+where hi = λ(ti) − λ(ti−1). BFN-Solver++ shares the same spirit with BFN-Solver and the difference is that BFNSolver++ considers data prediction instead of noise prediction. We refer the readers to Appendix A.3 for higher-order solvers of both ODE and SDE.4
+
+Empirically, as presented in Sec. 6.2, BFN-Solvers of different orders significantly outperform the original BFN sampler with a limited number of NFEs based on the same model.
+
+5. Continuous-time BFN on Discrete Data
+In a manner akin to Sec. 4, this section unifies BFNs on discrete data and (continuous) DMs through SDEs and de-
+4A more straightforward way to get BFN-Solver on continuous data is to treat BFN as a DM with a special noise schedule αt = γt and σt2 = γt(1 − γt). However, it is infeasible on discrete data. Therefore, we use a slightly complex yet coherent way to derive BFN-Solver throughout the paper.
+
+5
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+Bayesian Flow Network on Discrete Data
+
+Notably, Theorem 5.1 characterizes the dynamics of z in-
+
+x
+
+θn
+
+stead of θ, as illustrated in Fig. 2. Indeed, the dynamics
+
+...
+
+θ2
+
+θ1
+
+θ0
+
+of θ do not correspond to a linear SDE as θ is a nonlinear
+
+transformation of z as shown in Eq. (11). It is implied that
+
+the original sampling process in Eq. (14) does not directly
+
+zn
+
+z2
+
+z1
+
+z0
+
+discretize the linear SDE, as detailed in Sec. 5.3.
+
+θ(0)
+
+z(0)
+
+The associated reverse-time SDE (Song et al., 2021) for the
+
+n→
+
+linear SDE in Eq. (24) in [0, 1 − η] is given by
+
+SDE on latent variable z(t)
+
+dz = [H(t)z − L(t)2∇z log pt(z)] dt + L(t) dw¯, (27)
+
+dz
+
+=
+
+−L(t)2
+
+eˆs (z(t),t)
+
+−
+
+1 K
+
+ 
+
+dt
+
++
+
+L(t)dw
+
+z(1−)
+
+where ∇z log pt(z) is the unknown score function, defined
+
+on z instead of θ.
+
+x
+
+t=0 z(0)
+
+dz = H (t)z(t)dt + L(t)dw
+
+t =1− z(1−)
+
+Figure 2. Illustration of BFN on discrete data and the corresponding SDEs. The SDEs are defined w.r.t. the latent variables z, which are marginalized in BFN, on time [0, 1 − η].
+
+velops fast samplers for BFNs. However, this adaptation to discrete data is far from straightforward, as it involves SDEs operating on latent variables z — a significant departure from the original BFN formulation that marginalizes out these variables, rather than updating the distribution parameters θ. Consequently, it is surprising that the training and sampling of BFN on discrete data still connect to the SDE formulation on z.
+
+5.1. Formulating BFN on Discrete Data as SDEs
+
+Similar to Theorem 4.1, the truncated noise-adding process of the continuous-time BFN on discrete data in Eq. (11) uniquely solves a linear SDE, summarized as follows.
+Theorem 5.1 (Proof in Appendix B.1). Let η > 0 be an arbitrarily small constant. The BFN in Eq. (11) with t ∈ [0, 1 − η] is the unique solution of the following linear SDE:
+
+dz = H(t)z dt + L(t) dw.
+
+(24)
+
+Here w is a standard Wiener process and
+
+β′(t)
+
+2
+
+H(t) =
+
+=− ,
+
+(25)
+
+β(t) 1 − t
+
+L(t)2 = −Kβ′(t) = 2Kβ1(1 − t),
+
+(26)
+
+where K and β1 are hyperparameters defined in Eq. (11).
+
+The rationale for truncation of t and the way to deal with η and z(1 − η) is similar to the continuous data case, detailed in the proof and Sec. 6.1, respectively.
+
+5.2. Training as Parameterizing the Reverse-time SDE
+It is nontrivial to see yet can be proven that the training objective of the continuous-time BFN on discrete data in Eq. (12) is a reparameterized form of DSM (Vincent, 2011) w.r.t. z, as summarized in the following Theorem 5.2.
+Theorem 5.2 (Proof in Appendix B.2). Minimizing the continuous-time loss of BFN on discrete data in Eq. (12) is equivalent to minimizing the DSM loss in Eq. (4). Besides, the corresponding estimate of the score function is given by
+
+z(t)
+
+1
+
+sˆ(z(t),
+
+t)
+
+=
+
+− K β (t)
+
++
+
+eˆs(z(t),
+
+t)
+
+−
+
+K
+
+,
+
+(28)
+
+where eˆs(z(t), t) is the network trained by BFN.
+
+Theorem 5.1 and Theorem 5.2 distinct BFNs from existing discrete DMs. Specifically, BFNs applied to discrete data solve a linear SDE and are trained using DSM, which aligns seamlessly with continuous DMs. Consequently, without changing the discrete data, BFNs are significantly simpler and more scalable and efficient than the related work, leveraging advancements in continuous DMs. We provide a comprehensive review and discussion in Sec. 2.
+
+5.3. Sampling as Discretizing the Reverse-time SDE
+Plugging Eq. (28) into Eq. (27), we get a parameterized reverse-time SDE in [0, 1 − η] for sampling as follows
+
+dz = −L(t)2
+
+1 eˆs(z(t), t) − K
+
+dt + L(t) dw¯.
+
+(29)
+
+The following Proposition 4.2 suggests that the sampler proposed in the original BFN paper approximately discretizes the parameterized reverse-time SDE.
+Proposition 5.3 (Proof in Appendix B.3). If the categorical sampling step in the BFN sampler on discrete data (i.e., Eq. (13)) is omitted, then it is a first-order discretization of the parameterized reverse-time SDE in Eq. (29).
+
+6
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+The role of the categorical sampling step is still unclear in theory. However, experiments in Fig. 6 (Sec. 6.3) reveal that removing the categorical sampling step leads to consistently better performance in fewer than 50 NFEs, and almost the same results otherwise. We provide preliminary analyses of it in Appendix C.4.
+5.4. Probability Flow ODE and Faster Sampling
+Similar to the continuous case, the equivalent probability flow ODE of the parameterized reverse-time SDE on discrete data in Eq. (29) is
+1 dz = − 1 − t z(t) − β1(1 − t)[Keˆs(z(t), t) − 1] dt.
+(30)
+
+For 0 ≤ t < s < 1 − η, its solution can be written as
+
+1−t
+
+z(t)
+
+=
+
+1
+
+−
+
+z(s) s
+
++
+
+β1(1
+
+−
+
+t)(t
+
+−
+
+s)
+
+(31)
+
+t
+
+− Kβ1(1 − t) eˆs(z(τ ), τ ) dτ.
+
+s
+
+Again, we propose BFN-Solver on discrete data, and the first-order version is given by
+
+zi =β1(1 − ti)(ti − ti−1)(1 − Keˆs(z(ti−1), ti−1))
+
++
+
+1 − ti 1 − ti−1
+
+zi−1
+
+.
+
+(32)
+
+Notably, we map the latent zM to the distribution parameter θM = softmax(zM ) at the last step to obtain the final samples. We refer the readers to Appendix B.5 for higher-order solvers of both ODE and SDE. As presented in Sec. 6.3, the conclusion on the improvement of BFN-Solvers over the original BFN sampler remains the same on discrete data.
+
+6. Experiments
+We present the experimental setups in Sec. 6.1. We validate the proposed BFN-Solvers on continuous and discrete data, in Sec. 6.2 and Sec. 6.3 respectively.
+6.1. Experimental Settings
+Model. We employed the pre-trained models provided by the BFN (Graves et al., 2023) in all experiments for fairness.
+Datasets. For continuous data, the model is trained on the CIFAR-10 (Krizhevsky & Hinton, 2009) dataset which contain 50K training images. For discrete data, the model is trained on the text8 (Mahoney, 2011) dataset which contains 90M consecutive characters, each character is a lower Latin
+
+letter ‘a’-‘z’ or the ‘ ’ whitespace token, giving a class number of 27. Each sample is a sequence of 256 characters.
+Metrics. For continuous data, we adopt the widely used FID (Heusel et al., 2017) as the sample quality metric. We compute the FID metric on 10K generated samples for efficiency. For discrete data, there is no widely adopted samplebased metric comparable to FID in image modeling. Given our reliance on a simple character-level text dataset, we found that spelling accuracy (SA) is a straightforward yet effective metric for measuring the quality of text generation. Specifically, SA is defined as the ratio of correctly spelled words to the total words in the entire generated sequence, which is segmented by spaces. In each experiment, we collect 1,000 generated samples to calculate the metric. Additionally. we conducted a user study for text generation quality evaluation. For the user study, there are 100 questions for each one vs. one comparison (e.g., BFN vs. BFN-Solver1). In each question, participants were presented with two sentences randomly generated from two methods. Participants were instructed to choose a sentence of higher quality, which is known as the two-alternative forced choice methodology (Kawar et al., 2023; Bar-Tal et al., 2022; Park et al., 2020). Please see Appendix C for more experimental details.
+Truncation. η is a manually tuned hyperparameter specified in each experiment. For both p1−η(µ) and p1−η(z), we found an isotropic Gaussian with zero mean and a calculated variance works well. We provide preliminary analyses of the variance in Appendix C.1.
+6.2. Fast Sampling on Continuous Data
+We compare our proposed fast sampling methods with the original BFN continuous sampler in this section.
+As illustrated in Fig. 3, with the NFE less than 100, BFNSolver++1, BFN-Solver++2, and SDE-BFN-Solver++2 significantly outperform the BFN baseline. Moreover, BFN-Solver++2 achieves better results compared to BFNSolver++1. When the NFE is higher (e.g., more than 500), our observations reveal that SDE-based samplers exhibit slightly better performance over ODE-based samplers, which aligns with the diffusion model (Song et al., 2020; Karras et al., 2022; Nie et al., 2023). Please see Appendix D.1 and Appendix D.5 for more quantitative results and randomly generated images, respectively.
+We slightly tune the hyperparameter η for our methods on different NFEs to get the best results, as detailed in Appendix D.3.
+6.3. Fast Sampling on Discrete Data
+We compare our proposed fast sampling methods with the origin BFN discrete sampler and other representative base-
+
+7
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+FID Spelling Accuracy
+
+250 200 150 100 50
+0 10 20
+
+BFN sampler SDE-BFN-Solver++2 (ours) BFN-Solver++1 (ours) BFN-Solver++2 (ours)
+
+50 100 200 NFE
+
+500 1000
+
+Table 2. Efficiency evaluation results of different methods on discrete text8 dataset. model performance is measured by bitsper-character (BPC) ↓ and SA↑, varying the number of evaluations. To get the strongest baseline, we use the D3PM absorbing model, which has a better BPC than D3PM uniform and NN models in the original paper (Austin et al., 2023).
+
+METHODS
+BFN-SOLVER2 (OURS) BFN D3PM (BEST) BFN BFN-SOLVER2 (OURS) BFN BFN-SOLVER2 (OURS) OA-ARDM
+
+NFE
+50 50 50 25 20 20 20 20
+
+BPC ↓
+1.47 1.52 1.52
+1.56 1.56 1.52
+
+SA ↑
+0.85 0.84
+0.80 0.84 0.79
+-
+
+Figure 3. Fast sampling results on the continuous CIFAR-10 dataset. Sampling quality is measured by FID ↓, varying the NFE.
+
+lines in this section.
+As illustrated in Fig. 4, with the NFE less than 30, BFNSolver1, BFN-Solver2, and SDE-BFN-Solver2 significantly outperform the BFN baseline. Moreover, BFN-Solver2 and SDE-BFN-Solver2 achieve better results compared to BFNSolver1, agreeing with the continuous case. We provide a preliminary user study in Fig. 5 with 10 NFEs and the results align with Fig. 4. When the NFE is higher (e.g., more than 500), we observe that SDE-based samplers exhibit slightly better performance than ODE-based samplers, which aligns with existing results in DMs. Please see Appendix D.2 and Appendix D.5 for more quantitative results and randomly generated texts.
+We compare the efficiency of BFN-Solver2 with representative baselines including D3PM (Austin et al., 2023) and OAARDM (Hoogeboom et al., 2022). As summarized in Table 2, BFN-Solver2 outperforms all baselines with both 20 and 50 steps indirectly. Notably, evaluating the exact likelihood by the proposed samplers requires a nontrivial extension (Song et al., 2021). We use the original BFN sampler, evaluated under both metrics, as a bridge for an indirect comparison. For instance, according to Table 2, BFN-Solver2 (20 steps, SA 0.84) is better than the original BFN sampler (25 steps, SA 0.80, BPC 1.52) and better than OA-ARDM (20 steps, BPC 1.52).
+We find that the hyperparameter η = 0.001 is sufficient for all NFEs for BFN-Solvers to get excellent results. We refer the readers to Appendix D.4 for more details.
+Finally, we perform an ablation of the original BFN solver in Fig. 6 and find that an exact solver that just removes the categorical sampling step from the BFN sampler works better, conforming to our theory.
+
+85
+
+80
+
+75 70
+10
+
+20 30 50
+
+BFN sampler SDE-BFN-Solver2 (ours) BFN-Solver1 (ours) BFN-Solver2 (ours)
+
+100 200
+
+1000
+
+NFE
+
+Figure 4. Fast sampling results on the discrete text8 dataset. Sampling quality is measured by SA ↑, varying the NFE.
+
+Figure 5. User study results on the discrete text8 dataset with 10 NFE. We present the preference rates (with 95% confidence intervals) of BFN-Solver1 and BFN-Solver2 over BFN baseline.
+
+8
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+Acknowledgements
+
+85
+
+Spelling Accuracy
+
+80
+
+75
+
+70 10
+
+20 30 50
+
+BFN sampler BFN Sampler without CS
+
+100 200
+
+1000
+
+NFE
+
+Figure 6. Ablation of the categorical sampling (CS) step in the BFN sampler on the text8 dataset. Sampling quality is measured by SA ↑, varying the NFE.
+
+7. Conclusion
+We unify BFNs and DMs by identifying the linear SDEs pertinent to the noise-addition processes in BFNs, illustrating that BFN’s regression losses correspond with denoise score matching, and validating the sampler in BFN as an effective first-order solver for the related reverse-time SDE. Motivated by these insights, we implement fast sampling techniques from DMs in BFNs, yielding promising results.
+Building upon the established results of DMs, this paper establishes a principled and systematic approach to the analysis and enhancement of BFNs and future work includes the development of predictor-corrector samplers (Song et al., 2020; Zhao et al., 2023), improved methods for likelihood evaluation (Bao et al., 2022b;a), and novel training strategies to refine (Karras et al., 2022) and scale BFNs (Rombach et al., 2022).
+Limitations of the paper include the scale of the datasets and evaluation metrics. In our experiment, for a fair comparison, we leverage the pre-trained models of BFNs, which are all trained on small datasets. Further, the samplers cannot be directly used in likelihood evaluation and we mainly employ the FID and spelling accuracy as surrogates for the sample quality, potentially introducing bias. Hopefully, these limitations can be solved by scaling up BFNs to common benchmarks, as mentioned in future work.
+Impact Statement
+This paper presents work whose goal is to advance the field of machine learning. There are many potential societal consequences of our work, none of which we feel must be specifically highlighted here.
+
+This work was supported by NSF of China (No. 62076145), Major Innovation & Planning Interdisciplinary Platform for the “Double-First Class” Initiative, Renmin University of China, the Fundamental Research Funds for the Central Universities, the Research Funds of Renmin University of China (No. 22XNKJ13), and the Ant Group Research Fund. C. Li was also sponsored by Beijing Nova Program (No. 20220484044). The work was partially done at the Engineering Research Center of Next-Generation IntelligentSearch and Recommendation, Ministry of Education.
+References
+Anderson, B. D. Reverse-time diffusion equation models. Stochastic Processes and their Applications, 12(3):313– 326, 1982.
+Atkinson, K., Han, W., and Stewart, D. E. Numerical solution of ordinary differential equations, volume 81. John Wiley & Sons, 2009.
+Austin, J., Johnson, D. D., Ho, J., Tarlow, D., and van den Berg, R. Structured denoising diffusion models in discrete state-spaces, 2023.
+Balaji, Y., Nah, S., Huang, X., Vahdat, A., Song, J., Zhang, Q., Kreis, K., Aittala, M., Aila, T., Laine, S., Catanzaro, B., Karras, T., and Liu, M.-Y. ediff-i: Text-to-image diffusion models with an ensemble of expert denoisers, 2023.
+Bao, F., Li, C., Sun, J., Zhu, J., and Zhang, B. Estimating the optimal covariance with imperfect mean in diffusion probabilistic models. In International Conference on Machine Learning, pp. 1555–1584. PMLR, 2022a.
+Bao, F., Li, C., Zhu, J., and Zhang, B. Analytic-DPM: an analytic estimate of the optimal reverse variance in diffusion probabilistic models. In International Conference on Learning Representations, 2022b.
+Bao, F., Nie, S., Xue, K., Li, C., Pu, S., Wang, Y., Yue, G., Cao, Y., Su, H., and Zhu, J. One transformer fits all distributions in multi-modal diffusion at scale. In International Conference on Machine Learning, pp. 1692– 1717. PMLR, 2023.
+Bar-Tal, O., Ofri-Amar, D., Fridman, R., Kasten, Y., and Dekel, T. Text2live: Text-driven layered image and video editing. In European conference on computer vision, pp. 707–723. Springer, 2022.
+Brown, T., Mann, B., Ryder, N., Subbiah, M., Kaplan, J. D., Dhariwal, P., Neelakantan, A., Shyam, P., Sastry, G., Askell, A., et al. Language models are few-shot learners.
+
+9
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+Advances in neural information processing systems, 33: 1877–1901, 2020.
+Campbell, A., Benton, J., Bortoli, V. D., Rainforth, T., Deligiannidis, G., and Doucet, A. A continuous time framework for discrete denoising models, 2022.
+Chen, N., Zhang, Y., Zen, H., Weiss, R. J., Norouzi, M., and Chan, W. Wavegrad: Estimating gradients for waveform generation. arXiv preprint arXiv:2009.00713, 2020.
+Chen, T., Zhang, R., and Hinton, G. Analog bits: Generating discrete data using diffusion models with selfconditioning. In The Eleventh International Conference on Learning Representations, 2022.
+Dhariwal, P. and Nichol, A. Diffusion models beat gans on image synthesis. Advances in neural information processing systems, 34:8780–8794, 2021.
+Dieleman, S., Sartran, L., Roshannai, A., Savinov, N., Ganin, Y., Richemond, P. H., Doucet, A., Strudel, R., Dyer, C., Durkan, C., Hawthorne, C., Leblond, R., Grathwohl, W., and Adler, J. Continuous diffusion for categorical data, 2022.
+Graves, A., Srivastava, R. K., Atkinson, T., and Gomez, F. Bayesian flow networks, 2023.
+Guo, H., Lu, C., Bao, F., Pang, T., Yan, S., Du, C., and Li, C. Gaussian mixture solvers for diffusion models. arXiv preprint arXiv:2311.00941, 2023.
+Heusel, M., Ramsauer, H., Unterthiner, T., Nessler, B., and Hochreiter, S. Gans trained by a two time-scale update rule converge to a local nash equilibrium. Advances in neural information processing systems, 30, 2017.
+Ho, J., Jain, A., and Abbeel, P. Denoising diffusion probabilistic models. Advances in neural information processing systems, 33:6840–6851, 2020.
+Ho, J., Chan, W., Saharia, C., Whang, J., Gao, R., Gritsenko, A., Kingma, D. P., Poole, B., Norouzi, M., Fleet, D. J., et al. Imagen video: High definition video generation with diffusion models. arXiv preprint arXiv:2210.02303, 2022.
+Hoogeboom, E., Nielsen, D., Jaini, P., Forre´, P., and Welling, M. Argmax flows and multinomial diffusion: Learning categorical distributions, 2021.
+Hoogeboom, E., Gritsenko, A. A., Bastings, J., Poole, B., van den Berg, R., and Salimans, T. Autoregressive diffusion models. In The Tenth International Conference on Learning Representations, ICLR 2022, Virtual Event, April 25-29, 2022. OpenReview.net, 2022. URL https: //openreview.net/forum?id=Lm8T39vLDTE.
+
+Hyva¨rinen, A. Estimation of non-normalized statistical models by score matching. Journal of Machine Learning Research (JMLR), 6(Apr):695–709, 2005.
+Jolicoeur-Martineau, A., Li, K., Piche´-Taillefer, R., Kachman, T., and Mitliagkas, I. Gotta go fast when generating data with score-based models. arXiv preprint arXiv:2105.14080, 2021.
+Karras, T., Aittala, M., Aila, T., and Laine, S. Elucidating the design space of diffusion-based generative models. Advances in Neural Information Processing Systems, 35: 26565–26577, 2022.
+Kawar, B., Zada, S., Lang, O., Tov, O., Chang, H., Dekel, T., Mosseri, I., and Irani, M. Imagic: Text-based real image editing with diffusion models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 6007–6017, 2023.
+Kingma, D., Salimans, T., Poole, B., and Ho, J. Variational diffusion models. Advances in neural information processing systems, 34:21696–21707, 2021.
+Kloeden, P. E., Platen, E., Kloeden, P. E., and Platen, E. Stochastic differential equations. Springer, 1992.
+Kong, Z., Ping, W., Huang, J., Zhao, K., and Catanzaro, B. Diffwave: A versatile diffusion model for audio synthesis. arXiv preprint arXiv:2009.09761, 2020.
+Krizhevsky, A. and Hinton, G. Learning multiple layers of features from tiny images. Technical Report 0, University of Toronto, Toronto, Ontario, 2009. URL https://www.cs.toronto.edu/ ˜kriz/learning-features-2009-TR.pdf.
+Li, X. L., Thickstun, J., Gulrajani, I., Liang, P., and Hashimoto, T. B. Diffusion-lm improves controllable text generation, 2022.
+Liu, L., Ren, Y., Lin, Z., and Zhao, Z. Pseudo numerical methods for diffusion models on manifolds. arXiv preprint arXiv:2202.09778, 2022.
+Lou, A. and Ermon, S. Reflected diffusion models. arXiv preprint arXiv:2304.04740, 2023.
+Lou, A., Meng, C., and Ermon, S. Discrete diffusion language modeling by estimating the ratios of the data distribution, 2023.
+Lu, C., Zheng, K., Bao, F., Chen, J., Li, C., and Zhu, J. Maximum likelihood training for score-based diffusion odes by high order denoising score matching. In International Conference on Machine Learning, ICML 2022, 17-23 July 2022, Baltimore, Maryland, USA, volume 162 of Proceedings of Machine Learning Research, pp. 14429–14460.
+
+10
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+PMLR, 2022a. URL https://proceedings.mlr. press/v162/lu22f.html.
+Lu, C., Zhou, Y., Bao, F., Chen, J., Li, C., and Zhu, J. Dpm-solver: A fast ode solver for diffusion probabilistic model sampling in around 10 steps. Advances in Neural Information Processing Systems, 35:5775–5787, 2022b.
+Lu, C., Zhou, Y., Bao, F., Chen, J., Li, C., and Zhu, J. Dpmsolver++: Fast solver for guided sampling of diffusion probabilistic models. arXiv preprint arXiv:2211.01095, 2022c.
+Mahabadi, R. K., Tae, J., Ivison, H., Henderson, J., Beltagy, I., Peters, M. E., and Cohan, A. Tess: Text-totext self-conditioned simplex diffusion. arXiv preprint arXiv:2305.08379, 2023.
+Mahoney, M. Large text compression benchmark, 2011.
+Meng, C., Choi, K., Song, J., and Ermon, S. Concrete score matching: Generalized score matching for discrete data, 2023.
+Nie, S., Guo, H. A., Lu, C., Zhou, Y., Zheng, C., and Li, C. The blessing of randomness: Sde beats ode in general diffusion-based image editing. arXiv preprint arXiv:2311.01410, 2023.
+Øksendal, B. Stochastic differential equations. Springer, 2003.
+OpenAI. Gpt-4 technical report. arXiv preprint arXiv:2303.08774, 2023.
+Pang, T., Xu, K., Li, C., Song, Y., Ermon, S., and Zhu, J. Efficient learning of generative models via finite-difference score matching. Advances in Neural Information Processing Systems, 33:19175–19188, 2020.
+Park, T., Zhu, J.-Y., Wang, O., Lu, J., Shechtman, E., Efros, A., and Zhang, R. Swapping autoencoder for deep image manipulation. Advances in Neural Information Processing Systems, 33:7198–7211, 2020.
+Podell, D., English, Z., Lacey, K., Blattmann, A., Dockhorn, T., Mu¨ller, J., Penna, J., and Rombach, R. Sdxl: improving latent diffusion models for high-resolution image synthesis. arXiv preprint arXiv:2307.01952, 2023.
+Poole, B., Jain, A., Barron, J. T., and Mildenhall, B. Dreamfusion: Text-to-3d using 2d diffusion. arXiv preprint arXiv:2209.14988, 2022.
+Ramesh, A., Dhariwal, P., Nichol, A., Chu, C., and Chen, M. Hierarchical text-conditional image generation with clip latents. arXiv preprint arXiv:2204.06125, 1(2):3, 2022.
+
+Richemond, P. H., Dieleman, S., and Doucet, A. Categorical sdes with simplex diffusion. arXiv preprint arXiv:2210.14784, 2022.
+Rombach, R., Blattmann, A., Lorenz, D., Esser, P., and Ommer, B. High-resolution image synthesis with latent diffusion models. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition, pp. 10684–10695, 2022.
+Saharia, C., Chan, W., Saxena, S., Li, L., Whang, J., Denton, E. L., Ghasemipour, K., Gontijo Lopes, R., Karagol Ayan, B., Salimans, T., et al. Photorealistic text-to-image diffusion models with deep language understanding. Advances in Neural Information Processing Systems, 35: 36479–36494, 2022.
+Singer, U., Polyak, A., Hayes, T., Yin, X., An, J., Zhang, S., Hu, Q., Yang, H., Ashual, O., Gafni, O., et al. Make-avideo: Text-to-video generation without text-video data. arXiv preprint arXiv:2209.14792, 2022.
+Sohl-Dickstein, J., Weiss, E., Maheswaranathan, N., and Ganguli, S. Deep unsupervised learning using nonequilibrium thermodynamics. In International conference on machine learning, pp. 2256–2265. PMLR, 2015.
+Song, J., Meng, C., and Ermon, S. Denoising diffusion implicit models. arXiv preprint arXiv:2010.02502, 2020.
+Song, Y., Garg, S., Shi, J., and Ermon, S. Sliced score matching: A scalable approach to density and score estimation. In Conference on Uncertainty in Artificial Intelligence (UAI), 2019.
+Song, Y., Sohl-Dickstein, J., Kingma, D. P., Kumar, A., Ermon, S., and Poole, B. Score-based generative modeling through stochastic differential equations, 2021.
+Sun, H., Yu, L., Dai, B., Schuurmans, D., and Dai, H. Scorebased continuous-time discrete diffusion models, 2023.
+Vincent, P. A connection between score matching and denoising autoencoders. Neural computation, 23(7):1661– 1674, 2011.
+Wang, Z., Lu, C., Wang, Y., Bao, F., Li, C., Su, H., and Zhu, J. Prolificdreamer: High-fidelity and diverse textto-3d generation with variational score distillation. arXiv preprint arXiv:2305.16213, 2023.
+Xue, S., Yi, M., Luo, W., Zhang, S., Sun, J., Li, Z., and Ma, Z.-M. Sa-solver: Stochastic adams solver for fast sampling of diffusion models. arXiv preprint arXiv:2309.05019, 2023a.
+Xue, Z., Song, G., Guo, Q., Liu, B., Zong, Z., Liu, Y., and Luo, P. Raphael: Text-to-image generation via large mixture of diffusion paths. arXiv preprint arXiv:2305.18295, 2023b.
+
+11
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations Ye, J., Zheng, Z., Bao, Y., Qian, L., and Wang, M. Dinoiser:
+Diffused conditional sequence learning by manipulating noises, 2023. Zhang, Q., Tao, M., and Chen, Y. gddim: Generalized denoising diffusion implicit models. arXiv preprint arXiv:2206.05564, 2022. Zhao, W., Bai, L., Rao, Y., Zhou, J., and Lu, J. Unipc: A unified predictor-corrector framework for fast sampling of diffusion models. arXiv preprint arXiv:2302.04867, 2023.
+12
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+A. Derivation for Continuous-time BFN on Continuous Data
+
+A.1. Proof of Theorem 4.1
+
+Proof. In this proof, we will show that the marginal distribution µ(t) conditioned on x of Eq. (15) at time t is the BFN in Eq. (8) by the “variation of constants” formula (Atkinson et al., 2009) and the Itoˆ’s formula (Øksendal, 2003, Theorem 4.2.1).
+
+To find the marginal distribution of µ(t), we introduce a new process µ˜(t) := e−
+
+t 0
+
+F (τ )
+
+dτ
+
+µ(t).
+
+Using
+
+Itoˆ ’s
+
+formula,
+
+we
+
+see that µ˜ follows the equation below.
+
+dµ˜ = e−
+
+t 0
+
+F (τ ) dτ
+
+dµ(t)
+
++
+
+d e−
+
+t 0
+
+F
+
+(τ
+
+)
+
+dτ
+
+µ(t) dt
+
+dt
+
+= e−
+
+t 0
+
+F
+
+(τ
+
+)
+
+dτ
+
+(F
+
+(t)µ(t)
+
+dt
+
++
+
+G(t)
+
+dw)
+
+−
+
+F
+
+(t)e−
+
+t 0
+
+F
+
+(τ
+
+)
+
+dτ
+
+µ(t)
+
+dt
+
+= e−
+
+t 0
+
+F
+
+(τ
+
+)
+
+dτ
+
+G(t)
+
+dw.
+
+Writing the above equation in the integral form we find that
+
+t
+
+µ˜(t) = µ˜(0) +
+
+e−
+
+s 0
+
+F
+
+(τ
+
+)
+
+dτ
+
+G(s)
+
+dw(s).
+
+(33)
+
+0
+
+It is known that from Itoˆ’s isometry (Øksendal, 2003, Corollary 3.1.7) the above Itoˆ’s integral is a Gaussian distribution with
+
+variance
+
+t 0
+
+e−
+
+s 0
+
+2F
+
+(τ
+
+)
+
+dτ
+
+G(s)2
+
+ds.
+
+Note
+
+that
+
+F (t)
+
+=
+
+d dt
+
+ln γ(t)
+
+and
+
+G(t)2
+
+=
+
+−
+
+d dt
+
+γ
+
+(t),
+
+then
+
+Eq.
+
+(33)
+
+becomes
+
+γ(0) µ(t) ∼ µ(0) + N
+
+0, γ(0)2
+
+1
+
+1
+
+−
+
+I,
+
+γ(t)
+
+γ(t) γ(0)
+
+which shows that the distribution of µ(t) conditioned on µ(0) is
+
+γ(t)
+
+γ(t)2
+
+µ(t) | µ(0) ∼ N
+
+µ(0), γ(t) −
+
+I.
+
+(34)
+
+γ(0)
+
+γ(0)
+
+Recall that from Eq. (8) with t = 0, the initial distribution of µ(0) given the data x is
+
+µ(0) | x ∼ N (γ(0)x, γ(0)(1 − γ(0))I).
+
+(35)
+
+In view of the above two equations, we see that
+
+µ(t) | x ∼ N (γ(t)x, γ(t)(1 − γ(t))I),
+
+(36)
+
+which is the BFN in Eq. (8) for any t ∈ [0, 1 − η], and thus completes the proof.
+
+Finally, we note that the coefficient F (t) tends to infinity as t → 1, which may violate the regularity assumptions used in Itoˆ’s formula, and in the existence and the uniqueness of the solution of Eq. (15). Nevertheless, as noted in the paragraph after Theorem 4.1, when we restrict on the time interval t ∈ [0, 1 − η] for any fixed η > 0, the coefficients of Eq. (8) are well-behaved.
+
+A.2. Proof of Proposition 4.2
+In this section, we provide the proof of Proposition 4.2. As we will see, the BFN sampler is equivalent to solving a reparametrized equation using a variant of the first-order DPM-Solver++ (Lu et al., 2022c).
+
+Proof. We consider the following reparameterization of ϵˆ:
+
+µ
+
+1 − γ(t)
+
+γ(t) µ
+
+xˆ(µ, t) := −
+
+ϵˆ(µ, t) ⇔ ϵˆ(µ, t) =
+
+− xˆ(µ, t) ,
+
+(37)
+
+γ(t)
+
+γ(t)
+
+1 − γ(t) γ(t)
+
+13
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+under which the reverse SDE in Eq. (20) is
+
+G(t)2
+
+dµ = F (t)µ +
+
+ϵˆ(µ(t), t) dt + G(t) dw¯
+
+γ(t)(1 − γ(t))
+
+γ′(t)
+
+=
+
+µ−
+
+γ′(t)
+
+ϵˆ(µ(t), t) dt + −γ′(t) dw¯
+
+γ(t)
+
+γ(t)(1 − γ(t))
+
+γ′(t)
+
+γ′(t)
+
+=
+
+µ−
+
+µ − xˆ(µ(t), t)
+
+dt + −γ′(t) dw¯
+
+γ(t) 1 − γ(t) γ(t)
+
+γ′(t)
+
+=−
+
+µ+
+
+γ′(t) xˆ(µ(t), t) dt +
+
+−γ′(t) dw¯.
+
+(38)
+
+1 − γ(t) 1 − γ(t)
+
+In the integral form similar to Eq. (33), for 0 ≤ t < s < 1, the above equation is
+
+1 − γ(t)
+
+t γ′(τ )
+
+t 1 − γ(t)
+
+µ(t) =
+
+µ(s) + (1 − γ(t))
+
+1 − γ(s)
+
+s
+
+(1 − γ(τ ))2 xˆ(µ(τ ), τ ) dτ +
+
+s
+
+1 − γ(τ )
+
+−γ′(τ ) dw¯(τ ).
+
+(39)
+
+Approximating xˆ(µ(τ ), τ ) using xˆ(µ(s), s), and compute the Itoˆ’s integral exactly, we can obtain the following first-order discretization
+
+1 − γ(t)
+
+γ(t) − γ(s)
+
+1 − γ(t)
+
+µ(t) ≈
+
+µ(s) +
+
+1 − γ(s)
+
+1 − γ(s)
+
+xˆ(µ(s), s) + 1 − γ(s) (γ(t) − γ(s))us
+
+γ(t)
+
+γ(t) − γ(s)
+
+1 − γ(t)
+
+= µ(s) − γ(s)
+
+ϵˆ(µ(s), s) + γ(s)(1 − γ(s))
+
+1 − γ(s) (γ(t) − γ(s))us,
+
+where us = N (0, I), which matches the BFN’s sampling rule in Eq. (10), and thus completes the proof.
+
+A.3. Derivation of BFN-Solvers on Continuous Data
+
+We follow the principles in DPM-Solvers (Lu et al., 2022b;c) to derive samplers of the ODE in Eq. (21). Let times
+
+0
+
+≤
+
+t
+
+<
+
+s
+
+≤
+
+1
+
+−
+
+η
+
+and
+
+λ(t)
+
+=
+
+1 2
+
+log
+
+γ(t) 1−γ(t)
+
+.
+
+The
+
+exact
+
+solution
+
+of
+
+this
+
+ODE
+
+can
+
+be
+
+formulated
+
+by
+
+“variation
+
+of
+
+constants”
+
+formula (Atkinson et al., 2009):
+
+t
+
+µ(t)
+
+=
+
+e
+
+t s
+
+F
+
+(τ
+
+)
+
+dτ
+
+µ(s)
+
++
+
+e
+
+t τ
+
+F
+
+(r)
+
+dr
+
+G(τ )2
+
+ϵˆ(µ(τ ), τ ) dτ.
+
+(40)
+
+s
+
+2 γ(τ )(1 − γ(τ ))
+
+Note
+
+that
+
+F (t)
+
+=
+
+d dt
+
+ln γ(t)
+
+and
+
+dλ(t) dt
+
+=
+
+−
+
+G(t)2 γ(t)(1−γ(t))
+
+,
+
+then
+
+the
+
+above
+
+equation
+
+becomes
+
+γ(t) µ(t) = µ(s) − γ(t)
+
+t dλ(τ ) e−λ(τ)ϵˆ(µ(τ ), τ ) dτ
+
+(41)
+
+γ(s)
+
+s dτ
+
+γ(t) = µ(s) − γ(t)
+γ(s)
+
+λ(t)
+e−λϵˆ(µ(tλ(λ)), tλ(λ)) dλ,
+λ(s)
+
+(42)
+
+where the last equation uses the fact that λ(τ ) is strict monotone and tλ(·) is the inverse function of λ(t).
+
+Let eˆ(m)(λ)
+
+:=
+
+eˆ(m)(µ(tλ(λ)), tλ(λ))
+
+:=
+
+dm eˆ(µ(tλ (λ)),tλ (λ)) dλm
+
+be
+
+the
+
+m-th
+
+order
+
+derivative
+
+of
+
+the
+
+map
+
+λ
+
+→
+
+eˆ(µ(tλ(λ)), tλ(λ)), then we can approximate eˆ(µ(tλ(λ)), tλ(λ)) by the Taylor’s expansion at λ = λ(s) for any k ≥ 0:
+
+ϵˆ(µ(tλ(λ)), tλ(λ))
+
+=
+
+k−1
+
+(λ
+
+− λ(s))m eˆ(m)(λ(s)) + O((λ − λ(s))k). m!
+
+(43)
+
+m=0
+
+Subsituting the above equation into Eq. (42) yields
+
+µ(t)
+
+=
+
+γ(t) µ(s) −
+
+k−1
+
+γ(t)eˆ(m)(λ(s))
+
+λ(t) e−λ (λ − λ(s))m dλ + O((λ − λ(s))k+1).
+
+(44)
+
+γ(s)
+m=0
+
+λ(s)
+
+m!
+
+14
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+Algorithm 1 BFN-Solver++1 (on continuous data)
+
+Require: time steps {ti}M i=0 from t0 = 1 − η to tM = 0, noise prediction model ϵˆ(µ, t)
+
+Denote α¯t = γ(t), σ¯t =
+
+γ(t)(1
+
+−
+
+γ(t)),
+
+λt
+
+=
+
+log
+
+α¯t σ¯t
+
+µ0 ∼ N (0, γ(t0)(1 − γ(t0))I), Kβ(t0)I)
+
+for i = 1 to M do
+
+hi = (λti − λti−1 )
+
+xˆi
+
+=
+
+µi−1 γ (ti−1 )
+
+−
+
+1−γ(ti−1 γ (ti−1 )
+
+)
+
+ϵˆ(µi−1
+
+,
+
+ti−1
+
+)
+
+µi
+
+=
+
+µ σ¯ti
+σ¯ti−1 i−1
+
+− α¯ti (e−hi
+
+− 1)xˆi
+
+end for
+
+return xˆM
+
+Algorithm 2 BFN-Solver++2 (on continuous data)
+
+Require: time steps {ti}M i=0 from t0 = 1 − η to tM = 0, noise prediction model ϵˆ(µ, t)
+
+Denote α¯t = γ(t), σ¯t =
+
+γ(t)(1
+
+−
+
+γ(t)),
+
+λt
+
+=
+
+log
+
+α¯t σ¯t
+
+µ0 ∼ N (0, γ(t0)(1 − γ(t0))I), Kβ(t0)I), Initialize an empty buffer Q.
+
+xˆ0
+
+=
+
+µ0 γt0
+
+−
+
+Q ← xˆ0
+
+1−γt0 γt0
+
+ϵˆ(µ0,
+
+t0)
+
+h1 = (λt1 − λt0 )
+
+µ1
+
+=
+
+σ¯t1 σ¯t0
+
+µ0
+
+−
+
+α¯t1 (e−h1
+
+−
+
+1)xˆ0
+
+xˆ1
+
+=
+
+µ1 γt1
+
+−
+
+Q ← xˆ1
+
+1−γt1 γt1
+
+ϵˆ(µ1,
+
+t1)
+
+for i = 2 to M do
+
+hi = (λti − λti−1 )
+
+ri
+
+=
+
+hi−1 hi
+
+Di =
+
+1
+
++
+
+1 2ri
+
+xˆi−1
+
+−
+
+1 2ri
+
+xˆi−2
+
+µi
+
+=
+
+σ¯ti σ¯ti−1
+
+− α¯ti (e−hi
+
+− 1)Di
+
+xˆi
+
+=
+
+µi γti
+
+−
+
+1−γ(ti γ (ti )
+
+)
+
+ϵˆ(µi
+
+,
+
+ti
+
+)
+
+If i < M , then Q ← xˆi
+
+end for
+
+return xˆM
+
+Given an initial value µ0 and time steps {ti}ni=0 from t0 = 1 − η to tn = 0. The solver uses n steps to iteratively compute a sequence {µi}ni=1 to approximate the true solutions at time {ti}ni=1 using Eq. (44) by setting t = ti and s = ti−1 for each i = 1, · · · , n. We can use the well-established finite difference method or the Runge-Kutta method to avoid the computation of the high-order derivatives eˆ(m)(λ), as we will illustrate in the case of discrete data in Appendix. B (see also, e.g., Kloeden et al. (1992); Lu et al. (2022b)).
+BFN as a DM with a special noise schedule The derivation above with a noise prediction network are presented mainly to illustrate the idea. In our implementation, we use a data prediction network xˆ as defined in Appendix. A.2. For simplicity, we do not derive the sampler step by step. Instead, a more straightforward way to get BFN-Solver on continuous data is to treat BFN as a DM with a special noise schedule α(t) = γ(t) and σ2(t) = γ(t)(1 − γ(t)). We can directly plugin the relation to the samplers proposed in Lu et al. (2022b;c) to obtain our first-order ODE solver BFN-Solver++1, second-order ODE solver BFN-Solver++2 and second-order SDE solver SDE-BFN-Solver++2, as presented in Algorithm 1, 2 and 3 respectively.
+The plugging idea does not apply to discrete data and we provide a detailed derivation in Appendix. B.
+15
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+Algorithm 3 SDE-BFN-Solver++2 (on continuous data)
+
+Require: time steps {ti}M i=0 from t0 = 1 − η to tM = 0, noise prediction model ϵˆ(µ, t)
+
+Denote α¯t = γ(t), σ¯t =
+
+γ(t)(1
+
+−
+
+γ(t)),
+
+λt
+
+=
+
+log
+
+α¯t σ¯t
+
+µ0 ∼ N (0, γ(t0)(1 − γ(t0))I), Kβ(t0)I), Initialize an empty buffer Q.
+
+xˆ0
+
+=
+
+µ0 γt0
+
+−
+
+Q ← xˆ0
+
+1−γt0 γt0
+
+ϵˆ(µ0,
+
+t0)
+
+h1 = (λt1 − λt0 )
+
+µ1
+
+=
+
+σ¯t1 σ¯t0
+
+µ0
+
+−
+
+α¯t1 (e−h1
+
+−
+
+1)xˆ0
+
+xˆ1
+
+=
+
+µ1 γt1
+
+−
+
+Q ← xˆ1
+
+1−γt1 γt1
+
+ϵˆ(µ1,
+
+t1)
+
+for i = 2 to M do
+
+hi = (λti − λti−1 )
+
+r1
+
+=
+
+hi−1 hi
+
+Di
+
+=
+
+1 r1
+
+(xˆi−1
+
+− xˆi−2)
+
+uti−1 µi =
+
+∼ N (0, I)
+
+e µ σ¯ti −hi
+σ¯ti−1
+
+i−1
+
++
+
+α¯ti (1
+
+−
+
+e−2hi )xˆi−1
+
++
+
+D α¯t(1−e−2hi )
+
+2
+
+i
+
++
+
+√ σ¯t 1
+
+−
+
+e−2hi uti−1
+
+xˆi
+
+=
+
+µi γti
+
+−
+
+1−γ(ti γ (ti )
+
+)
+
+ϵˆ(µi
+
+,
+
+ti
+
+)
+
+If i < M , then Q ← xˆi
+
+end for
+
+return xˆM
+
+B. Derivation for Continuous-time BFN on Discrete Data
+
+B.1. Proof of Theorem 5.1
+
+Proof.
+
+Similar to the proof in Appendix. A.1, let z˜(t) := e−
+
+t 0
+
+H (τ
+
+)
+
+dτ
+
+z(t),
+
+then
+
+we
+
+have
+
+t
+
+z˜(t) = z˜(0) +
+
+e−
+
+s 0
+
+H
+
+(τ
+
+)
+
+dτ
+
+L(s)
+
+dw(s).
+
+(45)
+
+0
+
+Since
+
+H (t)
+
+=
+
+d dt
+
+ln β(t)
+
+and
+
+L(t)2
+
+=
+
+−K
+
+d dt
+
+β(t),
+
+then
+
+the
+
+above
+
+equation
+
+becomes
+
+β(0) z(t) ∼ z(0) + N
+
+0, Kβ(0)2
+
+1
+
+1
+
+−
+
+I,
+
+β(t)
+
+β(t) β(0)
+
+which shows that the distribution of z(t) conditioned on z(0) is
+
+β(t)
+
+β(t)2
+
+z(t) | z(0) ∼ N
+
+z(0), K β(t) −
+
+I.
+
+(46)
+
+β(0)
+
+β(0)
+
+Recall that from Eq. (11) with t = 0 we know that
+
+z(0) | x ∼ N (β(0)wx, Kβ(0)I).
+
+(47)
+
+Combining the above two equations, we find that
+
+z(t) | x ∼ N (β(t)wx, Kβ(t)I),
+
+(48)
+
+which is the BFN in Eq. (11) for any t ∈ [0, 1 − η].
+
+B.2. Proof of Theorem 5.2
+
+Proof. Recall that the loss function on discrete data in Eq. (12) is
+
+L∞(x) =
+
+E
+
+Kβ1t∥ex − eˆ(θ, t)∥2,
+
+(49)
+
+qF (θ|x,t),t∼U (0,1)
+
+16
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+where qF (θ|x, t) is specially defined with softmax function to ensure θ lies in the simplex as follows, making its density complex.5
+
+qF (θ|x, t) =
+
+E
+
+δ(θ − softmax(z(t))).
+
+z(t)∼N (β(t)(Kex−1),β(t)KI)
+
+Note that to obtain a sample θ(t) ∼ qF (θ|x, t), we can first sample z(t) ∼ N (β(t)(Kex − 1), β(t)KI) and apply the deterministic transform θ(t) := softmax(z(t)). Then, we can rewrite the loss function as
+
+L∞(x) = E
+
+E
+
+Kβ1t∥ex − eˆ(softmax(z(t)), t)∥2
+
+t∼U (0,1) z(t)∼q(z(t)|x)
+
+=E
+
+E
+
+Kβ1t∥ex − eˆs(z(t), t)∥2,
+
+t∼U (0,1) z(t)∼q(z(t)|x)
+
+where q(z(t)|x) = N (β(t)(Kex − 1), β(t)KI) whose score function is given by
+
+z(t)
+
+1
+
+∇z
+
+log
+
+q(z(t)|x)
+
+=
+
+− K β (t)
+
++
+
+ex
+
+−
+
+K
+
+.
+
+(50)
+
+Let
+
+z(t)
+
+1
+
+sˆ(z(t),
+
+t)
+
+:=
+
+− K β (t)
+
++
+
+eˆs(z(t),
+
+t)
+
+−
+
+K
+
+.
+
+(51)
+
+Substituting ∇z log q(z(t)|x) and sˆ(softmax(z(t)), t) into the loss function yields
+
+L∞(x) = E
+
+E
+
+Kβ1t∥ex − eˆs(z(t), t)∥2
+
+t∼U (0,1) z(t)∼q(z(t)|x)
+
+=E
+
+E
+
+Kβ1t∥∇z log q(z(t)|x) − sˆ(z(t), t)∥2.
+
+(52)
+
+t∼U (0,1) z(t)∼q(z(t)|x)
+
+The loss in Eq. (52) performs the denosing score matching (DSM), and according to Vincent (2011), the optimal solution of it w.r.t. sˆ is the score of the distribution of z(t). Inspecting Eq. (51), we find that there is a one-to-one correspondance between the parameterized score function sˆ in the DSM loss and the function eˆs in BFN, showing that the optimization of BFN is equivalent to that of DM.
+
+B.3. Proof of Proposition 5.3
+
+Proof. Recall that the BFN sampler is defined in Eqs. (13) and (14), and β(t) = β1(1 − t)2. If we remove the categorical sampling step in Eq. (13), the sampling rule becomes
+
+zi = zi−1 + (β(ti) − β(ti−1))(Keˆs(zi−1, ti−1) − 1) + K(β(ti) − β(ti−1))ui,
+
+(53)
+
+where ui ∼ N (0, I). Next, to show that the update rule in Eq. (53) is a first-order discretization of the reverse SDE, we write the SDE defined in Eq. (29) in the integral form as follows for any 0 ≤ t < s ≤ 1 − η:
+
+z(t) = z(s) −
+
+t
+L(τ )2
+s
+
+1 eˆs(z(τ ), τ ) − K
+
+dτ +
+
+t
+L(τ ) dw¯(τ ).
+s
+
+(54)
+
+Note that the Itoˆ integral follows the Gaussian distribution, and by Eq. (26), we know that
+
+t
+
+s
+
+L(τ ) dw¯(τ ) ∼ N 0, L(τ )2 dtI = N (0, K(β(t) − β(s))I) .
+
+s
+
+t
+
+Then, by approximating eˆs(z(τ ), τ ) = eˆs(z(s), s) + O(τ − s) in Eq. (54), we find
+
+z(t) = z(s) −
+
+t
+L(τ )2
+s
+
+1 eˆs(z(s), s) + O(τ − s) − K
+
+dτ +
+
+t
+L(τ ) dw¯(τ )
+s
+
+1 = z(s) + K(β(t) − β(s)) eˆs(z(s), s) + O(t − s) − K + K(β(t) − β(s))us
+
+= z(s) + (β(t) − β(s)) [Keˆs(z(s), s) − 1] + K(β(t) − β(s))us + O((t − s)2),
+
+5Note that θ lies in a low-dimensional simplex, so the “density” should be defined w.r.t. a low-dimensional Lebesgue measure. We intend to define the distribution qF by a sampling procdure as introduced later.
+
+17
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+where us ∼ N (0, I). Now, the proof is completed by setting t = ti and s = ti−1 in the above equation, and comparing the result with Eq. (53).
+
+B.4. Derivation of SDE-BFN-Solvers on Discrete Data
+
+In this section we derive the SDE-BFN-Solvers of solving Eq. (29). We shall highlight that the SDE to be solved is different from those solved in BFNs and DMs on continuous data, as it contains no linear terms. We also follow the recipe of DPM-Solvers (Lu et al., 2022b;c) in reducing the discretization error to analytically simplify the equation as much as possible, instead of approximating it directly. The derived algorithms can be found in Algorithm 4, 5.
+
+As we have seen in Appendix. B.3, the BFN sampler without the categorical sampling step (Eq. (53)) is the desired first-order solver, which is called SDE-BFN-Solver1. To further reduce the discretization error, we consider the first-order approximation of eˆs(z(τ ), τ ) in Eq. (54):
+
+eˆs(z(τ ), τ ) = eˆs(z(s), s) + eˆ(s1)(z(s), s)(τ − s) + O((τ − s)2),
+
+(55)
+
+where eˆ(s1) is the derivative of eˆs(z(s), s) w.r.t. s. Then, setting t = ti and s = ti−1, Eq. (54) becomes
+
+z(ti) = z(ti−1) −
+
+ti
+L(τ )2
+ti−1
+
+eˆs(z(ti−1),
+
+ti−1)
+
++
+
+eˆ(s1)(z(ti−1), ti−1)(τ
+
+−
+
+ti−1)
+
+−
+
+1 K
+
+dτ
+
+ti
+
++
+
+L(τ ) dw¯(τ ) + O((ti − ti−1)3)
+
+ti−1
+
+= z(ti−1) + (β(ti) − β(ti−1)) [Keˆs(z(ti−1), ti−1) − 1]
+
+−
+
+1 3 Kβ1(ti
+
+−
+
+ti−1)2(ti−1
+
++
+
+2ti
+
+−
+
+3)eˆ(s1)(z(ti−1), ti−1)
+
++ K(β(ti) − β(ti−1))N (0, I) + O((ti − ti−1)3).
+
+Finally, we approximate the derivative eˆ(s1) by a finite difference as follows to obtain the final discretization algorithm,
+
+namely SDE-DPM-Solver2.
+
+eˆ(s1)(zi−1, ti−1)
+
+≈
+
+eˆs(zi−2, ti−2) − eˆs(zi−1, ti−1) . ti−2 − ti−1
+
+(56)
+
+B.5. Derivation of BFN-Solvers on Discrete Data
+
+Eq. In this section, we derive the BFN-Solvers on discrete data using the following integral form of the parameterized ODE in (30).
+
+1−t
+
+t
+
+z(t)
+
+=
+
+1
+
+−
+
+z(s) s
+
++
+
+β1(1
+
+−
+
+t)(t
+
+−
+
+s)
+
+−
+
+K β1 (1
+
+−
+
+t)
+
+s
+
+eˆs(z(τ ), τ ) dτ.
+
+(57)
+
+BFN-Solver1 The first-order solver approximates eˆs(z(τ ), τ ) in the above integral by eˆs(z(s), s) directly, yielding the
+
+following update rule:
+
+zi
+
+=
+
+1 − ti 1 − ti−1
+
+zi−1
+
++
+
+β1(1 −
+
+ti)(ti
+
+−
+
+ti−1)(1
+
+− Keˆs(zi−1, ti−1)).
+
+(58)
+
+BFN-Solver2 The second-order solver approximates eˆs(z(τ ), τ ) with eˆs(z(s), s)+eˆ(s1)(z(s), s)(τ −s), where eˆs(z(s), s) is the derivative of eˆs w.r.t. s. Using such an approximation, we have
+
+t
+
+t
+
+eˆs(z(τ ), τ ) dτ = eˆs(z(s), s) + eˆ(s1)(z(s), s)(τ − s) + O(τ − s)2 dτ
+
+s
+
+s
+
+=
+
+eˆs(z(s), s)(t
+
+− s) +
+
+eˆ(s1)(z(s),
+
+s)
+
+(t
+
+− 2
+
+s)2
+
++ O((t
+
+− s)3).
+
+(59)
+
+Following the method used in DPM-Solver (Lu et al., 2022b), we use an intermediate time r ∈ (s, t) to approximate the derivative term. We use the first-order approximation in Eq. (58) to compute z(r) and the finite difference to estimate the
+
+18
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+Algorithm 4 SDE-BFN-Solver1 (on discrete data)
+
+Require: time steps {ti}M i=0, from t0 = 1 − η to tM = 0, model eˆs(z, t), β(t) = β1(1 − t)2 z0 ∼ N (0, Kβ(t0)I)
+for i = 1 to M − 1 do
+
+ui ∼ N (0, I) zi = zi−1 + (β(ti) − β(ti−1))(Keˆs(zi−1, ti−1)) − 1) + end for
+
+K(β(ti) − β(ti−1))ui
+
+xˆ = argmax(eˆs(zM−1, tM−1)) return xˆ
+
+Algorithm 5 SDE-BFN-Solver2 (on discrete data)
+
+Require: time steps {ti}M i=0, from t0 = 1 − η to tM = 0, model eˆs(z, t), β(t) = β1(1 − t)2
+
+z0 ∼ N (0, Kβ(t0)I), Initialize an empty buffer Q
+
+u1 ∼ N (0, I)
+
+Q ← eˆs(z0, t0)
+
+z1 = z0 + (β(t1) − β(t0))(Keˆs(z0, t0)) − 1) + K(β(t1) − β(t0))ui
+
+for i = 2 to M − 1 do
+
+D = eˆs(zi−2,ti−2)−eˆs(zi−1,ti−1)
+
+1
+
+ti−2 −ti−1
+
+ui ∼ N (0, I)
+
+zi
+
+=
+
+zi−1 +(β (ti )−β (ti−1 ))(K eˆs (zi−1 ,
+
+ti−1))−1)−
+
+1 3
+
+K
+
+β1(ti
+
+−ti−1)2
+
+(ti−1
+
++2ti
+
+−3)D1
+
++
+
+If i < M − 1, then Q ← eˆs(zi−1, ti−1)
+
+end for
+
+xˆ = argmax(eˆs(zM−1, tM−1)) return xˆ
+
+K(β(ti) − β(ti−1))ui
+
+derivative eˆ(s1):
+
+z(r)
+
+=
+
+1−t z(s)
+1−s
+
++
+
+β1(1
+
+−
+
+r)(r
+
+−
+
+s)(1
+
+−
+
+Keˆs(z(s), s))
+
++
+
+O((r
+
+−
+
+s)2),
+
+(60)
+
+eˆ(s1)(z(s), s)
+
+=
+
+eˆs(z(r), r) r
+
+− −
+
+eˆs(z(s), s) s
+
++
+
+O(r
+
+−
+
+s).
+
+(61)
+
+Combining the above equations with Eq. (59), we find that
+
+t s
+
+eˆs(z(τ ), τ ) dτ
+
+=
+
+eˆs(z(s), s)(t
+
+−
+
+s)
+
++
+
+(eˆs(z(r), r)
+
+− eˆs(z(s), s))(t 2(r − s)
+
+−
+
+s)2
+
++
+
+O((t
+
+−
+
+s)3).
+
+(62)
+
+Finally, let η > 0 be an arbitrarily small constant and choose time steps {ti}M i=0 from t0 = 1 − η to tM = 0. Given an initial
+
+value sample, {zi}M i=1 is computed iteratively as follows, by choosing (s, t, r) :=
+
+ti−1,
+
+ti,
+
+ti +ti−1 2
+
+for each i in the above
+
+derivation.
+
+zi−1/2
+
+=
+
+1 − ti−1/2 1 − ti−1
+
+zi−1
+
++
+
+β1(1
+
+−
+
+ti−1/2)(ti−1/2
+
+− ti−1)(1 − Keˆs(zi−1, ti−1)),
+
+(63)
+
+zi
+
+=
+
+1 − ti 1 − ti−1
+
+zi−1
+
++
+
+β1(1
+
+− ti)(ti
+
+− ti−1) − c(ti)(ti
+
+− ti−1)eˆs(zi−1, ti−1)
+
+−
+
+c(ti
+
+)
+
+(ti − ti−1)2 2(ti−1/2 − ti−1
+
+)
+
+(eˆs(zi−1/2,
+
+ti−1/2
+
+)
+
+−
+
+eˆs
+
+(zi−1,
+
+ti−1)).
+
+(64)
+
+where ti−1/2 = (ti + ti−1)/2 and c(t) = Kβ1(1 − t). 19
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+Algorithm 6 BFN-Solver1 (on discrete data)
+
+Require: time steps {ti}M i=0, from t0 = 1 − η to tM = 0, model eˆs(z, t), β(t) = β1(1 − t)2
+
+z0 ∼ N (0, Kβ(t0)I)
+
+for i = 1 to M − 1 do
+
+z˜i
+
+=
+
+z 1−ti
+1−ti−1 i−1
+
++ β1(1 − ti)(ti
+
+− ti−1)(1 − Keˆs(zi−1, ti−1))
+
+end for
+
+xˆ = argmax(eˆs(zM−1, tM−1)) return xˆ
+
+Algorithm 7 BFN-Solver2 (on discrete data)
+
+Require: time steps {ti}M i=0, from t0 = 1 − η to tM = 0, model eˆs(z, t), β(t) = β1(1 − t)2 z0 ∼ N (0, Kβ(t0)I)
+for i = 1 to M − 1 do
+
+ti−1/2 = (ti + ti−1)/2
+
+ci = Kβ1(1 − ti)
+
+D = eˆs(zi−1/2,ti−1/2)−eˆs(zi−1,ti−1)
+
+1
+
+ti−1/2 −ti−1
+
+zi
+
+=
+
+z 1−ti
+1−ti−1 i−1
+
++ β1(1 − ti)(ti
+
+− ti−1) − ci(ti
+
+− ti−1)eˆs(zi−1, ti−1) −
+
+D ci (ti −ti−1 )2
+
+2
+
+1
+
+end for
+
+xˆ = argmax(eˆs(zM−1, tM−1)) return xˆ
+
+C. Experimental Details
+
+C.1. Choices of the Initialization Distribution
+
+Since the exact distribution of µ(1−η) is unknown, we need to choose an approximation of it as the initialization distribution. The following proposition identifies the best initial distribution among isotropic Gaussian distributions.
+
+Proposition C.1. Let pt(µ) = Ex∼pdata qF (µ|x, γ(t)) be the distribution of µ(t) in Eq. (8), then qt(µ) := N (µ|m∗(t), (σ∗(t))2I) minimizes the Kullback-Leibler (KL) divergence between pt and any isotropic Gaussian dis-
+
+tributions, where
+
+m∗(t) = γ(t)mdata,
+
+and
+
+(σ∗(t))2 = γ(t)(1 − γ(t)) + γ(t)2 Tr Σdata , D
+
+D is the dimensionality of µ, and mdata, Σdata are the mean and the covariance matrix of the data distribution pdata, respectively. In other words, we have
+
+(m∗(t), σ∗(t)) = arg min DKL(pt∥N (m, σ2I)),
+
+(65)
+
+m,σ
+
+where DKL is the Kullback-Leibler divergence.
+
+Proof. Since pF (µ(t)|x, γ(t)) = N (γ(t)x, γ(t)(1 − γ(t))I), the KL divergence can be written as
+
+DKL(pt∥N (m, σ2I)) = − E log N (µ|m, σ2I) + E log pt(µ)
+
+µ∼pt
+
+µ∼pt
+
+D
+
+∥µ − m∥2
+
+=E
+µ∼pt
+
+log(2π) + D log σ + 2
+
+2σ2
+
++ E log pt(µ),
+µ∼pt
+
+where D is the dimensionality of µ. By taking the derivative, we know the minimizer is
+
+m∗(t) = E µ = γ(t)mdata,
+µ∼pt
+
+(σ∗(t))2
+
+=
+
+1 D
+
+E ∥µ
+µ∼pt
+
+−
+
+m∗(t)∥2=
+
+γ(t)(1 − γ(t)) + γ(t)2 Tr Σdata . D
+
+20
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+However, the optimal distribution in the above proposition depends on the mean and the covariance matrix of the data distribution, which are still unknown. Fortunately, we find that for sufficiently small η, the effect of data-dependent terms is negligible. Since when η → 0 we know γ(t) → 0 and by the proposition the optimal variance is γ(t)(1 − γ(t)) + o(γ(t)), so a typical sample from the optimal distribution has the norm Dγ(t)(1 − γ(t)), which dominates the optimal mean γ(t)mdata as γ(t) → 0. Therefore, we suggest the data-independent distribution N (0, γ(t)(1 − γ(t))I)) as the initial distribution.
+We note that although the above proposition is proved for the BFN with continuous data, a similar result also holds for discrete data.
+C.2. Final Step of Sampling
+Theoretically, we need to solve the reverse SDEs or ODEs from time 1 − η to 0 to generate samples. In practice, the BFN sampler adds a step where it uses the state obtained from the initial n iterations, denoted by θn, to run the network an additional time. The output from this final network is then used as the final sample. We follow this sampling trick as our default sampling method at the final step.
+C.3. User Study for Text Generation
+In this section, we give the details of the user study designed to compare the quality of text generated from BFN-Solvers and BFN from the human perspective. We instruct participants to select the text samples they perceive as higher quality, providing them with authentic examples from the test dataset to serve as benchmarks for their evaluations. For each study, we collect 500 human answers from 10 participants to ensure a sufficient sample size to analyze the preferences.
+C.4. Ablation of Categorical Sampling Step in BFN Sampler on Discrete Data
+In this section, we present the detailed results of Sec. 6.2 in Table 3. We explicitly analyze the sampling dynamics of the original BFN sampler with and without CS. We generate two sets of trajectories, denoted as zw/cat(t) and zw/o cat(t), using identical Gaussian noises and then compute the 1-norm of the difference between these trajectories at each time point t and sum them. We replicate the sampling 1000 times independently and compute the mean, which represents the disparity between two samplers. As shown in Table 4, ∥zw/cat − zw/o cat∥1 gets smaller as the step size decreases.
+
+Table 3. Ablation of the categorical sampling (CS) step in the BFN sampler on discrete data. We present the SA↑.
+
+NFE
+BFN BFN W/O CS (OURS)
+
+10
+66.27 70.67
+
+12
+70.73 73.63
+
+20
+79.54 80.86
+
+30
+82.65 83.26
+
+40
+84.01 84.27
+
+50
+84.88 84.90
+
+100
+86.14 86.11
+
+200
+86.50 86.76
+
+1000
+86.69 86.77
+
+Table 4. Ablation of the categorical sampling (CS) step in the BFN sampler on discrete data. We present the L1 norm of the difference between sampling trajectories of the original BFN sampler with and without CS, varying the step size.
+
+STEP SIZE
+
+0.1 0.05 0.02 0.01 0.005 0.002 0.001
+
+∥zW/CAT − zW/O ∥ CAT 1 0.18 0.16 0.13 0.10 0.087 0.066 0.049
+
+D. Additional results
+D.1. Additional Results on Continuous Dataset In this section, we present the detailed results of Sec. 6.2. As shown in Tab. 5, our proposed methods obtain the best results under all NFE.
+21
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+Table 5. Image generation results on continuous CIFAR-10 dataset. Sampling quality is measured by FID ↓, varying the number of function evaluations (NFE). We bold the best result under the corresponding setting. For instance, we underline the result of BFN at 50 steps and our BFN-Solvers2++ solver at 10 steps, where we achieve a speed-up of 5 times.
+
+NFE
+BFN SDE-BFN-SOLVER++2 (OURS) BFN-SOLVER++1 (OURS) BFN-SOLVER++2 (OURS)
+
+10
+253.23 77.19 66.27 55.87
+
+20
+146.19 49.73 49.18 43.63
+
+50
+74.81 34.29 36.27 33.01
+
+100
+45.50 23.09 30.43 27.92
+
+200
+27.98 16.07 26.62 23.89
+
+500
+16.24 11.94 21.49 19.48
+
+1000
+13.05 10.86 20.39 20.51
+
+Table 6. Text generation results on discrete text8 dataset. Sampling quality is measured by SA ↑, varying the number of function evaluations (NFE). For instance, we underline the result of BFN at 1000 steps and our SDE-BFN-Solvers2 solver at 50 steps, where we achieve a speed-up of 20 times.
+
+NFE
+BFN SDE-BFN-SOLVER2 (OURS) BFN-SOLVER1 (OURS) BFN-SOLVER2 (OURS)
+
+10
+66.27 80.29 78.61 82.27
+
+12
+70.73 82.39 80.21 83.23
+
+20
+79.54 85.27 82.46 84.46
+
+30
+82.65 86.03 83.76 85.12
+
+40
+84.01 86.63 84.18 85.34
+
+50
+84.88 86.82 84.53 85.46
+
+100
+86.14 87.04 85.25 85.53
+
+200
+86.50 86.74 85.39 85.57
+
+1000
+86.69 86.78 85.61 85.60
+
+Table 7. Empirical study of η. We present the FID ↓ results of image generation on continuous CIFAR-10 dataset varying η.
+
+VALUES OF η
+BFN-SOLVER++1 (OURS) BFN-SOLVER++2 (OURS) SDE-BFN-SOLVER++2 (OURS)
+
+NFE=50
+0.01 0.001 0.0001
+50.79 48.68 111.14 48.29 43.84 106.44 41.23 36.13 34.29
+
+0.001
+21.49 19.48 12.33
+
+NFE=500
+
+0.0001 0.00001
+
+49.13 45.95 14.49
+
+220.37 214.17 27.39
+
+D.2. Additional Results of Discrete Dataset
+In this section, we present the detailed results of Sec. 6.3. As shown in Tab. 6, our best solver significantly outperforms the original BFN sampler with a few (e.g., 10) NFEs under the SA metric.
+D.3. Analysis of η on Continuous Data
+In this section, we provide an analysis of the hyperparameter η for continuous data. According to the analyses in Appendix C.1, we start sampling from the approximate prior distribution p˜(µ(1 − η)) = N (0, γ(1 − η)(1 − γ(1 − η))I). Firstly, we present the FID results on the continuous CIFAR-10 dataset. We show the results with 50 and 500 NFE for efficiency. As shown in Tab. 7, excessively small or large values of η detrimentally affect image generation quality.
+In addition, we found that SDE-based method (i.e., SDE-BFN-Solver++2) is less sensitive to η compared to ODE-based methods (i.e., BFN-Solver++1, BFN-Solver++2). Assuming the discretization error is negligible, Nie et al. (2023) theoretically elucidates why SDE-based samplers outperform ODE-based samplers in sampling from the approximate prior distribution. This provides a theoretical foundation for our observations.
+At last, as present in Sec. 6.2 and Tab. 5, after tuning η, ODE-based samplers still outperform SDE-based samplers and BFN baseline with a few NFEs (e.g., 10) under sample quality.
+D.4. Analysis of η on Discrete Data
+In this section, we provide an analysis of hyperparameter η for discrete data. According to the analyses in Appendix C.1, we start sampling from the approximate prior distribution p˜(z(1 − η)) = N (0, Kβ(1 − η)I) which works well empirically. As shown in Tab. 8, For lower NFEs(20) or higher NFEs(200), the variation in η shows minor differences in SA for BFN-Solver1, BFN-Solver2 and SDE-BFN-Solver2. This suggests that the choice of η does not significantly impact the
+22
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+Table 8. Empirical study of η. We present the SA ↑ results of text generation on continuous text8 dataset varying η.
+
+VALUES OF η
+BFN-SOLVER1 (OURS) BFN-SOLVER2 (OURS) SDE-BFN-SOLVER2 (OURS)
+
+NFE=20
+
+0.01 0.001 0.0001
+
+82.56 82.39 84.46 84.43 84.98 85.28
+
+82.46 84.46 85.27
+
+NFE=200
+
+0.01 0.001 0.0001
+
+85.40 85.38 85.57 85.56 86.65 86.68
+
+85.39 85.52 86.74
+
+performance of these solvers on discrete data.
+D.5. Random Samples Additional sampling results on CIFAR-10 are shown in Fig. 7. Additional sampling results on text8 are shown in Figs. 8 and 9.
+
+23
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+NFE=50
+
+NFE=200
+
+NFE=1000
+
+BFN
+
+BFNSolver++1 (ours)
+BFNSolver++2 (ours)
+BFN-SDESolver++2 (ours)
+Figure 7. Randomly generated images by BFN and BFN-Solvers (ours) with 50, 200, 1000 NFEs, using the same pre-trained model on CIFAR-10.
+24
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+(a) BFN
+
+(b) SDE-BFN-Solver2 (ours)
+
+(c) BFN-Solver1 (ours)
+
+(d) BFN-Solver2 (ours)
+
+Figure 8. Randomly generated texts by BFN and BFN-Solvers (ours) with 10 NFEs, using the same pre-trained models on text8.
+
+25
+
+Unifying Bayesian Flow Networks and Diffusion Models through Stochastic Differential Equations
+
+(a) BFN
+
+(b) SDE-BFN-Solver2 (ours)
+
+(c) BFN-Solver1 (ours)
+
+(d) BFN-Solver2 (ours)
+
+Figure 9. Randomly generated texts by BFN and BFN-Solvers (ours) with 1000 NFEs, using the same pre-trained models on text8.
+
+26
+

@@ -1,0 +1,996 @@
+Hyperbolic Representation Learning: Revisiting and Advancing
+Menglin Yang 1 Min Zhou 2 Rex Ying 3 Yankai Chen 1 Irwin King 1
+Abstract
+The non-Euclidean geometry of hyperbolic spaces has recently garnered considerable attention in the realm of representation learning. Current endeavors in hyperbolic representation largely presuppose that the underlying hierarchies can be automatically inferred and preserved through the adaptive optimization process. This assumption, however, is questionable and requires further validation. In this work, we first introduce a positiontracking mechanism to scrutinize existing prevalent hyperbolic models, revealing that the learned representations are sub-optimal and unsatisfactory. To address this, we propose a simple yet effective method, hyperbolic informed embedding (HIE), by incorporating cost-free hierarchical information deduced from the hyperbolic distance of the node to origin (i.e., induced hyperbolic norm) to advance existing hyperbolic models. The proposed method HIE is both task-agnostic and model-agnostic, enabling its seamless integration with a broad spectrum of models and tasks. Extensive experiments across various models and different tasks demonstrate the versatility and adaptability of the proposed method. Remarkably, our method achieves a remarkable improvement of up to 21.4% compared to the competing baselines.
+1. Introduction
+Hyperbolic space, considered as the continuous analogue of discrete trees (Krioukov et al., 2010), exhibits a natural advantage for modeling data with implicit or explicit treelike layouts, such as hierarchical structures and power-law distributed data (Adcock et al., 2013; Zhou et al., 2022a). The superiority of hyperbolic space in representation learning, e.g., low distortion (Sarkar, 2011), small generalization error (Suzuki et al., 2021a;b), and impressive perfor
+1Department of Computer Sciences and Engineering, The Chinese University of Hong Kong 2LOGS AI 3Yale University. Correspondence to: Menglin Yang <mlyang.cuhk@outlook.com>.
+Proceedings of the 40 th International Conference on Machine Learning, Honolulu, Hawaii, USA. PMLR 202, 2023. Copyright 2023 by the author(s).
+2.1.1 Poincaré Shallow Models
+Figure 1. Illustration of an optimal embedding in hyperbolic space that preserves the local dependencies while maintaining a hierarchical relationships of the entities. Left: A tree-like graph. Right: Hyperbolic embedding of the tree-like graph.
+mance (Nickel & Kiela, 2017; Chami et al., 2019; Yang et al., 2022a), has been extensively validated in recent works, spanning a plethora of research topics and downstream applications (Peng et al., 2021; Yang et al., 2021a; Mettes et al., 2023), including graph learning, image, and text understanding.
+An essential implicit and unspoken objective in utilizing hyperbolic space is to extract intrinsic hierarchical information within data. The expected learning objective, as illustrated in Figure 1, involves optimizing parent nodes above their respective descendants, or from a global perspective, to push the root closer to the hyperbolic origin while simultaneously situating leaf nodes at a greater distance from the hyperbolic origin. This can be understood from the following two aspects. Intuitively, in original data, the parent node occupies a higher hierarchical level than its offspring. Consequently, in the learning space, a high-fidelity embedding necessitates the parent node being positioned relatively higher position, or equivalently in smaller distance to the hyperbolic origin. Mathematically, let us consider the Poincar ́e ball model as an illustrative example, which is the most frequently used hyperbolic geometry models1. When the root node of a tree-like data structure is placed at the hyperbolic origin, it manifests a relatively small distance to all other nodes, as its norm is equal to zero. Meanwhile, leaf nodes typically locate closer to the periphery of the ball, as the distance between points increases rapidly as the norm approaches one, thus achieving an optimal and low-distortion embedding that effectively preserves the underlying hierarchical structure (Nickel & Kiela, 2017; 2018).
+1The term “hyperbolic geometry models” denotes the mathematical formations for building hyperbolic geometry and creating hyperbolic space, e.g., Poincar ́e ball model and Lorentz model.
+1
+arXiv:2306.09118v1 [cs.LG] 15 Jun 2023
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+The majority of prior studies (Nickel & Kiela, 2017; 2018; Ganea et al., 2018; Shimizu et al., 2020; Chami et al., 2019; Liu et al., 2019; Zhang et al., 2021a) make the assumption that hyperbolic models2 are capable of inferring continuous hierarchies from pairwise similarity measurements (Nickel & Kiela, 2017; 2018) or cross-entropy loss (Chami et al., 2019; Zhang et al., 2021b) in a self-optimization process. However, in the training process, the lack of prior geometric information, such as knowledge about the root, leaves, and hierarchical order, as well as the optimization with geometric-irrelevant objectives raise questions regarding the ability of hyperbolic models to arrange objects in a hierarchical manner and effectively.
+To resolve this confusion, we initiate a thorough investigation into the prevalent hyperbolic models with the intent of ascertaining whether the inherent or latent hierarchical structure is adequately reflected in the resulting embeddings. We conduct an analysis based on a specially designed positiontracking approach, which is detailed in Section 3. The observations indicate that existing prevalent hyperbolic models fall short in effectively preserving hierarchies and capturing the underlying data structure. From a holistic perspective, the root and a significant proportion of leaf nodes are also optimized in unsatisfactory locations, lacking adequate separation in the hyperbolic space. To solve these problems, unlike previous works (Nickel & Kiela, 2017; 2018; Chami et al., 2019; Liu et al., 2019; Ganea et al., 2018; Shimizu et al., 2020; Zhang et al., 2021b) that solely projected objects into hyperbolic space without considering hierarchical knowledge and assuming that hierarchical dependencies can be automatically extracted in the learning process, we introduce cost-free geometric information to enhance the hierarchical learning process. More specifically, we harness the intrinsic geometric characteristics of hyperbolic space, namely hyperbolic distance to origin (HDO), to detect crucial geometric information, such as the root and hierarchical level, and subsequently align the root and ordering. The proposed method is both data and model-agnostic, enabling its facile application to a plethora of datasets and models.
+To summarize, our work makes four key contributions:
+• We propose a position-tracking strategy to investigate current prevalent hyperbolic models, revealing a significant discrepancy between the hyperbolic learning process and conventional understanding, shedding light on the process of hyperbolic representation learning.
+• We introduce a novel method for inferring implicit hierarchy from hyperbolic embeddings. This approach is cost
+2The term “hyperbolic models” denotes deep or machine learning models that operate within hyperbolic space, including hyperbolic shallow models, hyperbolic neural networks, and hyperbolic graph neural networks.
+free, scalable, and highly effective as it extracts hierarchical information directly from the embeddings themselves, eliminating the need for additional inputs or annotations.
+• We present a simple yet effective approach that leverages the inferred hierarchy for advancing hyperbolic representation learning. Our method seamlessly integrates with existing hyperbolic models and does not introduce any additional model parameters, making it practical and easy to implement.
+• We conduct extensive experiments on various hyperbolic models, demonstrating the effectiveness of our proposed method. The results show significant improvements over the baselines, with the largest improvement reaching 21.4%.
+2. Preliminary
+2.1. Related Works
+The field of neural networks has seen a growing interest in the incorporation of hyperbolic geometry (Peng et al., 2021; Yang et al., 2022b; Zhou et al., 2022b; Vyas et al., 2022; Xiong et al., 2022a), in areas like lexical entailment (Nickel & Kiela, 2017; Gulcehre et al., 2019; Sala et al., 2018), knowledge graphs (Chami et al., 2020; Bai et al., 2021; Sun et al., 2020; Xiong et al., 2022b), image understanding (Khrulkov et al., 2020; Zhang et al., 2020; Atigh et al., 2022; Hsu et al., 2021), and recommender systems (Vinh Tran et al., 2020; Chen et al., 2022; Sun et al., 2021a; Yang et al., 2022c;a). In the realm of graph learning (Gulcehre et al., 2019; Chami et al., 2019; Liu et al., 2019; 2022; Yang et al., 2022b), a significant amount of research works generalizing graph convolutions (Kipf & Welling, 2017; Velicˇkovic ́ et al., 2018; Hamilton et al., 2017; Yang et al., 2020; 2022d; Li et al., 2022; Zhang et al., 2019) in hyperbolic space for a better graph or temporal graph representation (Chami et al., 2019; Liu et al., 2019; Zhang et al., 2021b; Yang et al., 2021b; 2022b; Bai et al., 2023; 2022; Sun et al., 2021b), which has achieved impressive performance.
+The choice of optimization targets or loss functions in hyperbolic learning models, is typically driven by specific downstream tasks or applications. For example, crossentropy is utilized in node classification or graph classification tasks (Chami et al., 2019; Liu et al., 2019), while binary cross-entropy is commonly used for link prediction (Chami et al., 2019; Nickel & Kiela, 2018; Ganea et al., 2018), and ranking margin loss is employed for ranking process in recommender systems (Sun et al., 2021a; Vinh Tran et al., 2020; Yang et al., 2022a; Wang et al., 2021). However, many of these loss functions are task-specific and locally defined, without explicitly considering the underlying geometry of the hyperbolic space. This raises a concern regarding how
+2
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+hyperbolic learning approaches can effectively capture and learn the hierarchical structure of data without explicit or implicit guidance on hierarchical information.
+2.2. Riemannian Geometry and Hyperbolic Space
+Here are some preliminary definitions for Riemannian geometry and hyperbolic space. We refer the interested readers to (Spivak, 1973; Lee, 2006; 2013) for more details.
+Riemannian Geometry. A Riemannian manifold M with d dimensions is a topological space that possesses a metric tensor g, denoted as (M, g). At any arbitrary point x in M, the manifold can be locally approximated by a local linear space called the tangent space TxM, which is isometric to Rd. The shortest path between two points on the manifold is known as a geodesic, and its length is referred to as the induced distance dM. In particular, the distance of a node to the origin in hyperbolic space (HDO) can be construed as its corresponding induced hyperbolic norm. To project a tangent vector onto the manifold, the exponential map expx is utilized, while its inverse function is known as the logarithmic map logx. Another significant operation is parallel transport Px→y, which allows for the transportation of geometric data from x to y along the unique geodesics while preserving the metric tensors.
+Hyperbolic Space. Hyperbolic space refers to a Riemannian manifold with a constant negative curvature, and its coordinates can be represented using various isometric models3. In the fields of machine learning and deep learning, the Poincare ́ ball model and the Lorentz model are widely studied. A d-dimensional Poincar ́e ball model with a constant negative curvature κ(κ < 0) is defined as a Riemannian manifold (Bκd, gκ
+B), where Bκd = {x ∈ Rd | ∥x∥2 < −1/κ}
+and its metric tensor gκ
+B = (λκx)2Id and Id is d dimensional
+identity matrix. Here, Bκd is an d-dimensional open ball of
+radius (−κ)− 1
+2 , and λκx = 2(1+κ∥x∥22)−1 is the conformal factor. The Lorentz model of the hyperbolic space is another popular model. In this model, the space is visualized as one sheet of a two-sheeted hyperboloid in a (d+1)-dimensional Minkowski space. A d-dimensional Lorentz model (also called hyperboloid model) with a constant negative curvature κ(κ < 0) is defined as a Riemannian manifold (Ldκ, gκ
+L),
+where Ldκ = {x ∈ Rd+1 | ⟨x, x⟩L = 1/κ} and its metric
+tensor gκ
+L = diag([−1, 1, · · · , 1]). It is important to note that the study applies to both the Poincar ́e ball model and the Lorentz model, and for simplicity, a unified notation H is used. For the hyperbolic formula about exponential map expκx, logarithmic map logκ
+x, hyperbolic distance dH,
+and parallel transport Poκ→x, and other related information, please refer to Appendix A.
+3https://en.wikipedia.org/wiki/ Hyperbolic_space
+2.3. Hyperbolic Shallow Models
+The hyperbolic shallow models encode entities into hyperbolic space and utilize the relative distance or similarity as a means to infer their ordering. For example, Nickel & Kiela (2017; 2018) proposed to embed data in Poincare ́ ball model as well as Lorentz model to learn embeddings by optimizing the following objective:
+max
+x∈Hd
+X
+(i,j)∈E
+log exp (−dH(xi, xj))
+P
+j′∈Neg(i) exp (−dH(xi, xj′ )) , (1)
+where E is a set consisting of linked or related object pairs, N eg(i) = {j|(i, j) ∈/ E} ∪ {i} is the set of negative examples for i, x ∈ Hd is trainable node embedding (xi indicates the specific object i), and dH is the hyperbolic distance. The optimizing target encourages connected or related object pairs in the original structured data to have a small hyperbolic distance while pushing unconnected or unpaired nodes far apart.
+2.4. Hyperbolic Neural Networks
+Hyperbolic neural networks (HNNs) (Ganea et al., 2018; Shimizu et al., 2020) represent a generalization of traditional neural networks in hyperbolic space. The fundamental architecture of the HNN encompasses several components, including multinomial logistic regression (MLR), fully-connected (FC) layers, and recurrent neural networks (RNNs). For brevity, we mainly focus on the core module, namely FC layer, in this study. The corresponding hyperbolic FC is composed of a linear transformation and non-linear activation. Hyperbolic linear transformation begins with matrix multiplication, followed by bias translation. In general, this process can be achieved in the tangent space of origin (Ganea et al., 2018; Liu et al., 2019; Chami et al., 2019; Zhang et al., 2021b). Given a hyperbolic point x ∈ Hd, it is first projected to the tangent space of origin ToHd using the logarithmic map and multiplied by the
+weight matrix, W ∈ Rd′×d. Hyperbolic matrix multiplication is defined as, W ⊗κ x := expoκ(W logκ
+o(x)). For
+bias addition, let us use a bias b located at ToHd, parallel transport it to the hyperbolic point of interest, and map it to the manifold, x ⊕κ b := expκx(Poκ→x(b)). The nonlinear activation is also achieved at the tangent space, and for simplicity, we use hyperbolic origin, and it is given as,
+σ κ1 ,κ2
+H (x) := expoκ1 (σ(logκ2
+o (x))). Finally, given x ∈ Hd, the l-th hyperbolic neural network layer is formulated as:
+xl = σκl,κl−1
+H W ⊗κl−1 xl−1) ⊕κl−1 b , (2)
+where κl and κl−1 is the curvature at layer l and l − 1, respectively.
+3
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+...
+TREE-L (low homophily)
+STATS HDO ROOT 3.1 MIN 2.0 MEAN 3.3 MAX 5.5
+01234567
+0.00
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+0.14
+TREE-L(LP)
+STATS HDO ROOT 1.8 MIN 1.2 MEAN 2.8 MAX 4.3
+01234567
+0.00
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+0.14
+TREE-L(NC)
+TREE-H (high homophily)
+...
+...
+...
+STATS HDO ROOT 3.3 MIN 2.1 MEAN 3.4 MAX 4.5
+01234567
+0.00
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+0.14
+TREE-H(LP)
+STATS HDO ROOT 2.7 MIN 2.4 MEAN 3.7 MAX 5.2
+01234567
+0.00
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+0.14
+TREE-H(NC)
+Figure 2. Illustration of the structure of synthetic TREE-L/H (first column), and the corresponding distribution of HDO by HGCN on link prediction (LP) task (second column) and node classification (NC) (third column).
+2.5. Hyperbolic Graph Convolutional Neural Networks
+The cornerstone of Hyperbolic Graph Convolutional Neural Networks (HGCNs) is the execution of graph convolutions within the bounds of hyperbolic space. HGNNs employ the message passing scheme, including linear transformation, neighbors aggregation, and non-linear activation. The research presented in this paper is applicable to both of the aforementioned cases. Compared with the HNNs given by Equation (2), the HGCN layer has one neighborhood aggregation more. Let j ∈ N (i) be the neighbors of node i with self-loop, the hyperbolic neighborhood aggregation is
+given as, AGGκ(xi) := expκxr
+P
+j∈N (i) a ̃ij logκ
+xr (xj ) ,
+where xr is a reference point in hyperbolic space, which is set as the origin point for simplicity in this study, and a ̃ij is the normalized edge weights, which is computed either by an attention-based method (Chami et al., 2019), i.e.,  ̃aij = Softmaxj∈N (i)(MLP(logκ
+o(xi)|| logκ
+o(xj))) or by the symmetric normalized Laplacian matrix (Kipf &
+Welling, 2017; Liu et al., 2019), i.e.,  ̃aij = 1/
+q
+d ̃id ̃j, where
+the d ̃v denotes the degree of node v including the self-loop. Then, one HGNN layer is formulated as:
+xl
+i = σκl−1,κl
+H ( ̃hl
+i ),
+h ̃ l
+i = AGGκl−1 (hl
+i ),
+hl
+i = (Wl ⊗κl−1 xl−1
+i ) ⊕κl−1 bl.
+(3)
+3. Investigation
+3.1. Hyperbolic Distance to Origin (HDO)
+Before delving into the analysis of the tracking of embedding trajectory, it is imperative to introduce an essential tool for the investigation.
+The hyperbolic distance from a point x to the origin o (HDO, also referred to as the induced hyperbolic norm), dH(x, o), has found considerable usage as an interpretative post-hoc indicator, particularly for explicating the intricacies of embedding levels across diverse domains. For instance, in WordNet4 embedding, Nickel & Kiela (2017) employed the difference of embedding norms to define a score function for evaluating the effectiveness of Poincar ́e embedding in representing semantic relationships. In image embedding, Khrulkov et al. (2020) incorporated HDO as an uncertainty quantifier and found that hard-to-classify images are embedded near the hyperbolic origin, whereas easy-to-classify images are placed around the boundary of the Poincar ́e. Hard-to-classify images often encompass patterns from various categories, which are associated with high-level positions in the hierarchy. Conversely, the easy-to-classify images exhibit specific patterns, which are related to lowlevel positions in the hierarchy. A subsequent study by Sun et al. (2021a) leveraged HDO to analyze the alignment of hyperbolic user-item embeddings with popularity. Their analysis concluded that smaller HDO values were indicative of higher popularity levels. A higher popularity of a item means that the item is favored by a substantial users, with the most popular item functioning as a network hub or a tree root.
+In a k-regular tree, the number of nodes at level r proliferates exponentially, specifically, (k + 1)kr−1, and the number of nodes at levels less than or equal to r also follows a similar trend, specifically, ((k + 1)kr − 2)/(k − 1). This implies that the number of nodes escalates with the distance from the root of the tree. Analogously, in hyperbolic space, the area of a disc also expands exponentially with distance from the hyperbolic origin. Therefore, strategically placing
+4https://wordnet.princeton.edu/
+4
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+Algorithm 1 Hyperbolic Informed Embedding (HIE) 1: Input: (i) Input data X which can be either n general input samples X = {x1, · · · xn} or n nodes in a graph with adjacency matrix, i.e., X = {x1, · · · xn, A}; xi can be randomly sampled and trainable or pre-defined. (ii) Learning model F which is optionally parameterized by W; (iii) Hyperparameter λ > 0. 2: Output: Embeddings of n objects and optimal W. 3: Initialize input data X and learnable weight W (optional) of F; 4: Compute embedding Z ← F([W], X ); 5: if partial root-alignment then 6: Calculate task-specific loss: Ltask;
+7: Calculate root aligned embedding  ̄Z; 8: Calculate hyperbolic distance to origin loss:Lhyp; 9: Optimize with overall loss function: Ltask + λLhyp; 10: Return Z,W 11: end if
+12: if whole root-alignment then 13: Calculate root aligned embedding  ̄Z; 14: Calculate hyperbolic distance to origin loss:Lhyp; 15: Calculate task-specific loss: Ltask; 16: Optimize with overall loss function: Ltask + λLhyp;
+17: Return  ̄Z,W 18: end if
+the nodes of level r of a tree at a distance R (where R is proportionate to r) (Krioukov et al., 2010; 2009) from the hyperbolic origin results in a hierarchical embedding that captures the underlying tree-like structure. Building on this insight, in this study, we design a position tracking analysis by HDO. Besides, we also utilize it as a tool to guide representation learning in hyperbolic space.
+3.2. HDO Investigation
+Due to the lack of crucial geometric information, such as the root label, level information, and leaf nodes, in real-world graph datasets, we synthesized two pure-tree datasets. To ensure our findings do not lose generality, we created two types of trees with varying degrees of homophily5: TREE-H (homophily rate of 0.998) and TREE-L (homophily rate of 0.018). Detailed information regarding the construction of TREE-L and TREE-H can be found in Appendix B. We conduct an experimental evaluation of the HGCN on node classification and link prediction tasks and depict the distribution of the HDO for the node states in the final embedding layer as illustrated in Figure 2. It is noteworthy that other hyperbolic models have demonstrated comparable results. Furthermore, we provide essential statistics regarding HDO, such as the minimum (MIN), maximum (MAX),
+5Homophily is a metric used to differentiate assortative and disassortative graphs, as defined by (Pei et al., 2020).
+mean (MEAN), and HDO of the root node (ROOT), in the corresponding subfigures for the convenience of readers.
+It can be observed from the experimental results that in both cases, root nodes exhibit a large disparity with the minimum HDO (c.f., MIN and ROOT values). For instance, in the link prediction task, the ROOTs of TREE-L and TREE-H are 3.1 and 3.3, respectively, while the MINs are 2.0 and 2.1. Moreover, the distribution of HDO exhibits a more normal pattern. However, in trees, leaf nodes constitute the majority and are expected to be located farther from the origin, following a power-law distribution. Moreover, the nodes are not fully spreading, which can be inferred from the shape of the distribution and the gap between min, mean, and max HDO. It is worth noting that the hyperbolic space expands exponentially, with the area far from the origin being significantly more spacious and accommodating.
+Overall, the aforementioned investigation reveals the following: (1) The root node is not optimized to occupy or close to the highest level, potentially resulting in an inaccurate hierarchical structure; (2) The HDO of the learned embeddings is normally distributed, which inadequately captures the tree-like structure; (3) The overall embeddings are not maximally scattered, indicating that the model fails to fully leverage the expansive nature of the hyperbolic space. These limitations motivate us to reshape the optimization objective by explicitly incorporating root alignment and hierarchical stretching.
+4. Method
+To address the above problem, we proposed the HIE algorithm which is demonstrated in Algorithm 1. HIE can function both as a novel learning paradigm incorporating whole root-alignment settings, and as a flexible plug-in module by partial root-alignment. The core of HIE is highlighted in blue in Algorithm 1, and we provide further details in the following.
+As sketched in Figure 3, the intuition of our idea starts with identifying the root node of the overall data and aligning it with the origin of the hyperbolic space. Then we optimize each node away from the origin according to its level information. This not only facilitates the formation of the correct hierarchies but also makes full use of the hyperbolic space. However, there are two challenges to achieving this target: (i) Defining and locating the root node: Numerous indicators, such as centrality6, can describe a node’s role in the graph. However, these methods solely rely on the graph topology and overlook the node’s features. Additionally, some of these indicators are computationally expensive when dealing with large-scale graphs. Moreover, tree-like datasets often contain multiple subtrees or roots. (ii) Effi
+6https://en.wikipedia.org/wiki/Centrality
+5
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+Original Hierarchical Stretching
+Root Alignment
+Figure 3. Illustration of the basic idea of HIE, which can be decomposed into two critical steps: root alignment and level-aware stretching.
+ciently accessing level information and guiding hierarchical learning: This hierarchical information is rarely on hand in real-world scenarios and is labor-consuming to label in the large-scale dataset.
+(1) To address the first challenge, we propose utilizing the hyperbolic embedding center (HC) as the root node and making an alignment with the hyperbolic origin. HC is computed through a manifold-specific method and serves as the optimal solution for minimizing the sum of squared distances with all nodes, as outlined by Theorem 4.1. This conforms to the characteristics of the root node in a regular tree, that is, the node with the smallest sum of distances to other nodes.
+Remark. Utilizing the HC as the root node presents several key advantages: (i) Computation of the HC is relatively straightforward, eliminating the need for extensive topology search. The computational cost is O(|V |), or even O(1) when utilizing parallel computing with a GPU, which is significantly more efficient than other centrality computations; (ii) The HC is derived from hyperbolic embeddings, which encode both structural and feature information. It effectively handles scenarios with multiple root nodes since the HC always represents a unique point that can be seen as a supernode connecting all subtrees; (iii) HC can be adjusted adaptively according to downstream tasks during the learning process.
+Let Z be the final layer embedding matrix consisting of n hyperbolic node vectors (z1, · · · , zi, · · · , zn) where zi ∈ Hdκ and let vi denote the weight assigned to zi. The function fc is used for computing the weighted center, and zc represents this center, which is computed as: zc = fc({zi, vi|i ∈ V }), where fc is detailed in Appendix C. Following this, we employ the root alignment strategy as defined in Equation (4).
+(2) To address the second challenge, we propose a hierarchical stretching of the nodes by leveraging the HDO, which serves as a means of encapsulating implicit hierarchical information, as discussed in Section (3.1). Specifically, by aligning the hyperbolic embedding center (i.e., the root node) with the origin of the hyperbolic space, the HDO more accurately reflects the relative distance of a node to the root node, thus indicating its hierarchical level, which is given by Equation (5). For implicitly hierarchical stretching, it is
+Table 1. Comparisons of shallow models for link prediction task on DISEASE. The first and second rows correspond to the AUC and AP metrics, respectively.
+Link 75%Training Links 25%Training Links Dim 8 64 256 8 64 256
+Euclidean 61.1 ± 2.4 72.2 ± 0.5 73.5 ± 0.4 53.5 ± 0.2 54.3 ± 0.3 54.1 ± 0.2 Hyperbolic 65.2 ± 3.2 74.9 ± 0.4 77.0 ± 0.3 52.9 ± 0.5 53.7 ± 0.5 55.0 ± 0.4 Ours 72.0 ± 0.9 80.7 ± 0.4 82.5 ± 0.2 58.1 ± 1.1 63.9 ± 0.4 66.8 ± 0.4 ∆(%) +10.4 +7.7 +7.1 +8.6 +17.7 +21.4
+Euclidean 58.7 ± 1.3 69.7 ± 0.5 71.4 ± 0.7 52.2 ± 0.2 52.8 ± 0.6 52.3 ± 0.1 Hyperbolic 62.3 ± 2.7 71.3 ± 0.7 72.7 ± 0.4 51.9 ± 0.7 52.4 ± 0.8 54.1 ± 0.7 Ours 66.6 ± 1.0 75.0 ± 0.4 76.4 ± 0.3 56.1 ± 1.0 62.6 ± 0.6 65.2 ± 0.6 ∆(%) +6.9 +5.2 +5.0 +7.4 +18.7 +20.4
+incorporated into the loss function (6).
+ ̄z = z ⊕κ (−zc), (root alignment) (4)
+zhdo = 1
+|V |
+X
+i∈V
+widH( ̄zi, o), (HDO computation) (5)
+Lhyp = σ(−zhdo), (stretching) (6)
+where in Equation (4), ⊕κ denotes the hyperbolic addition operation and its mathematical expressions is provided in Appendix C; In Equaiton (5), wi indicates the node level in hyperbolic space which is obtained from the HDO (wi := f (dH(z ̄i, o))) and f is monotonically increasing function, such as linear function, tanh, sigmoid, etc, we use identity function for simplicity; In Equation (6), the stretching is achieved by minimizing Lhyp with monotonically increasing function σ (linear function, tanh, exp, etc).
+Remark. By minimizing the above loss function, the highlevel nodes that are close to the origin will be placed with small weights so that they will not push away; the low-level nodes that are far away from the origin will be given large weights so that they can arrive at a correct position. In this approach, we optimize by promoting nodes to move away from the origin rather than close to the origin, primarily because the capacity of hyperbolic space increases exponentially, and regions further from the origin bend more, thereby providing more embedding space.
+In the field of hyperbolic learning, a common approach is to model data in the tangent space at the origin of the hyperbolic space. Thus, we introduce an extension to the HIE model, referred to as the tangent-version HIE7. Suppose we have the tangential embedding zT , then we have the Equation (7)(8)(9).
+z ̄T = zT − zT
+c (root alignment) (7)
+zT
+hdo := 1
+|V |
+X
+i∈V
+wid( ̄zT
+i , oT ) (HDO computation) (8)
+Lhyp = σ(−zT
+hdo) (stretching) (9)
+7Experimental studies demonstrate that both the tangent version and hyperbolic version exhibit comparable outcomes.
+6
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+Table 2. Comparisons of the different neural networks on node classification tasks. δ(DISEASE) is 1.0 and δ(CITESEER) is 2.5.
+Dataset Dim MLP HNN HNN++ Ours ∆(%)
+DISEASE
+8 23.5 ± 23.7 46.6 ± 12.6 59.1 ± 9.5 65.6 ± 6.6 +11.0 64 63.3 ± 7.8 68.4 ± 4.4 67.4 ± 2.0 78.4 ± 0.7 +14.6 256 70.9 ± 3.5 75.1 ± 2.8 76.1 ± 5.7 77.3 ± 0.9 +1.60
+CITESEER
+8 53.6 ± 1.8 52.5 ± 1.6 48.0 ± 3.9 63.7 ± 2.1 +18.8 64 59.0 ± 0.7 57.2 ± 0.7 59.1 ± 1.1 67.0 ± 1.0 +13.4 256 59.1 ± 0.7 58.2 ± 0.9 60.2 ± 1.0 68.2 ± 0.5 +13.3
+where zcT := 1
+|V |
+P
+i∈V zT
+i denotes the center of the
+tangential embedding, and wi derived from d( ̄zi, o) and we use identity function for simplicity, which signifies the Euclidean distance. The symbol σ represents a monotonically increasing function such as linear function, tanh, sigmoid, etc. Similarly, the hyperbolic tangent embedding center is the optimal solution for minimizing the weighted sum of squared distance with all nodes in the tangent spaces, as described in Theorem 4.2.
+Theorem 4.1. Given the node embedding z ∈ Hd of a graph G = {V, E}, the hyperbolic embedding center zc ∈ Hd is a solution of the minimization problem of the sum of weighted squared hyperbolic distance with all nodes in graph G, which is expressed as follows:
+zc = min
+za ∈Hd,κ
+X
+i∈V
+vid2
+H(zi, za), (10)
+where za is any point in the manifold, and the embedding center includes M ̈obius gyromidpoint in Poincar ́e ball model, weighted centroid in the Lorentz model.
+Theorem 4.2. Given the node embedding z ∈ Hd of a graph G = {V, E}, the hyperbolic tangent embedding center zcT ∈ ToHd is a solution of the minimization problem of the sum of weighted squared distance with all nodes in graph G at the tangent space ToHd, which is expressed as follows:
+zT
+c = min
+zaT ∈ToHd,κ
+X
+i∈V
+vid2(zT
+i , zT
+a ), (11)
+where zaT is any point in the tangent space of the manifold.
+Note that the proposed method can be implemented in two ways: one is a hard operation, which involves replacing the all original embeddings, and the other is generating the desired update gradients by implementing it partially in the Lhyp loss function as illustrated in Algorithm 1. After conducting extensive experiments, we have found that both approaches yield comparable results. In the following section, for a better visualization comparison, we mainly report the results obtained using the partially root-alignment setting.
+5. Experiments
+5.1. Experimental Settings
+Datasets. In terms of experimental datasets, we perform evaluations on four public available datasets, namely DISEASE, AIRPORT, CORA, CITESEER and. For more details about these datasets, please refer to Appendix F.1. Experimental Setups. To ensure fairness, we employed the same data split for all comparison models in each experiment. The averaged results and standard deviation presented in these tables were computed from 12 runs, with the maximum and minimum values removed. The experiments were executed with the PyTorch (Paszke et al., 2017) on the NVIDIA GPUs using Adam (Kingma & Ba, 2014) or Riemannian Adam (B ́ecigneul & Ganea, 2018) optimizer. Due to the page limitation, we only list key findings here. Additional details regarding the experimental settings and results can be found in Appendix F.2, G and H.1.
+5.2. Experiments on Shallow Models
+The shallow models optimize node embeddings as learnable parameters. In line with prior research, we mainly evaluate their generalization capability on tree-structured graphs through link prediction tasks. To comprehensively ascertain the effectiveness of the proposed method, we conduct a thorough experimental evaluation across a diverse range of training settings. Specifically, the training edge ratio is varied at 75% and 25%. Intuitively, as the amount of available structure information is reduced, abstracting the intrinsic hierarchical structure becomes increasingly challenging.
+We conduct a comparative evaluation between the Euclidean shallow model and the hyperbolic shallow model (based on the Poincar ́e ball). The experimental results on AUC and AP metrics are presented in Table 1. The findings from the results are as follows: The hyperbolic shallow models (including Poincare ́ and ours) demonstrate a distinct advantage over their Euclidean counterparts in most cases. However, as the amount of supervision information decreases, i.e., by reducing the training link ratio to 25%, the performance of the conventional hyperbolic model deteriorates dramatically and even falls below that of the Euclidean model. This is understandable, as the model faces a more arduous task in perceiving the overall structure of the tree-like data when the number of known links is limited. On the contrary, our proposed method, with implicit hierarchical learning, effectively addresses this challenge and produces a substantial improvement, with the maximum enhancement reaching 21.4%.
+5.3. Experiments on HNNs
+HNNs utilize the feature of nodes instead of the topology information for graph learning, so here we carry out the
+7
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+Table 3. Comparisons on graph neural networks in Euclidean and hyperbolic space
+Dataset DISEASE (δ = 0.0) AIRPORT (δ = 1.0) CITESEER (δ = 2.5) CORA (δ = 11.0)
+Dim 8 64 256 8 64 256 8 64 256 8 64 256
+SGC 70.6 ± 6.3 77.4 ± 0.5 78.7 ± 0.4 71.9 ± 1.5 83.3 ± 1.4 81.9 ± 0.7 70.1 ± 0.6 72.2 ± 0.4 72.2 ± 0.4 80.2 ± 0.8 82.2 ± 0.5 81.9 ± 0.5 SAGE 66.5 ± 8.2 71.3 ± 5.3 72.0 ± 4.1 75.4 ± 1.1 87.1 ± 1.6 85.2 ± 1.7 71.0 ± 0.8 70.0 ± 0.8 70.9 ± 0.8 81.0 ± 0.8 80.5 ± 0.6 80.4 ± 0.6 GCN 76.5 ± 2.9 77.7 ± 1.3 78.8 ± 1.5 71.2 ± 1.8 85.2 ± 0.5 84.1 ± 0.6 69.6 ± 0.3 70.9 ± 0.5 71.0 ± 0.5 81.4 ± 0.6 81.9 ± 0.3 82.0 ± 0.2 GAT 76.8 ± 1.2 78.7 ± 1.5 80.2 ± 2.0 73.7 ± 1.5 87.5 ± 0.4 90.4 ± 1.2 69.8 ± 0.3 72.0 ± 0.4 71.7 ± 0.5 81.5 ± 0.4 82.9 ± 0.3 83.0 ± 0.3 LGCN 86.6 ± 0.7 87.1 ± 0.8 88.2 ± 0.5 88.2 ± 1.7 91.8 ± 1.3 92.4 ± 0.3 66.8 ± 0.7 69.3 ± 0.8 70.5 ± 0.5 78.0 ± 2.0 81.2 ± 1.0 81.3 ± 0.7 HGCN 86.0 ± 3.2 90.6 ± 1.2 92.2 ± 1.8 89.8 ± 1.2 94.0 ± 0.6 94.1 ± 0.5 65.6 ± 1.5 67.6 ± 0.4 67.6 ± 0.7 78.2 ± 0.6 78.5 ± 0.6 79.1 ± 0.4
+Ours 94.4 ± 0.6 95.0 ± 0.8 95.4 ± 0.8 89.8 ± 1.1 94.1 ± 0.8 94.7 ± 0.4 72.5 ± 1.1 74.1 ± 0.3 74.2 ± 0.3 81.8 ± 0.6 83.0 ± 0.3 83.0 ± 0.2
+STATS HGCN Ours ROOT 5.3 3.5 MIN 2.2 3.4 MEAN 5.7 6.0 MAX 6.2 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Disease_nc
+HGCN Ours
+STATS HGCN Ours ROOT 3.0 2.6 MIN 1.9 3.0 MEAN 4.6 5.8 MAX 5.9 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Airport
+HGCN Ours
+STATS HGCN Ours ROOT 4.5 3.4 MIN 4.4 4.3 MEAN 4.7 5.8 MAX 5.5 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Citeseer
+HGCN Ours
+STATS HGCN Ours ROOT 2.5 3.6 MIN 2.4 4.0 MEAN 2.7 5.6 MAX 3.8 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Cora
+HGCN Ours
+Figure 4. Illustration HDO distribution on DISEASE, AIRPORT, CITESEER and CORA where x-axis denotes the value of HDO and y-axis is the corresponding ratio. For a complete comparison, please refer to Appendix H.1. Here the Root denotes HC.
+task of node classification. For model comparisons, we include Euclidean MLP, HNN (Ganea et al., 2018), and HNN++ (Shimizu et al., 2020). Compared with HNN, HNN++ reduces the number of parameters, so it is more lightweight. Our work is built upon HNN other than HNN++ with the following consideration: without any additions or reductions to the original model, the effectiveness of the proposed method could be more clear. But note that the proposed method is also applicable to HNN++. In this section, we assess the performance of our proposed model on two datasets: DISEASE with low hyperbolicity and CITESEER with high hyperbolicity. Hyperbolicity, a metric from graph theory, quantifies the tree-like structure of a network; lower values indicate a more tree-like structure. By analyzing the performance across datasets of varying hyperbolicity, we establish the robustness and generalizability of our model.
+As shown in Table 2, we notice that hyperbolic models are more prominent in low-hyperbolicity tree-like data, i.e., DISEASE, but is poorer in general graph data, like CITESEER and even perform lower than the Euclidean model. Although the modified HNN++ improves the performance of the HNN model to a certain extent, its gains are modest. In contrast, our method has a significant improvement over the original HNN model, regardless of the low or high hyperbolicity graphs. In addition to being able to extract the underlying hierarchical structure of the data, the hyperbolic space has a larger room for embedding than the Euclidean space. The improvement of the proposed method on a highhyperbolicity graph is mainly from the stretching operation where the nodes are fully expanded in the hyperbolic space and have nice separability.
+5.4. Experiments on HGNNs
+For model comparisons, we compare our proposed method against (1) four Euclidean GCN models, i.e., GCN (Kipf & Welling, 2017), Graph Attention Networks (GAT) (Velicˇkovic ́ et al., 2018), SGC (Wu et al., 2019) and SAGE (Hamilton et al., 2017); and (2) two prominent hyperbolic GCN model, i.e., HGCN (Chami et al., 2019) and LGCN (Zhang et al., 2021b), we take two different aggregation methods as described in Section 2.5 and report the best results of them. Our method is built upon the original model, HGCN. To ensure fairness, we adhered to the parameters and experimental strategies outlined in the original papers of all baselines and conducted extensive experiments in a consistent environment. Following the literature, we test on node classification task and report the F1-score for DISEASE and AIRPORT datasets and accuracy for the others.
+The experimental results are reported in Table 3. As observed, the proposed method consistently outperforms strong hyperbolic baselines HGCN and LGCN, which demonstrates the effectiveness of the proposed method. We further dig into the details and have the following observations: (1) The performance of baselines varies along embedding dimensions. With the proposed HIE, the hyperbolic model outperforms the baselines, especially achieving remarkable gains on CITESEER, and DISEASE. (2) As noted, the improvement on AIRPORT is relatively small. A possible explanation for this is that AIRPORT is well hierarchically organized. The original hyperbolic models have already successfully learned the proper embeddings, and the improvement is limited. Nonetheless, the proposal pushes the accuracy to a new level and obtains state-of-the-art performance.
+8
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+Table 4. Ablation Study of HIE
+Dataset HGCN w/ Stretching w/ Alignment Ours
+DISEASE 90.6 ± 1.2 89.4 ± 2.5 94.5 ± 0.6 95.0 ± 0.8 AIRPORT 94.0 ± 0.6 93.6 ± 0.9 93.6 ± 0.3 94.1 ± 0.8 CITESEER 67.6 ± 0.4 68.5 ± 0.6 66.7 ± 0.9 74.1 ± 0.3 CORA 78.5 ± 0.6 81.5 ± 0.5 77.5 ± 1.0 83.0 ± 0.3
+5.5. Analysis and Discussion
+Visualization of HDO Distribution. We conduct a thorough analysis of the changes in HDO between the original HGCN and our proposed method. To provide a clear comparison with the baselines, we implement root centering in the loss function without altering the original node embeddings directly. The results presented in Figure 4 reveal that our method results in an increase in the mean HDO value, indicating that the node spreads more in the hyperbolic space. Additionally, it is observed that the shape of the HDO distribution has undergone a transformation, with a notable increase in the proportion of tail nodes, resulting in a more long-tailed distribution that better captures the tree-like or scale-free structure of the data. Furthermore, the root node (i.e., HC) is optimized to close the highest position (i.e., min HDO), demonstrating higher preservation of hierarchy.
+Ablation Study of HIE. HIE contains two steps: root alignment and level-aware stretching. In the following, we perform the decoupling analysis by decomposing HIE into the corresponding two components. The experimental results are summarized in Table 4. Unsurprisingly, the performance decreases by different degrees if we remove each component. With only level-aware stretching, the performance of HIE barely satisfies and even degrades on low hyperbolicity datasets such as DISEASE and AIRPORT. It is consistent with the expectation that merely stretching without aligning the root to the origin will lead to an incorrect hierarchy and large distortions for a highly tree-like dataset. Equipped with only alignment, on the other hand, the HIE has witnessed apparent improvement on DISEASE but some declines on CORA or CITESEER. It is because alignment will arrange embeddings to the area near the origin, which is much more cramped than that close to the boundary.
+Effectiveness of HC. Previously, we proposed the utilization of HC as the root node. For graph data, there exist numerous indicators to define the significance of nodes, such as degree centrality (DC), betweenness centrality (BC), and closeness centrality (CC). The definitions and computation equations of these metrics can be found in Appendix E. We implement these centralities HGCN and evaluate their performance in the context of node classification. As shown in Table 5, the experimental results reveal that alternative metrics do not exhibit the same effectiveness as HC. This is probably because these metrics only take into account topological information to determine the weight of the most prominent nodes while neglecting the role of node
+Table 5. Comparisons with different centralities
+Dataset BC CC DC HC(Ours)
+DISEASE 85.0 ± 2.9 81.6 ± 3.2 85.0 ± 2.9 95.0 ± 0.8 AIRPORT 93.4 ± 0.6 94.0 ± 0.5 93.3 ± 0.5 94.1 ± 0.8 CITESEER 66.8 ± 0.7 66.5 ± 0.4 67.3 ± 0.5 74.1 ± 0.3 CORA 81.3 ± 0.4 81.3 ± 0.4 81.3 ± 0.4 83.0 ± 0.3
+features. Moreover, the computational complexity of calculating these centralities is high, whereas HC is relatively computationally efficient.
+Discussion with Non-Hyperbolic Methods. When addressing the modeling of trees, it is important to note that the scope is not limited to hyperbolic models, such as the ones presented in the works by Sonthalia et al. (Sonthalia & Gilbert, 2020), Abraham et al. (Abraham et al., 2007), Chepoi et al. (Chepoi et al., 2008), and Saitou et al. (Saitou & Nei, 1987). One cannot ignore the fact that they primarily focus on the topological structure of the graph, while neglecting the features that the objects carry. Despite this limitation, these methods can serve as an excellent start point for enhancing the learning of hyperbolic models. Furthermore, they can be seamlessly integrated into the proposed method, thus leveraging their strengths while addressing the need to consider the object features.
+6. Conclusion
+In this work, we first investigated the hierarchical representation ability of the currently popular hyperbolic models, including hyperbolic shallow models, HNNs, and HGNNs. The results indicate that the current hyperbolic models fail to obtain desired hierarchical embeddings. With the proposed method, HIE, the hyperbolic representation ability has been substantially improved. More importantly, the proposed method does not introduce additional model parameters or change the original architecture. Considering the fact that our proposed method is task- and model-agnostic to be readily applied in various scenarios, we believe that our research holds significant ramifications for the field of hyperbolic representation learning. In future work, we will investigate the embedding in more expressive manifolds (Gu et al., 2019; Xiong et al., 2022b; 2023; 2021; Bachmann et al., 2020) and explore contrastive learning (Zhang et al., 2022a;b; Liu et al., 2022) to enhance the hierarchical learning.
+Acknowledgements
+We express gratitude to the anonymous reviewers and area chairs for their valuable comments and suggestions. This work was partly supported by grants from the National Key Research and Development Program of China (No. 2018AAA0100204) and the Research Grants Council of the Hong Kong Special Administrative Region, China (CUHK 14222922, RGC GRF, No. 2151185).
+9
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+References
+Abraham, I., Balakrishnan, M., Kuhn, F., Malkhi, D., Ramasubramanian, V., and Talwar, K. Reconstructing approximate tree metrics. In Proceedings of the twenty-sixth annual ACM symposium on Principles of distributed computing, pp. 43–52, 2007.
+Adcock, A. B., Sullivan, B. D., and Mahoney, M. W. Treelike structure in large social and information networks. In IEEE International Conference on Data Mining, pp. 1–10. IEEE, 2013.
+Anderson, R. M., Anderson, B., and May, R. M. Infectious diseases of humans: dynamics and control. Oxford university press, 1992.
+Atigh, M. G., Schoep, J., Acar, E., van Noord, N., and Mettes, P. Hyperbolic image segmentation. In IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 4453–4462, 2022.
+Bachmann, G., B ́ecigneul, G., and Ganea, O. Constant curvature graph convolutional networks. In International Conference on Machine Learning, pp. 486–496. PMLR, 2020.
+Bai, Q., Guo, J., Zhang, H., Nie, C., Zhang, L., and Yuan, X. H2tne: Temporal heterogeneous information network embedding in hyperbolic spaces. In International Semantic Web Conference, pp. 179–195, 2022.
+Bai, Q., Nie, C., Zhang, H., Zhao, D., and Yuan, X. Hgwavenet: A hyperbolic graph neural network for temporal link prediction. arXiv preprint arXiv:2304.07302, 2023.
+Bai, Y., Ying, Z., Ren, H., and Leskovec, J. Modeling heterogeneous hierarchies with relation-specific hyperbolic cones. Advances in Neural Information Processing Systems, 34:12316–12327, 2021.
+B ́ecigneul, G. and Ganea, O.-E. Riemannian adaptive optimization methods. arXiv preprint arXiv:1810.00760, 2018.
+Chami, I., Ying, Z., R ́e, C., and Leskovec, J. Hyperbolic graph convolutional neural networks. In Advances in Neural Information Processing Systems, pp. 4868–4879, 2019.
+Chami, I., Wolf, A., Juan, D.-C., Sala, F., Ravi, S., and R ́e, C. Low-dimensional hyperbolic knowledge graph embeddings. In Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics, pp. 6901–6914, 2020.
+Chen, Y., Yang, M., Zhang, Y., Zhao, M., Meng, Z., Hao, J., and King, I. Modeling scale-free graphs with hyperbolic geometry for knowledge-aware recommendation. In
+ACM International Conference on Web Search and Data Mining, pp. 94–102, 2022.
+Chepoi, V., Dragan, F., Estellon, B., Habib, M., and Vax`es, Y. Diameters, centers, and approximating trees of deltahyperbolicgeodesic spaces and graphs. In Proceedings of the twenty-fourth annual symposium on Computational geometry, pp. 59–68, 2008.
+Cormen, T. H., Leiserson, C. E., Rivest, R. L., and Stein, C. Introduction to algorithms. MIT press, 2022.
+Ganea, O., B ́ecigneul, G., and Hofmann, T. Hyperbolic neural networks. In Advances in Neural Information Processing Systems, pp. 5345–5355, 2018.
+Gu, A., Sala, F., Gunel, B., and R ́e, C. Learning mixedcurvature representations in product spaces. In International Conference on Learning Representations, 2019.
+Gulcehre, C., Denil, M., Malinowski, M., Razavi, A., Pascanu, R., Hermann, K. M., Battaglia, P., Bapst, V., Raposo, D., Santoro, A., et al. Hyperbolic attention networks. In International Conference on Learning Representations, 2019.
+Hamilton, W. L., Ying, R., and Leskovec, J. Inductive representation learning on large graphs. In Advances in Neural Information Processing Systems, pp. 1025–1035, 2017.
+Hsu, J., Gu, J., Wu, G., Chiu, W., and Yeung, S. Capturing implicit hierarchical structure in 3d biomedical images with self-supervised hyperbolic representations. Advances in Neural Information Processing Systems, 34: 5112–5123, 2021.
+Khrulkov, V., Mirvakhabova, L., Ustinova, E., Oseledets, I., and Lempitsky, V. Hyperbolic image embeddings. In IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 6418–6428, 2020.
+Kingma, D. P. and Ba, J. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980, 2014.
+Kipf, T. N. and Welling, M. Semi-supervised classification with graph convolutional networks. In International Conference on Learning Representations, 2017.
+Krioukov, D., Papadopoulos, F., Vahdat, A., and Bogun ́a, M. Curvature and temperature of complex networks. Physical Review E, 80(3):035101, 2009.
+Krioukov, D., Papadopoulos, F., Kitsak, M., Vahdat, A., and Bogun ́a, M. Hyperbolic geometry of complex networks. Physical Review E, 82(3):036106, 2010.
+10
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+Law, M., Liao, R., Snell, J., and Zemel, R. Lorentzian distance learning for hyperbolic representations. In International Conference on Machine Learning, pp. 3672–3681. PMLR, 2019.
+Lee, J. M. Riemannian manifolds: an introduction to curvature, volume 176. Springer Science & Business Media, 2006.
+Lee, J. M. Smooth manifolds. In Introduction to Smooth Manifolds, pp. 1–31. Springer, 2013.
+Li, B., Zhou, M., Zhang, S., Yang, M., Lian, D., and Huang, Z. BSAL: A framework of bi-component structure and attribute learning for link prediction. arXiv preprint arXiv:2204.09508, 2022.
+Liu, J., Yang, M., Zhou, M., Feng, S., and Fournier-Viger, P. Enhancing hyperbolic graph embeddings via contrastive learning. arXiv preprint arXiv:2201.08554, 2022.
+Liu, Q., Nickel, M., and Kiela, D. Hyperbolic graph neural networks. In Advances in Neural Information Processing Systems, pp. 8230–8241, 2019.
+Mettes, P., Atigh, M. G., Keller-Ressel, M., Gu, J., and Yeung, S. Hyperbolic deep learning in computer vision: A survey. arXiv preprint arXiv:2305.06611, 2023.
+Nickel, M. and Kiela, D. Poincar ́e embeddings for learning hierarchical representations. In Advances in Neural Information Processing Systems, pp. 6338–6347, 2017.
+Nickel, M. and Kiela, D. Learning continuous hierarchies in the lorentz model of hyperbolic geometry. In International Conference on Machine Learning, pp. 3779–3788, 2018.
+Paszke, A., Gross, S., Chintala, S., Chanan, G., Yang, E., DeVito, Z., Lin, Z., Desmaison, A., Antiga, L., and Lerer, A. Automatic differentiation in pytorch. 2017.
+Pei, H., Wei, B., Chang, K. C.-C., Lei, Y., and Yang, B. Geom-gcn: Geometric graph convolutional networks. arXiv preprint arXiv:2002.05287, 2020.
+Peng, W., Varanka, T., Mostafa, A., Shi, H., and Zhao, G. Hyperbolic deep neural networks: A survey. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2021.
+Saberi, M., Khosrowabadi, R., Khatibi, A., Misic, B., and Jafari, G. Topological impact of negative links on the stability of resting-state brain network. Scientific reports, 11(1):1–14, 2021.
+Saitou, N. and Nei, M. The neighbor-joining method: a new method for reconstructing phylogenetic trees. Molecular biology and evolution, 4(4):406–425, 1987.
+Sala, F., De Sa, C., Gu, A., and Re, C. Representation tradeoffs for hyperbolic embeddings. In International Conference on Machine Learning, pp. 4460–4469, 2018.
+Sarkar, R. Low distortion delaunay embedding of trees in hyperbolic plane. In International Symposium on Graph Drawing, pp. 355–366. Springer, 2011.
+Shimizu, R., Mukuta, Y., and Harada, T. Hyperbolic neural networks++. arXiv preprint arXiv:2006.08210, 2020.
+Sonthalia, R. and Gilbert, A. Tree! i am no tree! i am a low dimensional hyperbolic embedding. Advances in Neural Information Processing Systems, 33:845–856, 2020.
+Spivak, M. A comprehensive introduction to differential geometry. Bull. Amer. Math. Soc, 79:303–306, 1973.
+Sun, J., Cheng, Z., Zuberi, S., P ́erez, F., and Volkovs, M. Hgcf: Hyperbolic graph convolution networks for collaborative filtering. In Proceedings of the Web Conference, pp. 593–601, 2021a.
+Sun, L., Zhang, Z., Zhang, J., Wang, F., Peng, H., Su, S., and Philip, S. Y. Hyperbolic variational graph neural network for modeling dynamic graphs. In Proceedings of the AAAI Conference on Artificial Intelligence, volume 35, pp. 4375–4383, 2021b.
+Sun, Z., Chen, M., Hu, W., Wang, C., Dai, J., and Zhang, W. Knowledge association with hyperbolic knowledge graph embeddings. arXiv preprint arXiv:2010.02162, 2020.
+Suzuki, A., Nitanda, A., Wang, J., Xu, L., Yamanishi, K., and Cavazza, M. Generalization error bound for hyperbolic ordinal embedding. In International Conference on Machine Learning, pp. 10011–10021. PMLR, 2021a.
+Suzuki, A., Nitanda, A., Xu, L., Yamanishi, K., Cavazza, M., et al. Generalization bounds for graph embedding using negative sampling: Linear vs hyperbolic. Advances in Neural Information Processing Systems, 34:1243–1255, 2021b.
+Ungar, A. A. A gyrovector space approach to hyperbolic geometry. Synthesis Lectures on Mathematics and Statistics, 1(1):1–194, 2008.
+Ungar, A. A. et al. The hyperbolic square and mobius transformations. Banach Journal of Mathematical Analysis, 1 (1):101–116, 2007.
+van den Heuvel, M. P. and Sporns, O. Network hubs in the human brain. Trends in cognitive sciences, 17(12): 683–696, 2013.
+Veliˇckovi ́c, P., Cucurull, G., Casanova, A., Romero, A., Li`o, P., and Bengio, Y. Graph attention networks. In International Conference on Learning Representations, 2018.
+11
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+Vinh Tran, L., Tay, Y., Zhang, S., Cong, G., and Li, X. HyperML: A boosting metric learning approach in hyperbolic space for recommender systems. In ACM International Conference on Web Search and Data Mining, pp. 609–617, New York, NY, USA, 2020.
+Vyas, A., Choudhary, N., Khatir, M., and Reddy, C. K. Graphzoo: A development toolkit for graph neural networks with hyperbolic geometries. In Proceedings of the Companion Proceedings of the Web Conference, Lyon, France, pp. 25–29, 2022.
+Wang, H., Lian, D., Tong, H., Liu, Q., Huang, Z., and Chen, E. Hypersorec: Exploiting hyperbolic user and item representations with multiple aspects for social-aware recommendation. TOIS, pp. 1–28, 2021.
+Wu, F., Souza, A., Zhang, T., Fifty, C., Yu, T., and Weinberger, K. Simplifying graph convolutional networks. In International Conference on Machine Learning, pp. 6861–6871. PMLR, 2019.
+Xiong, B., Zhu, S., Potyka, N., Pan, S., Zhou, C., and Staab, S. Pseudo-riemannian graph convolutional networks. arXiv preprint arXiv:2106.03134, 2021.
+Xiong, B., Cochez, M., Nayyeri, M., and Staab, S. Hyperbolic embedding inference for structured multi-label prediction. In Proceedings of the 36th Conference on Neural Information Processing Systems, 2022a.
+Xiong, B., Zhu, S., Nayyeri, M., Xu, C., Pan, S., Zhou, C., and Staab, S. Ultrahyperbolic knowledge graph embeddings. In Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining, pp. 2130–2139, 2022b.
+Xiong, B., Nayyeri, M., Jin, M., He, Y., Cochez, M., Pan, S., and Staab, S. Geometric relational embeddings: A survey. arXiv preprint arXiv:2304.11949, 2023.
+Yang, H., Chen, H., Li, L., Yu, P. S., and Xu, G. Hyper meta-path contrastive learning for multi-behavior recommendation. arXiv preprint arXiv:2109.02859, 2021a.
+Yang, M., Meng, Z., and King, I. Featurenorm: L2 feature normalization for dynamic graph embedding. In 2020 IEEE International Conference on Data Mining, pp. 731740. IEEE, 2020.
+Yang, M., Zhou, M., Kalander, M., Huang, Z., and King, I. Discrete-time temporal network embedding via implicit hierarchical learning in hyperbolic space. In Proceedings of the ACM SIGKDD Conference on Knowledge Discovery and Data Mining, pp. 1975–1985, 2021b.
+Yang, M., Li, Z., Zhou, M., Liu, J., and King, I. HICF: Hyperbolic informative collaborative filtering. In Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining, pp. 2212–2221, 2022a.
+Yang, M., Zhou, M., Li, Z., Liu, J., Pan, L., Xiong, H., and King, I. Hyperbolic graph neural networks: A review of methods and applications. arXiv preprint arXiv:2202.13852, 2022b.
+Yang, M., Zhou, M., Liu, J., Lian, D., and King, I. HRCF: Enhancing collaborative filtering via hyperbolic geometric regularization. In Proceedings of the Web Conference, 2022c.
+Yang, M., Zhou, M., Pan, L., and King, I. Hyperbolic curvature graph neural network. arXiv preprint arXiv:2212.01793, 2022d.
+Zhang, J., Shi, X., Zhao, S., and King, I. Star-gcn: Stacked and reconstructed graph convolutional networks for recommender systems. arXiv preprint arXiv:1905.13129, 2019.
+Zhang, R., Khan, A. A., and Grossman, R. L. Evaluation of hyperbolic attention in histopathology images. In BIBE, pp. 773–776, 2020. doi: 10.1109/BIBE50027. 2020.00131.
+Zhang, Y., Wang, X., Shi, C., Jiang, X., and Ye, Y. F. Hyperbolic graph attention network. IEEE Transactions on Big Data, 2021a.
+Zhang, Y., Wang, X., Shi, C., Liu, N., and Song, G. Lorentzian graph convolutional networks. In Proceedings of the Web Conference, pp. 1249–1261, 2021b.
+Zhang, Y., Zhu, H., Song, Z., Koniusz, P., and King, I. COSTA: Covariance-preserving feature augmentation for graph contrastive learning. In Proceedings of the ACM SIGKDD Conference on Knowledge Discovery and Data Mining, pp. 2524–2534, 2022a.
+Zhang, Y., Zhu, H., Song, Z., Koniusz, P., and King, I. Spectral feature augmentation for graph contrastive learning and beyond. arXiv preprint arXiv:2212.01026, 2022b.
+Zhou, M., Li, B., Yang, M., and Pan, L. Telegraph: A benchmark dataset for hierarchical link prediction. arXiv preprint arXiv:2204.07703, 2022a.
+Zhou, M., Yang, M., Pan, L., and King, I. Hyperbolic graph representation learning: A tutorial. arXiv preprint arXiv:2211.04050, 2022b.
+12
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+Appendix
+A. Riemannian Geometry
+In this section, we present the details about the concepts mentioned in the work, i.e., geodesics, distance function, maps and parallel transport of a Riemannian geometry (M, g) and summarize the formula of hyperbolic space used in the study.
+Geodesics and Distance Function. For a curve γ : [α, β] → M, the length of γ, called geodesics, is defined as L(γ) = R β
+α ∥γ′(t)∥gdt. Then the distance of u, v ∈ M is given by dM(u, v) = inf L(γ) where γ is a curve that γ(α) = u, γ(β) = v.
+Maps and Parallel Transport. With assuming the manifolds are smooth, i.e. the maps are diffeomorphic, the map defines the projection between the manifold and the tangent space. For a point x ∈ M and a vector v ∈ TxM, there exists a unique geodesic γ : [0, 1] → M where γ(0) = x, γ′(0) = v. The exponential map expx : TxM → M is defined as expx(v) = γ(1) and logarithmic map logx : M → TxM is the inverse of expx. The parallel transport P Tx→y : TxM → TyM achieves the transportation from point x to y that preserves the metric tensors along the unique geodesic.
+Hyperbolic Models. Riemannian manifolds with different curvatures define different geometries: elliptic geometry (positive curvature), Euclidean geometry (zero curvature), and hyperbolic geometry (negative curvature). Here, we focus on the negative curvature space, i.e., hyperbolic geometry. Hyperbolic geometry is a Riemannian manifold with a constant negative sectional curvature. There exist multiple equivalent hyperbolic models which show different characteristics but are mathematically equivalent. We here mainly consider two widely studied hyperbolic models: the Poincar ́e ball model (Nickel & Kiela, 2017) and the Lorentz model (also known as the hyperboloid model) (Nickel & Kiela, 2018).
+Let ∥.∥ be the Euclidean norm and ⟨., .⟩L represent the Minkowski inner product. The formulas and operations associated with distance, maps, and parallel transport, hyperbolic origin point are summarized in Table 6, where ⊕κ and gyr[., .]v are Mo ̈bius addition and gyration operator (Ungar et al., 2007), respectively, which are given in the following.
+M ̈obius addition: For x, y ∈ Bκn, the Mo ̈bius addition (Ungar et al., 2007) is
+x ⊕κ y = 1 − 2κ⟨x, y⟩2 − κ∥y∥22 x + 1 + κ∥x∥22 y
+1 − 2κ⟨x, y⟩2 + κ2∥x∥22∥y∥22
+. (12)
+Then the induced Mo ̈bius substraction ⊖κ is given by x ⊖κ y = x ⊕κ (−y).
+Gyration operator. In the theory of gyrogroups, the notion of the gyration operator (Ungar, 2008) is given by
+gyr[x, y]v = ⊖κ (x ⊕κ y) ⊕κ (x ⊕κ (y ⊕κ v)) .
+Table 6. Summary of operations in the Poincare ́ ball model and the Lorentz model (κ < 0)
+Poincare ́ Ball Model Lorentz Model (Hyperboloid Model)
+Manifold Bκn = x ∈ Rn : ⟨x, x⟩2 < − 1
+κ Lκn = x ∈ Rn+1 : ⟨x, x⟩L = 1
+κ
+Metric gxBκ = (λκx)2 In where λκx = 2
+1+κ∥x∥2
+2
+gxLκ = η, where η is I except η0,0 = −1
+Distance dκ
+B(x, y) = √1
+|κ| cosh−1 1 − 2κ∥x−y∥2
+2 (1+κ∥x∥2
+2)(1+κ∥y∥2
+2) dκ
+L(x, y) = √1
+|κ| cosh−1 (κ⟨x, y⟩L)
+Logarithmic Map logκ
+x(y) = √ 2
+|κ|λκ tanh−1 p|κ| ∥−x ⊕κ y∥2
+−x⊕κ y ∥−x⊕κ y∥2
+logκ
+x(y) = cosh−1(κ⟨x,y⟩L)
+sinh(cosh−1(κ⟨x,y⟩L)) (y − κ⟨x, y⟩Lx)
+Exponential Map expκx(v) = x ⊕κ tanh p|κ| λκ
+x ∥v∥2 2
+v
+√
+|κ|∥v∥2
+expκx(v) = cosh p|κ|∥v∥L x + v sinh
+√
+|κ|∥v∥L
+√
+|κ|||v||L
+Parallel Transport P Txκ→y(v) = λκ
+x λyκ
+gyr[y, −x]v P Txκ→y(v) = v − κ⟨y,v⟩L
+1+κ⟨x,y⟩L (x + y)
+Origin Point 0n [ √1
+|κ| , 0n]
+B. Dataset Construction about TREE-L and TREE-H
+The geometric information of a real-world dataset is not explicitly given and the dataset is also not a pure-tree structure in general, so we synthesize two tree datasets, TREE-L and TREE-H, to track the position of node embedding in hyperbolic
+13
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+space. In particular, the two trees are with the same structures but with different homophily. All nodes except leaf nodes have three child nodes. In total, there are eight layers, 1092 edges, and 1093 nodes for each tree. On the tree with high homophily (i.e., TREE-H), nodes in each largest subtree (total, three largest subtrees) have the same node labels. We set the root node as another class, and then it is easy to know that there are four different classes. For the node features belonging to the same class, we generate a 32-dimension vector from a Gaussian distribution. The mean and variance of the four classes are (0.0, 1.0), (1.0, 1.0), (2.0, 1.0), (3.0, 1.0), respectively, where (0.0, 1.0) is for the class of root and the other three are for the rest. For TREE-L, on the other hand, nodes at the same level are with the same labels. We further set the first four layers to be the same class to ensure the total classes are four. Then for the four classes in TREE-L, we also use the same method, mean, and variance to generate the node features.
+TREE-H (high homophily)
+...
+...
+...
+...
+TREE-L (low homophily)
+Figure 5. Illustration of the structure of synthetic TREE-L/H. In TREE-L, the node class in the same level is the same, while in TREE-H, the node class in each largest subtree is the same. For clarity, we use the same color to denote the same class in these two trees.
+There is a metric proposed by Pei et al. (Pei et al., 2020) to measure the homophily rate Hm of a graph G, which is given by:
+Hm(G) = 1
+|V |
+X
+v∈V
+#Label(v’s neighbors)==Label of v
+#v’s neighbors . (13)
+Then, the computed homophily rates Hm of TREE-H and TREE-L are 0.998 and 0.018, respectively.
+C. Hyperbolic Midpoint Computation and Alignment
+Let Z be the final layer embedding matrix consisting of n hyperbolic node vectors (z1, · · · , zi, · · · , zn) where zi ∈ Hdκ, and let vi ∈ R (vi ≥ 0 and P
+i vi > 0) be the weight for zi and we set it as 1 in this study, the details on the computation of hyperbolic center zc and alignment given as follows.
+In the Poincar ́e ball model, the center, i.e., Mo ̈bius gyromidpoint (Ungar, 2008), is computed in gyrovector space, which is given by
+zc := 1
+2 ⊕κ
+Pn
+i=1 viλzκi zi Pn
+i=1 vi λzκi − 1
+!
+, (14)
+where λzκi = 2
+1+κ∥zi ∥2
+2
+. The root alignment operation is related to addition in Poincar ́e ball model which is computed by
+Equation (12).
+In the Lorentz model (Law et al., 2019), the center (also called Lorentzian centroid) is computed by
+zc := 1
+p|κ|
+Pn
+i=1 vizi
+| ∥Pn
+i=1 vizi∥L | , (15)
+The root alignment operation is related to addition operation in Lorentz model which is formulated as:
+zi ⊕κ (zc) := expκ
+ ̄z (P To→z ̄(logκ
+o(zi))). (16)
+In the tangent space, the embedding Z is first projected to the tangent space at origin, that is ZT = logκ
+o(ZT ). Then the center is defined by the following weighted manner,
+zT
+c :=
+Pn
+i=1 vizT
+i Pn
+i=1 vi
+, (17)
+14
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+The root alignment is given as,
+zT
+i ⊕κ (zc) := zT
+i − zT
+c . (18)
+D. Proof of Theorem
+D.1. Proof of Theorem 4.1
+The M ̈obius gyromidpoint for Poincar ́e ball is a solution of the minimization problem, which has been proved by Shimizu et al. (2020) and please check Theorem 2 in work (Shimizu et al., 2020). The Lorentzian centroid for Lorentz model also minimizes the weighted sum of the squared distance, which has been proved by (Law et al., 2019)(c.f.,Theorem 3.3)
+D.2. Proof of Theorem 4.2
+Proof. For the sake of clarity, we shall disregard the superscript T in the following proof. Let zc =
+Pn
+i=1 vizi
+Pn
+i=1 vi denote the
+weighted center, where vi represents the weight associated with zi, and we use vs denote Pn
+i=1 vi for breity. Then we easily derive that,
+zc =
+Pn
+i=1 vizi
+Pn
+i=1 vi
+⇒ zc ·
+n
+X
+i=1
+vi =
+n
+X
+i=1
+vizi
+⇒ zc · vs =
+n
+X
+i=1
+vizi.
+(19)
+Furthermore, let za be a point in the tangent space. Then the minimization problem can be reformulated as:
+min
+za ∈To Hdκ
+n
+X
+i=1
+vid2(zi, za) = min
+za ∈To Hdκ
+n
+X
+i=1
+vi||zi − za||2
+= min
+za ∈To Hdκ
+n
+X
+i=1
+vi ∥zi∥2 + ∥za∥2 − 2zT
+i za
+= min
+za ∈To Hdκ
+n
+X
+i=1
+vi∥zi∥2 +
+n
+X
+i=1
+vi∥za∥2 −
+n
+X
+i=1
+vi · 2zT
+i za
+= min
+za ∈To Hdκ
+n
+X
+i=1
+vi∥zi∥2 + vs∥za∥2 − 2
+n
+X
+i=1
+vi · zT
+i za
+= min
+za ∈To Hdκ
+n
+X
+i=1
+vi∥zi∥2 + vs∥za∥2 − 2vs · zT
+c za %(refer to Equation (16))
+= min
+za ∈To Hdκ
+n
+X
+i=1
+vi∥zi∥2 + vs ∥za∥ − 2zT
+c za
+= min
+za ∈To Hdκ
+n
+X
+i=1
+vi∥zi∥2 + vs ∥zc − za∥2 − ∥zc∥2
+= min
+za ∈To Hdκ
+n
+X
+i=1
+vi∥zi∥2 + vs∥zc − za∥2 − vs∥zc∥2
+= min
+za ∈To Hdκ
+n
+X
+i=1
+vi∥zi∥2 − vs∥zc∥2 + vs∥zc − za∥2
+= min
+za ∈To Hdκ
+n
+X
+i=1
+vi ∥zi∥2 − ∥zc∥2
+| {z }
+constants
++vs∥zc − za∥2.
+(20)
+15
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+It is known that the first term in the equation are constant. Furthermore, it can be deduced that the last term, vs∥zc − za∥2, is non-negative. It follows that the total distance sum to all other nodes is minimized when za = zc. In other words, the embedding center, represented by zc, is the solution that minimizes the sum of distances to all other nodes.
+E. Graph Centrality
+In graph theory and network analysis, centrality metrics are utilized to assign numerical or ordinal values to nodes within a graph commensurate with their relative importance and prominence within the network. These metrics find wide-ranging applications, such as identifying key actors in a social network, critical infrastructure nodes in internet or urban networks, primary vectors of disease transmission, and salient nodes in brain networks (van den Heuvel & Sporns, 2013; Saberi et al., 2021). In this part, we present some important centrality in graphs for reference. Unless otherwise specified, the graph referred to here is assumed to be an undirected one.
+Degree centrality. The degree centrality is a commonly employed metric in graph theory and network analysis, which quantifies the centrality of a node by calculating the number of edges incident upon it, commonly referred to as its degree, that is,
+CD(v) = deg(v). (21)
+Computing degree centrality of all nodes takes Θ(|V |2) in a dense adjacency matrix representation and Θ(|E|) in a sparse matrix representation. Nodes with a higher degree are considered more central in the network, and thus we select the node with the highest degree centrality as the root node for comparison.
+Betweenness centrality. The betweenness centrality of a vertex is based on the number of shortest paths passing through it. This metric is computed by considering all pairs of vertices in a connected graph and identifying the number of shortest paths between them that pass through the given vertex, which is given by
+CB(v) =
+X
+s̸=v̸=t∈V
+δst(v)
+δst , (22)
+where δst represents the total number of shortest paths from vertex s to vertex t, and δst(v) denotes the number of those paths that traverse vertex v. Computing betweenness centrality of all nodes involves the computation of shortest path between all pairs, which takes Θ(|V |3) (Cormen et al., 2022) for general graphs, and O(|V |2 log |V | + |V ||E|) for sparse graphs. Similarly, we take the node with highest betweenness centrality for experiential comparison.
+Closeness centrality. The closeness centrality quantifies how closely connected the node is to all other nodes in the network. The core concept of closeness centrality is a node is central if the average number of links needed to reach another node is small. It is computed by taking the reciprocal of the sum of the shortest path distances between the node and every other node in the graph, which can be formulated as,
+CC (v) = n − 1
+Pn−1
+u=1 d(v, u) , (23)
+where d(v, u) is the shortest-path distance between v and u, and n − 1 is the number of nodes reachable from v. The time complexity is similar to betweenness centrality since it requires to compute the shortest distance as well. Nodes with higher closeness centrality are considered more central as they are closer to all other nodes. Therefore, we treat the highest clustering centrality as the equivalent for comparisons.
+F. Experimental Details
+F.1. Statistics of Datasets
+We list the statistics of the dataset used in our work in Table 7. In specific, DISEASE is simulated by the SIR disease spreading model (Anderson et al., 1992), where the label indicates whether the node was infected or not. The AIRPORT is a flight network where nodes are the airports, edges represent airline routes, and the label denotes the population of the country that the corresponding airport belongs to. CORA and CITESEER are standard benchmarks describing citation networks with nodes as scientific papers, edges as citations between them, and node labels as academic areas.
+16
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+Table 7. Statistics of the datasets.
+Dataset Nodes Edges Classes Node features
+DISEASE (NC) 1,044 1,043 2 1,000 DISEASE (LP) 2,665 2,664 2 1000 AIRPORT 3,188 18,631 4 4 CITESEER 3,327 4,732 6 3,703 CORA 2,708 5,429 7 1,433 TREE-L 1,093 1,092 4 32 TREE-H 1,093 1,092 4 32
+F.2. Training Details
+(1) Data split. We conducted experiments on both node classification and link prediction tasks. For the link prediction task, we randomly split the edges in the DISEASE dataset into training (75%), validation (5%), and test (20%) sets for the shallow models. In the semi-supervised learning setting, we split the DISEASE dataset into training (25%), validation (5%), and test (70%) sets. For node classification, we split the nodes in the AIRPORT dataset into 70%, 15%, and 15%, and the nodes in the DISEASE dataset into 30%, 10%, and 60%. For the CORA and CITESEER datasets, we used 20 labeled examples per class for training. The above splits are the same as those used in previous works, except for the semi-supervised learning.
+(2) Implementation details. For all models, we traverse the number of embedding dimensions from 8, 64, 256 and then perform a hyper-parameter search on a validation set over learning rate {0.01, 0.02, 0.005}, weight decay {1e − 4, 5e − 4, 5e − 5}, dropout {0.1, 0.2, 0.5, 0.6}, and the number of layers {1, 2, 3, 4, 5}. We also adopt the early stopping strategies based on the validation set with patience in {100, 200, 500}.
+(3) Evaluation metric. Following the literature, we report the F1-score for DISEASE and AIRPORT datasets and accuracy for the others in the node classification tasks. For the link predictions task, the Area Under Curve(AUC) is calculated. We report the results of 12 random experiments by removing the max and min values.
+(4) Loss functions. In this study, we conducted two different experimental tasks, link prediction, and node classification. For link prediction, we used the following loss function as (Chami et al., 2019; Nickel & Kiela, 2017),
+Llp = 1
+|E|
+X
+(i,j)∈E
+−log p(zi, zj) + 1
+|E|
+X
+(i,j)∈/E′
+log p(zi, z′
+j), (24)
+where E is the edge set and p(·) is the Fermi-Dirac function, indicating the probability of two hyperbolic nodes u, v have a link or not, which is defined as:
+p(u, v) = exp (dH(u, v)2 − r)/t + 1 −1 , (25)
+The loss function is to maximize the probability of two nodes if they are linked in the training set while minimizing the probability of two nodes if they are not linked in the training set. We sample the same number of negative sampling for training.
+For node classification, we follow the previous work (Chami et al., 2019), and classify the node by cross-entropy, which is formulated by,
+Lce = −
+X
+i∈|V |
+q(zi) log q(zi) (26)
+where
+q(z) = Softmax(MLP(logκ
+o(z))) (27)
+Totally, our optimization target is to minimize the following loss function,
+L = Ltask + λLhyp, (28)
+where the task denotes the down-stream task, and λ is selected from {1, 0.1, 0.01, 0.001}
+17
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+Table 8. Comparisons using stretching, alignment, opposite stretching and our proposed method HIE with dimension 64.
+Dataset HGCN w/Stretching w/Alignment w/-Stretching HIE (Ours)
+DISEASE 90.6 ± 1.2 89.4 ± 2.5 95.5 ± 0.6 85.7 ± 4.8 95.0 ± 0.8 AIRPORT 94.0 ± 0.6 93.6 ± 0.9 93.6 ± 0.3 92.1 ± 0.5 94.1 ± 0.8 CITESEER 67.6 ± 0.4 68.5 ± 0.6 66.7 ± 0.9 18.1 ± 0.0 74.1 ± 0.3 CORA 78.5 ± 0.6 81.5 ± 0.5 77.5 ± 1.0 31.9 ± 0.0 83.0 ± 0.3
+G. Experiments on Opposite Stretching
+The capacity of hyperbolic space increases exponentially with the radius, in this work, we propose to push nodes away from the origin and thus introduce a origin-concerned geometric penalty. In this part, we supplement the opposite stretching operation, which pushes the node hidden state close to the origin, to further verify our motivation. Specifically, we use the following equation to achieve the opposite stretching:
+L−
+hyp = tanh 1
+|V |
+X
+i∈V
+widH(zH
+i , o)
+!
+. (29)
+We ran all experiments 12 times with the same settings as the previous, including the random seeds. The experimental results are shown in Table 8. To straightforwardly compare the performance of the opposite stretching and other related methods, we list the independent stretching (w/-Stretching), alignment (w/Alignment), and the proposed HIE together. The performance of using opposite stretching is shown in the ”w/Stretching” column.
+It can be seen that the opposite stretching (w/-Stretching), or equivalently, encouraging the node embedding near the origin, is fatal to CORA and CITESEER where the performance drops to 31.9 and 18.1. At the same time, the performances on DISEASE and AIRPORT also drop dramatically. This is not difficult to understand since the embedding space near the origin is relatively small, and it is difficult for the model to obtain a better discriminative representation. This further verifies the effectiveness of our proposal.
+H. More Results
+H.1. HDO on Different Dimensions
+Here we additionally supplement the HDO distribution on different dimensions, in Figure 6. It is easy to know that the overall HDO values become larger when applied with our HIE, which can be inferred from the shapes of HDO distribution or MEAN values. It is also observed that the number of the nodes whose embeddings are located near the boundary has increased significantly, as the shape of the HDO distribution looks more like a long-tailed distribution, which well matches the exponential increase in the capacity of the hyperbolic space.
+We observe that the distribution of HDO of DISEASE is more concentrated in locations far from the origin in both our method and the original model, which mainly lies in the properties of the DISEASE dataset. The DISEASE dataset is pure tree-like, which has obvious hierarchies and can well match the hyperbolic space. Therefore, with hyperbolic embedding, the overall HDO is distributed far from the origin. This can explain the reason that only using centering for HGCN achieves considerable improvements on DISEASE, that is, the leaf nodes have already embedded near the boundary. However, it is also noted that the embedding position of ROOT (i.e., HC) is quite different: the ROOT in HGCN is far from the origin, while our proposal is at or near the origin. Our method is significantly better than the original HGCN. It further confirms that aligning the embedding center with the hyperbolic origin is of significance for the embedding quality and classification performance.
+H.2. Hyperbolic Distance to HC
+Besides, we further compute the hyperbolic distance from each node to the hyperbolic center in Figure 7. In the figure above, HC represents an absolute value indicating the distance from the center to the origin, while MIN, MEAN, and MAX represent relative values reflecting the distance to the HC. Our experiments have revealed that previous models are unable to capture the hierarchical relationships within the data from the HDC distribution effectively, as most of them are normally distributed. In contrast, our proposed approach consistently produced relatively larger values for the relative MIN, MEAN,
+18
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+and MAX, indicating that it can effectively fit the hyperbolic space.
+H.3. Relative Hierarchies within Nodes
+Table 9. Accuracy of relative hierarchies within nodes
+Models HGCN Ours HGCN Ours Dims 16 16 256 256
+TREE-L 72.5% 75.4% 75.3% 77.6% TREE-H 68.9% 80.0% 73.7% 83.5%
+In the following, we compared hierarchies accuracy based on synthetic datasets, which provide easily accessible hierarchies, using both HGCN and our proposed method. We randomly selected 5000 pairs of nodes and computed their distance from the origin as a proxy for their respective hierarchical levels. We labeled a pairing as “1” if its hierarchical ordering matched the true relationship and “0” otherwise. Finally, we computed the accuracy of the sampled node pairs and presented the results in Table 9. The results demonstrate that our proposed method outperforms HGCN in ranking more pairs correctly, indicating its ability to effectively capture the hierarchical relationships within the data.
+H.4. Similar Idea Exp oration in Euclidean Space
+The method proposed in this work is simple and effective. Can the same effect be achieved if the same idea is adopted in the Euclidean space? In the following, we conduct the same algorithm presented in Algorithm 1 within Euclidean space, termed as EIE, on the best Euclidean model GAT.
+Table 10. Comparisons with Euclidean variants
+Dataset DISEASE DISEASE AIRPORT AIRPORT CITESEER CITESEER CORA CORA
+Dims 16 256 16 256 16 256 16 256 GAT 74.4 80.2 78.2 90.4 70.9 71.7 82.5 83.0 GAT+EIE 79.1 81.5 78.6 90.8 71.2 72.2 82.8 83.0 HGAT 88.8 89.8 92.9 95.2 66.8 67.9 79.0 79.1 HGAT+HIE 93.7 94.0 93.0 95.7 73.4 74.4 83.0 83.4
+The experiments are shown in Table 10 and the experiments revealed that penalizing the Euclidean-centered norm of nodes can prevent nodes from getting too close to each other, which can impact classifier performance or downstream tasks, resulting in minor improvements across most cases. However, the capacity limitations of Euclidean space lead to inferior outcomes compared to using HIE in hyperbolic space.
+Moreover, we observed that while classification accuracy does not see significant improvement with increased dimensionality in Euclidean space, such an increase in hyperbolic space can enhance performance. These phenomena demonstrate important progress in hyperbolic space. First, HIE enhances the hyperbolic models’ embeddability, allowing them to fully utilize the spacious capacity of hyperbolic space and achieve superior performance across various datasets compared to Euclidean space. Second, as the embedding dimension increases, performance can still be improved, pushing the model to achieve better results, while their Euclidean counterparts show only minor improvements.
+Overall, we believe that our study provides novel insights into developing innovative methodologies in hyperbolic space, and highlights the potential benefits of using hyperbolic geometry for machine learning tasks.
+19
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+STATS HGCN Ours ROOT 4.2 3.6 MIN 4.0 3.8 MEAN 4.7 5.6 MAX 5.6 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Cora
+HGCN Ours
+STATS HGCN Ours ROOT 2.5 3.6 MIN 2.4 4.0 MEAN 2.7 5.6 MAX 3.8 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Cora
+HGCN Ours
+STATS HGCN Ours ROOT 4.3 3.6 MIN 4.0 4.0 MEAN 4.9 5.6 MAX 5.7 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Cora
+HGCN Ours
+STATS HGCN Ours ROOT 3.2 3.5 MIN 3.0 4.3 MEAN 3.5 5.8 MAX 4.5 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Citeseer
+HGCN Ours
+STATS HGCN Ours ROOT 4.5 3.4 MIN 4.4 4.3 MEAN 4.7 5.8 MAX 5.5 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Citeseer
+HGCN Ours
+STATS HGCN Ours ROOT 4.1 3.5 MIN 4.1 4.5 MEAN 4.4 5.8 MAX 5.0 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Citeseer
+HGCN Ours
+STATS HGCN Ours ROOT 3.2 2.9 MIN 2.6 2.4 MEAN 4.8 5.6 MAX 6.0 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Airport
+HGCN Ours
+STATS HGCN Ours ROOT 3.0 2.6 MIN 1.9 3.0 MEAN 4.6 5.8 MAX 5.9 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Airport
+HGCN Ours
+STATS HGCN Ours ROOT 3.2 2.7 MIN 2.3 2.9 MEAN 4.7 5.8 MAX 6.0 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Airport
+HGCN Ours
+STATS HGCN Ours ROOT 5.2 3.8 MIN 2.9 3.4 MEAN 5.7 5.8 MAX 6.2 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Disease_nc
+HGCN Ours
+STATS HGCN Ours ROOT 5.3 3.5 MIN 2.2 3.4 MEAN 5.7 6.0 MAX 6.2 6.2
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Disease_nc
+HGCN Ours
+STATS HGCN Ours ROOT 4.0 3.9 MIN 1.2 3.0 MEAN 4.7 5.4 MAX 6.1 6.1
+0123456
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Disease_nc
+HGCN Ours
+Figure 6. Illustration of HDO distribution on CORA, CITESEER, AIRPORT, Disease where x-axis denotes the value of HDO and y-axis is the corresponding ratio. The figures in the first, second, and third column denotes the dimension 16, 64 and 256, respectively.
+20
+
+
+ Hyperbolic Representation Learning: Revisiting and Advancing
+STATS HGCN Ours HC 4.2 3.6 MIN 2.0 4.6 MEAN 5.6 7.4 MAX 8.0 8.5
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Cora( 16)
+HGCN Ours
+STATS HGCN Ours HC 2.5 3.6 MIN 0.5 4.7 MEAN 2.1 7.4 MAX 4.5 8.5
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Cora( 64)
+HGCN Ours
+STATS HGCN Ours HC 4.3 3.6 MIN 3.1 4.7 MEAN 6.1 7.3 MAX 8.3 8.6
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Cora( 256)
+HGCN Ours
+STATS HGCN Ours HC 3.2 3.5 MIN 0.7 4.9 MEAN 3.3 7.7 MAX 5.6 8.6
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Citeseer( 16)
+HGCN Ours
+STATS HGCN Ours HC 4.5 3.4 MIN 2.7 4.6 MEAN 5.2 7.6 MAX 7.5 8.5
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Citeseer( 64)
+HGCN Ours
+STATS HGCN Ours HC 4.1 3.4 MIN 2.5 5.1 MEAN 4.7 7.6 MAX 6.9 8.6
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Citeseer( 256)
+HGCN Ours
+STATS HGCN Ours HC 3.2 3.3 MIN 3.8 3.2 MEAN 6.2 6.6 MAX 7.9 7.9
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Airport( 16)
+HGCN Ours
+STATS HGCN Ours HC 3.0 3.2 MIN 3.1 2.8 MEAN 5.9 6.6 MAX 7.3 7.7
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Airport( 64)
+HGCN Ours
+STATS HGCN Ours HC 3.2 3.3 MIN 3.2 3.5 MEAN 6.1 6.8 MAX 7.5 8.1
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Airport( 256)
+HGCN Ours
+STATS HGCN Ours HC 5.3 3.8 MIN 2.1 3.6 MEAN 6.5 7.7 MAX 9.0 8.7
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Disease_nc( 16)
+HGCN Ours
+STATS HGCN Ours HC 5.3 3.6 MIN 1.9 1.9 MEAN 6.7 7.7 MAX 9.3 8.5
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Disease_nc( 64)
+HGCN Ours
+STATS HGCN Ours HC 4.0 4.6 MIN 3.0 2.3 MEAN 5.9 7.5 MAX 7.1 9.3
+012345678
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5 Disease_nc( 256)
+HGCN Ours
+Figure 7. Illustration of HDC distribution on CORA, CITESEER, AIRPORT, Disease where x-axis denotes the value of HDC and y-axis is the corresponding ratio. The figures in the first, second, and third column denotes the dimension 16, 64 and 256, respectively.
+21

@@ -1,0 +1,692 @@
+A Mathematical Programming Model for Minimizing Energy Consumption on Selective Laser Melting Machine
+Junjie Lin1 and Chunlong Yu2
+
+
+Abstract— The scheduling problem of additive manufacturing is receiving increasing attention, yet few have considered the effect of scheduling decisions on the machine energy consumption. This research focuses on the nesting and scheduling problem of a single selective laser melting (SLM) machine to reduce the total energy consumption. Based on an energy consumption model, a nesting and scheduling problem is formulated, and a mixed integer linear programming model is proposed. This model determines simultaneously the part-tobatch assignments, part placement in the batch and the choice of build orientation to reduce the total energy consumption of the SLM machine. The energy-saving potential of the model is validated through numerical experiments. Moreover, the effect of number of alternative build orientations on the energy consumption is explored.
+Keywords: 3D printing, SLM, energy saving, scheduling, mathematical programming
+I. INTRODUCTION
+Compared with conventional manufacturing, additive manufacturing (AM) has a great potential to improve material efficiency, reduce lifecycle impact, and enable greater engineering capabilities (Huang et al., 2016). Despite several advantages, AM has been recognized as an energy-intensive technology, especially in large-scale parts and mass production. The formation of multiple thin layers from raw materials requires a considerable amount of energy, and thus the energy consumption per unit volume of material is often much higher than conventional manufacturing techniques (Yoon et al., 2014). This aspect raises concerns about the potential negative economical and environmental impacts and therefore, reducing energy consumption is becoming one of the most important goals driving the adoption of additive manufacturing in key industries (Karimi et al., 2021).
+The research of energy aware scheduling in manufacturing systems is receiving considerable attention. Various studies have considered the multi-objective scheduling problem and proposed methods to optimize energy cost with other common scheduling criteria (Jia et al., 2017; Zhou et al., 2018; Wang et al., 2018). In these studies, the energy saving opportunities come from a better allocation of jobs to machines with different speeds and powers, as well as a better job sequence to avoid high consumption in the periods of high electricity price.
+However, few works have considered the scheduling problem that aims at reducing energy consumption in AM machines. In this research, we focus on saving the energy
+
+Figure 1. A batch of parts with different build orientation
+consumption of the selective laser melting (SLM) machine. SLM is a powder-bed-fusion AM process whereby a highdensity-focused laser beam selectively scans a powder bed and those scanned and solidified layers are stacked upon each other to build a fully functional three-dimensional part, tool or prototype (Kruth et al., 2005). SLM machines are batch processing machines that are capable to print a group of parts at a time. According to a recent study of Lv et al. (2021), the energy consumption of an SLM machine is related to the power of each subsystem and the subsystem running time. The power of each subsystem depends on the machine parameters, which are basically constant during the process. The running time of each sub-process depends on not only the process parameters (laser power, heating and cooling temperature, etc.), but also the batch parameters (total part volume, surface area, support structure volume, height, etc.). Therefore, the energy consumption can be affected by how the batches are formed. This creates an opportunity to optimize the energy of printing the parts through making better decisions such as part-to-batch assignment, nesting and build orientation selection.
+Generally, increasing the batch utilization reduces the total energy consumption. Compared to a single part, printing a full batch at a time can save more than 50% energy consumption per part (Flaudi et al., 2017). To maximize the batch utilization, one needs to consider the nesting problem, which decides the part displacement and rotation around the z-axis (vertical axis) and packs parts into batches. For SLM machines, no stacks are permitted because supporting structures are required for heat dissipation and fixing parts on the platform (Zhang et al., 2020). This results in a 2D nesting problem that concerns packing the projections of the parts into the build platform of the machine, which is usually a rectangle. To reduce the problem difficulty,
+
+*Resrach supported by Shanghai Pujiang Program (21PJ1413300). 1Junjie Lin is with the School of Mechanical Engineering, Tongji
+University, Shanghai, 201804, P.R. China.
+
+2Chunlong Yu is with the School of Mechanical Engineering, Tongji University, Shanghai, 201804, P.R. China (e-mail: chunlong_yu@tongji.edu.cn).
+
+a common way is to represent the geometry of a part with a bin. However, even for this case, the nesting problem is NP-hard (Lodi et al., 2002).
+On the other hand, a part generally has several optional build orientations that can satisfy the quality requirement. Changing the build orientation can lead to a variation of the part height, support structure volumes, and the projection area of the part, as shown in Figure 1. The batch height determines the number of layers and thus the total recoating time of a batch, and the volume of the support structure determines the scanning time of the support. These two factors have an impact on the energy consumption of several subsystems of the SLM machine. Therefore, the choice of the build orientation is also important for energy saving. At the same time, a proper selection of the build orientation can increase the packing efficiency and thus reduce the energy consumption.
+In this study, we consider the scheduling problem that jointly handles the part-to-batch assignment, part nesting and build orientation selection on a single SLM machine to minimize the total energy consumption. The contributions of this research are:
+ For the first time, the energy saving potential of nesting and scheduling on a single SLM machine is studied. Based on an accurate energy consumption model, we propose a mixed integer linear programming (MILP) model considering alternative build orientations for the nesting and scheduling problem.
+ Through numerical experiments, the performance of the proposed model is tested and validated by comparing the energy consumption to a commercial 3D printing software. The MILP model is able to save a considerable amount of energy from the commercial 3D printing software. The saving percentage tends to increase with the number of alternative build orientations of the parts.
+The remaining of the paper is organized as follows. Section II reviews the literature. Section III describes the problem. Section IV describes the energy consumption model. Section V proposes the mathematical model. Section VI reports the numerical results, and Section VII concludes the paper.
+II. LITERATURE REVIEW
+In this section, we first review the works related to the energy-aware scheduling, then we introduce some works about nesting and scheduling on AM machines, and finally we summarize the research gap.
+A. Energy-aware scheduling
+Many scholars have paid attention to the problem of energy-aware scheduling in manufacturing systems with conventional machines. Agrawal et al. (2014) proposed three energy-aware scheduling algorithms including genetic algorithm, cellular automata and efficiency-based allocation heuristic to schedule tasks on a non-identical machines environment to minimize the makespan and energy consumption. Bruzzone et al. (2012) integrated the energy-
+
+aware scheduling module with the Advanced Planning and Scheduling system to control the power peaks on the shop floor given a detailed schedule. Che et al. (2017) studied the scheduling problem of unrelated parallel machine with the goal of minimizing the total power cost under the time-of-use price, in which electricity prices may vary from hour to hour throughout a day. Schulz et al. (2019) used a local search algorithm to solve a multi-objective problem of energy consumption, energy cost, and demand charging in a flow shop. Che et al. (2016) developed a continuous-time mixed-integer linear programming (MILP) model and proposed an efficient greedy insertion heuristic to minimize the total electricity cost within a given makespan under time-of-use or time-dependent electricity tariffs. In addition, Abikarram et al. (2019) addressed an unrelated parallel machine scheduling problem, in which the machine numbers und utilization are controlled to reduce the peak power.
+For additive manufacturing, there are only a few related studies on energy-aware scheduling. Most of the studies improve the energy efficiency of AM through deriving an optimal parameter setting (process level control) to fabricate parts for satisfying desired specifications in a low energy consumption. For instance, Paul et al. (2012) considered the problem to find the orientation of the part and the layer thickness that yields the minimum energy consumption for Selective Laser Sintering (SLS). Verma et al. (2017) proposed a multi-objective optimization model to find the combination of processing parameters that minimizes the laser processing energy and material waste while maximizing the part quality for a single SLS process. For the first time, Karimi et al. (2021) proposed a MILP model that integrates process-level controls and system-level scheduling decisions. By adjusting process parameters at different printing stages and controlling the starting time of each job, the model succeeds to reduce the peak power and thus the cost of electricity tariffs for on-demand charging.
+B. Nesting and Scheduling on AM Machines
+Scheduling problems for AM machines can be categorized into three types: Nesting, Scheduling, Nesting and scheduling (Oh et al .2020). In the past, nesting and scheduling were usually discussed separately. Recently, the number of articles focusing on the joint problem of nesting and scheduling is increasing. Chergui et al. (2018) addressed the nesting and scheduling problem with due date constraints. They proposed a heuristic approach to minimize the maximum lateness. Alicastro et al. (2021) considered a nesting and scheduling problem to minimize the makespan of unrelated parallel machines. The authors proposed a local search algorithm enhanced by a reinforcement learning mechanism for neighborhood selection. In this research, the build orientations of the parts are prefixed. Che et al. (2021) studied an unrelated parallel AM machine scheduling problem that requires simultaneously assigning parts to batches, orienting parts, packing parts to a 2D surface, and assigning batches to machine to minimize the makespan. An efficient simulated annealing approach was proposed. Li et al. (2018) studied a scheduling problem in a batch processing machine with 2D capacity constraint to minimize the makespan. They proposed a greedy heuristic and a genetic algorithm to solve the problem.
+
+Figure 2. Working status of different machine subsystems during the SLM process. The dark color, light color and blank areas represent the subsystems running all the time, intermittently and out of service.
+
+C. Research Gap
+In summary, many studies have focused on reducing the energy consumption and costs by scheduling or adjusting the machine on-off state. But few have paid attention to the energy benefits brought by part nesting and build orientation selection in AM systems.
+Baumers et al. (2011) compared the energy consumption of a build with single part to that of multiple parts, the full build utilization produced a large (97.79 %) energy saving on the EOSINT P 390 printer. They also showed that the printing a single part in different build orientations consumes different energy. Furthermore, Piili et al. (2015) found that a full build can reach a cost reduction of 81-92% compared to single part build, and the nesting solution is the major variable that users can influence the energy in a multi-part fabrication environment. Both studies reveal the potential of energy saving in AM machines by a proper nesting and scheduling, but a solution to obtain the optimal nesting and scheduling decisions is not provided. On the other hand, although the nesting and scheduling problem has been investigated in several works, none of these have considered the energy saving objective. In this paper, the energy saving potential of nesting and scheduling on a single SLM machine is studied for the first time.
+III. PROBLEMS DESCRIPTION
+Consider a set of parts 𝐽 = {1, … , 𝑛}. Each part 𝑗 ∈ 𝐽 has a given volume 𝑣 and surface 𝑠 and a set of optional build orientations 𝐾 . Each build orientation 𝑘 ∈ 𝐾 corresponds to a 3D geometry with four parameters {ℎ , 𝑙 , 𝑤 , 𝑠 } , which are the height, length and width of the rectangle projection, and the volume of the supporting structure, respectively. One machine can process a batch of parts at a time. The capacity of the machine is represented by a cuboid of length 𝐿𝑊, width 𝑊𝑊 and height 𝐻𝑊. A group of parts can be placed on the same batch if their projections do not overlap and their geometries are within the platform boundaries. Parts must be placed parallel to the length or width of the platform and can be rotated by 90° around the Z axis. The goal is to decide the build orientation for each part, place
+
+and schedule them on the machines to minimize the total energy consumption.
+IV. ENERGY CONSUMPTION MODEL
+Energy forecasting is the key for the evaluation and reduction of SLM energy consumption. Energy consumption models for AM can be divided into three categories: specific energy models (Kellens et al. 2017), stage-based energy models (Faludi et al. 2017), and subsystem-based energy models (Yi et al. 2018).
+Models that compute the energy demand by multiplying the Specific Energy Consumption (SEC) and the weight or volume of a part are called ‘specific energy models. Here, the SEC refers to the energy consumed for each deposited kilogram or volume of material. It may be affected by the utilization of the build volume, build density and orientation and hence, different values are reported in different literatures for the same AM technology (Ingarao et al. 2018; Yi et al. 2018). To describe the energy consumption in a more reasonable way, substage-based energy consumption models are proposed. These models predict the total energy consumption by adding the energy consumed in each stage. The power and time of each operation stage are obtained through measurement and can only be applied on the specific AM machine. Subsystem-based models work in a similar way, they estimate the total energy by adding the energy consumed by each machine subsystem. In this research stream, most works focus on the energy modeling of machine subsystem (Paul et al. 2012; Yang et al. 2017), while the operating status of different subsystems at different stages are ignored. Recently, Lv et al. (2021) proposed a more accurate energy consumption model that jointly considers the power of the machine subsystem, the time of the sub-process, and the working state of the machine subsystem in each sub-process. In this paper, we adopt this model and combine it with the mathematical programming model for energy optimization.
+A. Energy consumption calculation
+Typically, an SLM machine consists of eight subsystems, and the process of printing a batch can be divided into four sub-processes, as shown in Figure 2. The energy consumption
+
+TABLE I.
+
+POWER OF DIFFERENT SUBSYSTEMS
+
+Subsystem
+
+Power[W]
+
+Basic subsystem
+
+𝑃
+
+Platform heater
+
+𝑃
+
+Water circulation unit
+
+𝑃
+
+Water-cooling unit
+
+𝑃
+
+Laser-scanning border
+
+𝑃
+
+Laser-filling contour
+
+𝑃
+
+Laser volume hatching
+
+𝑃
+
+Laser support structure
+
+𝑃
+
+Recoater motor
+
+𝑃
+
+Electric valves
+
+𝑃
+
+Gas circulation pump motor
+
+𝑃
+
+of the SLM machine for printing a single batch is calculated as:
+
+𝐸 = ∑ 𝐸 = ∑ ∑ 𝑝 𝑡 𝑘 = 𝑷𝑲𝑻,
+
+(1)
+
+where 𝐸 is the energy consumption of the 𝑓-th subsystem, 𝑝 is the power of the 𝑓-th subsystem, 𝑡 is the time of the 𝑙th sub-process, 𝑘 ∈ [0,1] is a factor describing the working state of 𝑓-th subsystem in 𝑙-th sub-process. In the following subsections, we describe the way to calculate the power of subsystems, processing time of sub-processes, and the state of each subsystem in each subprocess.
+
+B. Processing Time of sub-processes
+A typical SLM process includes four sub-processes: heating, laser exposure, recoating and cooling. During the heating phase, the following relationship holds:
+
+𝑡 =𝐶 𝑇 +𝐶 𝑇−𝐶 ,
+
+(2)
+
+where 𝑡 represents the time spent in the heating stage, T represents the temperature of the platform. The parameters 𝐶 , 𝐶 , 𝐶 are machine-dependent factors and are obtained by regression using the experimental data. See Lv et al (2021) for more technical details. Thus, the time of heating phase is expressed as:
+
+∆𝑡 = 𝑡 𝑇 − 𝑡 (𝑇 ),
+
+(3)
+
+where 𝑇 is the initial temperature of the heating platform, and 𝑇 is the final temperature.
+
+The construction stage is the main production process, including powder recoating and laser exposure. The total time spent in this phase is expressed as:
+
+𝑡 =𝑡 +𝑡 ,
+
+(4)
+
+where 𝑡 is the laser exposure time and 𝑡 is the powder spreading time. The time of the sub-stages of the laser exposure process is expressed as:
+
+𝑡 =𝑡 +𝑡 +𝑡 +𝑡
+
+= ∑ ∈ℬ + ∑ ∈ℬ + ∑ ∈ℬ + ∑ ∈ℬ ,
+
+(4)
+
+∆
+
+∆
+
+̇
+
+̇
+
+𝑡 , 𝑡 , 𝑡 , 𝑡 are laser exposure time to scan border, fill contour, volume hatching and supports, 𝑠 is the area of the outer and inner surfaces of part 𝑗 scanned as boundaries during construction [mm ], ℬ is the set of parts in the batch, 𝑛 is the number of lasers operating during manufacturing, 𝑣 and 𝑣 are the speed for scanning the boundaries and filling contours [mm/s] , respectively; 𝛥𝑦 is the layer thickness [mm] , 𝑣 and 𝑠 are the volumes of the part and support [mm ],
+respectively; 𝑣̇ and 𝑣̇ are the build-up rate for the part and supports [𝑚𝑚 /𝑠], both can be expressed as:
+
+𝑣̇ = 𝑛 × 𝐷 × ∆𝑦 × 𝑣,
+
+(5)
+
+where 𝐷 is the hatching distance [mm/s], 𝑣 is the scanning speed for part or support. The recoating time can be expressed as:
+
+𝑡 = 𝑁𝑡 ,
+
+(6)
+
+where 𝑡 is the time required for spreading a layer of powder. The numbers of the slice depend on the height of the batch and the thickness of the layer and can be expressed as:
+
+𝑁 = 𝐻/∆𝑦,
+
+(7)
+
+After the last layer has been scanned, the platform is gradually cooled down by inert gas protection to prevent oxidation of the metal powder. The following relationship holds:
+
+𝑡 =𝐶 𝑇 −𝐶 𝑇+𝐶 ,
+
+(8)
+
+where T is the temperature of the platform at a certain moment, the constants 𝐶 , 𝐶 , 𝐶 are obtained by regression from the experimental data. Hence, the time of the cooling phase is expressed as:
+
+∆𝑡 = 𝑡 (𝑇 ) − 𝑡 (𝑇 ),
+
+(9)
+
+where 𝑇 is the temperature of the platform before cooling and 𝑇 is the final temperature.
+
+C. Power of subsystem
+The power parameters of each subsystem are summarized in Table 1. The values of each parameter is machine dependent and can be measured by the power acquisition device, including data acquisition chassis, data acquisition card, voltage sensor, current sensor, etc. For details, please refer to Lv et al. (2021). Note that the power of the laser subsystem is different during scanning border, filling contour, volume hatching and creating supports, for convenience, we treat the laser used in these sub-processes as four different subsystems, thus the total energy consumption can be obtained by Eq. (1).
+D. State of subsystems
+Generally, a subsystem of a SLM machine can be fully on, off, or running intermittently in different sub-processes. For example, the platform heater is fully on during the preheating phase to raise the temperature of platform to the required level, while during the laser exposure phase it runs intermittently to keep the temperature constant. Therefore, to estimate correctly the energy consumption of each subsystem,
+
+it is critical to identify their actual operating states during each sub-process.
+To this end, the working state factor 𝑘 is introduced. For the 𝑓-th subsystem, 𝑘 is the ratio of the actual running time to the total time of the 𝑙-th sub-process As shown in Figure 2, the basic subsystem and water circulation unit are running all the time, whilst the laser, powder spreading motor, electric valve and gas circulation pump motor only operate at certain stages. In these cases, the 𝑘 is either 1 or 0. The platform heater and water cooling unit operate intermittently. To decide the values of 𝑘 for these two subsystems, measurements are often required. See Lv et al. (2021) for details of the measurement procedure.
+V. MATHEMATICAL PROGRAMMING MODEL
+In this section, we propose a MILP model for the defined problem and several means to improve the model efficiency.
+The MILP model is given as follows. The sets are 𝐽: set of parts 𝐹 = {𝑏𝑠, ℎ𝑡, 𝑤𝑐, 𝑐𝑜, 𝑙𝑠𝑏, 𝑙𝑓𝑐, 𝑙𝑣ℎ, 𝑙𝑠𝑠, 𝑟𝑚, 𝑒𝑣, 𝑔𝑝 }: set of subsystems. 𝑏𝑠 is the basic system, ℎ𝑡 is the heater, 𝑤𝑐 is the water circulation system, 𝑐𝑜 is the water cooling unit, 𝑙𝑠𝑏 is the laser unit for scanning border, 𝑙𝑓𝑐 is the laser unit for filling contour, 𝑙𝑣ℎ is the laser unit for volume hatching, 𝑙𝑠𝑠 is the laser unit for scanning supporting structure, 𝑟𝑚 is the recoater motor, 𝑒𝑣 stands for the electric values, 𝑔𝑝 is the gas circulation pump motor. 𝐿 = {𝑝ℎ, 𝑠𝑏, 𝑓𝑐, 𝑣ℎ, 𝑠𝑠,rc,co}: set of subprocesses. 𝑝ℎ is the preheating, 𝑠𝑏 is the scanning border, 𝑓𝑐 is the filling contour, 𝑣ℎ is volume hatching, 𝑠𝑠 is the building of support structure,𝑟𝑐 is the recoating, 𝑐𝑜 is the cooling. 𝐾 : set of alternative build orientations of part j B: set of available batches on machine
+The parameters are: 𝑣 : volume of part j 𝑎 : surface area of the part j 𝐷: the distance from part to the border of the platform 𝑑: the distance from part to part 𝑈: recoating speed of machine 𝐿𝑊, 𝑊𝑊. 𝐻𝑊: length, width and height of the build platform ℎ , 𝑙 , 𝑤 , 𝑠 : height, length, width and supporting structure volume of the k-th orientation of part j 𝑛 : number of the lasers 𝑣 : speed for scanning border 𝑣 : speed for filling contour 𝑣̇ : build-up rate for the part 𝑣̇ : build-up rate for the support ∆y: Layer thickness 𝑝 : Power of the subsystem f 𝑇𝑃𝐻: the time spent in the preheating subprocess 𝑇𝐶𝑂: the time spent in the cooling subprocess 𝜑 : the power coefficient of the subsystem f in the subprocess 𝑙,𝜑 =0 means that the subsystem f is not active in the sub-process 𝑙,𝜑 = 1 means that the subsystem 𝑓 is full
+
+active during the subprocess 𝑙 ; 𝜑 ∈ (0,1) means that the subsystem f is intermittently running during the subprocess 𝑙, that is , 𝜑 = 𝑃 ∗/𝑃 𝑃 ∗ where represents the measured power of subsystem f in subprocess 𝑙.
+The decision variables are: 𝑋 : equals 1 if part j is assigned to the b-th batch ,0 otherwise; 𝑌 : equals 1 if part j selects the k-th optional build orientation, 0 otherwise 𝑥 , 𝑦 ：coordinates of the left-bottom point of part j’s projection on the platform 𝑂 : equals 1 if part j is placed such that its length is parallel to that of the platform
+The auxiliary variables are: 𝑍 : equals 1 if the b-th batch on machine is formed,0 otherwise 𝑃𝐿 : equals 1 if part j’s right-top point is placed to the left of part j’s left-bottom point in the same batch, 0 otherwise; 𝑃𝐵 : equals 1 if part j’s right-top point is placed below part j’s left-bottom point in the same batch, 0 otherwise 𝐻 : height of the b-th batch 𝐸 : the energy consumption of the b-th batch 𝑇 : the processing time of the subprocess l in the b-th batch 𝑀：a large number
+
+In the model, the decision variables 𝑃𝐿 、𝑃𝐵 、𝑃𝐿 、 𝑃𝐵 together describe the position relationship of part j and 𝑗 .
+
+The nesting and scheduling problem of a single SLM machines is formulated as:
+
+𝑚𝑖𝑛
+
+𝐸
+
+(1)
+
+∈
+
+𝑋 ≤ 𝑀𝑍 , 𝑏 ∈ 𝐵
+
+(2)
+
+∈
+
+𝑋 = 1, ∀𝑗 ∈ 𝐽
+
+(3)
+
+∈
+
+𝑌 = 1, ∀𝑗 ∈ 𝐽
+
+(4)
+
+∈
+
+𝑎 𝑋 /(𝑛 𝑣 ∆𝑦) ≤ 𝑇 , , ∀𝑏 ∈ 𝐵 (5)
+∈
+
+𝑎 𝑋 /(𝑛 𝑣 ∆𝑦) ≤ 𝑇 , , ∀𝑏 ∈ 𝐵
+
+(6)
+
+∈
+
+𝑣 𝑋 / 𝑣̇ ≤ 𝑇 , , ∀𝑏 ∈ 𝐵
+
+(7)
+
+∈
+
+𝑋
+
+𝑠 𝑌 /(𝑣̇ ) ≤ 𝑇 , , ∀𝑏 ∈ 𝐵
+
+∈
+
+∈
+
+𝑇 , = 𝑇𝑃𝐻, ∀𝑏 ∈ 𝐵 𝑇 , = 𝑇𝐶𝑂, ∀𝑏 ∈ 𝐵
+
+𝐻 ≥ 𝑌 ℎ − 𝑀(1 − 𝑋 ), ∀𝑏 ∈ 𝐵, 𝑗 ∈ 𝐽
+
+∈
+
+(8)
+(9) (10) (11)
+
+𝐻 𝑈/∆𝑦 ≤ 𝑇 , , ∀𝑏 ∈ 𝐵
+
+(12)
+
+𝐸_𝑏 ≥
+
+𝑝 𝜑 𝑇 , ∀𝑏 ∈ 𝐵
+
+(13)
+
+∈∈
+𝐻 ≤ 𝐻𝑊, ∀𝑏 ∈ 𝐵
+
+(14)
+
+𝑥 + 𝑌 𝑙 ≤ 𝐿𝑊 + 𝑀 1 − 𝑂 , ∀𝑗 ∈ 𝐽
+
+(15)
+
+∈
+
+𝑥 + 𝑌 𝑤 ≤ 𝐿𝑊 + 𝑀𝑂 , ∀𝑗 ∈ 𝐽 (16)
+
+∈
+
+𝑦 + 𝑌 𝑤 ≤ 𝑊𝑊 + 𝑀 1 − 𝑂 , ∀𝑗 ∈ 𝐽 (17)
+
+∈
+
+𝑦 + 𝑌 𝑙 ≤ 𝑊𝑊 + 𝑀𝑂 , ∀𝑗 ∈ 𝐽 (18)
+
+∈
+
+𝑥 + 𝑌 𝑙 + 𝑑 ≤ 𝑥 + 𝑀 1 − 𝑃𝐿 + 𝑀 1 − 𝑂 ,
+
+∈
+
+∀𝑗, 𝑗 ∈ 𝐽
+
+(19)
+
+𝑥 + 𝑌 𝑤 + 𝑑 ≤ 𝑥 + 𝑀 1 − 𝑃𝐿 + 𝑀𝑂 , ∀𝑗, 𝑗
+
+∈
+
+∈𝐽
+
+(20)
+
+𝑦 + 𝑌 𝑤 + 𝑑 ≤ 𝑥 + 𝑀 1 − 𝑃𝐵 + 𝑀 1 − 𝑂 ,
+
+∈
+
+∀𝑗, 𝑗 ∈ 𝐽
+
+(21)
+
+𝑦 + 𝑌 𝑙 + 𝑑 ≤ 𝑥 + 𝑀 1 − 𝑃𝐵 + +𝑀𝑂 , ∀𝑗, 𝑗
+
+∈
+∈𝐽 𝑃𝐿 + 𝑃𝐵
+𝐽, 𝑗 < 𝑗 , 𝑏 ∈ 𝐵
+
+(22)
+
++ 𝑃𝐿 + 𝑃𝐵 ≥ 𝑋 + 𝑋 − 1, ∀𝑗, 𝑗 ∈
+
+(23)
+
+𝑍 ∈ {0,1}, ∀𝑏 ∈ 𝐵
+
+(24)
+
+𝑇 ≥ 0, ∀𝑙 ∈ 𝐿, 𝑏 ∈ 𝐵
+
+(25)
+
+𝑋 ∈ {0,1}, ∀𝑗 ∈ 𝐽,b∈B
+
+(26)
+
+𝑌 ∈ {0,1}, ∀𝑗 ∈ 𝐽,k∈𝐾
+
+(27)
+
+𝐻 ≥ 0 , ∀𝑏 ∈ 𝐵
+
+(28)
+
+𝑃𝐿 , 𝑃𝐵 ∈{0,1},∀𝑗, 𝑗 ∈ 𝐽
+
+(29)
+
+𝑥 , 𝑦 ≥ 0, ∀𝑗 ∈ 𝐽
+
+(30)
+
+𝑂 ∈ {0,1}, ∀𝑗 ∈ 𝐽
+
+(31)
+
+Constraints (2) ensure that batches cannot be assigned to without forming, Constraints (3) specify to assign parts to only one batch, constraints (4)guarantees that the part select only one build orientation, Constraints (5) calculate batch laser scans time to border, Constraint(6) calculate time of batch for the laser to fill contour , Constraint(7) calculate time of batch for the laser to hatch volume, Constraint(8) calculate time of batch for the laser to build support structure, Constraint(9) definite the preheating time, (10) defines the cooling time, Constraint (11) defines the maximum height of the batch, Constraint (12) calculates the powder spreading time of the batch, Constraint (13) calculates the energy consumption of the batch, Constraint (14) guarantees that the maximum height of the batch is less than the height of the machine, Constraints (15)-(18) ensure that parts do not exceed the machine boundary, Constraints (19)-(22) ensure that when parts are assigned to the same batch, they will not overlap, specifically, when 𝑃𝐿 equal to 1, part j is placed
+
+TABLE II.
+Constrains (2) (8) (12) (16)(19) (17((18) (20) (21) (22) (23)
+
+THE BIG-M IN DIFFERENT CONSTRAINTS
+
+Big-M value 𝑀 = |𝐽| 𝑀 = 𝑚𝑎𝑥 ∈ , ∈ 𝑀 = 𝑚𝑎𝑥 ∈ , ∈ 𝑀 = 𝑚𝑎𝑥 ∈ , ∈ 𝑀 = 𝑚𝑎𝑥 ∈ , ∈ 𝑀 = 𝑚𝑎𝑥 ∈ , ∈ 𝑀 = 𝑚𝑎𝑥 ∈ , ∈ 𝑀 = 𝑚𝑎𝑥 ∈ , ∈ 𝑀 = 𝑚𝑎𝑥 ∈ , ∈
+
+𝑠 ℎ, 𝑠 𝑤 𝑙 + 𝐿𝑊 𝑤 + 𝑊𝑊 𝑤 + 𝑊𝑊 𝑙 + 𝑊𝑊
+
+on the left side of part j', the right edge of part j does not exceed the left edge of part j', when 𝑃𝐿 equal to 0, the constraint is released. Constraints (21) and (22) express the same vertical relationships. Constraint (23) guarantees that when part j and part j are assigned to the same batch, i.e., 𝑋 、𝑋 equal to 1, the part j and 𝑗 choose at least one of the orientation relationships. When 𝑃𝐿 equal to 1, 𝑃𝐵 equal to 0, 𝑃𝐿 equal to 0, 𝑃𝐵 equal to 0, part j' is on the left semi axis of part j. When 𝑃𝐿 equal to 1, 𝑃𝐵 equal to 1, 𝑃𝐿 equal to 0, 𝑃𝐵 equal to 0, part j' is located in the third quadrant of part j. By analogy, there are 8 azimuth relationships between part j and part j'.
+
+B. Model improvements
+We improve the model as follows. First, the following constraints are introduced to break the symmetry of batches:
+
+𝑍( ) ≤ 𝑍 , ∀𝑏 ∈ 𝐵.
+
+(32)
+
+Second, to linearize (8), we introduce an auxiliary variable 𝑒 to represent the support structure volume of part j printed on the b-th batch, and replace Constraints (8) with the followings:
+
+𝑒 ≥ 𝑌 𝑠 − 𝑀 1 − 𝑋 , ∀𝑗 ∈ 𝐽, 𝑏 ∈ 𝐵, (33)
+
+∈
+
+∑ ∈ (𝑒 )/ 𝑣̇ ≤ 𝑇 , , ∀𝑏 ∈ 𝐵,
+
+(34)
+
+Finally, in order to further improve the solution efficiency of the model, we define the upper bound of the big M values in different constraints, as reported in Table II.
+
+VI.NUMERICAL RESULTS
+A. Testing instance The part models are downloaded from the website
+(https://www.stlfinder.com/3dmodels/free-3d-models/). All the part information such as volume, surface, support structure and height are obtained the on the STL file in the Magics Software.
+B. Design parameters The parts are to be fabricated using aluminum AlSi10Mg
+powder on a SLM280HL machine. The machine is equipped
+
+TABLE III. THE POWER OF DIFFERENT SUBSYSTEM AND WORKING STATE OF DIFFERENT SUBSYSTEM IN DIFFERENT SUBPROCESS
+
+Subsystem
+Basic subsystem Platform heater Water circulation unit Water-cooling unit Laser-scanning border Laser-filling contour Laser volume hatching Laser support structure Recoater motor Electric valves Gas circulation pump motor
+
+power[w]
+569.7 1122.3 713.3 1739.4 1770.9 1770.9 2022.9 2022.9 52.1 32.1 69.1
+
+preheating 1 1 1 0.168 0 0 0 0 0 1 0
+
+Scan border 1 0.4826 1 0.353 1 0 0 0 0 1 1
+
+Fill contour 1 0.4826 1 0.353 0 1 0 0 0 1 1
+
+Sub-process Volume hatching 1 0.4826 1 0.353 0 0 1 0 0 1 1
+
+Support structure 1 0.4826 1 0.353 0 0 0 1 0 1 1
+
+recoating 1 0.4826 1 0.353 0 0 0 0 1 1 1
+
+cooling 1 0 1 0.216 0 0 0 0 0 0 0
+
+TABLE IV.
+
+Process parameter Power of the laser [W] Scanning speed [mm/s] Layer thickness[mm] Hatching distance[mm]
+
+Scan border 300
+730
+-0.03
+-
+
+PROCESS PARAMETERS
+
+fill contour 300
+
+volume hatching 350
+
+Support structure 350
+
+730
+
+1650
+
+1000
+
+0.03
+
+0.03
+
+0.03
+
+-
+
+0.13
+
+0.13
+
+with two 400W fiber lasers with a laser beam diameter of 80µm. During the manufacturing process, two lasers work together. The parts are to be fabricated in an inert gas atmosphere. Before the construction process began, the oxygen content was reduced from 21% to below 0.1% to prevent oxidation and reaction of the AlSi10Mg powder. The platform was heated from 27°C to 150°C to relieve thermally induced internal stress of the fabricated part, which results in a preheating time of ∆ 𝑡 = 𝑡 (80°C) − 𝑡 (150°C) . In the manufacturing process, the time required for spreading a layer of powder is 11s. After building the parts, the platform will be cooled from 150°C to 80°C, which leads to a cooling time of ∆𝑡 = 𝑡 (80°C) − 𝑡 (150°C). Furthermore, machine parameter and working state of different subsystem in different subprocess are summarize in Table III and the process parameters of the SLM machine are summarize in Table IV. The experimental data from power of different subsystem and working state factor can refer to LV et al. (2021).
+C. Experiment setup
+With the above settings, we have conducted two experiments：
+1. The first numerical experiment compares the energy consumption difference between MILP and a commercial 3D printing software Magics. We have total six kinds of parts, named part1-6, 4 copies for parts 1 and 2, and 3 copies for parts 3 to 6. Magics uses the default build orientation for each part, which is the smallest Z-axis height. For MILP, we assume that each part has five different alternative orientations, which are provided by the Magics software: building orientation 1 is the orientation rendering the minimum part height. Building orientation 2 corresponds to
+
+the minimum support area, that is, the support structure occupies the smallest projection area on the build platform. Building orientation 3 is the one with the smallest XY section. That is, when using the section vertical to the height direction to cut the part, the maximum XY section of the part is the smallest. Build orientation 4 is the XY projection, that is, the projected area of the part on the XY plane is the smallest. Build direction 5 is to generate support in the marked area. Then, we collated, analyzed and compared batch information for both nesting, including part volume, part surface area, volume of support structure, batch height, as well as printing time and printing energy consumption. The MILP model is solved by the Gurobi solver(ver 9.5.2) with a maximum CPU runtime of 7200s.
+2. In experiment 2, a design of experiments is performed with the following factors and levels: number of parts – {20, 25, 30}, number of alternative build orientations – {1,3,5,7}. This results in 12 experiments. We analyze the impact of numbers of parts and alternative build orientations on the energy consumption of the MILP model.
+D. Results Analysis
+1) Experiment I The batch placements of the Magics and MILP are
+illustrated in Figure 3. In addition, we also summarize the batch information, printing time, and energy consumption of the two approaches and to more intuitively reflect the difference, we merge the two batches of both nesting results together, as showed in Table V.
+Compared to Magics, MILP model reduce the energy consumption by 45.98 [MJ] (8.9%). Further, the total processing time of MILP is less than that of Magics. Indeed, the energy consumption of the machine is determined by both the time of each sub-process and the power of each subsystem. In the case of constant energy power, the reduction of energy consumption can only be achieved by reducing the running time of sub-process. Table VI reports the energy savings of different subsystems. The column percentage is given by (System energy consumption of MILP nesting – System energy consumption of Magics nesting)/ Total energy saving. The change in time has a less significant effect on the energy consumption of the lower power system. This explains why only the construction of the support structure saves more
+
+TABLE V.
+
+COMPARISON OF THE RESULTS OF THE TWO SCHEDULING
+
+Magics
+
+MILP
+
+Parameters
+
+Batch 1 Batch 2 Total Batch 1 Batch 2 Total
+
+Surface area [𝑚𝑚 ]
+
+220689 382340 603029 275900 327124 603029
+
+Part volume [𝑚𝑚 ]
+
+146217 188334 334551 185339 149217 334551
+
+Support volume [mm ]
+
+108969 141951 250920 42129 112625 154754
+
+Number of slices
+
+2031 1729 3760 2031 1220 3251
+
+Utilization rate
+
+47.63% 57.84% 52.7% 63.72% 47.70% 55.7%
+
+Number of Parts
+
+12
+
+8
+
+20
+
+13
+
+7
+
+20
+
+Makespan [s]
+
+60427 81287 141714 63637 63574 127211
+
+Total energy consumption [MJ] 212.09 305.2 517.29 242.21 228.9 471.31
+
+Figure 3. The placement for the scheduling by MILP and Magics on ec_20-5. (a) Magics nesting batch 1, (b) Magics nesting batch 2,(c) MILP nesting batch 1,(d) MILP nesting batch 2
+
+TABLE VI.
+
+THE ENERGY SAVING OF MILP NESTING COMPARED TO MILP NESTING
+
+Machine subsystem
+1-Basic subsystem 2-Platform heater 3-Water circulation unit 4-Water cooling unit 5-Laser for support structure 6-Recoater motor 7-Electric valves 8-Gas circulation pump motor Total energy saving
+
+Energy [MJ] 6.72 6.39 8.41 7.24 15.82 0.21 0.38 0.81
+
+saving
+
+45.98
+
+Percentage [%]
+14.6 13.9 18.3 15.7 34.4 0.5 0.8 1.8
+100
+
+energy when the time to build the support structure and the time to recoat varies greatly between the two nesting results.
+To explore the reasons of energy saving and time reduction, we show the time difference of the two nesting in different sub-process and the energy consumption difference of different subsystems in the form of a bar chart, as shown in Figure 4 and Figure 5. As can be seen in Figure 4, the main differences between the two scheduling results are the time to build the support structure and the time to spread the powder. From formulas (2)-(9), it can be seen that for the
+same printer and the same process parameters, the heating time and cooling time are fixed, and when the part volume
+
+Figure 4. The time of different sub-process.𝑃ℎ is preheating,sb is scan border, vh is volume hatching, ss is support structure,rc is powder spreading,co is cooling.
+Figure 5. The energy consumption of different subsystem. bs is basic subsystem, ht is Platform heater, wc is water circulation unit, co is water cooling unit, lsb is laser for scanning border, lfc is laser for filling contour, lvh is laser for volume hatching, lss is laser for support structure, rm is Recoater, ev is electric valves, gp is gas circulation pump motor
+and surface area are the same, the time of scanning border, filling contour and volume hatching are no difference. The time to print the support structure system depends on the volume of the support structure, and the powder recoating time depends on the number of slices. In Table V, the volume of the support structure and the number of slices are different between the two scheduling solutions, which explains the reduction of processing time. Secondly, it can be observed in Figure 2 that almost all subsystems are running during the laser exposure stage and the recoating stage. Only the laser system and the recoater motor operate alternately in these two stages, so the changes of the time to build the support structure and the recoating time will affect the energy consumption changes of most subsystems, which explain the reduction of energy consumption.
+Overall, the underlying reason for the energy savings is the reduction in time during the recoating phase and during the construction of the support structure. Therefore, the printing efficiency is improved while optimizing the energy
+
+consumption. For a nesting problem, the choice of the build orientation of the parts has an important impact on the processing time and energy consumption of the batch. Because the build direction of the part determines the support structure, height of the part, and projection length and projection width of the part (affecting the utilization of the machine area).
+2) Experiment II The results of printing different numbers of parts and
+different printing directions are summarized in Table 9, where ec_20_1 represents 20 parts with build orientation 1, ec_20_3 represents 20 parts with printing directions 3, etc. The column EC represents the total energy consumption, the column EV represents the energy consumption per unit volume, and the column ES represents the proportion of energy saving of MILP compared to Magics. Specially, the energy consumption of Magics when printing 20 parts, 25 parts, and 30 parts is 517.29MJ, 663.79MJ, 883.27MJ, respectively. The column “Gap” is the optimality gap of the best feasible solution. The Column B represents the number of batches opened in the solution. All the EC values are obtained from the MILP model.
+It can be observed from Table VII that when all parts have only one build orientation, which is consistent with the build direction of Magics nesting, MILP still obtains a certain energy saving potential. In this case, the volume, surface area, and support structure volume of all parts are identical in both solutions, only the part height varies from batch to batch. From figure 6 the difference of height of the two scheduling decisions can be observed. In both nesting of batch 1, the batch maximum height (highest part height in batch) is 60.9mm, but in batch 2 of Magics the batch maximum height is 51.9mm, while the MILP in batch 2 has a batch height of 36.6mm. This case shows that even if the number of printed parts and the printing direction of the parts are same, different nesting results will lead to different energy consumption. In
+
+TABLE VII.
+
+ENERGY CONSUMPTION WITH DIFFERENT PARTS NUMBER
+AND BUILD ORIENTATION
+
+Instance EC[MJ] EV[𝐉/𝐦𝐦𝟑] ES[%] Gap[%] B
+
+ec_20_1 507.73 841.97
+
+3.46
+
+0.00
+
+2
+
+ec_20_3 481.06 797.74
+
+8.53
+
+0.00
+
+2
+
+ec_20_5 480.56 796.91
+
+8.62
+
+6.31
+
+2
+
+ec_20_7 479.91 795.83
+
+8.75
+
+5.48
+
+2
+
+ec_25_1 623.09 836.51
+
+6.13
+
+9.70
+
+3
+
+ec_25_3 602.57 808.96
+
+9.22
+
+10.45
+
+3
+
+ec_25_5 600.13 805.69
+
+9.59
+
+5.32
+
+2
+
+ec_25_7 592.11 794.92
+
+10.80 7.22
+
+2
+
+ec_30_1 782.87 840.81
+
+11.37 7.40
+
+3
+
+ec_30_3 755.81 811.75
+
+14.43 16.74
+
+3
+
+ec_30_5 747.51 802.84
+
+15.37 14.06
+
+3
+
+ec_30_7 744.61 799.72
+
+15.70 13.94
+
+3
+
+Figure 6. Height distribution of two nesting from different parts in different batches from instance ec_20_1
+addition, when the number of printed parts remains the same, increasing the build orientations of the parts can also reduce energy consumption. Taking the data of printing 20 parts as an example, when the number of build orientation increases from 1 to 7, the energy consumption per unit volume of parts is gradually reduced, and the energy saving obtained by MILP is also greater. It is not difficult to understand that increasing the printing direction of a part can reduce energy consumption. Different printing directions have different support structure volumes and part heights. Without increasing the batch height, choosing a building orientation with a small support structure volume can obviously reduce the energy consumption. Finally, when the number of partsincreases, the advantage of MILP model over Magics is also greater. Taking ec_20_ 5 and ec_25_5 as an example, when the number of printed parts increases from 20 to 25, the energy saving percentage has a significant increase. The energy saving compared to Magics scheduling from increasing numbers of printing parts with the same build orientation can also be observed in the rest of the instances.
+To summarize, the following conclusions can be drawn from the Table VII : (1) Increasing the build orientation of parts can reduce energy consumption to a certain extent， but it also increases the difficulty of solving the model and thus the optimality gap (2) Increasing the number of printing parts can reduce the energy consumption compared to magics scheduling but also increases the difficulty of solving the model.
+III. VII. CONCLUSION
+In this study, we study the nesting and scheduling problem on a single SLM machine to reduce the energy consumption. We take into account the 2D nesting subproblem when packing the parts into batches as well as the fact that a part has multiple optional build orientations. We propose a mathematical programming model and several improvements to strengthen the model.
+By comparing the results of solving the MILP model to that provided by a commercial 3D printing software, we demonstrate the energy saving potential of solving the scheduling problem in 3D printing and reveals the reasons of
+
+energy savings. More specifically, when the build orientation of the parts is fixed, the MILP model can reduce the height of batches by distributing the parts to batches in a proper way, thereby reducing the final energy consumption. When the parts have multiple optional build orientations, the MILP model can obtain a greater energy saving. This is due to the increased flexibility that can be made use for energy saving. However, increasing the number of build orientations also boosts the difficulty of solving the model accordingly, and the trade-off has to be made.
+As shown by the numerical results, there is still room for improving the energy saving by increasing the efficiency of the model. Future works will focus on developing efficient solution approaches such as matheuristics and metaheuristics to tackle large-scale problems. In addition, since the multimachine environment is more in line with the industrial practice, an extension to the multi-machine scheduling problem is also one of our future studies.
+REFERENCES
+[1] Karimi, S., Kwon, S., & Ning, F. (2021). Energy-aware production scheduling for additive manufacturing. Journal of Cleaner Production, 278, 123183.
+[2] Kruth, J. P., Vandenbroucke, B., Van Vaerenbergh, J., & Mercelis, P. (2005). Benchmarking of different SLS/SLM processes as rapid manufacturing techniques. In Proceedings of the International Conference Polymers & Moulds Innovations PMI 2005.
+[3] Abikarram, J. B., McConky, K., & Proano, R. (2019). Energy cost minimization for unrelated parallel machine scheduling under real time and demand charge pricing. Journal of cleaner production, 208, 232242.
+[4] Huang, R., Riddle, M., Graziano, D., Warren, J., Das, S., Nimbalkar, S., ... & Masanet, E. (2016). Energy and emissions saving potential of additive manufacturing: the case of lightweight aircraft components. Journal of cleaner production, 135, 1559-1570.
+[5] Yoon, H. S., Lee, J. Y., Kim, H. S., Kim, M. S., Kim, E. S., Shin, Y. J., ... & Ahn, S. H. (2014). A comparison of energy consumption in bulk forming, subtractive, and additive processes: Review and case study. International Journal of Precision Engineering and Manufacturing-Green Technology, 1(3), 261-279.components. Journal of Cleaner Production 2016, 135, 1559-1570.
+[6] Jia, Z. H., Zhang, Y. L., Leung, J. Y. T., & Li, K. (2017). Bi-criteria ant colony optimization algorithm for minimizing makespan and energy consumption on parallel batch machines. Applied Soft Computing, 55, 226-237.
+[7] Zhou, S., Li, X., Du, N., Pang, Y., & Chen, H. (2018). A multiobjective differential evolution algorithm for parallel batch processing machine scheduling considering electricity consumption cost. Computers & Operations Research, 96, 55-68.
+[8] Liang, P., Yang, H. D., Liu, G. S., & Guo, J. H. (2015). An ant optimization model for unrelated parallel machine scheduling with energy consumption and total tardiness. Mathematical Problems in Engineering, 2015.
+[9] Liu, C. H., Nanthapodej, R., & Hsu, S. Y. (2018). Scheduling two interfering job sets on parallel machines under peak power constraint. Production Engineering, 12(5), 611-619.
+[10] Lodi, A., Martello, S., & Vigo, D. (2002). Recent advances on twodimensional bin packing problems. Discrete Applied Mathematics, 123(1-3), 379-396.
+[11] Agrawal, P., & Rao, S. (2014). Energy-aware scheduling of distributed systems. IEEE Transactions on Automation Science and Engineering, 11(4), 1163-1175.
+[12] Bruzzone, A. A., Anghinolfi, D., Paolucci, M., & Tonelli, F. (2012). Energy-aware scheduling for improving manufacturing process sustainability: A mathematical model for flexible flow shops. CIRP annals, 61(1), 459-462.
+
+[13] Che, A., Zhang, S., & Wu, X. (2017). Energy-conscious unrelated parallel machine scheduling under time-of-use electricity tariffs. Journal of cleaner production, 156, 688-697.
+[14] Schulz, S., Neufeld, J. S., & Buscher, U. (2019). A multi-objective iterated local search algorithm for comprehensive energy-aware hybrid flow shop scheduling. Journal of cleaner production, 224, 421-434.
+[15] Che, A., Zeng, Y., & Lyu, K. (2016). An efficient greedy insertion heuristic for energy-conscious single machine scheduling problem under time-of-use electricity tariffs. Journal of Cleaner Production, 129, 565-577.
+[16] Wang, S., Wang, X., Yu, J., Ma, S., & Liu, M. (2018). Bi-objective identical parallel machine scheduling to minimize total energy consumption and makespan. Journal of Cleaner Production, 193, 424440.
+[17] Paul, R., & Anand, S. (2012). Process energy analysis and optimization in selective laser sintering. Journal of manufacturing systems, 31(4), 429-437
+[18] Verma, A., & Rai, R. (2017). Sustainability-induced dual-level optimization of additive manufacturing process. The International Journal of Advanced Manufacturing Technology, 88(5), 1945-1959.
+[19] Oh, Y., Witherell, P., Lu, Y., & Sprock, T. (2020). Nesting and scheduling problems for additive manufacturing: a taxonomy and review. Additive Manufacturing, 36, 101492.
+[20] Dvorak, F., Micali, M., & Mathieug, M. (2018). Planning and scheduling in additive manufacturing. Inteligencia Artificial, 21(62), 40-52.
+[21] Zhang, J., Yao, X., & Li, Y. (2020). Improved evolutionary algorithm for parallel batch processing machine scheduling in additive manufacturing. International Journal of Production Research, 58(8), 2263-2282.
+[22] Alicastro, M., Ferone, D., Festa, P., Fugaro, S., & Pastore, T. (2021). A reinforcement learning iterated local search for makespan minimization in additive manufacturing machine scheduling problems. Computers & Operations Research, 131, 105272.
+[23] Chergui, A., Hadj-Hamou, K., & Vignat, F. (2018). Production scheduling and nesting in additive manufacturing. Computers & Industrial Engineering, 126, 292-301.
+[24] Che, Y., Hu, K., Zhang, Z., & Lim, A. (2021). Machine scheduling with orientation selection and two-dimensional packing for additive manufacturing. Computers & Operations Research, 130, 105245.
+[25] Li, X., & Zhang, K. (2018). Single batch processing machine scheduling with two-dimensional bin packing constraints. International Journal of Production Economics, 196, 113-121.
+[26] Qin, J., Liu, Y., Grosvenor, R., Lacan, F., & Jiang, Z. (2020). Deep learning-driven particle swarm optimisation for additive manufacturing energy optimisation. Journal of Cleaner Production, 245, 118702.Baumers M, Tuck C, Wildman R, et al. Energy inputs to additive manufacturing: does capacity utilization matter?[C]//2011 International Solid Freeform Fabrication Symposium. University of Texas at Austin, 2011.
+[27] Piili, H., Happonen, A., Väistö, T., Venkataramanan, V., Partanen, J., & Salminen, A. (2015). Cost estimation of laser additive manufacturing of stainless steel. Physics Procedia, 78, 388-396.
+[28] Kellens, Karel, Martin Baumers, Timothy G. Gutowski, William Flanagan, Reid Lifset, and Joost R. Duflflou. 2017. “Environmetal Dimensions of Additive Manufacturing Mapping Application Domains and Their Environmental Implications.” Journal of Industrial Ecology 21: S49–S68.
+[29] Faludi, Jeremy, Martin Baumers, Ian Maskery, and Richard Hague. 2017. “Environmental Impacts of Selective Laser Melting: Do Printer, Powder, Or Power Dominate?” Journal of Industrial Ecology 21: S144–SS56.
+[30] Yi, Li, Nicole Krenkel, and Jan C. Aurich. 2018. “An Energy Model of Machine Tools for Selective Laser Melting.” Procedia CIRP 78:67–72.
+[31] Telenko, C., & Seepersad, C. C. (2012). A comparison of the energy efficiency of selective laser sintering and injection molding of nylon parts. Rapid Prototyping Journal.
+[32] Ingarao, G., Priarone, P. C., Deng, Y., & Paraskevas, D. (2018). Environmental modelling of aluminium based components manufacturing routes: additive manufacturing versus machining versus forming. Journal of Cleaner Production, 176, 261-275.
+[33] Griffiths, V., Scanlan, J. P., Eres, M. H., Martinez-Sykora, A., & Chinchapatnam, P. (2019). Cost-driven build orientation and bin
+
+packing of parts in Selective Laser Melting (SLM). European Journal of Operational Research, 273(1), 334-352. [34] Lv, J., Peng, T., Zhang, Y., & Wang, Y. (2021). A novel method to forecast energy consumption of selective laser melting processes. International journal of production research, 59(8), 2375-2391.
+

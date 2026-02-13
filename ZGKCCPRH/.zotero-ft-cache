@@ -1,0 +1,848 @@
+The Numerical Stability of Hyperbolic Representation Learning
+Gal Mishne 1 Zhengchao Wan 1 Yusu Wang 1 Sheng Yang 2
+Abstract
+The hyperbolic space is widely used for representing hierarchical datasets due to its ability to embed trees with small distortion. However, this property comes at a price of numerical instability such that training hyperbolic learning models will sometimes lead to catastrophic NaN problems, encountering unrepresentable values in floating point arithmetic. In this work, we analyze the limitations of two popular models for the hyperbolic space, namely, the Poincar ́e ball and the Lorentz model. We find that, under the 64 bit arithmetic system, the Poincar ́e ball has a relatively larger capacity than the Lorentz model for correctly representing points. However, the Lorentz model is superior to the Poincare ́ ball from the perspective of optimization, which we theoretically validate. To address these limitations, we identify one Euclidean parametrization of the hyperbolic space which can alleviate these issues. We further extend this Euclidean parametrization to hyperbolic hyperplanes and demonstrate its effectiveness in improving the performance of hyperbolic SVM.
+1. Introduction
+The n-dimensional hyperbolic space Hn is the unique simply-connected Riemannian manifold with a constant sectional curvature −1. A remarkable property of Hn against the Euclidean space Rn is that the volume of a ball in Hn grows exponentially with respect to the radius. One can thus embed finite trees into Hn with arbitrarily small distortion (Sarkar, 2011). This motivates the study of representation learning of hierarchical data into hyperbolic space (Nickel & Kiela, 2017) and, moreover, the design of deep neural networks in hyperbolic spaces (Ganea et al., 2018; Chen
+1Halıcıo ̆glu Data Science Institute, University of California San Diego, La Jolla, California, USA 2Harvard John A. Paulson School of Engineering and Applied Science, Harvard University, Cambridge, Massachusetts, USA. Correspondence to: Zhengchao Wan <z5wan@ucsd.edu>.
+Proceedings of the 40 th International Conference on Machine Learning, Honolulu, Hawaii, USA. PMLR 202, 2023. Copyright 2023 by the author(s).
+et al., 2022), with applications in various domains where hierarchical data is abundant, such as NLP (Zhu et al., 2020; Lo ́pez et al., 2019; Lo ́pez & Strube, 2020), recommendation systems (Chamberlain et al., 2019) and neuroscience (Gao et al., 2020).
+However, the exponential volume growth property leads to numerical instability in training hyperbolic learning models. As shown by (Sala et al., 2018), in order to represent points in the popular Poincare ́ model (Nickel & Kiela, 2017; Ganea et al., 2018), one requires a large number of bits to avoid undesirable rounding errors when dealing with small numbers. The Lorentz model, a popular alternative for representing the hyperbolic space (Nickel & Kiela, 2018; Law et al., 2019), suffers an opposite numerical issue in dealing with large numbers. (Yu & De Sa, 2019) proved that representing Lorentz points using floating number arithmetic could lead to a huge representation error when the points are far from the origin. Besides, in terms of optimization and training, the empirical superiority of the Lorentz model over the Poincar ́e model has been often observed in tasks such as word embeddings (Law et al., 2019; Nickel & Kiela, 2018), however, the reason behind is yet unclear.
+It is thus important to theoretically clarify the practical limitations of current hyperbolic models and to explain why certain models have better empirical performance than others. The goal of this paper is to address these issues and to provide a new model with better numerical performance.
+Our Contributions (1) We are the first to clearly identify the representation capacity of two popular hyperbolic models, the Lorentz and the Poincar ́e models, in a geometric lens under the setting of 64-bit system1. (2) We provide a theoretical study of optimization on hyperbolic spaces from the perspective of the gradient vanishing issue inherent to hyperbolic models. We confirm theoretically that the Lorentz model is better than the Poincar ́e model from this aspect, which was previously only an empirical observation. (3) We study a simple yet effective Euclidean parameterization of the hyperbolic space which turns out to alleviate the numerical issues present in the Lorentz and Poincar ́e models. Although this Euclidean parametrization has been
+1Standard CPU/GPU processors have a max precision of 64 bits, and surpassing this limit requires ticklish custom implementations.
+1
+arXiv:2211.00181v4 [cs.LG] 24 Dec 2024
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+utilized in the literature (see for example (Mathieu et al., 2019)), we provide new insights into this construction by theoretically showing that the Euclidean parameterization is as good as the Lorentz model in terms of optimization; but it has no limitation in representation capacity. We also empirically validate that the Euclidean parameterization improves the performance in tree embedding tasks compared to both the Lorentz and Poincar ́e models. Moreover, we apply our Euclidean parametrization to hyperbolic SVM and propose the method LSVMPP, which has superior performance in comparison to other methods in our experiments.
+2. Preliminary
+In this section, we provide the necessary background for the n-dimensional hyperbolic space Hn. There are multiple isometric models for describing Hn (see (Peng et al., 2021) for a detailed survey). In this paper, we mainly focus on the Poincare ́ ball and the Lorentz model.
+Poincar ́e Ball The Poincar ́e ball is the unit open ball Dn ⊆ Rn with a Riemannian metric conformal to the underlying Euclidean one: at each point x ∈ Dn, the metric gx = λ2xhx, where hx stands for the Euclidean metric at
+x and λx := 2
+(1−∥x∥2) . For any x, y ∈ Dn, the geodesic distance between them is expressed as
+dDn (x, y) = arccosh 1 + 2 ∥x − y∥2
+(1 − ∥x∥2)(1 − ∥y∥2)
+!
+(1)
+Lorentz Model The Lorentz model interprets Hn as a submanifold of the so-called Minkowski space Rn,1. This is the linear space Rn+1 equipped with the Minkowski product
+[x, y] := −x0y0 + Pn
+i=1 xiyi. The Lorentz model (also called the hyperboloid) is then the n-dim “unit sphere” in the Minkowski space:
+Ln := {x ∈ Rn,1 : x0 > 0, [x, x] = −1}.
+For any x, y ∈ Ln, the geodesic distance between them is
+dLn (x, y) = arccosh(−[x, y]) (2)
+Notation for Norms and Gradients Let ∥·∥ and ⟨·, ·⟩ denote Euclidean l2 norm and inner product. We use ∥·∥Dn and ∥·∥Ln to denote norms of Poincare ́ and Lorentz vectors.
+More precisely, for any v ∈ TxDn and w ∈ TyLn,
+∥v∥Dn = λx ∥v∥ and ∥w∥Ln = p[w, w].
+Similarly, we use ∇ to denote Euclidean gradient and ∇Dn , ∇Ln for Poincare ́ and Lorentz gradient.
+Transition Between the Two Models The isometry between the two models can be written explicitly as φ : Dn → Ln which sends x = (x1, . . . , xn) to y :=
+∥x∥2 +1
+1−∥x∥2 , 2x1
+1−∥x∥2 , . . . , 2xn
+1−∥x∥2 . Its inverse is ψ : Ln → Dn
+which sends y = (y0, . . . , yn) to x := ( y1
+1+y0 , . . . , yn
+1+y0 ).
+The origin 0 in Dn corresponds to the point  ̄0 = (1, 0, . . . , 0) in Ln under these isometries and we call  ̄0 the origin of the Lorentz model.
+Operations on Hn In Riemannian geometry, there are several important operations relating tangent vectors and points on manifolds, such as the exponential map, the logarithm map, and parallel transport, which can be written explicitly when considering either model of Hn.
+For example, in the Poincar ́e ball, the exponential map for any x ∈ Dn and any v ∈ TxDn is given by
+expx(v) = x ⊕ tanh λx
+2 ∥v∥ v
+∥v∥ , (3)
+where ⊕ denotes the so-called M ̈obius addition (Ungar, 2001). In the Lorentz model, the exponential map for any x ∈ Ln and any v ∈ TxLn is given by
+expx(v) = cosh(∥v∥Ln )x + sinh(∥v∥Ln ) v
+∥v∥Ln
+. (4)
+3. Comparing Lorentz and Poincar ́e Models
+As mentioned in the introduction, the volume of a ball in Hn grows exponentially w.r.t. the radius. This results in that finite trees can be embedded into Hn with arbitrarily small distortion (Sarkar, 2011). However, in order to reach desired small distortion, one needs to scale the embedded tree by a large factor by pushing embedded points towards infinity in Hn as much as possible, and this comes at a price of numerical representation.
+Poincar ́e Ball To embed a combinatorial tree T with diameter l and maximal degree D up to distortion (1 + ε), one needs Ω( l log(D)
+ε ) bits to correctly represent embedded points in the Poincar ́e ball to avoid these points being rounded off to the boundary (Sala et al., 2018).
+We first interpret the number of bits in representing Poincare ́ points through a more geometrical lens.
+Proposition 3.1 (Poincar ́e radius). For any point x ∈ Dn, if ∥x∥ = 1 − 10−k for some positive number k, then in fact,
+dDn (0, x) = ln(10)k + ln(2) + O(10−k).
+See Appendix A.1 for proof. Here k is the number of bits required to avoid x being rounded to the boundary. Under the Float64 arithmetic system, the rounding error for the
+2
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+subtraction 1 − 10−k is 2−53, i.e., 1 − 10−k will be rounded to 1 when 10−k ≤ 2−53 ≈ 10−16. Hence, the maximum k is around 16. This corresponds to a distance dDn (0, x) ≈ 38. Thus, we can only represent points correctly within a ball of radius r0 ≈ 38 in the Poincar ́e ball.
+Lorentz Model Interestingly, it turns out that the Lorentz model has an even smaller representation capacity: it can only represent points correctly within a ball of radius r0/2 ≈ 19. Recall the fundamental equation [x, x] = −1 in defining the Lorentz model. Given a point x = (x0, . . . , xn) ∈ Ln, if x0 = 108, then x20 = 1016. Then, the
+floating number representation of x20 − 1 is the same as the
+one for x20 (roughly speaking, in the Float64 system, the sum/difference of two numbers differ in orders of magnitude over 16 would be rounded to the larger number itself), causing the computation of [x, x] to return 0 instead of the desired −1. Moreover, due to the following result, we know that the condition x0 = 108 corresponds to the radius r0/2.
+Proposition 3.2 (Lorentz radius). For any point x ∈ Ln, if x0 = 10k for some positive number k, then,
+dLn ( ̄0, x) = ln(10)k + ln(2) + O(10−2k).
+See Appendix A.2 for proof. This difference in the radii between the two models can be clearly seen from the perspective of the exponential maps. We postpone this interpretation to later Remark 4.1.
+The limitation of the Lorentz model is different from the Poincar ́e ball. In the Poincar ́e ball, the radius r0 ≈ 38 is a “hard” constraint: any point r0 distant from the origin will collapse to the boundary and there is no way to consider any operations on the hyperbolic space such as computing the distance thereafter. However, in the Lorentz model, the radius r0/2 ≈ 19 is a “soft” constraint: when a point x = (x0, x1, . . . , xn) is further than r0/2 away from the origin, although there is no viable method to check whether the point is on the Lorentz model, we still have the coordinates to work with: if we let xr := (x1, . . . , xn), although
+x0 =
+q
+∥xr∥2 + 1 will be rounded off to ∥xr∥, there is no numerical constraint for the vector xr. In this way, one can still cope with xr and perform some operations on the Lorentz model. Together with the optimization superiority of the Lorentz model we mention in the next section, this may account for some empirical observations that the Lorentz model is more stable than the Poincare ́ ball.
+We comment that many works either explicitly or implicitly impose different thresholds in their implementations to restrict all points within a certain radius ((Skopek et al., 2019), (Nickel & Kiela, 2017), and the popular manifold research toolbox package by (Kochurov et al., 2020), with limited discussion on the impact of the choice of these thresholds on the representation capacity and other performance. The
+discussion in this section fills the gap and provides a guide for the choice of thresholds.
+Finally, while the concepts of representation capacity for the Poincar ́e ball and the Lorentz model initially appear to be distinct, they can be unified through the examination of exponential maps. Although the representation capacity is traditionally defined for points on a manifold within these two models, it can be equivalently specified in the tangent space. This is facilitated by the exponential map expx : TxHn → Hn, which preserves distance in the radial
+direction, i.e., ∥v∥ = dHn (x, expx(v)) for any v ∈ TxHn.
+We then further introduce the concept of numerical representation capacity for a hyperbolic model. This is formally defined as the radius of the largest ball, centered at the origin in the tangent space, with the property that all points within this ball can be accurately represented within the hyperbolic model via the exponential map. Now, under the exponential map formula Equation (3) for the Poincar ́e ball, if we take our reference point x to be the origin, then vectors with length larger than 38 will be mapped to the boundary of Dn which is outside of the manifold. Similarly, in the case of the Lorentz model, under the exponential map formula Equation (4), if we choose x =  ̄0 = (1, 0, . . . , 0), then vectors with length larger than 19 will be mapped outside of the Lorentz model. Specifically, these vectors will be mapped to the cone x20 = Pn
+i=1 x2
+i . See also later Remark 4.1 for more details. This way of viewing things allows us to see how the concept of numerical representation capacity serves to unite our previous discussions on representation capacity for both the Poincare ́ and Lorentz models.
+3.1. Optimization
+Although we see that the Poincare ́ ball has a larger capacity in representing points than the Lorentz model, we show in this section that this advantage will be wiped out when considering optimization processes on hyperbolic space.
+Generally speaking, for any manifold M and a smooth function f : M → R, in order to solve a Riemannian optimization problem:
+x∗ = argminx∈Mf (x),
+one can apply Riemannian (stochastic) gradient descent (Bonnabel, 2013) with learning rate η > 0:
+xt+1 = expxt (−η∇f (xt)). (5)
+Theoretically speaking, due to the isometry between Dn and Ln, solving optimization problems in Dn and Ln via Riemannian gradient descent should return the “same” result. To describe this result properly, throughout this section, we will consider a fixed differentiable function f : Dn → R. We consider its corresponding function g : Ln → R on
+3
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+the Lorentz model, i.e., g = f ◦ ψ where ψ : Ln → Dn is the isometry specified in Section 2. The functions f and g should be regarded as the same function defined on the hyperbolic space Hn under two different chart systems. We also illustrate the relationship between f and g through the following commutative diagram.
+Ln Dn
+R
+ψ
+g
+φ f
+In the analysis below, we use x to represent points in Dn and let y = φ(x) ∈ Ln denote its corresponding point in the Lorentz model. Since φ and ψ are isometries, the following result holds trivially.
+Proposition 3.3 (Gradient descent is the “same” for both models). For any learning rate η > 0, we have that
+ψ(expy(−η∇Ln g(y))) = expx(−η∇Dn f (x)).
+Despite this theoretical equivalence, when implementing the Riemannian gradient descent algorithm, the Poincare ́ model is more prone to incur the gradient vanishing problem than the Lorentz model. We first see this through the following computation of the Euclidean norm of Riemannian gradients2. Such norm indicates the magnitude of the coordinates involved in representing the tangent vectors.
+Lemma 3.4. For any x ∈ Dn, assume that ∥x∥ = 1 − δ for some small positive δ. Then, we have that
+∥∇Dn f (x)∥ = Ω δ2 ∥∇f (x)∥ ,
+∥∇Ln g(y)∥ = O (∥∇f (x)∥) .
+See proof from Appendix A.4 and note that in a special case where the vectors x and ∇f (x) are parallel, the big O for ∥∇Ln g(y)∥ can be replaced by Ω. Notice that δ is small when x is close to the boundary of the Poincar ́e ball. As a consequence, optimizing through the Poincar ́e model results in dealing with numbers smaller in order of magnitude than through the Lorentz model. This suggests a more pronounced gradient vanishing problem for the Poincar ́e model when points are near the boundary and a potential accumulation of rounding error, e.g., when points are on their way to the boundary to achieve a lower distortion for the task of tree embedding.
+To clearly derive the limitation of the Poincar ́e model in optimization, we consider Taylor expansions of one step of the Riemannian gradient descent (Equation (5)) for Poincare ́ ball and the Lorentz model as follows.
+2Tangent vectors can be represented using the coordinates provided in either the Poincare ́ or the Lorentz model.
+Theorem 3.5. Let δ = 10−k be a small positive number. Without loss of generality, consider the point x = (1 − δ, 0, . . . , 0) ∈ Dn. Assume that ∇f (x) = (∂1f (x), 0, . . . , 0)3 and ∂1f (x) < 0. Let y := φ(x) ∈ Ln. If we let E := ∥∇f (x)∥, then
+expx(−η∇Dn f (x)) = (1 − 10−k + O(ηE10−2k), 0, . . . , 0),
+expy(−η∇Ln g(y)) =
+10k 1 − 1
+2 · 10−k + ηE10−k + O(ηE10−2k),
+1− 1
+2 · 10−k + ηE10−k + O(ηE10−2k), 0, . . . , 0 .
+See Appendix A.5 for proof. To interpret the results, assume for simplicity that η = 1 and E = ∥∇f ∥ = O(1) is bounded. Then, at each step of Riemannian gradient descent, the Poincar ́e ball needs to compute the sum of two numbers (i.e., 1 − 10−k and O(ηE10−2k) = O(10−2k)) that differ by 2k in orders of magnitude whereas in the Lorentz case only differ by k (i.e., 1 − 1
+2 · 10−k and
+ηE10−k + O(ηE10−2k) = O(10−k)). We emphasize that the terms O(10−2k) and O(10−k) do not represent error terms, but instead indicate the update in one step of Riemannian gradient descent. As a result, the Poincar ́e model has a smaller update term, which causes it to suffer from a more severe gradient vanishing issue. In particular, when k is chosen to be 8, the gradient term O(10−2k) = O(10−16) which is around the same order as the rounding error. Hence this term will be neglected and the Poincar ́e gradient descent will be stuck. However, for the Lorentz model, if one ignores the numerical representation issue, then from the optimization perspective, Lorentz model allows δ to be as small as 10−16 without encountering the severe gradient vanishing problem the Poincar ́e ball suffers from. Of course one could use a large learning rate η = 108 so that the Poincare ́ gradient numerical representation is similar to the one for the Lorentz. But such a large learning rate will induce instability in the training process. Note by Proposition 3.1, δ = 10−8 corresponds to a point 19 away from the origin. Hence, even though the Poincar ́e ball can represent points up to 38 away from the origin, a large part of the region cannot be utilized in optimization.
+4. Euclidean Parametrization of Hyperbolic Space
+In the previous section, we see that the Poincare ́ model and the Lorentz model have different pros/cons from two different perspectives: point-representation and optimization. It is thus natural to ask whether there is a way to represent
+3We only consider this direction as it is the most relevant direction in understanding the phenomenon of pushing points towards the boundary of Dn.
+4
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+hyperbolic space that could prevail in both perspectives: allowing to represent points within a relatively big region like the Poincare ́ ball (i.e., of radius 38) or even larger, while in terms of optimization behaves like the Lorentz model.
+In this section, we argue in Section 4.1 that using a Euclidean parametrization for the hyperbolic space can help address these limitations. Such Euclidean parameterization for hyperbolic space has previously been utilized in (Mathieu et al., 2019) for training hyperbolic features involved in hyperbolic VAE. However, here we present a new perspective that can provide a numerically more robust proxy for optimization on hyperbolic space. In Section 4.2, we consider a polar coordinate form of this parameterization and extend it to parametrize hyperbolic hyperplanes through a more succinct derivation than the one given in (Shimizu et al., 2020) and we also correct a mistake in their derivation (see Remark 4.1 and Remark 4.4). Finally, we observe that the hyperplane parametrization resolves the nonconvexity condition for the Lorentz hyperplane. In this way, we further apply this parametrization to and show a performance boost of the Lorentz SVM (Cho et al., 2019).
+4.1. Feature Parametrization
+One property inherent to the negative curvature of the hyperbolic space is that the exponential map at any point is a diffeomorphism (see the Cartan–Hadamard theorem in Riemannian geometry). This gives rise to a natural Euclidean parametrization of features in the hyperbolic space via the tangent space and the exponential map: pick a point p ∈ Hn and then consider the exponential map expp : TpHn → Hn;
+as TpHn can be identified (see the section below) as Rn, we then have a Euclidean parametrization of Hn.
+In either the Poincare ́ ball or the Lorentz model, there exists a canonical choice of point p: the origin 0 in Poincar ́e ball and the origin  ̄0 := (1, 0, . . . , 0) in the Lorentz model. Consider the map Rn → T0Dn sending z to z
+2 and the map
+Rn → T ̄0Ln sending z to (0, z). These two maps are both isometries, i.e., ∥z∥ agrees with the Riemannian norms of the images of z in T0Dn and T ̄0Ln.
+Now, we specify how hyperbolic features are recovered through respective exponential maps: let z ∈ Rn, then z parametrizes Poincare ́ features
+x = exp0
+z
+2 = tanh ∥z∥
+2
+z
+∥z∥ (6)
+and Lorentz features
+y = exp ̄0((0, z)) = cosh(∥z∥), sinh(∥z∥) z
+∥z∥ . (7)
+We denote these maps by FD : Rn → Dn and FL : Rn → Ln, respectively. They are, of course, sending a point z ∈
+Rn to the “same” point in the two models under the isometry φ : Dn → Ln, i.e., the following diagram commutes.
+Rn Dn
+Ln
+FD
+FL φ
+Furthermore, these two maps preserve distances between a point and the origin, i.e.,
+dDn (0, x) = dLn ( ̄0, y) = ∥z∥ .
+Remark 4.1 (The mysterious “2”). Note that the division by 2 in the Poincare ́ case (see Equation (6)) is crucial to make the above equation hold. The missing of this division by 2 is prevalent in the literature (Shimizu et al., 2020) and may raise an unfair comparison between Poincar ́e and Lorentz models (see more details in later Remark 4.4). We also remark that under the 64 bit arithmetic system, tanh(t) will be rounded to 1 as long as t > 19. Hence, one can compute exp0 correctly up to radius r0 ≈ 2 ∗ 19. As for the Lorentz model, since the float representations of cosh(t) and sinh(t) will be the same as t > 19 (note that tanh(t) = sinh(t)
+cosh(t) ),
+the Lorentz exp ̄0 can only represent points correctly within a ball with radius up to r0/2 ≈ 19.
+This Euclidean parametrization of course allows representing any point in the hyperbolic space without concern regarding numerical limitations found in the case of the Poincar ́e ball or the Lorentz model. However, it is important to note that the Euclidean parametrization does not preserve the Riemannian structure of the hyperbolic space. Nonetheless, we consider this parametrization a viable way to train functions defined on hyperbolic spaces. Next we will provide a more precise analysis of the behavior of this parametrization in optimization.
+Optimization Given this Euclidean parametrization, one can translate hyperbolic optimization problems into a Euclidean one: Given any differentiable function f : Dn → R, we define h : Rn → R by letting h := f ◦ FD. Of course, if we consider the function g := f ◦ ψ : Ln → R defined on the Lorentz model, the composition g ◦ FL agrees with h; see the commutative diagram below.
+Rn Dn
+Ln R
+FD
+FL
+g
+f
+h
+ψ
+Hence, in the discussion below, for simplicity, we start with a function defined on the Poincare ́ ball.
+Consider the optimization problem on the hyperbolic space Dn given by:
+x∗ = argminx∈Dn f (x). (8)
+5
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+This problem can be transformed into an optimization problem on the Euclidean space Rn through the Euclidean parametrization FD, resulting in the following optimization problem:
+z∗ = argminz∈Rn h(z) = argminz∈Rn f (FD(z)). (9)
+Since FD is a bijective diffeomorphism, any optimizer z∗ of Equation (9) corresponds to an optimizer FD(z∗) of Equation (8), and vice versa.
+The newly obtained optimization problem will suffer less from the gradient vanishing problem than the Poincar ́e model and has a similar performance to the Lorentz gradient descent. We analyze the one step gradient descent w.r.t. h in a manner similar to Theorem 3.5 below.
+Theorem 4.2. Under the same assumptions and notation as in Theorem 3.5, if we let z := F −1
+D (x) = (2arctanh(1 −
+δ), 0, . . . , 0) ∈ Rn, then ∥∇h(z)∥ = Ω(δ ∥∇f (x)∥) and
+z − η∇h(z)
+= ln(10)k + ln(2) + (η ∥∇f (x)∥ − 1/2)10−k + O(10−2k).
+See Appendix A.6 for proof. Similarly, as in the discussion below Theorem 3.5, we assume η = 1 and ∥∇f (x)∥ = O(1). In this case, we see the gradient update step involves the sum of two terms whose orders of magnitude differ roughly by log10(k) + k. This difference in orders of magnitude sits between the Poincar ́e case and the Lorentz case. In particular, when k is smaller than 8 (recall in Section 3 the Lorentz model can only correctly represent points when k ≤ 8), then the difference in orders of magnitude for the Euclidean gradient descent is almost the same as the one for the Lorentz gradient descent. Hence, the Euclidean parametrization has similar performance to the Lorentz model in optimization when points are within a reasonable range. We empirically validate this point in tree embeddings experiments in Section 5.1. Remark 4.3. (Guo et al., 2022) claimed that maps of the
+form Rn exp0
+−−−→ Dn −f→ R will incur gradient vanishing problem due to the fact that the Riemannian gradient of f will be small when the point is near the boundary of the Poincar ́e ball (see Lemma 3.4). However, this is only half of the story. In fact, the Jacobian of the map exp0 will reduce the power of δ from 2 to 1 and thus help alleviate the gradient vanishing problem (see Lemma 3.4, Theorem 4.2 and Appendix A.6 for more details).
+4.2. Hyperplane Parametrization
+The notion of hyperplanes in the hyperbolic space is a natural analogue of the notion of subspaces in the Euclidean spaces. This analogy results in that hyperbolic hyperplanes have been used for hyperbolic multinomial logistic regression (MLR) in (Ganea et al., 2018), in designing hyperbolic
+neural networks in (Shimizu et al., 2020), and of course, in designing hyperbolic SVM (Cho et al., 2019).
+Consider p ∈ Ln, w ∈ TpLn, the Lorentz hyperplane passing through p and perpendicular to w is denoted by
+Hw,p = {x ∈ Ln| [w, x] = 0}. (10)
+Notice that p is implicit in the condition since w is on the tangent space of p. In hyperbolic MLR or hyperbolic neural networks, one needs to optimize over the choice of hyperplanes. Equation (10) gives us the opportunity to only use w for optimization. However, in order for w to be a feasible tangent vector, we need to impose the nonconvex restriction that [w, w] > 0 which is undesirable.
+Instead, we derive a Euclidean parametrization of Hw,p to get rid of the nonconvex constraint. This parametrization follows closely the Euclidean parametrization of hyperbolic features. We first parametrize p as in the previous section via exp ̄0 but with a flavour of polar coordinates. We then parametrize w as the parallel transport of a vector from T ̄0Ln to TpLn. Now, more precisely, let a ∈ R, z ∈ Rn, and set z ̄ := (0, z) ∈ T ̄0Ln. We set
+p := exp ̄0 a z ̄
+∥z ̄∥ = cosh(a), sinh(a) z
+∥z∥ . (11)
+Note that this equation is just the polar coordinate version of Equation (7). Then, we let
+w := PT ̄07→p(z ̄) = (sinh(a) ∥z∥ , cosh(a)z) (12)
+Here PTx7→y denotes the parallel transport map along the unique geodesic from x to y and see a succinct derivation of the above formula in Appendix A.7.
+Hence, the parametrized hyperplane becomes
+H ̃z,a = {x ∈ Ln| cosh(a)⟨z, xr⟩ = sinh(a) ∥z∥ x0},
+where xr = (x1, . . . , xn) denotes the latter n components of x = (x0, x1, . . . , xn). The geometric meaning of this parametrization is as follows: the hyperplane is passing through a point p which is |a| far away from the origin and along the direction z, and is perpendicular to a vector w which has length ∥z∥.
+Remark 4.4. (Shimizu et al., 2020) parametrized hyperplanes in the Poincar ́e ball for the purpose of reducing the number of training parameters from 2n to n + 1 for hyperplanes in Dn. Our derivation starts from the Lorentz model and is more succinct from the approach via the Poincar ́e ball. Eventually, we obtain essentially the formulas up to a small difference: The terms cosh(a) and sinh(a) in the formula above are replaced by cosh(2a) and sinh(2a) in (Shimizu et al., 2020). This difference is due to the mistake that they did not take into account the conformal factor λ20 = 4 of T0Dn. See also Remark 4.1.
+6
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Remark 4.5 (What if z = 0?). The careful reader may notice that Equation (11) does not work for the case when z = 0. We note that however, the final formula Equation (12) works for the case when z = 0. When z = 0, the tangent vector w becomes the zero vector at p and thus the notion of hyperplane degraded to the whole space.
+Now, we see there is no restriction on z and a and thus we get rid of the nonconvex condition [w, w] > 0 for parametrizing hyperplanes. This substantially simplifies the optimization process. Next we demonstrate how this parametrization can be used for hyperbolic SVM.
+4.2.1. A NEW FORMULATION OF HYPERBOLIC SVM
+Support Vector Machine (SVM) is a classic machine learning model for both classification and regression by training a separating hyperplane. (Cho et al., 2019) first generalized SVM to datasets in the hyperbolic space for learning a separating hyperbolic hyperplane through the Lorentz model. Consider a training set {((xi), (yi))}n
+i=1 where
+xi ∈ Ln, yi ∈ {1, −1}, ∀i ∈ {1, ..., n}. Then, the (softmargin) Lorentz SVM (LSVM) can be formulated as
+min
+w∈Rn+1 ,[w,w]>0
+1
+2 ∥w∥2
+Ln + C
+n
+X
+i=1
+lLn (−yi[w, xi])
+where lLn (z) = max(0, arcsinh(1) − arcsinh(z)) is a variant of the hinge function that respects the Lorentz distance and C is a scalar controlling the tolerance of misclassification. This problem has both nonconvex constraint and nonconvex objective function and the authors propose using a projected gradient descent optimization.
+As the vector w in the above formulation serves as the tangent vector determining a Lorentz hyperplane (cf. Equation (10)), we can then parametrize w via Equation (12). As w is the parallel transport of z ̄, we have that ∥w∥Ln = ∥z ̄∥Ln = ∥z∥ . In this way, we obtain the following min
+imization problem over parameters z ∈ Rn and a ∈ R without any nonconvex constraints.
+min
+z ∈Rn ,a∈R
+1
+2 ∥z∥2 +
+C
+n
+X
+i=1
+lLn (yi(sinh(a) ∥z∥ x0 − cosh(a)⟨z, xr⟩))
+Empirical evaluation in Section 5.2 shows that this new SVM framework (LSVMPP) outperforms LSVM, possibly by escaping the local minima.
+5. Experiments
+5.1. Hyperbolic Embeddings
+This subsection aims to empirically validate our theoretical results (Theorem 3.5 and Theorem 4.2) by demonstrating
+Figure 1. Simulated Tree 1 and Tree 2 in R2. The 2D coordinates of each node are features and pairwise distances are computed through shortest path distance on the connected graph.
+that both the Lorentz and the Euclidean (parametrized) models better leverage the hyperbolic structure than the Poincare ́ ball. To do so we embed trees in hyperbolic spaces. The embedding performance is measured by distortion, max distortion, and diameter. Distortion quantifies the fidelity of embedding w.r.t. the tree structure by simultaneously considering the expansion and contraction of the embedding. In a general setting, let f : (MR, dR) → (ME, dE) be an embedding map between two metric spaces, the distortion of the map is given by δ = δcontraction · δexpansion where
+δcontraction = mean
+x̸=y
+dR(x, y)
+dE (x, y) ; δexpansion = mean
+x̸=y
+dE(x, y) dR(x, y)
+Max distortion δmax is defined similarly by replacing the mean with the supremum.
+Datasets We simulated tree datasets S in R2 with varying degrees of complexity whose distances are equally weighted graph distances. Figure 1 lists two example trees with more in Figure 5. A detailed discussion on the impact of performance by its shape can be found in the Appendix B.1.
+Experiments We optimize the following loss function to minimize embedding distortion:
+L(θ) = 1
+|S|(|S| − 1)
+X
+x̸=y∈S
+dE(x, y)
+zE
+− dR(x, y)
+zR
+2
+where θ collects the parameters in the network, dE denotes the embedding distance and dR denotes the original tree distance, and zE, zR are averages of dE and dR, respectively. For L2 and D2, the features to update are the results of the respective exponential maps FL, FD of each dataset (treating Euclidean data points as in the tangent space of the origin). For the Euclidean model E2, the features to update are the raw R2 dataset, but the pairwise distances are computed after FL or equivalently FD. We use Riemannian SGD (Becigneul & Ganea, 2018) for hyperbolic models and SGD for the Euclidean model, fixing a learning rate of 1 and train for 30000 epochs.
+7
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Results We report the metrics after the final epoch in Table 3. Here raw manifold refers to using Euclidean distances as embedding distances against tree distances to measure distortions (i.e. original distortions). In both cases, the benefit of Euclidean parametrization to train hyperbolic models is clear: the Euclidean model achieves the lowest average distortions and max distortion, although the performances of Lorentz and Euclidean are comparable as expected. Furthermore, the diameters of the resulting embeddings for the Lorentz and Euclidean models are much larger than the Poincare ́ embeddings. This validates that Poincare ́ tends to get stuck using Riemannian optimization methods.
+Table 1. Average distortion δ, max distortion δmax, and diameter d by Dataset created in Figure 1 and Manifold
+tree manifold δ δmax d
+1
+raw 1.1954 10.6062 2.8284 D2 1.0462 4.0546 4.8740 L2 1.0176 2.4511 10.1827 E2 1.0157 2.3158 10.9019
+2
+raw 1.1186 14.1421 2.2361 D2 1.0589 7.1435 4.9757 L2 1.0180 3.2803 10.6719 E2 1.0134 2.7408 11.4504
+Figure 2 visualizes the embeddings of Tree 1 and Tree 2 in Figure 1 (see also Figure 6 and Figure 7 in Appendix B for visualizations of embeddings for all simulated trees). Lorentz features are stereographically projected to the Poincare ́ ball for comparisons. Dimmer points are closer to the edge of the input space while darker points are more at the center. The red point is the root or center of the tree. Poincare ́ results are seemingly not as spread out as the other two methods, and resembling the early stage in the optimization process of Euclidean and Lorentz models.
+Figure 2. Embedding of Tree 1 (top row) and Tree 2 (bottom row) at the final epoch with Poincare ́ (left), Lorentz (mid), and Euclidean parametrization (right).
+Finally, in Figure 3, we directly compare the median norms of Riemannian gradient from respective manifolds along different training epochs, whose median is taken across different embedding points. We visualize two ratios, one between gradient norms of L2 and E2 (blue) and the other between D2 and E2 (red). In both cases, Poincare ́ graidents have much smaller a norm than its competitors. This further confirms its optimization disadvantage.
+0 5000 10000 15000 20000 25000 epoch
+0.2
+0.4
+0.6
+0.8
+1.0
+median gradient ratio
+Median Riemannian gradient norm ratio (Tree 1) Poincare/Euclidean Lorentz/Euclidean
+0 5000 10000 15000 20000 25000 epoch
+0.2
+0.4
+0.6
+0.8
+1.0
+median gradient ratio
+Median Riemannian gradient norm ratio (Tree 2) Poincare/Euclidean Lorentz/Euclidean
+Figure 3. Median Riemannian Gradient Norm Ratios by epoch for Tree 1 (left) and Tree 2 (right): Poincar ́e gradients have significantly smaller norms than others
+5.2. Hyperbolic SVM Models
+We tested the performances of all models in multi-class classification tasks using the following six simulated datasets and six real datasets.
+Synthetic Datasets We simulated two sets of data: Gaussian mixtures and explicit trees. For Gaussian mixtures, we simulate each dataset using 1200 points on the Poincar ́e disk D2 following the settings in (Cho et al., 2019). Specifically, we first generate a Gaussian mixture on R2, whose k centroids follow N (0, 1.5I2) equipped with N (0, I2) noise. Each of the k clusters is given a unique label and has the same number of points. We then use the map FD to map Euclidean features to Poincare features. We tested performances on k ∈ {3, 5, 10}. For each data set of explicit trees, we initialize a tree in R2 and then embed the tree into the hyperbolic space using Euclidean parametrization as described in Section 5.1. Then we randomly select a node and treat all of its descendants as positive class and negative class otherwise (i.e. k = 2). This subtree-classification also resembles the WordNet subtree classification presented in (Cho et al., 2019). See Appendix C.4 for more details.
+Real Datasets We tested the performances on three datasets: CIFAR-10 (Krizhevsky et al., 2009), fashion-MNIST (Xiao et al., 2017), Paul Myeloid Progenitors developmental dataset (Paul et al., 2015), Olsson Single-Cell RNA sequencing dataset (Olsson et al., 2016), Krumsiek Simulated Myeloid Progenitors (Krumsiek et al., 2011), and Moignard blood cell developmental trace from single-cell gene expression (Moignard et al., 2015). CIFAR-10 and FashionMNIST each contain images of 10 different types of objects. Other datasets are rooted in biological applications: Paul has 19 cell types developed from the myeloid progenitors;
+8
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Krumsiek likewise but with a different latent structure and 11 classes; Olsson is a smaller dataset with RNA-seq data of 8 types; Moignard has 7 classes for different blood cell developmental stages. Each dataset is embedded into D2 with the default curvature 1 using the technique introduced in (Khrulkov et al., 2020; Nickel & Kiela, 2017). We visualize three of the tested datasets in Figure 4.
+Figure 4. CIFAR, Fashion-MNIST, and Paul datasets Poincar ́e visualization. Each color correspond to one label class.
+Results For each dataset, we fix a train-test split and run 5 times. In each run, we use a one-vs-all approach to train and use Platt scaling (Platt et al., 1999) to give final predictions based on output probabilities. The average multiclass classification accuracy and macro F1 scores are reported. We compare our model (LSVMPP) against the Lorentz SVM (LSVM), the Euclidean SVM (ESVM) and a SVM with precomputed reference points based on the Poincar ́e ball (PSVM) (Chien et al., 2021). See Appendix C.3 for and a detailed discussion on implementation and respective optimal hyperparameters, Table 2 for average accuracy and F1 for selected datasets in Figure 4, and Appendix C.5 for experiment results on more datasets.
+Although small fluctuations exist, our model outperforms other available methods in most of the simulated and real datasets. Note that in all cases, Euclidean SVM already has decent performances, unlike the unsatisfactory performances reported in (Chien et al., 2021) where ESVM models are mistakenly set to not have intercepts. The good performance by ESVM may be attributed to the powerful scaling method that universally applies to datasets well characterized by the log odds of positive samples, and this assumption may still hold on datasets with a latent hierarchical structure. It is also worth pointing out that the previous formulation of Lorentz SVM (Cho et al., 2019) also uses Platt scaling on Lorentz SVM output but did not scale it using arcsinh to morph it into a proxy of hyperbolic distance, which is more aligned with the Euclidean SVM output. Empirically we witness a marginal increase in average accuracy using Platt scaling with the output of arcsinh instead of the raw alternatives (see Appendix C.2.1 for more details).
+Lastly, notice that the previously leading model, PSVM, does not outperform ESVM in simple simulated cases. This matches our expectations in that the reference points in PSVM are separately learned using an unsupervised method (Hyperbolic Graham Search) to locate the midpoint between
+two convex hulls, independent of the hyperplane training process. This step is sensitive to the train test split and does not guarantee that PSVM could identify the max-margin separating hyperplane even in the training set. All other methods, if they converge, could indeed find the max-margin separating hyperplane in respective manifolds.
+Table 2. Mean accuracy and macro F1 score of datasets in Figure 4.
+algorithm accuracy (%) F1
+CIFAR-10
+ESVM 91.88 ± 0.00 0.9191 ± 0.00 LSVM 91.88 ± 0.00 0.9189 ± 0.00 PSVM 91.81 ± 0.00 0.9182 ± 0.00 LSVMPP 91.96 ± 0.00 0.9197 ± 0.00
+fashion-MNIST
+ESVM 86.37 ± 0.00 0.8665 ± 0.00 LSVM 71.59 ± 0.07 0.6588 ± 0.08 PSVM 86.57 ± 0.00 0.8665 ± 0.00 LSVMPP 89.49 ± 0.00 0.8955 ± 0.00
+paul
+ESVM 55.05 ± 0.00 0.4073 ± 0.00 LSVM 58.36 ± 0.07 0.4517 ± 0.00 PSVM 55.25 ± 0.00 0.3802 ± 0.00 LSVMPP 62.64 ± 0.05 0.5024 ± 0.00
+6. Discussions
+In this paper, we have analyzed the representation limitations and numerical stability of optimization for two popular models and a Euclidean parametrization of the hyperbolic space under a 64-bit arithmetic system. We note that however, while the Euclidean parameterization has no limitation for point representation, computation of certain functions induced from hyperbolic spaces, such as the hyperbolic distance between points, may still lead to numerical problems and we leave this for future study. Another potential future direction is to investigate the use of different accelerated gradient descent methods on these models. A recent study (Hamilton & Moitra, 2021) has shown that the negative curvature inherent to the hyperbolic space can impede the acceleration of the gradient descent process in a Nestorovlike way, citing the exponential volume growth property as a cause for the loss of information from past gradients. It would be interesting to explore in the future whether the Euclidean parametrization proposed in our paper could overcome this obstruction and improve the convergence rate of optimization problems in hyperbolic spaces.
+Code for reproducing our experiments is available at https://github.com/yangshengaa/stable-hyperbolic.
+Acknowledgements
+This work is partially supported by NSF grants CCF2112665, CCF-2217058, and NIH grant RF1MH125317-01.
+9
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+References
+Becigneul, G. and Ganea, O.-E. Riemannian adaptive optimization methods. In International Conference on Learning Representations, 2018.
+Bonnabel, S. Stochastic gradient descent on Riemannian manifolds. IEEE Transactions on Automatic Control, 58 (9):2217–2229, 2013.
+Chamberlain, B. P., Hardwick, S. R., Wardrope, D. R., Dzogang, F., Daolio, F., and Vargas, S. Scalable hyperbolic recommender systems. arXiv preprint arXiv:1902.08648, 2019.
+Chen, W., Han, X., Lin, Y., Zhao, H., Liu, Z., Li, P., Sun, M., and Zhou, J. Fully hyperbolic neural networks. In Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pp. 5672–5686, 2022.
+Chien, E., Pan, C., Tabaghi, P., and Milenkovic, O. Highly scalable and provably accurate classification in Poincare ́ balls. In 2021 IEEE International Conference on Data Mining (ICDM), pp. 61–70. IEEE, 2021.
+Cho, H., DeMeo, B., Peng, J., and Berger, B. Large-margin classification in hyperbolic space. In The 22nd international conference on artificial intelligence and statistics, pp. 1832–1840. PMLR, 2019.
+Ganea, O., Be ́cigneul, G., and Hofmann, T. Hyperbolic neural networks. Advances in neural information processing systems, 31, 2018.
+Gao, S., Mishne, G., and Scheinost, D. Poincar ́e embedding reveals edge-based functional networks of the brain. In Medical Image Computing and Computer Assisted Intervention–MICCAI 2020, pp. 448–457. Springer, 2020.
+Graham, R. L. An efficient algorithm for determining the convex hull of a finite planar set. Info. Pro. Lett., 1: 132–133, 1972.
+Guo, Y., Wang, X., Chen, Y., and Yu, S. X. Clipped hyperbolic classifiers are super-hyperbolic classifiers. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 11–20, 2022.
+Hamilton, L. and Moitra, A. A no-go theorem for robust acceleration in the hyperbolic plane. Advances in Neural Information Processing Systems, 34:3914–3924, 2021.
+Khrulkov, V., Mirvakhabova, L., Ustinova, E., Oseledets, I., and Lempitsky, V. Hyperbolic image embeddings. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 6418–6428, 2020.
+Kochurov, M., Karimov, R., and Kozlukov, S. Geoopt: Riemannian optimization in pytorch. arXiv preprint arXiv:2005.02819, 2020.
+Krizhevsky, A., Hinton, G., et al. Learning multiple layers of features from tiny images. 2009.
+Krumsiek, J., Marr, C., Schroeder, T., and Theis, F. J. Hierarchical differentiation of myeloid progenitors is encoded in the transcription factor network. PloS one, 6(8):e22649, 2011.
+Law, M., Liao, R., Snell, J., and Zemel, R. Lorentzian distance learning for hyperbolic representations. In International Conference on Machine Learning, pp. 3672–3681. PMLR, 2019.
+L ́opez, F. and Strube, M. A fully hyperbolic neural model for hierarchical multi-class classification. In Findings of the Association for Computational Linguistics: EMNLP 2020, pp. 460–475, 2020.
+L ́opez, F., Heinzerling, B., and Strube, M. Fine-grained entity typing in hyperbolic space. In Proceedings of the 4th Workshop on Representation Learning for NLP (RepL4NLP-2019), pp. 169–180, 2019.
+Mathieu, E., Le Lan, C., Maddison, C. J., Tomioka, R., and Teh, Y. W. Continuous hierarchical representations with Poincar ́e variational auto-encoders. Advances in neural information processing systems, 32, 2019.
+Moignard, V., Woodhouse, S., Haghverdi, L., Lilly, A. J., Tanaka, Y., Wilkinson, A. C., Buettner, F., Macaulay, I. C., Jawaid, W., Diamanti, E., et al. Decoding the regulatory network of early blood development from single-cell gene expression measurements. Nature biotechnology, 33(3): 269–276, 2015.
+Nickel, M. and Kiela, D. Poincare ́ embeddings for learning hierarchical representations. Advances in neural information processing systems, 30, 2017.
+Nickel, M. and Kiela, D. Learning continuous hierarchies in the Lorentz model of hyperbolic geometry. In International Conference on Machine Learning, pp. 3779–3788. PMLR, 2018.
+Olsson, A., Venkatasubramanian, M., Chaudhri, V. K., Aronow, B. J., Salomonis, N., Singh, H., and Grimes, H. L. Single-cell analysis of mixed-lineage states leading to a binary cell fate choice. Nature, 537(7622):698–702, 2016.
+Paszke, A., Gross, S., Chintala, S., Chanan, G., Yang, E., DeVito, Z., Lin, Z., Desmaison, A., Antiga, L., and Lerer, A. Automatic differentiation in pytorch. 2017.
+10
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Paul, F., Arkin, Y., Giladi, A., Jaitin, D. A., Kenigsberg, E., Keren-Shaul, H., Winter, D., Lara-Astiaso, D., Gury, M., Weiner, A., et al. Transcriptional heterogeneity and lineage commitment in myeloid progenitors. Cell, 163 (7):1663–1677, 2015.
+Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., Blondel, M., Prettenhofer, P., Weiss, R., Dubourg, V., Vanderplas, J., Passos, A., Cournapeau, D., Brucher, M., Perrot, M., and Duchesnay, E. Scikit-learn: Machine learning in Python. Journal of Machine Learning Research, 12:2825–2830, 2011.
+Peng, W., Varanka, T., Mostafa, A., Shi, H., and Zhao, G. Hyperbolic deep neural networks: A survey. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2021.
+Platt, J. et al. Probabilistic outputs for support vector machines and comparisons to regularized likelihood methods. Advances in large margin classifiers, 10(3):61–74, 1999.
+Sala, F., De Sa, C., Gu, A., and R ́e, C. Representation tradeoffs for hyperbolic embeddings. In International conference on machine learning, pp. 4460–4469. PMLR, 2018.
+Sarkar, R. Low distortion Delaunay embedding of trees in hyperbolic plane. In International Symposium on Graph Drawing, pp. 355–366. Springer, 2011.
+Shimizu, R., Mukuta, Y., and Harada, T. Hyperbolic neural networks++. In International Conference on Learning Representations, 2020.
+Skopek, O., Ganea, O.-E., and B ́ecigneul, G. Mixedcurvature variational autoencoders. In International Conference on Learning Representations, 2019.
+Ungar, A. A. Hyperbolic trigonometry and its application in the Poincare ́ ball model of hyperbolic geometry. Computers & Mathematics with Applications, 41(1-2):135–147, 2001.
+Wilson, B. and Leimeister, M. Gradient descent in hyperbolic space. arXiv preprint arXiv:1805.08207, 2018.
+Xiao, H., Rasul, K., and Vollgraf, R. Fashion-mnist: a novel image dataset for benchmarking machine learning algorithms. arXiv preprint arXiv:1708.07747, 2017.
+Yu, T. and De Sa, C. M. Numerically accurate hyperbolic embeddings using tiling-based models. Advances in Neural Information Processing Systems, 32, 2019.
+Zhu, Y., Zhou, D., Xiao, J., Jiang, X., Chen, X., and Liu, Q. Hypertext: Endowing fasttext with hyperbolic geometry. In Findings of the Association for Computational Linguistics: EMNLP 2020, pp. 1166–1171, 2020.
+11
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+A. Proofs
+A.1. Proof of Proposition 3.1
+Note that arccosh(x) = ln(x + √x2 − 1). This implies that
+arccosh 1 + 2∥x∥2
+1 − ∥x∥2 = arccosh 1 + ∥x∥2
+1 − ∥x∥2 = ln 1 + ∥x∥2
+1 − ∥x∥2 +
+s
+(1 + ∥x∥2)2
+(1 − ∥x∥2)2 − 1
+!
+= ln 1 + ∥x∥2 + 2∥x∥
+1 − ∥x∥2 ,
+and then ln 1+∥x∥2+2∥x∥
+1−∥x∥2 = ln 1+∥x∥
+1−∥x∥ = ln(1 + ∥x∥) − ln(1 − ∥x∥).
+By using the formula for the Poincare ́ distance between 0 and x, we have that
+dDn (0, x) = arccosh 1 + 2 ∥x∥2
+1 − ∥x∥2
+!
+= ln (1 + ∥x∥) − ln (1 − ∥x∥)
+= ln(2 − 10−k) − ln(10−k)
+= ln(10)k + ln(2) + ln(1 − (2 ∗ 10k)−1)
+= ln(10)k + ln(2) + O(10−k).
+A.2. Proof of Proposition 3.2
+By using the formula for the Lorentz distance between  ̄0 and x, we have that
+dLn ( ̄0, x) = arccosh(−[ ̄0, x])
+= arccosh(x0) = ln x0 +
+q
+x20 − 1
+= ln(x0) + ln 1 +
+q
+1 − 1/x20
+= ln(x0) + ln 2 + 1
+2x20
++ O(x−4
+0)
+= ln(10)k + ln(2) + O(10−2k).
+A.3. Proof of Proposition 3.3
+Given a Riemannian isometry ι : M → N between two manifolds, for any p ∈ M , one has that
+ι ◦ expp = expι(p) ◦Dιp,
+where Dιp : TpM → TpN denotes the differential at p.
+Now, by the Riemannian chain rule for gradient, one has that
+∇Dn f (x) = ∇Dn (g ◦ φ)(x) = (Dφx)∗ ◦ ∇Ln g(y),
+where y = φ(x). Since φ is an isometry, one has that (Dφx)∗ = Dψy : TyLn → TxDn, where ψ := φ−1. In this way, Dψy(−η∇Ln g(y)) = −η∇Dn f (x) and thus
+ψ(expy(−η∇Ln g(y)) = expψ(y)(Dψy(−η∇Ln g(y))) = expx(−η∇Dn f (x)).
+A.4. Proof of Lemma 3.4
+The Poincare ́ gradient ∇Dn f at y can be computed explicitly as follows:
+∇Dn f (x) = λ−2
+x ∇f (x) = (1 − ∥x∥2)2
+4 (∂1f (x), . . . , ∂nf (y))T.
+12
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Hence,
+∥∇Dn f (x)∥ = Ω (1 − ∥x∥2)2
+4 ∥∇f (x)∥
+!
+.
+As for the Lorentz gradient, we apply the following lemma
+Lemma A.1. For any x ∈ Dn and any v = (v1, . . . , vn) ∈ TxDn, by letting y := φ(x) ∈ Ln, we can write down the image of v under the differential Dφ explicitly as follows:
+Dφ(v) =
+n
+X
+i=1
+yivi(1 + y0), v1(1 + y0) +
+X
+i
+yivi · y1, . . . , vn(1 + y0) +
+X
+i
+yivi · yn
+!
+. (13)
+Proof of Lemma A.1. The differential of ψ : Ln → Dn, the inverse of φ, was already derived in Equation (9) of (Wilson & Leimeister, 2018): for w = (w0, . . . , wn) ∈ TyLn, and for any 1 ≤ i ≤ n
+(Dψ(w))i = 1
+1 + y0
+wi − yiw0
+y0 + 1 .
+We then simply verify that the map defined in Equation (13) is the inverse of Dψ. Let w be the right hand side of Equation (13). Then, for any 1 ≤ i ≤ n
+(Dψ(w))i = 1
+1 + y0
+wi − yiw0
+y0 + 1
+=1
+1 + y0
+
+vi(1 + y0) +
+X
+j
+yj vj · yi − yi
+y0 + 1
+n
+X
+j=1
+yjvj(1 + y0)
+
+
+= vi.
+Hence, Equation (13) holds.
+As the map φ : Dn → Ln is an isometry, by the lemma above, the Lorentz gradient at y can be written down explicitly:
+∇Ln g(y) = Dφ(∇Dn f (x)) = Dφ (1 − ∥x∥2)2
+4 ∇f (x)
+!
+= Dφ 1
+(1 + y0)2 ∇f (x)
+=
+Pn
+i=1 yi∂if (x) 1 + y0
+, ∂1f (x)(1 + y0) + P
+i yi∂if (x) · y1
+(1 + y0)2 , . . . , ∂nf (x)(1 + y0) + P
+i yi∂if (x) · yn (1 + y0)2
+T
+.
+Note that we use column vector representation in the above equation to indicate that the vector denotes a gradient. In the
+third equation, we used the fact that 1 + y0 = 1 + 1+∥x∥2
+1−∥x∥2 = 2
+1−∥x∥2 . Then,
+∥∇Ln g(y)∥ =
+p2(P yi∂if (x))2 + P(∂if (x))2)
+1 + y0
+≤
+p2y02 − 1 1 + y0
+∥∇f (x)∥ = O(∥∇f (x)∥).
+A.5. Proof of Theorem 3.5
+Recall that in the Poincare ́ ball, the exponential map can be expressed as follows:
+expx(v) = x ⊕ tanh λx
+2 ∥v∥ v
+∥v∥ ,
+where λx = 2
+1−∥x∥2 and
+x ⊕ y = (1 + 2⟨x, y⟩ + ∥y∥2)x + (1 − ∥x∥2)y
+1 + 2⟨x, y⟩ + ∥x∥2 ∥y∥2 . (14)
+13
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+When x = (1 − δ, 0, . . . , 0), λx = 2
+δ(2−δ) . We let E := ∥∇f (x)∥. Then,
+expx(−η∇Dn f (x)) = x ⊕ tanh λxη
+2 ∥∇Dn f (x)∥ −∇Dn f (x)
+∥∇Dn f (x)∥
+= x ⊕ tanh λxη
+2 ∥∇Dn f (x)∥ −∇Dn f (x)
+∥∇Dn f (x)∥
+= x ⊕ tanh η
+2λx
+∥∇f (x)∥ −∇f (x)
+∥∇f (x)∥
+= x ⊕ tanh ηEδ(2 − δ)
+4
+−∇f (x) ∥∇f (x)∥
+=x⊕ 2−δ
+4 ηEδ + O((ηEδ)3) −∇f (x)
+∥∇f (x)∥ .
+We use the Taylor expansion of tanh at 0 in the last equation. Now, using Equation (14), we have that
+x⊕ 2−δ
+4 ηEδ + O((ηEδ)3) −∇f (x)
+∥∇f (x)∥
+= (1 − 2(1 − δ)( 2−δ
+4 ηEδ + O((ηEδ)3)) + O((ηEδ)2))(1 − δ, 0, . . . , 0) + δ(2 − δ)( 2−δ
+4 ηEδ + O((ηEδ)2))(1, 0, . . . , 0)
+1 − 2(1 − δ)( 2−δ
+4 ηEδ + O((ηEδ)3)) + (1 − δ)2O((ηEδ)2)
+= 1 − 2(1 − δ) 2−δ
+4 ηEδ + O((ηEδ)2))(1 − δ) + O(ηEδ2), 0, . . . , 0
+1 − 2(1 − δ) 2−δ
+4 ηEδ + O((ηEδ)2)
+=(1 − δ + O(ηEδ2), 0, . . . , 0).
+As for the Lorentz model, we have that
+expy(−η∇Ln g(y)) = cosh(η ∥∇Ln g(y)∥Ln )y + sinh(η ∥∇Ln g(y)∥Ln ) −∇Ln g(y)
+∥∇Ln g(y)∥Ln
+= cosh(η ∥∇Dn f (x)∥Dn )y + sinh(η ∥∇Dn f (x)∥Dn ) −∇Ln g(y)
+∥∇Dn f (x)∥Dn
+= cosh( (2 − δ)
+2 ηEδ) 2 − 2δ + δ2
+δ(2 − δ) , 2 − 2δ
+δ(2 − δ) , 0, . . . , 0
+− sinh( (2−δ)
+2 ηEδ)
+(2−δ)
+2 Eδ
+(1 − δ)∂1f (x), 2 − 2δ + δ2
+2 ∂1f (x), 0, . . . , 0
+=(1 + O((ηEδ)2)) 2 − 2δ + δ2
+δ(2 − δ) , 2 − 2δ
+δ(2 − δ) , 0, . . . , 0 + (η + O(η2(Eδ)3)) (1 − δ)E, 2 − 2δ + δ2
+2 E, 0, . . . , 0
+=1
+δ−1
+2 + ηE + O(ηEδ), 1
+δ−1
+2 + ηE + O(ηEδ), 0, . . . , 0
+Finally, we substitute δ with 10−k to obtain
+expx(−η∇Dn f (x)) = (1 − 10−k + O(ηE10−2k), 0, . . . , 0),
+expy(−η∇Ln g(y)) = (10k − 1
+2 + ηE + O(ηE10−k), 10k − 1
+2 + ηE + O(ηE10−k), 0, . . . , 0).
+A.6. Proof of Theorem 4.2
+Similarly as in the proof of Appendix A.5, we denote E := ∥∇f (x)∥. We first calculate the gradient ∇h. We let JFD denote the Jacobian of FD. Then, the differential of h can be computed via the chain rule
+Dh(z) = Df (x) · JFD (z)
+14
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Therefore, as for the gradient, we have that
+∇h(z) = (Dh(z))T = (JFD (z))T∇f (x), (15)
+where we use the fact that ∇f (x) = (Df (x))T. Remark A.2. Of course, one also can apply the chain rule formula for Riemannian gradient directly as follows
+∇h(z) = (DFD(z))∗ · ∇Dn f (x),
+where (DFD(z))∗ denotes the adjoint of the differential map DFD(z) : TzRn → TxDn, which is represented by a matrix. Given that the metric on TxDn is λ2xhx where hx denotes the Euclidean metric, we have that the matrix representation of
+(DFD(z))∗ is (JFD (z))Tλ2x. Hence
+∇h(z) = (JFD (z))Tλ2
+x · λ−2
+x ∇f (x)
+| {z }
+A
+= (JFD (z))T∇f (x).
+This agrees with Equation (15). (Guo et al., 2022) claimed that functions of the form of h, i.e., the form Rn exp0
+−−−→ Dn → R,
+will suffer severe vanishing gradient issue since the term A has a coefficient λx−2 = (1−∥x∥2)2
+4 vanishing as x is close to the
+boundary of Dn. However, as one can see clearly from the above formula, the coefficient (1−∥x∥2)2
+4 will be canceled when considering the map FD (or equivalently speaking, the exponential map exp0). Hence, in order to correctly analyze the magnitude of ∇h, one needs to compute the Jacobian matrix which is what we do next in a special case.
+Let w := arctanh(1 − δ). Then, z = (2w, 0, . . . , 0) and the Jacobian of FD : Rn → Dn at z = (2w, 0, . . . , 0) is
+JFD (z) = tanh(w)
+2w ∗ In×n +
+
+   
+1
+2 (1 − tanh2(w) − tanh(w)
+w ) 0 ... 0 0 0 ... 0
+... ... . . . ...
+0 0 ... 0
+
+   
+.
+Hence,
+∇h(z) = (JFD (z))T∇f (x) =
+
+   
+tanh(w)
+2w ∗ In×n +
+
+   
+1
+2 (1 − tanh2(w) − tanh(w)
+w ) 0 ... 0 0 0 ... 0
+... ... . . . ...
+0 0 ... 0
+
+   
+
+   
+
+   
+∂1f (x) 0
+...
+0
+
+   
+= ∂1f (x)
+2 (1 − tanh2(w)), 0, . . . , 0
+T
+.
+Therefore, the first component of z − η∇h(z) is such that
+2w + ηE
+2 (1 − tanh2(w))
+=2w + ηE
+2 (1 − (1 − δ)2)
+= ln 2
+δ −δ
+2 + O(δ2) + ηE
+2 (2δ − δ2)
+= ln 2
+δ + (ηE − 1/2)δ + O(δ2).
+Note that in the second equation we use the expansion that
+arctanh(1 − δ) = 1
+2 ln 2
+δ −δ
+4 + O(δ2).
+Finally, we substitute δ with 10−k to obtain
+z − η∇h(z) = ln(10)k + ln(2) + (η ∥∇f (x)∥ − 1/2)10−k + O(10−2k).
+15
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+A.7. Derivation of Equation (12)
+In the hyperbolic space Hn, any two points can be connected by a unique geodesic. Using the Lorentz model, for any x, y ∈ Ln, the parallel transport map along the geodesic connecting x and y can be written down explicitly as follows: for v ∈ TxLn, one has that
+PTx7→y(v) = v + [y, v]
+1 − [x, y] (x + y).
+As usual we define  ̄0 := [1, 0, ..., 0] ∈ Rn+1 to be the origin of the Lorentz model. Then
+w = PT ̄07→p(z ̄) = z ̄ + [p, z ̄]
+1 − [ ̄0, p] ( ̄0 + p)
+= (0, z) + sinh(a) ∥z∥
+1 + cosh(a) 1 + cosh(a), sinh(a) z
+∥z∥
+= sinh(a) ∥z∥ , z + sinh2(a)
+1 + cosh(a) z
+= sinh(a) ∥z∥ , z + cosh2(a) − 1
+1 + cosh(a) z
+= (sinh(a) ∥z∥ , cosh(a)z) .
+B. Tree Optimization
+In this section, we provide more details on the tree optimization experiments.
+B.1. Synthetic Data Generating Processing
+We prefer to initialize, center, and normalize trees with Euclidean coordinates in a prescribed bounded region, serving as a data preprocessing procedure. Here we fit every simulated tree to be within a unit square. This ensures numerical stability in the initial exponential map into either Dn or Ln, and empirically has lower embedding distortion than the same ones with larger scales. The reason is that if the data is not centered or of a large scale, the subsequent exponential map brings features to much more distorted positions and poses challenges in the training steps.
+B.2. Full Results
+The Euclidean initialization of all tested trees are visualized in Figure 5. In Table 3, we present all embedding results in distortion δ, max distortion δmax, and embedding diameters d.
+The hierarchy that the Euclidean parametrization is comparable with and slightly better than the Lorentz model and that the Lorentz model is better than the Poincar ́e ball persists in all tested datasets. We also visualize all embeddings at their final training stage in Figure 6 and Figure 7. Note that Poincare ́ embeddings in general are more contracted than their alternatives, further demonstrating its optimization disadvantage.
+C. More on SVM
+In this section, we provide more details of our experiments on SVM.
+C.1. Overview of SVM in Binary Classification
+Support Vector Machine (SVM) is a machine learning task for both classification and regression by training a separating hyperplane. We first provide a brief overview of the Euclidean SVM and then introduce its variants in the hyperbolic space (Cho et al., 2019; Chien et al., 2021) using l2 loss and a hinge-loss penalty. Readers may consider using l1 loss or squared-hinge penalty, and other combinations as well.
+ESVM In the classification setting, let {((xi), (yi))}n
+i=1 be the training set and xi ∈ Rn, yi ∈ {1, −1}, ∀i ∈ {1, ..., n}. To obtain the separating hyperplane, in the soft-margin Euclidean SVM (ESVM), we minimize the margin between the
+16
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Figure 5. Simulated Trees in R2. We label figures by Tree 1 - 4 (top row) and Tree 5 - 8 (bottom row). The 2D coordinates of each node are features and pairwise distances computed through shortest path distance on the connected graph.
+Table 3. Average distortion δ, max distortion δmax, and diameter d by Dataset created in Figure 5 and Manifold
+tree manifold δ δmax d tree manifold δ δmax d
+1
+raw 1.1954 10.6062 2.8284
+5
+raw 1.3349 12.7279 1.4142 D2 1.0462 4.0546 4.8740 D2 1.0176 2.0321 4.2523 L2 1.0176 2.4511 10.1827 L2 1.0029 1.2829 7.3850 E2 1.0157 2.3158 10.9019 E2 1.0019 1.1997 8.8504
+2
+raw 1.1186 14.1421 2.2361
+6
+raw 1.5080 88.8552 1.4142 D2 1.0589 7.1435 4.9757 D2 1.1243 50.4524 4.3168 L2 1.0180 3.2803 10.6719 L2 1.0392 21.9948 8.9204 E2 1.0134 2.7408 11.4504 E2 1.0269 22.3743 9.8190
+3
+raw 1.0511 3.0000 2.0396
+7
+raw 1.2108 17.7132 0.8321 D2 1.0321 3.3830 6.3564 D2 1.2145 8.6454 5.0657 L2 1.0190 2.5506 9.6830 L2 1.0166 3.7655 19.1703 E2 1.0174 2.4350 10.2328 E2 1.0100 1.7825 19.8481
+4
+raw 1.1539 19.0000 2.8284
+8
+raw 1.1421 10.7807 0.9220 D2 1.0754 14.1074 5.0453 D2 1.0324 9.7552 4.5670 L2 1.0421 8.2933 10.4028 L2 1.0157 9.2790 8.8324 E2 1.0292 6.8504 12.7596 E2 1.0148 8.4500 9.1712
+17
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Figure 6. Visualized Embeddings (Tree 1 - 4, from top to bottom row) at the final training epoch (3000). Each column from left to right correspond to Poincar ́e, Lorentz, and Euclidean parametrization.
+18
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Figure 7. Visualized Embeddings (Tree 5 - 8, from top to bottom row) at the final training epoch (3000). Each column from left to right correspond to Poincar ́e, Lorentz, and Euclidean parametrization.
+19
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+hyperplane and the support vectors
+min
+w∈Rn
+1
+2 ∥w∥2
+2+C
+n
+X
+i=1
+l(yi⟨w, xi⟩)
+where l is a hinge loss l(z) = max(0, 1 − z), and C controls the tolerance of misclassification.
+LSVM Given a hyperbolic classification dataset, i.e., the dataset {((xi, yi))}n
+i=1 satisfies that xi ∈ Ln, yi ∈ {1, −1}, ∀i ∈ {1, ..., n}, (Cho et al., 2019) first formulated the soft-margin Lorentz SVM as follows:
+min
+w∈Rn+1
+1
+2 ∥w∥2
+Ln + C
+n
+X
+i=1
+lLn (−yi[w, xi])
+s.t. [w, w] > 0
+where lLn (z) = max(0, arcsinh(1) − arcsinh(z)). Unfortunately, this problem has a nonconvex constraint and nonconvex objective function.
+PSVM Projected gradient descent is slow and may not converge to the global minimum. (Chien et al., 2021) removes the optimization constraints by first precomputing a reference point p on the Poincare ́ ball and then projecting features via the logarithm map logp onto the tangent space TpDn, thereby casting hyperbolic SVM back into an ESVM. We call this method PSVM. x However, precomputing a reference point is not part of the SVM heuristics and may not find the maximum margin separating hyperplanes following this approach. The authors use a modified Graham Search (Graham, 1972) to identify convex hulls on the Poincare ́ ball and use the midpoint of the two convex hulls as the reference point p. This does not have a valid justification when the two convex hulls overlap and may risk introducing a strong bias in the estimated hyperplane.
+LSVMPP We build upon the framework of LSVM using our Euclidean parametrization of hyperplanes. Our reformulation lifts the nonconvex constraint [w, w] > 0 and does not precompute any reference point. Using our parametrization described in the previous section, we have the following loss:
+min
+z ∈Rn ,a∈R
+1
+2 ∥z∥2 + C
+n
+X
+i=1
+lLn yi(sinh(a) ∥z∥ x0 − cosh(a)zxT
+r) .
+This lifts the constraint for optimization, but the objective still remains nonconvex. However, the empirical evaluation shows that this new SVM framework (LSVMPP) still outperforms the previous formulation LSVM, possibly by escaping the local minimums.
+C.2. Multiclass Classification Using SVM: Platt Scaling
+Suppose now that yi ∈ {0, 1, ..., k} for all i ∈ {1, ..., n}. A common way to train a multiclass classifier is by using the one-vs-all method, in which we train k binary classifiers, using the k-th class as positive samples and negative samples otherwise.
+This method only gives us binary predictions if particular samples belong to a certain class, without weighting on the most and least probable class, which ultimately renders the predictions non-interpretable. To solve this issue, Platt scaling (Platt et al., 1999) is a common method to transform binary values in the one-vs-all scheme in multiclass classification to the probabilities of each class. It itself is another machine learning optimization problem. We use ESVM as a demonstration in the following discussion.
+In the k-th binary classifier, suppose w(k) is the trained vector determining a hyperplane (intercept included), the decision values are given by
+f (k)(xi) = ⟨w(k), xi⟩.
+This serves as a proxy of the distance between a sample to the separating hyperplane. Intuitively, if f (k)(xi) > 0 and if the sample is far away from the hyperplane, we should assign higher confidence, or probability, to the event that xi belong to the k-th class and lower probability for points closer to the hyperplane. (Platt et al., 1999) argues that a logistic fit works well empirically to measure the associated probability, given by
+P (yi = 1|f (k)) = 1
+1 + eAf (k)(xi)+B
+20
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+where A, B are parameters trained by minimizing the negative log-likelihood of the training data through some optimization methods, typically through Newton’s method.
+This procedure repeats for every f (k). That is, we need k (possibly) different sets of (A, B) to transform all binary values into probabilities.
+C.2.1. ADAPTATION OF PLATT SCALING ON HYPERBOLIC SPACES
+Poincar ́e SVM (PSVM) (Chien et al., 2021) easily adapts to Platt scaling since the hyperplane is trained on the tangent space of a reference point, which is Euclidean, and the decision values are similarly proxies for Euclidean distances (normed distance).
+This may become a problem for the other two hyperbolic models on the Lorentz manifold. In (Cho et al., 2019), the authors
+replace f (k) with
+f (k),LSVM(x) = [w(k), x]
+where [·, ·] denotes the Minkowski product. We argue that this loses its distance proxy functionality, and could be made more of a certain distance metric by
+f (k),LSVMPP(x) = arcsinh − [w(k), x]
+w(k)
+Ln
+!
+w(k)
+Ln
+and the last formulation is the input for the hyperbolic Platt scaling. Note that arcsinh − [w(k),x]
+∥w(k) ∥Ln
+corresponds to the
+distance between the point x and the hyperplane determined by w(k) (see (Cho et al., 2019, Lemma 4.1)4). So the above formula denotes a normed signed distance between the point x and the hyperplane determined by w(k). We report that empirically there is an edge in accuracy using this formulation instead of the previous one (see Table 5). However, it remains to show whether the logistic fit is still a valid assumption, particularly for datasets with a latent hierarchical structure on hyperbolic spaces.
+C.3. Hyperbolic SVM Implementation and Hyperparameters
+We rely on scikit-learn (Pedregosa et al., 2011) for the realization of Euclidean and Poincare ́ SVM. The relevance of Poincare ́ SVM training is that after identifying a reference point and projecting Poincar ́e features onto its tangent space, features are Euclidean and hence Euclidean SVM training applies, although its intercept should be set to 0, since the precomputed reference point already encodes the intercept information. For Lorentz SVM, we inherit from the code provided in (Cho et al., 2019; Chien et al., 2021) and modify it for better run-time performances; and for our model LSVMPP, we use PyTorch (Paszke et al., 2017) to help to compute the gradient automatically.
+Hyperparameters for four different SVM models should be different since they have different magnitudes in both loss and penalty terms. Margins, in particular, in the Euclidean, Poincar ́e, and Lorentz spaces for the same set of data are different. Therefore, hyperparameter search should be made separate for each model.
+The best performances of the Euclidean and Poincar ́e SVM are both using C = 5, with a learning rate of 0.001 and 3000 epochs. An early stop mechanism is built in the scikit-learn implementation (Pedregosa et al., 2011) of Euclidean SVM, so not all 3000 epochs are utilized, and empirically 500 epochs suffice the respective optimality for all tested data; the best performance of LSVM and LSVMPP are in general brought by C = 0.5, with a learning rate around 10−10 (depending on the initial scale of the dataset) with 500 epochs. We note that the abnormally small learning rate is explained by the necessity of escaping the local minimum of a complex non-convex objective function.
+C.4. Details of Synthetic Data Generation
+This section provides more detail on generation of synthetic datasets. As noted previously, we have two types of synthetic datasets: Gaussian mixtures and explicit trees. Gaussian mixture datasets are named sim data 1, sim data 2, and sim data 3 and explicit trees are named sim data 4, sim data 5, sim data 6. All synthetic datasets are visualized in Figure 8.
+In particular, to generate an explicit tree dataset, we simulate a birth-and-death process. In this process, the distribution of
+4There is a slight imprecision in (Cho et al., 2019, Lemma 4.1) that the absolute value sign was missing.
+21
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+offspring follows a Poisson distribution with a parameter value of λ = 3, with an additional 1 added (resulting in a Poisson random variable starting with 1). The three plotted explicit trees represent three different realizations of this process. Once the tree structure is established, we initialize Euclidean embeddings that closely resemble the final embeddings in Figure 8. We then apply the tree embedding method, as described in Section 5.1, utilizing Euclidean parametrization to optimize the embedding. We train with SGD using a learning rate of 10 for 50000 epochs.
+C.5. Full Results
+We visualize all datasets on the Poincare ́ ball in Figure 8.
+The average accuracy and F1 scores of five different runs on the same train-test split of each dataset are reported below in Table 4 and Table 5.
+To maintain consistency in the evaluation, we adopt the train-test split provided in the GitHub referenced in (Chien et al., 2021) for the olsson, CIFAR, and fashion-MNIST datasets. For all other datasets, we utilize a 75%/25% train-test split stratified based on the class assignments.
+In addition, we also compare to a model using Platt scaling on raw output, named “LSVMPP (raw)” in the table below. “LSVMPP (arcsinh)” is the version with adapted input for Platt scaling. The two versions share the same learning rate. See Appendix C.2.1 for more details. Notice that LSVMPP (raw) performs better than the adapted version when Euclidean SVM is at the top-notch; otherwise, it is worse and less stable in performance than the adapted version, indicating a lesser fit of the Platt training step with respect to the raw decision values.
+22
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Figure 8. Simulated (first two rows, with k = 3, k = 5, k = 10 from left to right for the first row respectively and k = 2 for the second row) and real (last two rows) datasets: CIFAR (k = 10), fashion-MNIST (k = 10), paul (k = 19), olsson (k = 8), krumsiek (k = 11), and moignard k = 7. In each plot, different colors represent different classes. For the explicit tree datasets we also include the tree edges.
+23
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Table 4. Mean accuracy and macro F1 score of synthetic Dataset in Figure 8.
+algorithm accuracy (%) F1
+sim 1
+ESVM 94.67 ± 0.00 0.9465 ± 0.00 LSVM 94.67 ± 0.00 0.9465 ± 0.00 PSVM 91.66 ± 0.00 0.9151 ± 0.00 LSVMPP (raw) 94.67 ± 0.00 0.9464 ± 0.00 LSVMPP (arcsinh) 94.67 ± 0.00 0.9464 ± 0.00
+sim 2
+ESVM 68.67 ± 0.00 0.6656 ± 0.00 LSVM 66.66 ± 0.00 0.6336 ± 0.00 PSVM 64.66 ± 0.00 0.6143 ± 0.00 LSVMPP (raw) 70.33 ± 0.00 0.6920 ± 0.00 LSVMPP (arcsinh) 69.00 ± 0.00 0.6840 ± 0.00
+sim 3
+ESVM 61.67 ± 0.00 0.5908 ± 0.00 LSVM 39.00 ± 0.00 0.3236 ± 0.00 PSVM 61.00 ± 0.00 0.5606 ± 0.00 LSVMPP (raw) 60.67 ± 0.00 0.5468 ± 0.00 LSVMPP (arcsinh) 61.93 ± 0.01 0.5881 ± 0.01
+sim 4
+ESVM 93.40 ± 0.00 0.0000 ± 0.00 LSVM 96.04 ± 3.24 0.4000 ± 0.49 PSVM 99.53 ± 0.00 0.9630 ± 0.00 LSVMPP (raw) 100.00 ± 0.00 1.0000 ± 0.00 LSVMPP (arcsinh) 100.00 ± 0.00 1.0000 ± 0.00
+sim 5
+ESVM 96.25 ± 0.00 0.0000 ± 0.00 LSVM 96.25 ± 0.00 0.0000 ± 0.00 PSVM 99.63 ± 0.00 0.9474 ± 0.00 LSVMPP (raw) 99.63 ± 0.00 0.9474 ± 0.00 LSVMPP (arcsinh) 99.63 ± 0.00 0.9474 ± 0.00
+sim 6
+ESVM 97.64 ± 0.00 0.7805 ± 0.00 LSVM 99.63 ± 0.13 0.9711 ± 0.01 PSVM 97.91 ± 0.00 0.8095 ± 0.00 LSVMPP (raw) 99.53 ± 0.42 0.9648 ± 0.03 LSVMPP (arcsinh) 99.63 ± 0.13 0.9714 ± 0.01
+24
+
+
+The Numerical Stability of Hyperbolic Representation Learning
+Table 5. Mean accuracy and macro F1 score of real Dataset in Figure 8.
+algorithm accuracy (%) F1
+CIFAR-10
+ESVM 91.88 ± 0.00 0.9191 ± 0.00 LSVM 91.88 ± 0.00 0.9189 ± 0.00 PSVM 91.81 ± 0.00 0.9182 ± 0.00 LSVMPP (raw) 91.94 ± 0.00 0.9195 ± 0.00 LSVMPP (arcsinh) 91.96 ± 0.00 0.9197 ± 0.00
+fashion-MNIST
+ESVM 86.37 ± 0.00 0.8665 ± 0.00 LSVM 71.59 ± 0.07 0.6588 ± 0.08 PSVM 86.57 ± 0.00 0.8665 ± 0.00 LSVMPP (raw) 89.35 ± 0.00 0.8939 ± 0.00 LSVMPP (arcsinh) 89.49 ± 0.00 0.8955 ± 0.00
+paul
+ESVM 55.05 ± 0.00 0.4073 ± 0.00 LSVM 58.36 ± 0.07 0.4517 ± 0.00 PSVM 55.25 ± 0.00 0.3802 ± 0.00 LSVMPP (raw) 62.55 ± 0.14 0.4579 ± 0.01 LSVMPP (arcsinh) 62.64 ± 0.05 0.5024 ± 0.00
+olsson
+ESVM 72.72 ± 0.00 0.4922 ± 0.00 LSVM 81.82 ± 0.00 0.7542 ± 0.00 PSVM 88.63 ± 0.00 0.8793 ± 0.00 LSVMPP (raw) 80.91 ± 0.45 0.7142 ± 0.03 LSVMPP (arcsinh) 84.09 ± 0.00 0.8429 ± 0.00
+krumsiek
+ESVM 82.19 ± 0.00 0.6770 ± 0.00 LSVM 85.62 ± 0.39 0.6933 ± 0.92 PSVM 84.06 ± 0.00 0.6908 ± 0.00 LSVMPP (raw) 83.75 ± 0.28 0.6403 ± 0.01 LSVMPP (arcsinh) 86.25 ± 0.00 0.7079 ± 0.00
+moignard
+ESVM 67.78 ± 0.00 0.5934 ± 0.00 LSVM 64.88 ± 0.38 0.5502 ± 0.22 PSVM 60.77 ± 0.00 0.5167 ± 0.00 LSVMPP (raw) 65.77 ± 0.13 0.5671 ± 0.00 LSVMPP (arcsinh) 65.22 ± 0.63 0.5719 ± 0.02
+25

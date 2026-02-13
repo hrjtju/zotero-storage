@@ -1,0 +1,881 @@
+International Journal of Production Research
+ISSN: (Print) (Online) Journal homepage: https://www.tandfonline.com/loi/tprs20
+Solving the shortest path interdiction problem via reinforcement learning
+Dian Huang, Zhaofang Mao, Kan Fang & Lin Chen
+To cite this article: Dian Huang, Zhaofang Mao, Kan Fang & Lin Chen (2023) Solving the shortest path interdiction problem via reinforcement learning, International Journal of Production Research, 61:1, 31-48, DOI: 10.1080/00207543.2021.2002962 To link to this article: https://doi.org/10.1080/00207543.2021.2002962
+Published online: 13 Dec 2021. Submit your article to this journal Article views: 805 View related articles View Crossmark data Citing articles: 4 View citing articles
+Full Terms & Conditions of access and use can be found at https://www.tandfonline.com/action/journalInformation?journalCode=tprs20
+
+INTERNATIONAL JOURNAL OF PRODUCTION RESEARCH 2023, VOL. 61, NO. 1, 31–48 https://doi.org/10.1080/00207543.2021.2002962
+
+Solving the shortest path interdiction problem via reinforcement learning
+Dian Huanga,b, Zhaofang Maoa, Kan Fanga and Lin Chen c
+aCollege of Management and Economics, Tianjin University, Tianjin, People’s Republic of China; bSchool of New Media and Communication, Tianjin University, Tianjin, People’s Republic of China; cDepartment of Computer Science, Texas Tech University, Lubbock, TX, USA
+
+ABSTRACT
+This paper addresses the shortest path interdiction problem, in which the leader aims to maximise the length of the shortest path that the follower can traverse subject to a limited interdiction budget. To solve this problem, we propose a reinforcement learning framework and use the pointer network to handle the situation of variable output sizes. To evaluate the performance of our proposed reinforcement learning model, we conduct extensive computational experiments on a set of instances that are generated from two different network topologies, i.e. the grid networks and the random graphs. To train the pointer network, we consider three different baselines, i.e. the exponential, critical, and rollout baselines, among which the rollout baseline policy achieves the best computational results, and thus is used as the default baseline during our computational experiments. Moreover, when the size of instances increases, we find that solving the equivalent single-level mixed integer program of the problem could be quite time-consuming, while our proposed reinforcement learning approach can still obtain solutions with good performance effectively for both the grid networks and the random graphs.
+
+ARTICLE HISTORY Received 31 August 2020 Accepted 26 October 2021
+KEYWORDS Network interdiction; shortest paths; reinforcement learning; pointer network; rollout baseline
+
+1. Introduction
+In the past few decades, the network interdiction problem has identified its applications in various situations in which one wishes to determine the weakest components or the worst-case deliberate external disruptions of a system. Until recently, a lot of researchers have used different variations of network interdiction problems to build resilient supply chain and logistic networks such as telecommunication, electric power, transportation, express logistics, water supply, sewage disposal, infection prevention, and natural gas and petroleum distribution systems (Cappanera and Scaparra 2011). For example, Bier et al. (2007) proposed a greedy algorithm based method to identify promising interdiction strategies on transmission lines in electric power systems and assess the vulnerability of such systems. Kheirkhah, Navidi, and Messi Bidgoli (2016) presented a bilevel programming model to solve the hazardous material distribution problem, in which some arcs of the network can be interdicted by a regulatory agency. Jiang and Liu (2021) addressed the problem of optimising the defense resource allocation against interdictions on water supply networks, so that the water requirements of public, commercial and industrial activities can be satisfied.
+With its numerous applications, the network interdiction problem has played an indispensable role on
+
+today’s societal, economic, and industrial development. In particular, as a typical network interdiction problem, the shortest path interdiction problem has captured many researchers’ attention over years in the operations research community. The reason for the rapidly growing studies on the shortest path interdiction problem comes from twofolds: first, many applications of this problem can be found in practical settings, such as nuclear smuggling (Morton, Pan, and Saeger 2007), hazardous material transportation (Cappanera and Scaparra 2011), procurement planning (Prince, Geunes, and Smith 2013), border surveillance (Sullivan et al. 2014; Karabulut, Aras, and Altınel 2017), and human trafficking (Konrad et al. 2017). Second, by investigating the shortest path interdiction problem as a starting point, the theoretical and algorithmic innovations derived from solving this problem may be used as a basis to solve more generalised network interdiction problems in a variety of scenarios.
+To be specific, in a shortest path interdiction problem, two opposing players, called the leader (or attacker, interdictor) and the follower (or defender), are engaged in a Stackelberg game as follows: In a directed network, the follower wishes to find a path with minimum length between two specified nodes, i.e. the origin node O and the destination node D. On the other hand, before the follower chooses a path, the leader can take
+
+CONTACT Kan Fang kfang@tju.edu.cn College of Management and Economics, Tianjin University, Tianjin, People’s Republic of China © 2021 Informa UK Limited, trading as Taylor & Francis Group
+
+32
+
+D. HUANG ET AL.
+
+Figure 1. An illustration of the shortest path interdiction problem.
+
+interdiction actions by destroying certain arcs or increasing the effective length of some arcs within limited interdiction resources, so as to maximise the length of the shortest path that the follower can traverse.
+To illustrate, Figure 1 provides a feasible solution to an instance of the shortest path interdiction problem (Smith and Song 2020), in which the follower aims to find a shortest path from node 1 to node 6, the leader has a budget that can interdict up to three arcs, and the value given in parentheses represents the increased length after interdiction. Obviously, prior to the interdiction, the shortest path from node 1 to node 6 is 1 → 3 → 2 → 4 → 6, with a length of 17 (the grey arcs in Figure 1(a)). When the slashed arcs are interdicted by the leader, we can see that the shortest path becomes 1 → 3 → 2 → 5 → 6, and the associated length becomes 21 (the grey arcs in Figure 1(b)).
+As we know, Fulkerson and Harding (1977) and Golden (1978) are the earliest work that consider the shortest path interdiction model, in both of which the arc lengths can be partially interdicted, and they showed that their problems are polynomial-time solvable, since each of them can be reduced to an equivalent minimum cost network flow problem. However, in many practical settings, the interdiction decisions are usually ‘all-ornothing’ decisions, i.e. binary variables, and Ball, Golden, and Vohra (1989) have shown that a special case of the shortest path interdiction problem, in which the length of an arc becomes arbitrarily large once it is interdicted, and the interdiction resource is constrained by a single cardinality constraint, that is, there are at most k arcs can be interdicted for some pre-fixed value k, i.e. the k-most-vital-arcs problem, remains NP-hard.
+Note that the shortest path interdiction problem is a special case of a static Stackelberg game, therefore, it is natural to formulate this problem as a bilevel mixed integer program (MIP). In particular, since the follower only attempts to find the shortest path from O to D, which
+
+can be modelled as a convex optimisation problem, as a result, the dualise-and-combine approach can be applied to make both players’ problems share the same direction of optimisation, and thus any standard optimisation solver can be used to solve the corresponding single-level mixed integer program (Smith and Song 2020). However, given the NP-hardness of this problem, researchers have observed that solving the single-level MIP directly can be extremely difficult even for some modest-sized instances of the problem. In the seminal work of Israeli and Wood (2002), the authors considered the shortest path interdiction problem in its most general form and proposed two decomposition-based algorithms with the so-called ‘super-valid inequalities’. By testing their proposed algorithms on a set of directed grid networks, the authors showed that such solution approach can achieve substantial speed-ups compared with the traditional linear-programming-based branch and bound method.
+Starting with their work, many new variants of the shortest path interdiction problems have been investigated. Depending on the assumptions and objectives that have been considered in these studies, the shortest path interdiction problems can be further categorised with various characteristics, such as (i) asymmetric information: the leader and follower have different levels of information about the network (e.g. Bayrak and Bailey 2008; Baycik and Sullivan 2019); (ii) dynamic interdiction: the leader can interdict arcs sequentially after observing the action of the follower in each period (e.g. Sefair and Smith 2016); (iii) incomplete information: both the leader and follower may not have complete information about their opponent or even the underlying network, and they have to learn key parameters from historical data or from their ongoing interactions (e.g. Borrero, Prokopyev, and Sauré 2016; Pay, Merrick, and Song 2019; Yang et al. 2021); (iv) fortify strategy: in addition to the above attacker–defender
+
+INTERNATIONAL JOURNAL OF PRODUCTION RESEARCH
+
+33
+
+Table 1. Relevant studies on the shortest path interdiction literature.
+
+References Bayrak and Bailey (2008) Khachiyan et al. (2008) Pan and Morton (2008) Rocco and Ramirez-Marquez (2010)
+Cappanera and Scaparra (2011) Yates and Lakshmanan (2011) Borrero, Prokopyev, and
+Sauré (2016) Sefair and Smith (2016) Song and Shen (2016) Lozano and Smith (2017) Sadeghi, Seiﬁ, and Azizi (2017) Baycik and Sullivan (2019) Pay, Merrick, and Song (2019) Holzmann and Smith (2019)
+Zhang, Guan, and Pardalos (2021) Zhang et al. (2021) Holzmann and Smith (2021)
+
+Interdiction characteristics
+Deterministic, asymmetric information Deterministic, node-wise limited
+interdiction Stochastic, uncertain
+origin-destination pair Deterministic, multiple objectives
+Deterministic, trilevel optimisation, fortiﬁcation
+Deterministic, dynamic interdiction, multiple origins and targets
+Deterministic, dynamic interdiction, incomplete information, learning
+Deterministic, dynamic interdiction Stochastic, uncertain arc cost,
+risk-averse leader Deterministic, trilevel optimisation,
+fortiﬁcation Deterministic, trilevel optimisation,
+partial interdiction, fortiﬁcation Deterministic, asymmetric information,
+hidden interdictions Stochastic, incomplete leader’s
+preference Deterministic, arc improvement by
+follower
+Deterministic, upgrading edges on trees, 1 norm
+Deterministic, upgrading edges on trees, hamming distance
+Stochastic, randomised interdiction actions
+
+Objective function of leader Maximise the shortest path Maximise the shortest path
+Minimise the detection probability
+(i)Maximise the shortest path (ii)Minimise the interdiction strategy
+cost Maximise the shortest path
+Minimise the maximum non-detection probability
+Maximise the cost of follower
+Maximise the shortest path Maximise the shortest path
+Maximise the shortest path
+Maximise the shortest path
+Maximise the shortest path
+Maximise the shortest path
+(i)Maximise the shortest path
+(ii)Minimise the arc improvement budget
+Maximise the shortest path of the tree
+Maximise the shortest path of the tree
+maximise the expected cost of follower
+
+Solution methodologies Mixed integer linear program Dijkstra’s algorithm
+L-shaped decomposition method
+Evolutionary algorithm
+Enumeration algorithm
+Knapsack approximation
+Greedy policies
+Dynamic programming Branch-and-cut algorithm
+Backward sampling framework
+Benders decomposition algorithm
+Benders decomposition algorithm
+Branch-and-cut algorithm
+Mixed integer programming
+Primal dual algorithm
+Dynamic programming
+Sample average approximation
+
+paradigm, researchers have also considered a three-stage defender–attacker–defender game, in which the defender can make a preliminary set of ‘fortification’ decisions to protect infrastructure against potential interdictions (e.g. Cappanera and Scaparra 2011; Sadeghi, Seifi, and Azizi 2017; Lozano and Smith 2017); (v) various risk measures: for stochastic shortest path interdiction problems, in which the travelling cost and interdiction effect may be uncertain, various risk measures have been proposed, such as maximising the expected cost of the follower (e.g. Holzmann and Smith 2021) or risk-averse measures (e.g. Song and Shen 2016). Meanwhile, the maximum reliable path interdiction problem, which can be viewed as a variant of the shortest path interdiction problem, has also been investigated by several researchers in recent years (e.g. Pan and Morton 2008). To summarise, Table 1 provides the relevant studies on the shortest path interdiction literature.
+To solve the shortest path interdiction problems, researchers have mainly used some row-generation techniques to develop various decomposition-based algorithms. Among these approaches, different variations of Benders decomposition have been widely implemented, which can divide the original problem into a master
+
+problem and a subproblem, and solve them iteratively to pass information (e.g. the selection of paths by the follower or the resource allocations of the leader) between two players, and generate corresponding valid inequalities to the master problem until an optimal solution is found. In particular, when the decisions of the leader involve integrality restrictions, some additional ‘supervalid inequalities’, which are generated by exploring the combinatorial structures of the problem, could be further used to strengthen the formulation (Israeli and Wood 2002).
+However, for large-scale systems such as the electric power grids or cyber-physical systems, it is still a bottleneck to compute the optimal interdiction strategies efficiently by those developed algorithms, and it is crucial to develop next-generation computationally efficient algorithms to compute near-optimal interdiction strategies. It should also be noticed that all of these state-of-the-art algorithms that have been developed to solve the shortest path interdiction problems are often adapted to particular structures of the problems, and they might not work consistently across all possible instances, that is, once the input of the problem changes slightly, the developed algorithms may need to be revised
+
+34
+
+D. HUANG ET AL.
+
+to guarantee their performance (Bengio, Lodi, and Prouvost 2021).
+In recent years, more and more researchers have noticed that machine learning methods have the potential to solve various combinatorial optimisation problem in a more principled and optimised way, which requires less handcrafted heuristics for making decisions. For example, Furian et al. (2021) proposed a learningbased branch and price framework to solve a sampled vehicle routing problem with time windows, which is assumed to follow a specific pattern, and showed that their proposed approaches outperform standard algorithms. Chen et al. (2021) took bus scheduling as a case study to show that their proposed framework that integrates analytics and machine learning approaches could be used to address uncertainties and conflicting objectives for challenging real-life optimisation problems. Bai et al. (2021) presented a comprehensive review on various hybrid methods that combines analytics techniques with machine learning tools in addressing vehicle routing problems (VRP). Note that it is often difficult to obtain the optimal labels for most combinatorial optimisation problems, therefore the supervised learning, which has been widely used in many other machine learning contexts, may be not applicable to most combinatorial optimisation problems.
+Recently, several researchers have observed that the reinforcement learning, in which an agent interacts with an environment through a Markov decision process (MDP) and seeks to make a series of sequential decisions to maximise the expected sum of future rewards, can be applied to address combinatorial optimisation problems, such as the travelling salesman, bin packing, scheduling, and vehicle routing problems (Mazyavkina et al. 2021). For example, Lu, Zhang, and Yang (2020) proposed a learning-based approach for capacitated vehicle routing problems, which learns to iteratively refine the solution with an improvement operator selected by a reinforcement learning-based controller. Duan et al. (2020) proposed a graph convolutional network based model, which is trained by a hybrid strategy that combines reinforcement learning with supervised learning, to solve practical vehicle routing problems. Lee and Kim (2021) used a reinforcement learning approach to solve the robotic flow shop scheduling problem with processing time variation. Achamrah, Riane, and Limbourg (2021) considered a dynamic and stochastic inventory routing problem with transshipment and substitution, and proposed a resolution approach based on genetic algorithm and deep reinforcement learning.
+In particular, the architecture of pointer networks, which was proposed by Vinyals, Fortunato, and Jaitly (2015), enables the reinforcement learning to address
+
+problems defined on graphs that arise with variable output dictionaries, that is, the dictionary size of the output is not necessarily equal to the length of the input. For example, Bello et al. (2017) employed the pointer network architecture and presented a framework to solve the travelling salesman and knapsack problems with reinforcement learning and neural networks, and showed that such solution approach can obtain near-optimal solutions. Kool, van Hoof, and Welling (2019) proposed a model based on attention layers with pointer network and used reinforcement learning to solve the traveling salesman, vehicle routing and orienteering problems.
+However, according to our literature review, little work has been done on using machine learning methods to solve the shortest path interdiction problem. The only two exceptions that we found are the following work: Xu et al. (2017) proposed an MDP-based goal recognition approach, and applied it to a dynamic shortest path local network interdiction problem, in which the follower may change its destination node stochastically or even deceptively, and the confrontation between the leader and follower is assumed as a multi-stage process. In a follow-up work, Zeng et al. (2018) further proposed an inverse reinforcement learning-based opponent behaviour modelling method in the above goal recognition approach and applied it to the same problem.
+In this work, we aim to integrate reinforcement learning into the shortest path interdiction problem and hope to initiate more research on the development of machine learning methods for different network interdiction problems. It should be noticed that our approach is quite different from the above two work in the following aspects: first, the problem considered in this work has a fixed origin and destination nodes on different network topologies, while the above two work focused on a dynamic shortest path interdiction problem on a fixed graph network (i.e. the Chicago Sketch Road Network). Second, they used a human behaviour modelling method based on inverse reinforcement learning (IRL), which is suitable to solve the problems where the reward function is hard to calculate, and the experts knowledge is usually needed for agent to learn the reward function during the training process. However, in our work, the reward function can be accurately quantified as the length of the shorted path from the origin node to the destination node after interdiction. Therefore, we prefer to use the reinforcement learning based approach, which requires less input and is more applicable to handle some other more generalised network interdiction problems.
+The remainder of this paper is organised as follows. In Section 2, we introduce and formulate the shortest path interdiction problem. In Section 3, we present the framework to train the pointer network and solve
+
+INTERNATIONAL JOURNAL OF PRODUCTION RESEARCH
+
+35
+
+the problem with reinforcement learning. Section 4 provides the design of computational experiments and tests the performance of our solution approach. Finally, we conclude our work and provide possible future research directions in Section 5.
+
+2. Problem statement and its formulation
+In this work, we consider the following shortest path interdiction problem proposed by Israeli and Wood (2002): Given a directed network G = (N, A), where N is the set of nodes and A is the set of arcs. Let ck ∈ R+ be the nominal length for each arc k ∈ A, and dk ∈ R+ be the amount by which arc k is lengthened when it is interdicted. In addition, the amount of resource that is required to interdict arc k is denoted as rk ∈ R+, and the total available resource for the leader is denoted as r0 ∈ R+. The objective of the leader is to interdict arcs in the given network to maximise the shortest path length between two specified nodes, i.e. the origin node O and the destination node D, subject to limited interdiction resources. For the purpose of consistency, we use the same name as the one used in Israeli and Wood (2002) and call the above problem the ‘maximising the shortest path’ problem or the MXSP problem for short.
+Then, by defining the following variables:
+• xk is equal to 1 if arc k is interdicted by the leader, and 0 otherwise,
+• yk is equal to 1 if arc k is traversed by the follower and 0 otherwise,
+the MXSP problem can be formulated as the following bilevel mixed integer program:
+
+[MXSP-B] s.t.
+
+max min
+xy
+
+(ck + xk · dk) · yk
+
+(1a)
+
+k∈A
+
+yk −
+
+yk = 1
+
+k∈FS(i)
+
+k∈RS(i)
+
+for i = O; (1b)
+
+yk −
+
+yk = 0
+
+k∈FS(i)
+
+k∈RS(i)
+
+for i ∈ N\{O, D};
+
+(1c)
+
+yk −
+
+yk = −1
+
+k∈FS(i)
+
+k∈RS(i)
+
+for i = D; (1d)
+
+xk · rk ≤ r0 for k ∈ A;
+
+(1e)
+
+k∈A
+
+xk, yk ∈ {0, 1} for k ∈ A;
+
+(1f )
+
+where FS(i) and RS(i) are the arcs directed out of and into node i, respectively.
+As mentioned by Israeli and Wood (2002), the above bilevel optimisation model can be transformed to an equivalent single-level optimisation model by first taking the dual of the inner minimisation in [MXSP-B] and then release variable x. The resulting single-level mixed integer programming model can be written as:
+
+[MXSP-S]
+
+max
+π ,x
+
+πD
+
+− πO
+
+(2a)
+
+πj − πi − dk · xk ≤ ck
+
+for k = (i, j) ∈ A;
+
+(2b)
+
+xk · rk ≤ r0 for k ∈ A; (2c)
+k∈A
+
+πO = 0;
+
+(2d)
+
+xk ∈ {0, 1} for k ∈ A;
+
+(2e)
+
+which can be readily solved via a standard optimisation solver (e.g. Gurobi or CPLEX).
+
+3. Reinforcement learning model for the MXSP problem
+In what follows, we provide the detailed information about how to integrate the reinforcement learning model to solve the MXSP problem. In particular, in this work, we focus on two different network topologies: directed grid networks and Erdős–Rényi random graphs. In the directed grid networks, there are m × n transshipment nodes arranged in a grid of m rows and n columns. For any of the arcs from O to each transshipment node in the first column or from each transshipment node in the last column to D, we impose that such arc cannot be interdicted and its arc length is equal to 0, while for all the other arcs in the network, we assume that they are interdictable with strictly positive length. Then, it is not difficult to see that the total number of interdictable arcs in a grid network with m × n transshipment nodes is (n − 2)(5m − 4) + 3m − 2. Figure 2 shows an example of a 8 × 12 grid network, in which the dotted arcs cannot be interdicted, and the total number of interdictable arcs (i.e. the solid arcs) is 382. In addition, the grey arcs show the corresponding shortest path when the leader has a budget that can interdict up to nine arcs and the slashed arcs are interdicted.
+On the other hand, in an Erdős–Rényi random graph, the number n of vertices is given, and each arc between any two vertices is independently connected with probability p˜, that is, the graph is constructed according to one commonly used variant of the Erdős–Rényi model, which is called the G(n, p˜) model (Erdős and Rényi 1959;
+
+36
+
+D. HUANG ET AL.
+
+Figure 2. The topology of a 8 × 12 grid network.
+
+Gilbert 1959). To be specific, given a set of nodes N = {1, 2, . . . , n}, and a set of arcs A = {(i, j) : i, j ∈ N, i = j}, which forms a directed complete graph (see Figure 3(a) with n = 5), we choose arcs according to Bernoulli’s trials with a fixed probability p˜ ∈ [0, 1], that is, an arc (i, j) is picked with probability p˜ independently of occurrences of other arcs. In particular, from the properties of G(n, p˜), we know that when the number of vertices n tends to infinity, then almost every graph in G(n, 2 ln(n)/n) is connected. In what follows, we always set the probability that each arc is included in the graph to 2 ln(n)/n, and assume that all the arcs in the generated random graph are interdictable. To illustrate, Figure 3(b) shows an Erdős–Rényi random graph with 12 arcs that is generated according to the G(5, 2 ln(5)/5) model.
+3.1. Applicability of reinforcement learning
+As we mentioned in the introduction, the state-of-the-art algorithms that have been proposed for solving different variants of the shortest path interdiction problems are usually problem-tailored and may not work well for all possible instances. In addition, as shown by Khachiyan et al. (2008), we know that not only the MXSP problem itself is NP-hard, but also the problem of approximating within a factor smaller than 2 for the MXSP problem is still NP-hard. Therefore, when the size of the MXSP problem increases, the computational time for calculating the optimal solutions could become prohibitively time-consuming. As a result, it is natural to investigate if the machine learning methods could be used to solve the MXSP problem. When such solution approach is applicable to the MXSP problem, then we may apply it across many problem instances by exploring and learning the rules from the training data, and fewer manual revision may be required comparing to the heuristics.
+
+As we know, the supervised learning is an important type of the machine learning methods, where the input training data and the corresponding optimal output results are required to be known a priori. However, due to the inherent complexity of the MXSP problem, it is difficult to solve the input training data to obtain their optimal labels. Therefore, the supervised learning method may be not suitable for solving the MXSP problem.
+Unlike supervised learning methods, reinforcement learning is a machine learning method that does not require optimal labels during the training phase. As introduced by Sutton and Barto (2018), the learner and the thing it interacts with are called agent and environment respectively. With reinforcement learning methods, the agents learn by constantly interacting with the environment through trial and error to choose the best action to maximise the expected goals. As a result, such approach can provide a general framework for achieving optimal decisions in dynamic environments, and thus is suitable for solving several combinatorial optimisation problems, including some of the network optimisation problems. For further pointers to work on reinforcement learning for combinatorial optimisation problems, we refer the reader to recent surveys by Mazyavkina et al. (2021) and Wang and Tang (2021).
+In particular, the sequence-to-sequence based reinforcement learning has recently been proved to be effective to solve numerous combinatorial optimisation problems and has attracted significant attention from researchers. Bello et al. (2017) introduced a framework of neural combinatorial optimisation, which uses reinforcement learning and neural networks to solve traveling salesman problem and achieves close to optimal results on 2D Euclidean graphs with up to 100 nodes. Nazari et al. (2018) proposed a model that consists of a recurrent neural network (RNN) decoder coupled with an attention mechanism and used a policy gradient
+
+INTERNATIONAL JOURNAL OF PRODUCTION RESEARCH
+
+37
+
+Figure 3. An illustration of a directed complete graph and an Erdős–Rényi random graph.
+
+algorithm to optimise parameters. It was shown that their trained model can solve VRP with split deliveries and a stochastic variant efficiently. Kool, van Hoof, and Welling (2019) proposed a model with multi-head attention layers and used REINFORCE with a simple baseline based on a deterministic greedy rollout to train the model. With this model, close to optimal results could be achieved for several classical combinatorial optimisation problems, including the TSP, VRP, orienteering problem and the prize collecting TSP. Zhang et al. (2020) proposed a reinforcement learning algorithm called the multi-agent attention model to solve multivehicle routing problems with soft time windows, in which an encoder–decoder framework with attention layers was proposed to generate tours of multiple vehicles iteratively. Gama and Fernandes (2021) explored the use of pointer network models to solve the orienteering problem with time windows (OPTW), in which the pointer network architecture was customised to better address problems with dynamic time-dependent constraints, and reinforcement learning was used to train the models. In this work, we also choose the sequenceto-sequence based reinforcement learning to solve the MXSP problem.
+3.2. The diagram of reinforcement learning
+During each time step t in reinforcement learning, the agent takes an action At based on the policy p mapping states to actions after observing the current environment state St. Then the environment responds a new state and reward to the agent. Neural Network (NN) is often used to fit the policy p in reinforcement learning, and the policy is updated during the training step. The objective of the reinforcement learning is to learn a decision policy from the training data that maximises the given goal.
+
+In the MXSP problem, the input are the arc attributes of the network, and the output are the interdicted arcs that maximises the shortest path from the origin node O to the destination node D. The policy is represented by a pointer network, a sequence-to-sequence neural network (see Section 3.3 for more details), and we use reinforcement learning algorithm to train the network. The agent learns the rule of the input data (i.e. the network) through trial and error, and selects the appropriate interdictable arcs according to the policy. Therefore, the state can be seen as the current network, the action of the agent can be seen as to choose the arcs to be interdicted, and the reward provided by the environment is the length of the shortest path after interdiction.
+To be specific, during each time step t in reinforcement learning, we denote its corresponding state as St = (V, IA\SA, SA), where V is the set of vertices, IA is the set of interdictable arcs, and SA is the set of selected arcs to be interdicted. Meanwhile, the action At is used to select an arc to be interdicted. Obviously, the maximum size of the eligible action space is |IA|. Given a state St and an action At, the reward can be described as R(St, At) = C(St), where C(St) is the length of the shortest path between the original and destination nodes obtained from the state St after the action At has been taken. In particular, the initial state S0 is the original network, and the final state Sfinal is a complete solution of the MXSP problem. For example, when we implement the reinforcement learning model for the grid network as shown in Figure 2, the state is the above vector that represents the dynamic status of the grid network, including the set of arcs that have been interdicted, and the corresponding remaining network. The action is to select an arc to be interdicted (i.e. one of the slashed arcs), and the reward is the total length of the corresponding shortest path after interdiction (i.e. the total length of grey arcs).
+
+38
+
+D. HUANG ET AL.
+
+3.3. Introduction of the pointer network
+Similar to many other combinatorial optimisation problems, we know that the input in the MXSP problem is a sequence, the output is also a sequence, and these two sequences may not be equal in length. As we know, the sequence-to-sequence neural network (SSNN) proposed by Sutskever, Vinyals, and Le (2014) is designed to tackle such sequence-related issues. In an SSNN, a neural network, usually the recurrent neural network (RNN), is used to handle the input sequence (also called encoder), and the output sequence is also handled by another RNN (called decoder). However, the SSNN is hard to solve the problem with unfixed output dictionary, especially with the situations that the output depends on the input. For example, the length of the output may vary from time to time in the orienteering problem. Therefore, the SSNN may be not the best choice for many combinatorial optimisation problems including the MXSP problem.
+Recently, the pointer network (PN), a variant of the SSNN introduced by Vinyals, Fortunato, and Jaitly (2015), is used to fill this gap, especially for the problems with a discrete and input-dependent output. In particular, due to the good generalisation of the PN-based reinforcement learning (PNRL) method, such model can be used to solve new problems (with the same problem structure) and new samples without re-train once the model has been well trained. Meanwhile, when the problem size increases, the PNRL model can still provide relative good results compared to other classical heuristics, and it also has an advantage in terms of computational running time. Therefore, in this paper, we use the pointer network to solve the MXSP problem.
+To illustrate, in the MXSP problem with a 8 × 12 grid network, we know that the number of input arcs is 382 and each arc can be represented by a three-dimensional vector, which respectively represents the departure node, arrival node, and the corresponding nominal length of the arc. Before we load the input to the encoder of the pointer network, the data of each arc is embedded from three-dimensional to an -dimensional vector. In this work, we follow the parameter setting given by Bello et al. (2017) to construct the pointer network, in which both the encoder and decoder use RNN with Long ShortTerm Memory (LSTM) cells (Hochreiter and Schmidhuber 1997). In this work, we let the LSTM contain 128 hidden units, and set = 128. Moreover, the adaptive moment estimation (Adam) optimiser is used to train the model (Kingma and Ba 2015), in which we set the learning rate to 10−3 with a decay of 0.96 per epoch.
+As shown in Figure 4, the encoder reads the input data step by step, one arc at a time. The input data of each step is an -dimensional embedded vector. Similarly, the
+
+decoder of PN outputs the data step by step, and a pointer mechanism is used to select the best output which points to one of the input. Then, the output of the current step will be taken as the input to the next decoder step, until reaching the final decoder step. Note that the input of the first decoder step is a trainable vector.
+3.4. The reinforcement learning model for the MXSP problem
+In this section, we provide the details of the reinforcement learning model with pointer network to solve the MXSP problem.
+3.4.1. Data input After we input the information of interdictable arcs to the reinforcement learning model, the interdicted arcs are the output. As we mentioned above, each input arc vector contains three elements, i.e. the departure node, arrival node, and its nominal length. The departure and arrival information of each arc are extracted from the generated network and its nominal length is randomly generated. For example, in the grid network as shown in Figure 2, the original input data is a 382 × 3 vector. Then, after the embedding process, a 382 × 128 vector is inputted to the encoder.
+3.4.2. Cost function During the training process, the decoder of the pointer network outputs the information of the interdicted arcs π for the encoder input data s. In this work, when an arc k is selected to be interdicted, we assume that the length will be increased by a same amount of dk = d. Then, we reconstruct the remaining network after interdiction and use Dijkstra’s Algorithm to calculate the length of the shortest path from the origin node O to the destination node D in the reconstructed network. In addition, we define the cost function L(π |s) as follows:
+L(π |s) = ck,
+k∈SP
+where SP is the set of arcs in the corresponding shortest path. For example, in the grid network as shown in Figure 2, L(π |s) = R(Sfinal, Afinal) is the total length of the grey arcs.
+3.4.3. Policy-based reinforcement learning method Here, we define the policy of the pointer network as p(π |s), and the goal of the policy is to assign high probability to the solution that the corresponding shortest path has large total length and low probability to the solution that with small total length. The policy can be provided by neural network using chain rule. As explained before,
+
+INTERNATIONAL JOURNAL OF PRODUCTION RESEARCH
+
+39
+
+Figure 4. The architecture of the pointer network.
+
+the reinforcement learning method is more suitable for
+the MXSP problem than other supervised learning meth-
+ods. Therefore, a policy-based reinforcement learning
+method is used in this paper to optimise the parameters of the pointer network, denoted as θ. In addition,
+we use the technique of gradient descent to minimise the
+loss, which can be viewed as the opposite of our goal that
+maximises the length of the shortest path of the follower. Therefore, we let L˜(π |s) = −L(π |s), and define the loss as the expectation of function L˜ (π |s), which can be formulated as g(θ |s) = Epθ (π|s)L˜ (π |s). Then, the loss is optimised by the technique of gradient descent, using REINFORCE Algorithm (Williams 1992) with baseline b(s):
+
+∇θ g(θ |s) = Epθ (π|s)[(L˜ (π |s) − b(s))∇θ log pθ (π |s)] (3)
+By using Monte Carlo sampling, the gradient in (3) can be reformulated as follows:
+
+∇θ g(θ )
+
+=
+
+1 B
+
+B
+(L˜ (πi|si) − b(si))∇θ
+i=1
+
+log pθ (πi|si),
+
+(4)
+
+where B is the batch size. After the policy gradient is defined, an optimiser,
+such as the Adam optimiser (see Section 3.4.4 for more details), is used to update the neural network.
+
+3.4.4. Baselines and the training procedures In this work, three different baselines are considered during our training procedures. The most common way may be the exponential moving average method with decay (i.e. the Exponential model), and its corresponding training procedure is presented in Algorithm 3.1. For each epoch, there are Tsteps (T times B equals to the size of the training data). In each step, we first sample the input data (i.e.the embedded data). For example, in a 8 × 12
+
+grid network, si is a 382 × 128 vector, and the solution πi is the output. Then, the baseline bi is calculated by exponential moving average method. In addition, as we mentioned above, we use REINFORCE Algorithm to calculate the loss function, and use the Adam optimiser to train the model.
+
+Algorithm 3.1 The reinforcement learning training pro-
+
+cedure with Exponential baseline
+
+1: Given: number of epochs E, number of steps per
+
+epoch T, batch size B, decay factor β
+
+2: Initialise pointer network parameters θ
+
+3: for epoch = 1, . . . , E do
+
+4: for step = 1, . . . , T do
+
+5:
+
+si ← SampleInput() for i ∈ {1, . . . , B}
+
+6:
+
+πi ← SampleSolution(si, pθ ) for i ∈ {1, . . . , B}
+
+7:
+
+if step == 1 then
+
+8:
+
+bi = L˜ (πi|si)
+
+9:
+
+else
+
+10:
+
+bi ← βb(i) + (1 − β)L˜ (πi|si)
+
+B
+
+11:
+
+gθ
+
+←
+
+1 B
+
+(L˜ (πi|si) − bi)∇θ
+i=1
+
+log pθ (πi|si)
+
+12:
+
+θ ← Adam(π , gθ )
+
+The second choice is to use a learnable function (e.g. the Critic model) to estimate the baseline (Bello et al. 2017). Algorithm 3.2 gives the reinforcement learning procedure with the Critic baseline. Similar to the exponential baseline, an expected cost bi is predicted by the Critic network bθv(s), and the goal is to minimise the mean squared error between bi and the actual sample cost by the current pointer network policy. Similarly, the Adam optimiser is used to train the Critic network.
+
+40
+
+D. HUANG ET AL.
+
+Algorithm 3.2 The reinforcement learning training pro-
+
+cedure with Critic baseline
+
+1: Given: number of epochs E, number of steps per
+
+epoch T, batch size B
+
+2: Initialise pointer network parameters θ , and Critic
+
+network parameters θv 3: for epoch = 1, . . . , E do
+
+4: for step = 1, . . . , T do
+
+5:
+
+si ← SampleInput() for i ∈ {1, . . . , B}
+
+6:
+
+πi ← SampleSolution(si, pθ ) for i ∈ {1, . . . , B}
+
+7:
+
+bi ← bθv (si) for i ∈ {1, . . . , B}
+
+B
+
+8:
+
+gθ
+
+←
+
+1 B
+
+(L˜ (πi|si) − bi)∇θ
+i=1
+
+log pθ (πi|si)
+
+9:
+
+B
+
+Lv
+
+←
+
+1 B
+
+i=1
+
+bi − L˜ (πi)
+
+2 2
+
+10:
+
+θ ← Adam(π , gθ )
+
+11:
+
+θv ← Adam(θv, ∇θv Lv)
+
+The last baseline is the rollout policy introduced by Kool, van Hoof, and Welling (2019). The rollout policy keeps freezing for a number of steps (at least one epoch) until the current point network policy is significantly better than the rollout policy. Then the rollout policy is updated by the latest pointer network policy. As Algorithm 3.3 shows, the parameters in a new rollout model θ BL are initialised to exactly the same as the ones used in the pointer network. The solution πRBL is found by the rollout model on the rollout dataset R. In the training step, the rollout model validates the training dataset s and the solution is used as a baseline to calculate the loss function. When all the training steps in one epoch are finished, the update checking process begins. A solution πR is provided by the current pointer network policy pθ on the rollout dataset R. If πR improves πRBL significantly by passing the one side t-test, then the rollout policy θ BL, rollout dataset R and rollout solution πRBL are updated.
+4. Experimental study
+To evaluate the performance of our proposed reinforcement learning model with pointer network on solving the MXSP problem, we conducted several experiments on a set of instances that are generated from two different network topologies: the directed grid networks and the Erdős–Rényi random graphs. To be specific, we first considered five small-sized instances that are generated from the following grid networks: 5 × 5, 12 × 8, 8 × 12, 10 × 10, and 15 × 15, whose numbers of interdictable arcs in each instance are 76, 370, 382, 396, and 966, respectively. Then, we considered three large-sized
+
+Algorithm 3.3 The reinforcement learning training pro-
+
+cedure with Rollout baseline
+
+1: Given: number of epochs E, number of steps per
+
+epoch T, batch size B, test significance α
+
+2: Initialise pointer network parameters θ , and rollout model parameters θ BL ← θ
+
+3: Randomly generate the rollout dataset R 4: πRBL ← RolloutSolution(R, pθBL ) 5: for epoch = 1, . . . , E do
+
+6: for step = 1, . . . , T do
+
+7:
+
+si ← SampleInput() for i ∈ {1, . . . , B}
+
+8:
+
+πi ← SampleSolution(si, pθ ) for i ∈ {1, . . . , B}
+
+9:
+
+πiBL ← RolloutSolution(si, pθBL ) for i ∈
+
+{1, . . . , B}
+
+B
+
+10:
+
+gθ
+
+←
+
+1 B
+
+(L˜ (πi|si) −
+i=1
+
+L˜ (πiBL|si))∇θ log pθ (πi|si)
+
+11:
+
+θ ← Adam(π , gθ )
+
+12: πR ← RolloutSolution(R, pθ )
+
+13: if OneSideTTest(πR, πRBL) < α then
+
+14:
+
+θ BL ← θ
+
+15:
+
+Regenerate the rollout dataset R
+
+16:
+
+πRBL ← RolloutSolution(R, pθBL )
+
+instances that are generated from the following grid networks: 20 × 20, 25 × 25, and 30 × 30, whose numbers of interdictable arcs in each instance are 1786, 2856, and 4176, respectively.
+Finally, we considered four Erdős–Rényi random graphs with different number of vertices, i.e. n = 20, 50, 80, and 100, in which we set the first and last vertices as the origin and destination nodes, respectively. In order to make the generated instances solvable, we restricted that there must exist at least one path from the origin node to the destination node in the generated random graph. Meanwhile, as we know, even for the 5 × 5 grid network, the minimum number of arcs with strictly positive length in any shortest path is at least 4, therefore, we also restricted that the number of arcs in the random graph that traverse the shortest path between the origin and destination nodes should be at least 4. Otherwise, we repeated the generation process until the above restrictions are satisfied. This way, we obtained four different random graph instances, whose numbers of interdictable arcs in each instance are 103, 374, 651, and 866, respectively. For simplicity, for any of the instances that is generated from grid network n × m, we call the corresponding instance as Gn × m, and call the random graph instance with n vertices as Rn.
+In addition, for each arc k ∈ A of the above instances, we randomly generated its nominal length ck from the
+
+INTERNATIONAL JOURNAL OF PRODUCTION RESEARCH
+
+41
+
+Figure 5. Comparison of the performance of the RL models on G5 × 5 with diﬀerent baselines in 100 epochs.
+
+uniform distribution on {1, 2, . . . , 10} when it is interdictable, and set it to 0 when it cannot be interdicted. In addition, once an arc is interdicted, we assumed that the amount of resources it consumes is rk = 5, the amount of length it increases is dk = 10, and the total amount of interdiction resources is r0 = 50. Meanwhile, we set both the validation and rollout sizes to 10,000. To restrict our training time within a reasonable range, we set the training size of G5 × 5 to 1,280,000, and set the training sizes of all the other instances to 512,000, respectively.
+4.1. Hyperparameters
+As we know, the selection of hyperparameters could dramatically affect the performance of our reinforcement learning model. Through some examination, we initialised the parameters of our reinforcement learning model uniformly within [−0.08, 0.08], clipped the L2 norm of gradients to 1.0, and set the learning rate to 10−3 with a decay of 0.96 per epoch. In addition, the decay factor β used in the Exponential baseline is set to 0.8, the test significance α used in the rollout baseline is set to 0.05, and the training and validation batch sizes are set to 512 and 2048, respectively.
+4.2. Computational environment
+As we mentioned in Section 2, the MXSP can be formulated as a single-level mixed integer program, i.e. the [MXSP-S] model. In this work, we solved this model by using Gurobi Optimiser 9.0.2 to obtain the exact optimal solutions, which is also an upper bound of our reinforcement learning method. The time limit for running Gurobi Optimiser is set to 7200 seconds. To compare our reinforcement learning model and the MIP model with similar computational environments, we ran the
+
+[MXSP-S] model on a server with a 48 virtual CPU system (2× Intel(R) Xeon(R) Silver 4214), 128GB of RAM and Ubuntu 18.04 operating system, and implemented our reinforcement learning model using PyTorch (Ketkar 2017) and executed it through the GPU (NVDIA GeForce RTX 2080Ti) on the same server.
+4.3. Comparison of the performance of the RL models on G5 × 5 with different baselines
+As we mentioned above, three baselines, i.e. the Exponential, Critic and Rollout baselines, are used in our reinforcement model. For simplicity, we denote our reinforcement learning models with the above baselines as RL-Exponential, RL-Critic, and RL-Rollout, respectively. To evaluate their performance, we kept these three models all the same except that the corresponding baselines that used to train the pointer network are different and trained these models for 100 epochs to solve the instance of G5 × 5.
+Figure 5 shows the corresponding computational results, in which the x-axis denotes the number of epochs (can be viewed as the training period) and the y-axis denotes the gap, which is defined as the difference between the length of the shortest path after interdiction obtained by our reinforcement models and the one obtained by solving the [MXSP-S] model. From this figure, we can see that the performance of the RL-Rollout model is significantly better than the other two models, as it can always find better results during the training process. In addition, the gap of the RL-Rollout model can converge to a value of around 12%, while the ones of the other two models are around 18%. The reason for the outperformance of the RL-Rollout model may be as follows: As we mentioned before, the baseline policy in the RLRollout model keeps freezing for a number of steps until
+
+42
+
+D. HUANG ET AL.
+
+Figure 6. Computational result of the pre-trained RL-Rollout model on G5 × 5.
+
+the current neural network policy is significantly better than the baseline policy, and then the rollout baseline policy is updated by the latest neural network policy. This way, the rollout policy guarantees that the baseline could keep relatively stable and is updated only when needed during the training process, and therefore is more suitable for training the reinforcement learning model. In what follows, we used the rollout baseline as the default baseline and implemented the RL-Rollout model to solve all the other instances.
+4.4. Continuous optimisation of the RL-Rollout model on G5 × 5
+In this section, we discuss the continuous optimisation of the RL-Rollout model. To be specific, we loaded the RL-Rollout model after 100 training epochs in previous section as an initial model for further training and remained all the other training parameters the same. As shown in Figure 6, the gap of this model can be further decreased to 9.4% after implementing additional 100 training epochs, that is, the performance of the RLRollout model can be improved by around 3% compared to our previous result. Such result shows the continuous trainability of the pointer network, and we can always try to increase the training epochs so as to obtain better results for more complex instances.
+4.5. Comparison of the performance of the RL-Rollout model and other machine learning methods on G5 × 5
+To further test the applicability of other machine learning methods for solving the MXSP problem, we selected two commonly used methods, i.e. the support vector machine (SVM) and the artificial neural network (ANN) methods,
+
+as competitors. Unlike the reinforcement learning model, these two methods are supervised model in which the optimal values of the input training data are needed during the training process. Therefore, for all of the 1,280,000 training samples on G5 × 5, we solved them and calculated the labelled training data for these two supervised methods by using Gurobi Optimiser.
+In the SVM model, each input sample is a 76 × 3 = 228 dimensional vector and all the input training samples can be viewed as a 1, 280, 000 × 228 dimensional vector while the output is the length of the shortest path after interdiction, which can be viewed as a 1,280,000 dimensional vector. The SVM model is implemented by calling the SVR function in Scikit–Learn tools (Pedregosa et al. 2011), among which the key parameters are the kernel function, the penalty factor and the tolerance factor. Inspired by the work of Lin et al. (2007), we set radial basis function (RBF) as the kernel function, set penalty factor to 20, and set the tolerance factor for stopping criterion to 0.01.
+On the other hand, the ANN model is implemented by Keras tool (Chollet 2015). Adapted from the work of Kitapcı et al. (2014), the ANN model used in this study is constructed as a network with five layers, i.e. the input layer, three hidden layers and the output layer, and the dimensions of the input, hidden, and output layers are 228, 10, and 1, respectively. In addition, the mean squared error (MSE) is set as the loss function, the rectified linear unit (ReLU) activation function is preferred, and the Adam optimiser is used for training. The training epoch number and batch size of the ANN model are set the same as the ones used in the reinforcement learning model, that is, the training epoch number is set to 100 and the batch size is set to 512. The training will be stopped early if the network’s performance fails to improve.
+
+INTERNATIONAL JOURNAL OF PRODUCTION RESEARCH
+
+43
+
+Figure 7. Comparison of the performance of the RL-Rollout model on diﬀerent instances in 100 epochs.
+
+Table 2. Comparison between RL-Rollout model and other machine learning methods on G5 × 5.
+
+SVM model
+
+ANN model
+
+RL-Rollout Model
+
+Disturbance Gap Time(s) Gap Time(s) Gap Time(s)
+
+0 −1% −5% −10% −20% −30% −40% −50% 1%
+5%
+10%
+20%
+30%
+40%
+50%
+
+3.41% 3.54% 4.74% 9.09% 19.16% 29.27% 39.37% 49.48% 3.85% 6.48% 11.19% 21.25% 31.36% 41.46% 51.57%
+
+0.004 0.003 0.003 0.004 0.004 0.003 0.003 0.003 0.004 0.003 0.003 0.003 0.003 0.003 0.004
+
+7.22% 7.79% 8.83% 7.94% 16.69% 26.90% 37.34% 47.78% 8.57% 11.10% 15.38% 25.34% 35.76% 46.20% 56.65%
+
+0.0003 0.0003 0.0004 0.0003 0.0002 0.0003 0.0002 0.0003 0.0003 0.0004 0.0003 0.0003 0.0003 0.0004 0.0003
+
+9.40%
+
+0.003
+
+Gap: The average gap between the computational values and the optimal results.
+
+Table 2 shows the performance of the SVM, ANN, and RL-Rollout models on G5 × 5, in which the first column presents the disturbance of the labelled data. For example, –5% (5%) means that the labelled values of the training data are reduced (increased) by 5%. From this table, we can see that the SVM and ANN models seem to outperform the RL-Rollout model when the disturbance is less than 10%. However, when the disturbance becomes larger than 10%, these two models are much worse than the RL-Rollout model, which verifies the effectiveness of our proposed reinforcement learning model. As we mentioned before, the MXSP problem is NP-hard, therefore it is usually difficult to obtain the optimal labels of the input training data, which is an essential requirement for supervised machine learning methods. Such features could substantially affect the applicability and accuracy of the supervised methods as the deviation of the labelled values that we obtained is usually greater than 10% or even
+
+50% if the labelled values of the training data are generated randomly. In addition, it seems that the SVM model outperforms the ANN model in terms of gap values.
+4.6. Comparison of the performance of the RL-Rollout model on small-sized grid network instances
+To further test the performance of the RL-Rollout model, we implemented it on the other four small-sized grid network instances, i.e. G12 × 8, G8 × 12, G10 × 10 and G15 × 15. Figure 7 shows the corresponding computational results. From this figure, we can see that this model can achieve acceptable results for all of these four instances, since the gap for each instance can converge to a value within [14%,17%], and the training processes for these instances are relatively stable.
+On the other hand, we also noticed that the learning speeds and the values of gap for these instances after 100 epochs are not as good as the one for G5 × 5. The reason for such phenomenon may be as follows: first, the training size used for G5 × 5 (i.e. 1,280,000) is larger than the ones used for these four instances (i.e. 512,000). As a result, the used training dataset may not fully meet the learning needs of the reinforcement learning models to find better results for these four instances. Second, the structures of the corresponding directed grid networks are more complex for these four instances than the one used in G5 × 5. As a result, the reinforcement learning model may need more time and resource to learn the knowledge behind the data of these instances.
+Table 3 shows the corresponding computational results of both the reinforcement learning models based on an average of 10,000 validation samples, and the MIP model solved by Gurobi Optimiser. From this table, we can see that the average gap of the RL-Rollout model is
+
+44
+
+D. HUANG ET AL.
+
+Table 3. The computational results of the RL models on smallsized grid network instances.
+
+RL Model
+
+[MXSP-S] Model
+
+Instance
+
+Baseline LSP Gap Time (s) OBJ
+
+G5 × 5
+G12 × 8 G8 × 12 G10 × 10 G15 × 15 Average Time
+
+Rollout Critic Exponential Rollout Rollout Rollout Rollout /
+
+14.88 13.51 13.54 16.49 27.55 21.75 29.79
+/
+
+9.40% 17.74% 17.57% 15.66% 14.16% 14.70% 16.10%
+/
+
+0.003 0.003 0.003 0.014 0.012 0.013 0.054 0.015
+
+16.42
+19.55 32.10 25.50 35.51
+/
+
+LSP: The length of the shortest path obtained by the RL models. OBJ: The objective value obtained by solving the [MXSP-S] model. Gap: The average gap between LSP and OBJ.
+
+Time (s) 0.12
+2.50 66.09 10.53 517.03 119.25
+
+around 14% for all the instances, while the ones of the other two models (i.e. RL-Critic and RL-Exponential) are around 17.5% even only for the instance of G5 × 5. Meanwhile, the computational time of solving the [MXSP-S] model by Gurobi Optimiser is much greater than the ones of the reinforcement learning models, especially when the size of instances increases, which indicates that our reinforcement learning method could be an effective way to solve the shortest path interdiction problem, since we can always expand the training scale of our reinforcement learning model to achieve better results, which can be addressed offline in the learning phase, and the run-time phase (i.e. the inference phase) can be extremely quick. Note that among the validation dataset of G15 × 15, there are 60 instances which cannot be solved optimally with 7200 s time limit by Gurobi Optimiser, and the average gap for these instances is 2.90%.
+Meanwhile, the G12 × 8 and G8 × 12 instances have similar network structures and input sizes, as the former instance has a 12 × 8 grid network while the latter one has a 8 × 12 grid network. From the computational results of these two instances, we can see that the instance of G8 × 12 is more difficult to solve than the instance of G12 × 8 by Gurobi Optimiser, while our proposed reinforcement learning model is much less sensitive on the performance of solving these two instances, which indicates that the reinforcement learning method could have
+
+quite good scalability and applicability across different instances with similar structures and sizes.
+4.7. The generalisation analysis of the RL-Rollout model on small-sized grid network instances
+Generalisation is another important feature for the reinforcement learning model. In this section, we investigated its generalisation for different small-sized grid network instances. To be specific, we first determined the associated trained reinforcement learning model for each instance. For simplicity, we call the RL-Rollout model that is trained based on the instances of G5 × 5 as RL1 model. Similarly, we call the other RL-Rollout models that are trained based on the instances of G12 × 8, G8 × 12, G10 × 10, and G15 × 15 as RL-2, RL-3, RL-4, and RL-5 models, respectively. Then, we solved the validation samples of the other instances based on each of these models. Table 4 shows the corresponding computational results. From this table, we can see that the instances that are solved by those trained reinforcement learning models with similar network structure could provide relative good results. For example, for the instances of G12 × 8, when we solved them with the RL-2, RL-3, and RL-4 models, which has similar network structures and sizes, similar values of gap that are around 16% can be obtained. It is also interesting to see that when we used the RL4 model to solve the validation samples of G15 × 15, it could achieve an average gap that is even better than the one solved by the RL-5 model, which illustrates that our proposed reinforcement learning model could have quite good generalisation.
+4.8. The performance of the RL-Rollout model on large-sized grid network instances
+To further investigate the performance of our proposed reinforcement learning model, we also tested the RL-Rollout model on some large-sized grid network instances. To be specific, we considered three different instances that are generated from the following grid networks: G20 × 20, G25 × 25, and G30 × 30. As we know,
+
+Table 4. The generalisation analysis of the RL-Rollout model on small-sized grid network instances.
+
+RL-1 model
+
+RL-2 model
+
+RL-3 model
+
+RL-4 model
+
+RL-5 model
+
+Instance
+
+LSP
+
+Gap
+
+LSP
+
+Gap
+
+LSP
+
+Gap
+
+G5 × 5 G12 × 8 G8 × 12 G10 × 10 G15 × 15
+
+14.88 14.06 23.91 18.81 28.02
+
+9.40% 28.08% 25.51% 26.24% 21.09%
+
+12.3 16.49 27.01 21.62 30.01
+
+25.09% 15.66% 15.86% 15.22% 15.49%
+
+11.35 16.36 27.55 21.73 29.7
+
+30.88% 16.32% 14.16% 14.78% 16.36%
+
+LSP: The length of the shortest path obtained by the RL models. Gap: The average gap between the computational values and the optimal results. Bolded value: The best average gap for the current instances.
+
+LSP
+11.96 16.41 27.37 21.75 30.04
+
+Gap
+27.16% 16.06% 14.74% 14.70% 15.40%
+
+LSP
+10.3 14.71 25.33 19.81 29.79
+
+Gap
+37.27% 24.76% 21.09% 22.31% 16.10%
+
+INTERNATIONAL JOURNAL OF PRODUCTION RESEARCH
+
+45
+
+Table 5. The computational results of the RL-5 model on largesized grid network instances.
+
+RL-5 Model
+
+MXSP Model
+
+Instance
+
+LSP Gap Time (s) OBJ PUS AVG Time (s)
+
+G20 × 20
+
+38.87 14.72% 0.16 45.58 25% 2.24% 2961.63
+
+G25 × 25 47.32 15.20% 0.31 55.80 68% 1.93% 5563.73
+
+G30 × 30
+
+55.47 15.25% 0.55 65.45 87% 2.03% 6611.62
+
+Average Value / 15.06% 0.34 / 60% 2.07% 5045.66
+
+LSP: The length of the shortest path obtained by the RL-5 model. OBJ: The objective value obtained by solving the [MXSP-S] model directly with
+Gurobi Optimiser. Gap: The average gap between LSP and OBJ. PUS: The percentage of unsolved instances by Gurobi Optimiser within 7200s. AVG: The average gap provided by Gurobi Optimiser for the unsolved instances.
+
+Table 6. The computational results of the RL-Rollout model on random graphs.
+
+RL-Rollout Model
+
+MXSP Model
+
+Instance
+
+LSP
+
+Gap
+
+Time (s)
+
+OBJ
+
+Time (s)
+
+R20
+
+39.59 2.39%
+
+0.005
+
+40.56
+
+0.04
+
+R50
+
+31.64 3.16%
+
+0.011
+
+32.64
+
+0.12
+
+R80
+
+31.55 3.40%
+
+0.024
+
+32.73
+
+0.26
+
+R100
+
+31.91 3.71%
+
+0.039
+
+33.14
+
+0.44
+
+Average Value
+
+/
+
+3.17%
+
+0.020
+
+/
+
+0.22
+
+LSP: The length of the shortest path obtained by the RL-Rollout models. OBJ: The objective value obtained by solving the [MXSP-S] model with Gurobi
+Optimiser. Gap: The average gap between LSP and OBJ.
+
+when the size of the instances increases, it becomes much more difficult to calculate the optimal solution of the MXSP problem by using Gurobi Optimiser. As a result, many samples cannot be solved optimally within the given time limit. Therefore, we only generated 100 samples to validation for the above three instances. In addition, we used the trained RL-Rollout model based on the instances of G15 × 15, i.e. the RL-5 model, to solve the validation samples of these instances. From Table 5, we can see that the RL-5 model can still provide quite good results, as the average gap for these instances is 15.06%, and the average running time is only 0.34 seconds, which is significantly smaller than the ones obtained by solving the MXSP problem directly with Gurobi Optimiser. Moreover, the average percentage of unsolved instances (i.e. PUS) and the average gap for those unsolved instances (i.e. AVG) are 60% and 2.07%, respectively, which indicates that solving the MXSP problem directly by Gurobi Optimiser is not an efficient approach for these large-sized instances, while our proposed reinforcement learning model could still be a quite effective tool to solve them.
+
+effectively with an average gap of 3.17%. In addition, the smallest gap is 2.39% obtained by solving the instance of R20, and the gap increases when the size of instances increases. In fact, by comparing the computational results from Tables 3 and 6, we can see that the RL-Rollout model even performs better on solving the random graph instances than the grid network instances. The reason for such phenomenon may be as follows: on one hand, the grid networks have two different types of arcs, i.e. the interdictable and not interdictable arcs, while all the arcs in the random graphs are interdictable, which may make the RL-Rollout model more difficult to learn the structure of the grid network. On the other hand, in an m × n grid network, the number of transshipment nodes between the origin and destination nodes is at least n, as a result, the number of arcs in the obtained shortest path is at least n + 1, which is generally larger than the one for random graphs, and thus the performance of the RL-Rollout model for the grid network is comparatively worse than the one for random graphs. Moreover, the average running time for the random graphs is also quite small, which shows the efficiency of the RL-Rollout model on both grid networks and random graphs.
+
+4.9. The performance of the RL-Rollout model on Erdős–Rényi random graphs
+Although we have verified that our proposed reinforcement learning model has quite good performance on solving the MXSP problem with grid network topology, we are still unclear whether such reinforcement learning model is also effective for other instances of the MXSP problem with more general network structures. In this section, we further investigated the performance of our proposed RL-Rollout model on Erdős–Rényi random graph instances that we have generated, i.e. the instances of R20, R50, R80, and R100.
+Table 6 shows the corresponding computational results, from which we can see that the RL-Rollout model can still solve the random graph instances quite
+
+5. Conclusion
+In this work, we proposed a framework to solve the shortest path interdiction problem (i.e. the MXSP problem) with reinforcement learning, in which the pointer network was introduced to handle the situation of variable output sizes for the MXSP problem. In particular, we implemented our reinforcement learning model with three different baselines to train the pointer network, and the results show that the rollout baseline policy could achieve the best performance. To further evaluate the performance of our proposed solution approach, we conducted several computational experiments on various instances that are generated from two different network topologies, i.e. the grid networks and the Erdős–Rényi random graphs. The computational results illustrate the
+
+46
+
+D. HUANG ET AL.
+
+effectiveness of our proposed reinforcement learning methods for randomly generated instances of both the grid network (up to 30 × 30 transshipment nodes) and the random graphs (up to 100 vertices). To the best of our knowledge, we are one of the first to use RL-based pointer network model to solve the MXSP problem. With those prominent and fruitful results by pioneering studies on various combinatorial optimisation problems including the TSP (Bello et al. 2017), VRP (e.g. Nazari et al. 2018; Zhang et al. 2020), and orienteering problems (e.g. Kool, van Hoof, and Welling 2019; Gama and Fernandes 2021), the reinforcement learning has shown its great power in solving various complex time-dependent operations research problems, and we hope that our work could be a starting point to attract further studies on solving more generalised network interdiction problems with powerful machine learning methods.
+There are many possible directions for future work stemming from this work: (1) More complex problem settings can be considered, such as variable values of dk and rk in the MXSP problem and a knapsack constraint on the total interdiction resources. (2) Calculating the cost function in more efficient ways. In this work, we used Dijkstra’s algorithm to calculate the cost for each solution. However, such algorithm is not efficient enough to deal with the batch solutions. According to our experimental observation, the time for calculating the cost functions is the main bottleneck affecting the training speed. Therefore, more efficient algorithms may be needed to calculate the cost function in the future work. (3) More generalised network interdiction problems can be investigated to see if any machine learning method could be used to solve such problems.
+Disclosure statement
+No potential conflict of interest was reported by the authors.
+Funding
+This research was supported by the National Natural Science Foundation Council of China under Projects 92167206, 71701144, 71872125 and 91646118, the Ministry of Science and Technology of China under Project 2020IM030300, and the Fundamental Research Funds for the Central Universities (2021XSC-0106, 2021XSC-0125). Chen was partially supported by the National Science Foundation under grant No. 2004096. This work was also supported by the Science & Technology Pillar Key Program of Tianjin Key Research and Development Plan (20YFZCGX00640).
+Data availability statement
+The data that support the findings of this study are available from the corresponding author, [KF], upon reasonable request.
+
+Notes on contributors
+Dian Huang is an assistant professor in School of New Media and Communication at Tianjin University. He received his B.S. and M.S. degrees in Computer Science and Technology from Tianjin University, and Ph.D. in Business Administration from Tianjin University. His research includes assembly line balancing, vehicle routing, heuristics algorithm, exact algorithm, and deep learning. He has published in high level journals including International Journal of Production Research and Annals of Operations Research.
+Zhaofang Mao is a professor and the associate dean of the College of Management and Economics of Tianjin University. He also serves as the vice president of the Australasia of Production and Operations Management Society (POMS), the deputy secretary-general of the Society of Management Science and Engineering of China, the executive director of the Management Technology Branch of the Innovation Method Society of China, and the executive director of China-Europe Logistics and Supply Chain Innovation Center of Tianjin University. His main research interests are operations management, innovation management, lean logistics, and supply chain management. As the principal, he has received nearly 20 national and provincial research projects funded by the National Science & Technology Pillar Program, the National Natural Science Foundation, and the Ministry of Science and Technology, etc. Moreover, he has conducted management consulting and technical services for many world-known companies, such as China Aerospace Science and Industry Corporation, China National Machinery Industry Corporation, Dell Group, Baosteel Group, Gree Electric, Group SALINAS (Mexico) and Bunge (Vietnam), and has published more than 30 academic papers at international top journals such as POM, OMEGA, IJPE, IJPR, AOR, PPC, etc. He is also very active in organising international conference and forums, and served as the chairman of the organisational committee of the first POMS International Conference in China in 2019. He introduced the POMS International Conference to China and made efforts for the continuous development of production and operations management disciplines.
+Kan Fang is an associate professor in College of Management and Economics at Tianjin University. He received his Ph.D. degree in Industrial Engineering from Purdue University, and B.S. and M.S. degrees in Mathematics from Zhejiang University. His research focuses on scheduling, vehicle routing, and combinatorial optimisation. He has published articles in refereed international journals including International Journal of Production Research, European Journal of Operational Research, Annals of Operations Research, and Journal of the Operational Research Society.
+
+INTERNATIONAL JOURNAL OF PRODUCTION RESEARCH
+
+47
+
+Lin Chen is an assistant professor at Department of Computer Science, Texas Tech University. Before joining Texas Tech, he was a Postodoc at Technical University of Munich, Technical University of Berlin, and then a research assistant professor at University of Houston. He received his Ph.D. at Zhejiang University in 2013. His research interests include algorithms and complexity, operational research. He has published articles in refereed international journals including SIAM Journal on Computing, Mathematical Programming, ACM Transactions on Algorithms, European Journal of Operational Research, etc.
+ORCID
+Lin Chen http://orcid.org/0000-0003-3909-4916
+References
+Achamrah, F. E., F. Riane, and S. Limbourg. 2021. “Solving Inventory Routing with Transshipment and Substitution Under Dynamic and Stochastic Demands Using Genetic Algorithm and Deep Reinforcement Learning.” International Journal of Production Research. doi:10.1080/00207543. 2021.1987549.
+Bai, R., X. Chen, Z.-L. Chen, T. Cui, S. Gong, W. He, and X. Jiang, et al. 2021. “Analytics and Machine Learning in Vehicle Routing Research.” arXiv preprint arXiv:2102.10012.
+Ball, M. O., B. L. Golden, and R. V. Vohra. 1989. “Finding the Most Vital Arcs in a Network.” Operations Research Letters 8 (2): 73–76.
+Bayrak, H., and M. D. Bailey. 2008. “Shortest Path Network Interdiction with Asymmetric Information.” Networks 52 (3): 133–140.
+Baycik, N. O., and K. M. Sullivan. 2019. “Robust Location of Hidden Interdictions on a Shortest Path Network.” IISE Transactions 51 (12): 1332–1347.
+Bello, I., H. Pham, Q. V. Le, M. Norouzi, and S. Bengio. 2017. “Neural Combinatorial Optimization With Reinforcement Learning.” In 5th International Conference on Learning Representations (ICLR2017), Toulon, France, April 24–26, 2017, Workshop Track Proceedings.
+Bengio, Y., A. Lodi, and A. Prouvost. 2021. “Machine Learning for Combinatorial Optimization: A Methodological Tour D’horizon.” European Journal of Operational Research 290 (2): 405–421.
+Bier, V. M., E. R. Gratz, N. J. Haphuriwat, W. Magua, and K. R. Wierzbicki. 2007. “Methodology for Identifying Nearoptimal Interdiction Strategies for a Power Transmission System.” Reliability Engineering & System Safety 92 (9): 1155–1161.
+Borrero, J. S., O. A. Prokopyev, and D. Sauré. 2016. “Sequential Shortest Path Interdiction with Incomplete Information.” Decision Analysis 13 (1): 68–98.
+Cappanera, P., and M. P. Scaparra. 2011. “Optimal Allocation of Protective Resources in Shortest-path Networks.” Transportation Science 45 (1): 64–80.
+Chen, B., R. Bai, J. Li, Y. Liu, N. Xue, and J. Ren. 2021. “A Multiobjective Single Bus Corridor Scheduling Using Machine Learning-based Predictive Models.” International Journal of Production Research. doi:10.1080/00207543.2020.1766716.
+
+Chollet, F., et al. 2015. Keras. https://keras.io. Duan, L., Y. Zhan, H. Hu, Y. Gong, J. Wei, X. Zhang, and Y. Xu.
+2020. “Efficiently Solving the Practical Vehicle Routing Problem: A Novel Joint Learning Approach.” In Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining, 3054–3063. Erdős, P., and A. Rényi. 1959. “On Random Graphs I.” Publicationes Mathematicae 6: 290–291. Fulkerson, D. R., and G. C. Harding. 1977. “Maximizing the Minimum Source-sink Path Subject to a Budget Constraint.” Mathematical Programming 13 (1): 116–118. Furian, N., M. O’Sullivan, C. Walker, and E. Çela. 2021. “A Machine Learning-based Branch and Price Algorithm for a Sampled Vehicle Routing Problem.” OR Spectrum 43: 693–732. Gama, R., and H. L. Fernandes. 2021. “A Reinforcement Learning Approach to the Orienteering Problem with Time Windows.” Computers & Operations Research 133: 105357. Gilbert, E. N. 1959. “Random Graphs.” The Annals of Mathematical Statistics 30 (4): 1141–1144. Golden, B. 1978. “A Problem in Network Interdiction.” Naval Research Logistics Quarterly 25 (4): 711–713. Hochreiter, S., and J. Schmidhuber. 1997. “Long Short-term Memory.” Neural Computation 9 (8): 1735–1780. Holzmann, T., and J. C. Smith. 2019. “Shortest Path Interdiction Problem with Arc Improvement Recourse: A Multiobjective Approach.” Naval Research Logistics 66 (3): 230–252. Holzmann, T., and J. C. Smith. 2021. “The Shortest Path Interdiction Problem with Randomized Interdiction Strategies: Complexity and Algorithms.” Operations Research 69 (1): 82–99. Israeli, E., and R. K. Wood. 2002. “Shortest-path Network Interdiction.” Networks 40 (2): 97–111. Jiang, J., and X. Liu. 2021. “Bayesian Stackelberg Game Model for Water Supply Networks Against Interdictions with Mixed Strategies.” International Journal of Production Research 59 (8): 2537–2557. Karabulut, E., N. Aras, and İ. K. Altınel. 2017. “Optimal Sensor Deployment to Increase the Security of the Maximal Breach Path in Border Surveillance.” European Journal of Operational Research 259 (1): 19–36. Ketkar, N. 2017. “Introduction to PyTorch.” In Deep Learning with Python, 195–208. Springer. Khachiyan, L., E. Boros, K. Borys, K. Elbassioni, V. Gurvich, G. Rudolf, and J. Zhao. 2008. “On Short Paths Interdiction Problems: Total and Node-wise Limited Interdiction.” Theory of Computing Systems 43 (2): 204–233. Kheirkhah, A., H. Navidi, and M. Messi Bidgoli. 2016. “A Bi-level Network Interdiction Model for Solving the Hazmat Routing Problem.” International Journal of Production Research 54 (2): 459–471. Kingma, D. P., and J. Ba. 2015. “Adam: A Method for Stochastic Optimization.” In 3rd International Conference on Learning Representations (ICLR2015), San Diego, CA, USA, May 7–9, 2015, Conference Track Proceedings, edited by Y. Bengio and Y. LeCun. Kitapcı, O., H. Özekicioğlu, O. Kaynar, and S. Taştan. 2014. “The Effect of Economic Policies Applied in Turkey to the Sale of Automobiles: Multiple Regression and Neural Network Analysis.” Procedia-Social and Behavioral Sciences 148: 653–661.
+
+48
+
+D. HUANG ET AL.
+
+Konrad, R. A., A. C. Trapp, T. M. Palmbach, and J. S. Blom. 2017. “Overcoming Human Trafficking Via Operations Research and Analytics: Opportunities for Methods, Models, and Applications.” European Journal of Operational Research 259 (2): 733–745.
+Kool, W., H. van Hoof, and M. Welling. 2019. “Attention, Learn to Solve Routing Problems!” In 7th International Conference on Learning Representations (ICLR2019), New Orleans, LA, USA, May 6–9, 2019.
+Lee, J.-H., and H.-J. Kim. 2021. “Reinforcement Learning for Robotic Flow Shop Scheduling with Processing Time Variations.” International Journal of Production Research. doi:10.1080/00207543.2021.1887533.
+Lin, K., Q. Lin, C. Zhou, and J. Yao. 2007. “Time Series Prediction Based on Linear Regression and SVR.” In 3rd International Conference on Natural Computation (ICNC 2007), Vol. 1, 688–691.
+Lozano, L., and J. C. Smith. 2017. “A Backward Sampling Framework for Interdiction Problems with Fortification.” INFORMS Journal on Computing 29 (1): 123–139.
+Lu, H., X. Zhang, and S. Yang. 2020. “A Learning-Based Iterative Method for Solving Vehicle Routing Problems.” In 8th International Conference on Learning Representations (ICLR2020).
+Mazyavkina, N., S. Sviridov, S. Ivanov, and E. Burnaev. 2021. “Reinforcement Learning for Combinatorial Optimization: A Survey.” Computers & Operations Research 134: 105400.
+Morton, D. P., F. Pan, and K. J. Saeger. 2007. “Models for Nuclear Smuggling Interdiction.” IIE Transactions 39 (1): 3–14.
+Nazari, M., A. Oroojlooy, M. Takáč, and L. V. Snyder. 2018. “Reinforcement Learning for Solving the Vehicle Routing Problem.” In Proceedings of the 32nd International Conference on Neural Information Processing Systems (NIPS2018), 9861–9871.
+Pan, F., and D. P. Morton. 2008. “Minimizing a Stochastic Maximum-reliability Path.” Networks 52 (3): 111–119.
+Pay, B. S., J. R. Merrick, and Y. Song. 2019. “Stochastic Network Interdiction with Incomplete Preference.” Networks 73 (1): 3–22.
+Pedregosa, F., G. Varoquaux, A. Gramfort, V. Michel, B. Thirion, O. Grisel, and M. Blondel, et al. 2011. “Scikit-learn: Machine Learning in Python.” Journal of Machine Learning Research 12: 2825–2830.
+Prince, M., J. Geunes, and J. C. Smith. 2013. “Procurement Allocation Planning with Multiple Suppliers Under Competition.” International Journal of Production Research 51 (23-24): 6900–6922.
+Rocco, C. M., and J. E. Ramirez-Marquez. 2010. “A Bi-objective Approach for Shortest-path Network Interdiction.” Computers & Industrial Engineering 59 (2): 232–240.
+Sadeghi, S., A. Seifi, and E. Azizi. 2017. “Trilevel Shortest Path Network Interdiction with Partial Fortification.” Computers & Industrial Engineering 106: 400–411.
+Sefair, J. A., and J. C. Smith. 2016. “Dynamic Shortest-path Interdiction.” Networks 68 (4): 315–330.
+Smith, J. C., and Y. Song. 2020. “A Survey of Network Interdiction Models and Algorithms.” European Journal of Operational Research 283 (3): 797–811.
+
+Song, Y., and S. Shen. 2016. “Risk-averse Shortest Path Interdiction.” INFORMS Journal on Computing 28 (3): 527– 539.
+Sullivan, K. M., D. P. Morton, F. Pan, and J. Cole Smith. 2014. “Securing a Border Under Asymmetric Information.” Naval Research Logistics 61 (2): 91–100.
+Sutskever, I., O. Vinyals, and Q. V. Le. 2014. “Sequence to Sequence Learning With Neural Networks.” In Advances in Neural Information Processing Systems 27: Annual Conference on Neural Information Processing Systems 2014 (NIPS2014), December 8-13 2014, Montreal, Quebec, Canada, edited by Z. Ghahramani, M. Welling, C. Cortes, N. D. Lawrence, and K. Q. Weinberger, 3104–3112.
+Sutton, R. S., and A. G. Barto. 2018. Reinforcement Learning: An Introduction. Cambridge, MA: MIT Press.
+Vinyals, O., M. Fortunato, and N. Jaitly. 2015. “Pointer Networks.” In Advances in Neural Information Processing Systems 28: Annual Conference on Neural Information Processing Systems 2015 (NIPS2015), December 7–12, 2015, Montreal, Quebec, Canada, edited by C. Cortes, N. D. Lawrence, D. D. Lee, M. Sugiyama, and R. Garnett, 2692–2700.
+Wang, Q., and C. Tang. 2021. “Deep Reinforcement Learning for Transportation Network Combinatorial Optimization: A Survey.” Knowledge-Based Systems 233: 107526.
+Williams, R. J. 1992. “Simple Statistical Gradient-following Algorithms for Connectionist Reinforcement Learning.” Machine Learning 8 (3-4): 229–256.
+Xu, K., K. Xiao, Q. Yin, Y. Zha, and C. Zhu. 2017. “Bridging the Gap Between Observation and Decision Making: Goal Recognition and Flexible Resource Allocation in Dynamic Network Interdiction.” In Proceedings of the 26th International Joint Conference on Artificial Intelligence (IJCAI2017), 4477–4483.
+Yang, J., J. S. Borrero, O. A. Prokopyev, and D. Sauré. 2021. “Sequential Shortest Path Interdiction with Incomplete Information and Limited Feedback.” Decision Analysis 18 (3): 218–244.
+Yates, J., and K. Lakshmanan. 2011. “A Constrained Binary Knapsack Approximation for Shortest Path Network Interdiction.” Computers & Industrial Engineering 61 (4): 981–992.
+Zeng, Y., K. Xu, Q. Yin, L. Qin, Y. Zha, and W. Yeoh. 2018. “Inverse Reinforcement Learning Based Human Behavior Modeling for Goal Recognition in Dynamic Local Network Interdiction.” In Workshops at the 32nd AAAI Conference on Artificial Intelligence (AAAI2018), 646–653.
+Zhang, K., F. He, Z. Zhang, X. Lin, and M. Li. 2020. “Multivehicle Routing Problems with Soft Time Windows: A Multiagent Reinforcement Learning Approach.” Transportation Research Part C: Emerging Technologies 121: 102861.
+Zhang, Q., X. Guan, and P. M. Pardalos. 2021. “Maximum Shortest Path Interdiction Problem by Upgrading Edges on Trees Under Weighted l1 Norm.” Journal of Global Optimization 79 (4): 959–987.
+Zhang, Q., X. Guan, H. Wang, and P. M. Pardalos. 2021. “Maximum Shortest Path Interdiction Problem by Upgrading Edges on Trees Under Hamming Distance.” Optimization Letters 15: 2661–2680.
+

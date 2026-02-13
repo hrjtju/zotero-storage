@@ -1,0 +1,1082 @@
+Hyperbolic Graph Representation Learning: A Tutorial 1/195
+ECML-PKDD 2022
+Hyperbolic Graph Representation Learning: A Tutorial
+Min Zhou[1] , Menglin Yang[2], Lujia Pan[1], Irwin King[2]
+[1]Huawei Technologies Co., Ltd. [2] The Chinese University of Hong Kong
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 2/195
+ECML-PKDD 2022
+Contents
+1. INTRODUCTION (Min, 30 min)
+1.1 An Overview of Graph Representation Learning
+1.2 Brief Introduction of Riemannian Geometry 1.3 Motivation of Hyperbolic Graph Representation Learning
+2. HYPERBOLIC GRAPH REPRESENTATION LEARNING (HGRL) (Menglin, 30 min)
+2.1 Hyperbolic Shallow Models
+2.2 Hyperbolic Neural Networks
+2.3 Hyperbolic Graph Neural Networks
+3. APPLICATIONS (Menglin, 45 min)
+3.1 HGRL for Recommendation Systems
+3.2 HGRL for Knowledge Graph
+3.3 HGRL for other Applications
+4. ADVANCED TOPICS (Min, 60 min)
+4.1 Complex Structures
+4.2 Evolving Interactions
+4.3 Geometry-aware Learning
+4.4 Trustworthy and Scalability
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 3/195
+ECML-PKDD 2022
+1. INTRODUCTION
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 4/195
+ECML-PKDD 2022
+Contents
+1. INTRODUCTION (Min, 30 min)
+1.1 An Overview of Graph Representation Learning
+1.2 Brief Introduction of Riemannian Geometry 1.3 Motivation of Hyperbolic Graph Representation Learning
+2. HYPERBOLIC GRAPH REPRESENTATION LEARNING (HGRL) (Menglin, 30 min)
+2.1 Hyperbolic Shallow Models
+2.2 Hyperbolic Neural Networks
+2.3 Hyperbolic Graph Neural Networks
+3. APPLICATIONS (Menglin, 45 min)
+3.1 HGRL for Recommendation Systems
+3.2 HGRL for Knowledge Graph
+3.3 HGRL for other Applications
+4. ADVANCED TOPICS (Min, 60 min)
+4.1 Complex Structures
+4.2 Evolving Interactions
+4.3 Geometry-Aware Learning
+4.4 Trustworthy and Scalability
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 5/195
+ECML-PKDD 2022
+Data available in the form of graphs are ubiquitous.
+Source from Internet
+Graphs
+Social networks Biology network Atom network
+Financial networks Logistic networks Telecom network
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 6/195
+ECML-PKDD 2022
+• Source from Internet
+Recommender Systems Link Prediction
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 7/195
+ECML-PKDD 2022
+Link prediction
+Knowledge Graph Completion
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 8/195
+ECML-PKDD 2022
+Link prediction,
+community detection, etc.
+Fraud Detection
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 9/195
+ECML-PKDD 2022
+Jin W. et. al. Antibody-Antigen Docking and Design via Hierarchical Equivariant Refinement. ICML 2022
+Antibody-Antigen Docking and Design
+Graph Generation Task
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 10/195
+ECML-PKDD 2022
+⚫ Graph Analysis
+• Degree distribution
+• Graph diameter
+• Shortest path length
+• Sparseness
+• Curvature
+• Symmetry
+⚫Representation Learning
+• Graph embedding
+• Graph neural network
+Graph Analysis and Learning
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 11/195
+ECML-PKDD 2022
+“Can we automate the learning of useful features from raw data?”
+Representation Learning
+“Deep learning algorithms seek to exploit the unknown structure in the input distribution in order to discover good representations, often at multiple levels, with higher-level learned features defined in terms of lower-level features”
+Yoshua Bengio
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 12/195
+ECML-PKDD 2022
+Representation Learning on Graph
+Graph Embedding Graph Neural
+Network
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 13/195
+ECML-PKDD 2022
+Representation Learning on Graph
+Graph Embedding
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 14/195
+ECML-PKDD 2022
+Projecting graph data into a continuum space while the graph properties are preserved.
+Graph Embedding
+G=(V,E)
+G=(V) Vector space
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 15/195
+ECML-PKDD 2022
+Goal: Perform network inference in the low-dimensional vector space
+Graph Embedding
+• Node importance
+• Community detection
+• Link prediction
+• Node classification
+• Network evolution
+• ....
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 16/195
+ECML-PKDD 2022
+Adjacency List encoding of edges vs one-hot encoding of text tokens
+Graph vs Text
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 17/195
+ECML-PKDD 2022
+Learns a vector representation for each word that maximized the probability of that word given the previous word.
+https://towardsdatascience.com/word2vec-skip-gram-model-part-1-intuition-78614e4d6e0b
+Representing Text
+Input: one hot encoded vector
+Output: probability for each word in the corpus
+Illustration of SkipGram
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 18/195
+ECML-PKDD 2022
+• How should we represent a node in a graph mathematically?
+• Can we mimic word embedding?
+• Treat each node treat as a word
+• Neighborhood around the node as the context window
+Representing Graph
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 19/195
+ECML-PKDD 2022
+• Exploit truncated random walks to define neighborhoods of a node
+Deep Walk
+B. Perozzi et al. Deepwalk: Online learning of social representations. KDD 2014
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 20/195
+ECML-PKDD 2022
+• Generate representations of nodes in the graph via 2nd order (biased) random walk.
+Grover, Aditya, and Jure Leskovec. "node2vec: Scalable feature learning for networks." KDD 2016
+Node2vec
+• Apply a bias factor alpha to reweigh the edge weights depending on the previous state
+• Second order transition probability:
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 21/195
+ECML-PKDD 2022
+• Many different methods:
+• Matrix Factorization
+• Random walk
+• Others
+Hamilton, W. L. et.al. Representation Learning on Graphs: Methods and Applications. 2017
+Graph Embedding Summary
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 22/195
+ECML-PKDD 2022
+• Most techniques consist of:
+• A pairwise similarity function measures the similarity between nodes • An encoder function to generate the node embedding • A decoder function to reconstruct pairwise similarity • A loss function to measure the quality of the pairwise reconstructions
+Hamilton, W. L. et.al. Representation Learning on Graphs: Methods and Applications. 2017
+Graph Embedding Summary
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 23/195
+ECML-PKDD 2022
+Graph Neural
+Network
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 24/195
+ECML-PKDD 2022
+Graph Neural Network
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 25/195
+ECML-PKDD 2022
+Graph Neural Network
+a. Neighborhood aggregation b. Information propagation
+Every node defines a computation graph
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 26/195
+ECML-PKDD 2022
+• Deal with the representation of a graph in the spectral domain
+• Aggregate info from neighborhood via the normalized Laplacian matrix
+• Spectral method & Transductive learning
+• Easy to apply
+• Conduct on the entire graph and computationally inefficient
+T. N. Kipf and M. Welling. Semi-supervised classification with graph convolutional networks. ICLR, 2017.
+GCN
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 27/195
+ECML-PKDD 2022
+• Aggregate info from neighborhood via attention mechanism
+• Spatial method
+• More flexible to handle multisource graph inputs
+Veličković, Petar, et al. "Graph Attention Networks." ICLR. 2018.
+GAT
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 28/195
+ECML-PKDD 2022
+• Sample a subset of node to conduct propagation
+• Generalized aggregation: any differentiable function that maps set of vectors to a single vector
+• Spatial method with inductive capability
+T. N. Kipf and M. Welling. Semi-supervised classification with graph convolutional networks. ICLR, 2017.
+GraphSAGE
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 29/195
+ECML-PKDD 2022
+• Characteristics of GNNs
+• Information aggregation and prorogation • Trained via end-to-end manner according to downstream task • Supervised or semi-supervised • Utilize graph structure and node features simultaneously
+Representation Learning on Networks, snap.stanford.edu/proj/embeddings-www, WWW 2018
+Summary of GNNs
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 30/195
+ECML-PKDD 2022
+• Step 1: Obtain edge or/and node information , possibly with some augmentation
+• Step 2: Use a parameterized encoder to map nodes in the graph(s) to an embedding space
+• Step 3: Make predictions on nodes, edges or graphs based on embeddings
+• Step 4: Compute loss and optimize the parameters
+Rex Ying. Introduction on Graph Representation Learning: A Geometric Perspective. 2022
+Pipeline for Graph Learning
+• Graph G = (V, E) • V: Node set, • E: Edge set • fG: Mapping function • Z: Node embedding
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 31/195
+ECML-PKDD 2022
+• The quality of embeddings crucially depends on whether the geometry of the learning space matches the dataset.
+• What embedding space geometry is optimal for data?
+Curvature and Representation Learning: Identifying Embedding Spaces for Relational Data
+Where to Learn Graphs?
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 32/195
+ECML-PKDD 2022
+• Many times, we have data lies on non-Euclidean manifold
+Constraints of Euclidean Geometry
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 33/195
+ECML-PKDD 2022
+• Cannot embed large classes of graph w/ low distortion or w/o loss of information
+• E.g. cycles, trees
+• Graph distance dG(i, j)= “shortest path from i to j”
+https://people.csail.mit.edu/oct/ctgnn_slides.pdf
+Constraints of Euclidean Geometry
+Distortion 2 Distortion 2ൗ
+3
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 34/195
+ECML-PKDD 2022
+• Manifolds: high dimensional surface that looks locally-Euclidean
+• Riemannian Manifold
+• Equipped with
+• Inner product . , . : metric space
+• Tangent space Tx: an Rn that approximates the manifold at any point x
+• Curvature: how much the surface deviates from being a plane
+• Geodesic: shortest path in manifold
+• Analogous to straight lines in Rn
+Riemannian Geometry
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 35/195
+ECML-PKDD 2022
+• Tangent Space:
+• TpM= space of speed vectors of all curves that
+go through a point x on the manifold
+• A vector space with the same dimension
+as the manifold
+• Exp & Log Maps:
+• expp: TpM → M
+• logp: M → TpM
+Tangent Spaces
+(1) Map to tangent space (2) Solve problem in the tangent space (3) Map back to the manifold
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 36/195
+ECML-PKDD 2022
+• A geometric property: Flatness of an object
+• Geometric intuition: Measure for growth rate of volume of distance ball→ “geodesic dispersion”
+Eidi M, Jost J. Ollivier ricci curvature of directed hypergraphs[J]. Scientific Reports, 2020, 10(1): 1-14
+Curvature
+Flat Curvature Negative Curvature
+Positive Curvature
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 37/195
+ECML-PKDD 2022
+• Consider a tangent vector v = xy and another tangent vector wx at x. Transport wx along v to be a
+tangent vector wx at y.
+• Ricci Curvature: averaging over all directions w
+Ni, Chien-Chun, et al. "Ricci curvature of the internet topology." 2015 IEEE conference on computer communications (INFOCOM). IEEE, 2015.
+Sectional Curvature & Ricci Curvature
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 38/195
+ECML-PKDD 2022
+• Geodesic: Shortest path in the manifold
+http://drmarkliu.com/noneuclidean
+Geodesic Distance
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 39/195
+ECML-PKDD 2022
+• The more negative the curvature:
+• The more geodesic bends inward
+• Distance between two given points also increases
+Hyperbolic Graph Convolutional Neural Networks, NeurIPS 2019
+Geodesic Distance
+Dark blue: high curvature boundary and geodesics Light blue: low curvature boundary and geodesics
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 40/195
+ECML-PKDD 2022
+• Many network are with tree-like structures or power-law distributed.
+Why Hyperbolic Space?
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 41/195
+ECML-PKDD 2022
+• Figure source: https://labblog.uofmhealth.org/rounds/how-scientists-quantify-intensity-of-an-outbreak-like-covid-19
+Nodes are exponentially increasing and hierarchical arranged.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 42/195
+ECML-PKDD 2022
+(1) Acts as a geometric prior for hierarchical structures / tree graphs /
+heavy tailed distributions (e.g. scale-free, power-law). *
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 43/195
+ECML-PKDD 2022
+(2) Larger embedding space ---smaller embedding dimension
+and fewer parameter
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 44/195
+ECML-PKDD 2022
+2. Hyperbolic Graph Representation Learning (HGRL)
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 45/195
+ECML-PKDD 2022
+1. INTRODUCTION
+1.1 An Overview of Graph Representation Learning
+1.2 Brief Introduction of Riemannian Geometry 1.3 Motivation of Hyperbolic Graph Representation Learning
+2. HYPERBOLIC GRAPH REPRESENTATION LEARNING (HGRL)
+2.1 Hyperbolic Shallow Models
+2.2 Hyperbolic Neural Networks
+2.3 Hyperbolic Graph Neural Networks
+3. APPLICATIONS
+3.1 HGRL for Recommendation Systems
+3.2 HGRL for Knowledge Graph
+3.3 HGRL for other Applications
+4. ADVANCED TOPICS
+4.1 Complex Structures
+4.2 Evolving Interactions
+4.3 Geometry-Aware Learning
+4.4 Trustworthy and Scalability
+Contents
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 46/195
+ECML-PKDD 2022
+2. HYPERBOLIC GRAPH REPRESENTATION LEARNING (HGRL)
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 47/195
+ECML-PKDD 2022
+https://en.wikipedia.org/wiki/Poincar%C3%A9_disk_model
+Backgrounds
+Hyperbolic Geometry
+• A non-Euclidean geometry that reject the validity of Euclid's fifth, the
+“parallel”, postulate.
+In hyperbolic space, there are at least two lines that parallel a line through a given point.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 48/195
+ECML-PKDD 2022
+https://en.wikipedia.org/wiki/Poincar%C3%A9_disk_model
+Backgrounds
+Hyperbolic Geometry
+• A non-Euclidean geometry that reject the validity of Euclid's fifth, the
+“parallel”, postulate.
+In Euclidean space, there is only one line that paralls a line through a given point.
+In hyperbolic space, there are at least two lines that parallel a line through a given point.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 49/195
+ECML-PKDD 2022
+Backgrounds
+Mathematical Models for Hyperbolic Geometry
+Poincaré Ball Model
+Lorentz
+(Hyperboloid)
+Model
+Klein Model
+Hemisphere Model
+Poincaré Half Plane Model
+Hyperbolic Models
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 50/195
+ECML-PKDD 2022
+Peng, Wei, et al. "Hyperbolic deep neural networks: A survey." arXiv preprint arXiv:2101.04562 (2021).
+Backgrounds
+The five hyperbolic models are isometrically equivalent and the points h, b, j, k, l can be thought of as the same point in the hyperbolic space.
+L: Lorentz Model K: Klein Model J: Hemisphere model B: Poincaré Model H: Poincaré half plane Model
+Isometrically Equivalent Models
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 51/195
+ECML-PKDD 2022
+2.1 Hyperbolic Shallow Models
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 52/195
+ECML-PKDD 2022
+Poincaré Ball Model
+https://mathworld.wolfram.com/PoincareHyperbolicDisk.html
+2.1.1 Poincaré Shallow Model
+Radius proportional to K (inverse of curvature), Open ball (exclude boundary) In the right two figure, each triangle/circle has the same area.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 53/195
+ECML-PKDD 2022
+Poincaré Ball Model (Intuitive Visualization)
+❖Definition Bd = x ∈ Rd |x | < 1},
+where |x | = σi=1
+d xi2, a Euclidean norm.
+❖Distance between u, v ∈ Bd:
+dB u, v = arcosh 1 + 2 ⋅ | u − v |2
+1 − | u |2 1 − | v |2 .
+2.1.1 Poincaré Shallow Model
+2-dimensional Poincaré ball
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 54/195
+ECML-PKDD 2022
+Poincaré Shallow Embedding
+❖Problem We have a tree-like graph with set of vertices N = xi in, and we want to
+find embeddings Θ = θi in, that they
+2.1.1 Poincaré Shallow Models
+o capture the similarity between vertices
+(including semantics and structures)
+o encode the latent hierarchical structure
+o have feasible runtime and memory
+complexity
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 55/195
+ECML-PKDD 2022
+Poincaré Shallow Embedding
+❖Problem We have a tree-like graph with set of vertices N = xi in, and we want to
+find embeddings Θ = θi in, that they
+2.1.1 Poincaré Shallow Models
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 56/195
+ECML-PKDD 2022
+Poincaré Shallow Embedding
+❖Objective
+where L(θ) is task-specific loss function.
+2.1.1 Poincaré Shallow Models
+Θ∗ ← argminθ L Θ ,
+s. t. ∀θi ∈ Θ: θi < 1
+2-dimensional Poincaré ball
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 57/195
+ECML-PKDD 2022
+Poincaré Shallow Embedding
+1. Initialization: all node are projected to Poincaré Ball.
+1) Without node feature: randomly using uniform distribution
+2) With node feature: using exponential map
+2. Update Θ: θt+1 → proj θt − ηt ⋅ 1− θt
+22
+4 ∇E
+where
+Nickel, Maximillian, and Douwe Kiela. "Poincaréembeddings for learning hierarchical representations." NeurIPS 30 (2017).
+2.1.1 Poincaré Shallow Models
+proj θt = ൞
+θt
+θt
+− ε if θt ≥ 1
+θt otherwise
+ΔE = ∂L θt
+∂ d θt, x ⋅ ∂d θt, x
+∂θt
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 58/195
+ECML-PKDD 2022
+Poincaré Shallow Embedding
+1. Initialization: all node are projected to Poincaré Ball.
+1) Without node feature: randomly using uniform distribution
+2) With node feature: using exponential map
+2. Update Θ: θt+1 → proj θt − ηt ⋅ 1− θt
+22
+4 ∇E
+where
+Nickel, Maximillian, and Douwe Kiela. "Poincaréembeddings for learning hierarchical representations." NeurIPS 30 (2017).
+2.1.1 Poincaré Shallow Models
+proj θt = ൞
+θt
+θt
+− ε if θt ≥ 1
+θt otherwise
+ΔE = ∂L θt
+∂ d θt, x ⋅ ∂d θt, x
+∂θt
+∇u = 1 − θ 2 2
+4 ⋅ ∇uE
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 59/195
+ECML-PKDD 2022
+Nickel, Maximillian, and Douwe Kiela. "Poincaréembeddings for learning hierarchical representations." NeurIPS 30 (2017).
+2.1.1 Results on Poincaré Ball
+Table: Experimental results on the transitive closure of the WORDNET noun hierarchy. Highlighted cells indicate the best Euclidean embeddings as well as the Poincaré embeddings which achieve equal or better results. Bold numbers indicate absolute best results.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 60/195
+ECML-PKDD 2022
+2.1.2 Lorentz Shallow Models
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 61/195
+ECML-PKDD 2022
+Lorentz Model
+(Numerically more stable, simpler formula)
+❖Definition Ld = {x ∈ Rd+1: < x, x >L= −1, x0 > 0},
+where < x, y >L≔ −x0y0 + x1y1 + ⋯ + xdyd.
+❖Distance between u, v ∈ Ld:
+dL u, v = arcosh −< x, y >L .
+2.1.2 Lorentz Shallow Models
+Time-like Space-like
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 62/195
+ECML-PKDD 2022
+Lorentz Model
+(Numerically more stable, simpler formula)
+❖Definition Ld = {x ∈ Rd+1: < x, x >L= −1, x0 > 0},
+where < x, y >L≔ −x0y0 + x1y1 + ⋯ + xdyd.
+❖Distance between u, v ∈ Ld:
+dL u, v = arcosh −< x, y >L .
+2.1.2 Lorentz Shallow Models
+2-dimensional Lorentz Model
+Time-like Space-like
+Time-like dimension
+Space-like dimension
+OL(1,0,0)
+Space-like dimension
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 63/195
+ECML-PKDD 2022
+Lorentz Shallow Embedding
+❖ Problem We have a tree-like graph with set of vertices N = xi in, and we want to
+find embeddings Θ = θi in, that they
+o capture the similarity between vertices (including semantics and structure);
+o encode the latent hierarchical structure;
+o have feasible runtime and memory complexity.
+2.1.2 Lorentz Shallow Models
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 64/195
+ECML-PKDD 2022
+Lorentz Shallow Embedding
+❖ Objective
+where L(θ) is task-specific loss function.
+2.1.2 Lorentz Shallow Models
+θ∗ ← argminθ L Θ ,
+s. t. ∀θi ∈ Θ: θi ∈ Ld
+2-dimensional Lorentz Model
+θi,0
+2 + θi,1
+2 + ⋯ + θi,d
+2 = −1
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 65/195
+ECML-PKDD 2022
+Lorentz Shallow Embedding
+1. Initialization: all node are projected to Lorentz
+Model.
+1) Without node feature: randomly using uniform
+distribution
+2) With node feature: using exponential map
+2. Update Θ : θt+1 → expθt −ηt ⋅ gradf(θt) ,
+Where grad f θt ∈ TθM denotes the Riemannian
+gradient and η denotes the learning rate.
+2.1.2 Lorentz Shallow Models
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 66/195
+ECML-PKDD 2022
+https://mnick.github.io/project/geometric-representation-learning/
+2.1.2 Results on Lorentz Model
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 67/195
+ECML-PKDD 2022
+Concepts and functions for hyperbolic geometry
+❖ Hyperbolic Models
+❖ Manifold and Metric
+❖ Induced Distance Function
+❖ Exponential and Logarithmic Maps
+❖ Parallel Transport
+Summary
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 68/195
+ECML-PKDD 2022
+2.2 Hyperbolic Neural Networks
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 69/195
+ECML-PKDD 2022
+• Matrix-vector Multiplication
+• Bias Addition
+• Non-linear Activaion
+2.2.1 Feed Forward Layer
+σσ
+b
+w1
+w2
+w3
+w4
+x1
+x2
+x3
+x4
+(Inputs)
+(Weights)
+(bias)
+(Activation)
+(Outputs)
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 70/195
+ECML-PKDD 2022
+• Matrix-vector Multiplication
+• Bias Addition
+• Non-linear Activaion
+2.2.1 Feed Forward Layer
+σσ
+b
+w1
+w2
+w3
+w4
+x1
+x2
+x3
+x4
+(Inputs)
+(Weights)
+(bias)
+(Activation)
+(Outputs)
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 71/195
+ECML-PKDD 2022
+• Hyperbolic Matrix-vector Multiplication on Poincaré Ball Model
+2.2.1 Hyperbolic Feed Forward Layer
+proj(expo(xB))
+logo(xB)
+2D Poincare Ball Disk
+×
+WT ⋅ logo (xB)
+2D Tangent space 2D Poincaré Ball Disk
+Hyperbolic Matrix Multiplication : W ⊗B xB = proj(expo(WTlogo(xB)))
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 72/195
+ECML-PKDD 2022
+• Hyperbolic Matrix-vector Multiplication on Lorentz Model
+2.2.1 Hyperbolic Feed Forward Layer
+Hyperbolic Matrix Multiplication : W ⊗B xB = proj(expo([0: WTlogo(x[1:n]
+B ))))
+×
+x
+12
+0 12 x
+x
+x 1:
+x0
+x1
+x2
+12
+0 12 x
+x0
+x1
+x2
+12
+0 12 x
+x0
+x1
+x2
+exp10
+exp10
+x
+x
+×
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 73/195
+ECML-PKDD 2022
+• Matrix-vector Multiplication
+• Bias Addition
+• Non-linear Activaion
+2.2.1 Hyperbolic Feed Forward Layer
+σσ
+b
+w1
+w2
+w3
+w4
+x1
+x2
+x3
+x4
+(Inputs)
+(Weights)
+(bias)
+(Activation)
+(Outputs)
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 74/195
+ECML-PKDD 2022
+• Bias addition on Poincaré Ball Model and Lorentz Model
+• In Euclidean Space
+x ←x + b
+• In Hyperbolic Space
+xH ←xH ⊕ b = expxH P0→xH log0 b
+Fig: https://imgur.com/gallery/tqplYeT
+2.2.1 Hyperbolic Feed Forward Layer
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 75/195
+ECML-PKDD 2022
+• Bias addition on Poincaré Ball Model and Lorentz Model
+• In Euclidean Space
+x ←x + b
+• In Hyperbolic Space
+xH ←xH ⊕ b = expxH P0→xH log0 b
+Fig: https://imgur.com/gallery/tqplYeT
+2.2.1 Hyperbolic Feed Forward Layer
+Fig: Parallel Transport
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 76/195
+ECML-PKDD 2022
+• Matrix-vector Multiplication
+• Bias Addition
+• Non-linear Activaion
+2.2.1 Hyperbolic Feed Forward Layer
+σσ
+b
+w1
+w2
+w3
+w4
+x1
+x2
+x3
+x4
+(Inputs)
+(Weights)
+(bias)
+(Activation)
+(Outputs)
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 77/195
+ECML-PKDD 2022
+• Non-linear Activation on Poincaré Ball Model and Lorentz Model
+• In Euclidean Space
+x ←f(x)
+• In Hyperbolic Space
+xH ←f(xH)
+Fig: https://imgur.com/gallery/tqplYeT
+2.2.1 Hyperbolic Feed Forward Layer
+UpdateKl−1 ,Kl xH ≔ exp0
+Kl f logo
+Kl−1 xH
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 78/195
+ECML-PKDD 2022
+2.2.1 Uniform Paradim
+o Hyperbolic space to tangent space o Operations on tangent space o Tangent space to Hyperbolic space
+Hyperbolic Space Tangent Space Hyperbolic Space
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 79/195
+ECML-PKDD 2022
+2.2 Hyperbolic Neural Networks
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 80/195
+ECML-PKDD 2022
+• Hyperbolic Attention Layer
+Gulcehre, Caglar, et al. "Hyperbolic attention networks." arXiv preprint arXiv:1805.09786 (2018).
+2.2 Hyperbolic Neural Networks
+Similarity
+Softmax
+QK V
+x
+Weight Sum
+Attention Weight
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 81/195
+ECML-PKDD 2022
+• Hyperbolic Attention Layer
+2.2 Hyperbolic Neural Networks
+Similarity
+Softmax
+QK V
+x
+Weight Sum
+Attention Weight
+Final Results x:
+x′ = ෍
+j
+αijγ vij
+σl αilγ vil
+vij
+Attention Weights:
+α qi, ki = f(−βdh qi, kj − c)
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 82/195
+ECML-PKDD 2022
+Einstein Midpoint
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 83/195
+ECML-PKDD 2022
+2.2 Hyperbolic Neural Networks
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 84/195
+ECML-PKDD 2022
+• Hyperbolic Graph Convolutional Neural Networks
+• Feature Transformation (Message)
+• Neighborhood Aggregation (Aggregation)
+• Non-linear Activation (Update)
+Chami, Ines, et al. "Hyperbolic graph convolutional neural networks." NeurIPS (2019).
+2.3 HGNN via Tangential Aggregation
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 85/195
+ECML-PKDD 2022
+• Input Transformation: x0,H ≔ exp0K 0, x0,E
+• Message:
+hi
+l,H = Wl ⊗Kl−1 xi
+l−1,H ⊕Kl−1 bl
+• Aggregation:
+AGG xH i ≔ expxiH
+K(෍
+j∈N(j)
+wij log xiH
+K (xjH))
+• Update:
+UpdateKl−1 ,Kl xH ≔ exp0
+Kl σ logo
+Kl−1 xH
+Chami, Ines, et al. "Hyperbolic graph convolutional neural networks." NeurIPS (2019).
+2.3 HGNN via Tangential Aggregation
+W ⊗K xH ≔ exp0K(Wlog0K(x))
+xH ⊕ b ≔ expxKH Po→xH
+Kb
+Attention weights
+Trainable curvature
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 86/195
+ECML-PKDD 2022
+Chami, Ines, et al. "Hyperbolic graph convolutional neural networks." NeurIPS (2019).
+2.3 HGNN via Tangential Aggregation
+The above show that the 1st layer and 2nd layer embedding for both GCN and HGCN.
+HGCN can map the nodes to embeddings of different hyperbolic space with different curvature at each layer, resulting in low distortion embedding for hierarchical data.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 87/195
+ECML-PKDD 2022
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 88/195
+ECML-PKDD 2022
+• Hyperbolic Graph Neural Networks
+• Feature Transformation
+• Neighborhood Aggregation
+• Non-linear Activation
+Zhang, Yiding, et al. "Lorentzian graph convolutional networks." The WebConf. 2021.
+2.3 HGNN via Centroid Aggregation
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 89/195
+ECML-PKDD 2022
+• Input Transformation: x0,H ≔ exp0K 0, x0,E
+• Message:
+hi
+l,H = Wl ⊗Kl−1 xi
+l−1,H
+• Aggregation:
+AGG xH i ≔ σj∈N i wijxjH
+||| σj∈N i wijxjH||L |
+• Update:
+UpdateKl−1 ,Kl xH ≔ exp0
+Kl 0, σ logo
+Kl−1 x 1;n
+H
+Zhang, Yiding, et al. "Lorentzian graph convolutional networks." The WebConf. 2021.
+2.3 HGNN via Centroid Aggregation
+W ⊗K xH ≔ exp0K 0, Wlog0K x 1:n
+Edge weights/attention weights
+Trainable curvature
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 90/195
+ECML-PKDD 2022
+Zhang, Yiding, et al. "Lorentzian graph convolutional networks." The WebConf. 2021.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 91/195
+ECML-PKDD 2022
+3. Applications
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 92/195
+ECML-PKDD 2022
+1. INTRODUCTION
+1.1 An Overview of Graph Representation Learning
+1.2 Brief Introduction of Riemannian Geometry 1.3 Motivation of Hyperbolic Graph Representation Learning
+2. HYPERBOLIC GRAPH REPRESENTATION LEARNING (HGRL)
+2.1 Hyperbolic Shallow Models
+2.2 Hyperbolic Neural Networks
+2.3 Hyperbolic Graph Neural Networks
+3. APPLICATIONS
+3.1 HGRL for Recommendation Systems
+3.2 HGRL for Knowledge Graph
+3.3 HGRL for other Applications
+4. ADVANCED TOPICS
+4.1 Complex Structures
+4.2 Evolving Interactions
+4.3 Geometry-Aware Learning
+4.4 Trustworthy and Scalability
+Contents
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 93/195
+ECML-PKDD 2022
+3.1 HGRL for Recommendation Systems
+• Recommender System are Everywhere
+News Recommendation
+Products Recommendation
+Music Recommendation
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 94/195
+ECML-PKDD 2022
+3.1 HGRL for Recommendation Systems
+• User-item Networks
+Users and items are nodes and the interactions are edges.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 95/195
+ECML-PKDD 2022
+3.1 HGRL for Recommendation Systems
+• GNN for User-item Network Modeling in Euclidean Space
+Xiangnan He, et al. "Lightgcn: Simplifying and powering graph convolution network for recommendation." SIGIR. 2020.
+Note: where eku and eik respectively denote the refined embedding of user u and item i after k layers propagation. Nu denotes the set of items that are interacted by user u, Ni denotes the set of users that interact with item i.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 96/195
+ECML-PKDD 2022
+3.1 HGRL for Recommendation Systems
+• GNN for User-item Network Modeling in Euclidean Space
+Xiangnan He, et al. "Lightgcn: Simplifying and powering graph convolution network for recommendation." SIGIR. 2020.
+Note: The model prediction is defined as the inner product of user and item final representations.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 97/195
+ECML-PKDD 2022
+3.1 HGRL for Recommendation Systems
+• User-item Networks
+Menglin Yang, et.al. Hyperbolic Informative Collaborative Filtering. KDD 2022
+(plotted by Jiahong Liu)
+The popular items are in the minority, whereas the individualized or unpopular items are in the majority.
+Note: Popular items are competitive while the long-tail item reflects personalized preference or something new.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 98/195
+ECML-PKDD 2022
+3.1 HGRL for Recommendation Systems
+• Degree Distribution
+Menglin Yang, et al. HRCF: Enhancing collaborative filtering via hyperbolic geometric regularization. Proceedings of the ACM Web Conference 2022.
+Power-law distribution !!!
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 99/195
+ECML-PKDD 2022
+3.1 HGRL for Recommendation Systems
+Tree-like structure (Power-law distribution)
+High degree
+Low degree
+Note:
+High degree nodes are liked by the majority which indicates their popularity is high.
+Low degree nodes are liked by the minority which demonstrates their popularity is low.
+
+
+Hyperbolic Graph Representation Learning: A Tutorial 100/195
+ECML-PKDD 2022
+3.1 HGRL for Recommendation Systems
+• Embedding Tree-like Graphs
+Menglin Yang, et al. HRCF: Enhancing collaborative filtering via hyperbolic geometric regularization. The WebConf 2021
+T
+Tree-like G
+x0
+1
+−1 o x1
+R2
+H2
+x2
+x1
+x0
+oH(1,0,0)
+Euclidean space Hyperbolic space

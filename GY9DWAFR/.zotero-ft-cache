@@ -1,0 +1,582 @@
+1
+Vol.:ȋͬͭͮͯͰͱͲͳʹ
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports
+Quantum‐inspired modeling
+of distributed intelligence systems
+with artificial intelligent agents
+self‐organization
+A. P. Alodjants1, D. V. Tsarev1, A. E. Avdyushina1, A.Yu Khrennikov2* & A. V. Boukhanovsky1
+Distributed intelligence systems (DIS) containing natural and artificial intelligence agents (NIA and AIA) for decision making (DM) belong to promising interdisciplinary studies aimed at digitalization of routine processes in industry, economy, management, and everyday life. In this work, we suggest a novel quantum‐inspired approach to investigate the crucial features of DIS consisting of NIAs (users) and AIAs (digital assistants, or avatars). We suppose that N users and their avatars are located in N nodes of a complex avatar ‐ avatar network. The avatars can receive information from and transmit it to each other within this network, while the users obtain information from the outside. The users are associated with their digital assistants and cannot communicate with each other directly. Depending on the meaningfulness/uselessness of the information presented by avatars, users show their attitude making emotional binary “like”/“dislike” responses. To characterize NIA cognitive abilities in a simple DM process, we propose a mapping procedure for the Russell’s valence‐arousal circumplex model onto an effective quantum‐like two‐level system. The DIS aims to maximize the average satisfaction of users via AIAs long‐term adaptation to their users. In this regard, we examine the opinion formation and social impact as a result of the collective emotional state evolution occurring in the DIS. We show that generalized cooperativity parameters Gi ,i = 1, . . . , N introduced in this work play a significant role in DIS features reflecting the users activity in possible cooperation and responses to their avatar suggestions. These parameters reveal how frequently AIAs and NIAs communicate with each other accounting the cognitive abilities of NIAs and information losses within the network. We demonstrate that conditions for opinion formation and social impact in the DIS are relevant to the second‐order non‐equilibrium phase transition. The transition establishes a non‐vanishing average information field inherent to information diffusion and long‐term avatar adaptation to their users. It occurs above the phase transition threshold, i.e. at Gi > 1, which implies small (residual) social polarization of the NIAs community. Below the threshold, at weak AIA–NIA coupling (Gi ≤ 1), many uncertainties in the DIS inhibit opinion formation and social impact for the DM agents due to the information diffusion suppression; the AIAs self‐organization within the avatar–avatar network is elucidated in this limit. To increase the users’ impact, we suggest an adaptive approach by establishing a network‐dependent coupling rate with their digital assistants. In this case, the mechanism of AIA control helps resolve the DM process in the presence of some uncertainties resulting from the variety of users’ preferences. Our findings open new perspectives in different areas where AIAs become effective teammates for humans to solve common routine problems in network organizations.
+Background
+Current communication technologies, such as the Internet, provide great opportunities for information exchange and cooperation. The interaction between people makes an essential social impact in networks and occurs due to communication tools (messages, tweets, texts, etc.) despite physical distances, national, cultural, or other differences. It is worth highlighting the dissemination of knowledge and expertise that can be effectively realized in
+OPEN
+1ITMO University, St. Petersburg, Russia 197101. 2International Center for Mathematical Modeling in Physics, Engineering, Economics, and Cognitive Science Linnaeus University, 35195 Vaxjo-Kalmar, Sweden. *email: andrei.khrennikov@lnu.se
+
+
+2
+Vol:.(1234567890)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+various distributed networks by communities of human experts1,2. Contemporary networks establish so-called
+distributed intelligence systems (DISs) as a multidisciplinary paradigm for current society organization3. The rapid development of artificial intelligence systems has made them a critical part of decision-making (DM) and information exchange in networks. DISs may generally be recognized as multiagent systems possessing natural (humans) and artificial intelligent agents (AIAs), which are represented as digital assistants, or “avatars”. As a rule, the purposes of various DISs presume different strategies for the interaction of AIAs with each other and with natural intelligence agents (NIAs) within some complex networks; these strategies may become a source of
+uncertainties, risks, and complexity in the DIS, e.g.4. The capacity and complexity of AIA–NIA interaction and
+cooperation currently represent a challenging imperative, for example, for the Internet of Things5. AIAs can perform various (dynamic) functions as a part of teams as well as can work independently on
+individual tasks due to advances in artificial intelligence6. By interacting with NIAs in social or some specialized networks, AIAs can not only be evaluated as advanced tools for performing routine tasks but more often as team
+mates for solving problems together with humans7. As a result, AIAs can interact with each other, which promotes the formation of AIAs’ “social groups” with their own opinions and inherent preferences about the problems and statements discussed in a network. In turn, humans facing artificial intelligence agents produce natural reactions, that are emotionally colored responses of the NIA to AIA’s actions and suggestions. Such responses may be formally accounted through “like”/“dislike” choices (decisions) delivered to AIAs within short response times. In this regard, it is unclear how collective artificial intelligence self-organization might be useful for NIA target communities to achieve their goals, and whether it is controllable or not. Another question is how AIAs opinions and offers can change the cognitive (emotional) states of NIAs target communities through interaction with them for a long enough time. In this work, we pursue answers applying quantum theory formalism to DM
+agents, which promise to become useful tools for accurate description of psychological and social features8,9.
+Related works
+Before proceeding to the main part of this article, the core of the work is worth explaining in the context of rel
+evant studies. Recently in10, we experimentally studied a DIS that consists of pairs of students (users) and their digital assistants (avatars) connected by an “avatar–avatar” graph, aimed to help students reduce some routine work in the framework of online regime education. The DIS had the goal to maximize the average satisfaction of users as a result of AIA–NIA interaction. It was shown that the DIS exhibits a complex behavior within short time slots even for simple interaction rules established initially between NIAs and AIAs. The results demonstrated that the dynamics of the DIS are complicated because of the temporal interplay between the agents’ probabilistic behavior and network topology, which was considered static. Moreover, the problem of how to evaluate the satisfaction of users over a long time arises. More generally, we can speak here about the long-term adaptivity
+or viability of digital assistants in multiagent systems, cf.11. To elucidate the open problems established in this article, we suggest a novel quantum-inspired (Hamiltonian)
+approach for opinion formation in a multiagent (AIA–NIA ) coupled system, cf.12. To specify the elementary (“microscopic”) processes occurring in the DIS, we refer to quantum probability theory (QPT) and the Hilbert space to describe both AIAs and NIAs states, which characterize the agents’ probabilistic choice under uncertainty. In the last decades, the QPT approach to statistical problems has become prominent for explaining
+human cognitive behavior in some specific DM problems8,13–16. The QPT approach is also useful for human–AI
+specification problems, cf.17,18. The approach looks suitable to characterize the open systems that possess many
+various (apriori unknown) sources of uncertainties, cf.9,19. The quantum-inspired approach we suggest presumes
+to introduce an appropriate Hamiltonian connected to the objective function for the DIS under discussion, cf.10. In particular, the solution of Heisenberg-Langevin equations obtained from the Hamiltonian may be recognized as a result of some optimization procedure performed for a mathematically NP-hard problem that enables to description of the DIS long-term behavior. Recently, the Hamiltonian formalism has been successfully used in the development of heuristic (quantum-inspired) algorithms for solving NP-hard optimization problems, where
+specific (Ising-like) quantum Hamiltonians are mapped onto relevant objective functions to be minimized20. In this regard, our approach can be also recognized as quantum-inspired. Notably, in this work we do not examine the speedup problem actual for large-scale optimization; this problem is too important and should be studied
+separately, cf.21. However, the quantum physical approach we use represents a direct path for quantum and/or
+quantum-like simulators implementation for multiagent system optimization22,23. In this work, we examine opinion formation and social impact as a result of collective emotional state evolution occurring in the DIS. In the framework of Russell’s circumplex model of emotions, we characterize NIAs emotional states with the help of arousal and valence variables which represent discrete quantum variables in
+our case. In24, we have shown that equilibrium phase transitions occurring in the social network system can also describe a significant change in the collective emotional state of some target social communities. In this study, we
+consider an open (driven-dissipative) environment of DIS that exhibits non-equilibrium phase transition (cf.25)
+and possesses so-called, social laser (solaser) features that we examined in26,27. Our approach is based on the paradigm of s- (socially actual information) field formation, which can be enhanced due to network peculiarities. This feature is the core of important differences between our approach and currently used opinion formation
+models based on Ising-like Hamiltonian where the information field itself is “tracing out”, cf.28,29. In particular,
+in27 we showed that simple rules borrowed from quantum physics and applied to DM agents at the microscopic level of consideration provide the accurate characterization of DM agents community. At the macroscopic level of a social system, these rules result in cascades and information diffusion, which play a fundamental role in current social systems. Practically, diffusion processes are important for the dissemination of knowledge, ideas,
+and innovations in the economy, finances, and other areas of human life and activity, cf.30–32. This work aims to
+
+
+3
+Vol.:(0123456789)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+clarify the conditions for the long-term diffusion establishment in the DIS, as a clear benchmark of long-term avatars adaptability to their users.
+Noteworthy, for the model described in27, DM agents have an opportunity for tight cooperation due to their interaction, which is implemented through coupling with common information fields inherent to a given net
+work community. By analogy with quantum physics (see e.g.33), in34 we introduced a new (network enforced) cooperativity parameter that accounts for an open driven-dissipative character of information-assisted dynamical processes occurring in the DIS. We demonstrated that the introduced parameter may be essentially enhanced for scale-free networks. Growing frequent communications between DM agents via coupling with information fields that enhance the cooperativity parameter reflects the growing activity of DM agents within the specific network. Such an activity may be recognized as an improvement of cooperation between agents leading to the
+establishment of socially homogeneous groups, as considered in the framework of game theory, see e.g.35,36.
+Notably, in37 authors arrive at the same conclusion examining the Prisoner’s Dilemma and the Snowdrift game
+in the framework of the evolutionary games approach performed on a scale-free network. In particular, in37 it is demonstrated that cooperation becomes a dominating feature for the entire range of parameters in both games
+and essentially depends on network peculiarities, cf.38–40. Here, we examine more general, power-law degree dis
+tribution p(k) ∝ k−η graphs for modeling AIA–AIA networks; η is the degree exponent; k is node degree continu
+ous variable [see Eq. (25)]. The main properties of this network relate to the formation of hubs (see e.g.41), which, as we show below, determine the cooperative properties of NIAs and specify self-organization effects for AIAs. The article is arranged as follows. In the “Background” and “Related works” sections we state the research motivation and significance and review relevant literature for the problems under discussion, respectively. In the “Quantum-inspired model of DIS” section we introduce the model of DIS to be examined in this work. Special attention is devoted to the specification of NIAs emotional states in the presence of information exchange with AIAs. In the “NIAs decision-making evaluation” section we discuss the possible features of the population imbalance variable that characterizes the pattern of the NIAs community collective decision within the DIS. The “Stationary states of DIS” section establishes one of the important approaches based on a steady-state solution for NIA population imbalance. This approach allows for studying NIAs self-organization processes within the network for certain specified NIAs decisions. In the “Network-free AIA–NIA interaction” section we represent the quantum-inspired model of AIA–NIA interaction without any network environment at all. We specify the cooperative parameter that we then explore for NIA–NIA cooperation characterization. In “DIS features in the presence of avatar–avatar network” sections and “Phase transition in DIS with AIAs self-organization” accurately determine the DIS properties that depend on NIA–NIA cooperation parameter features. We find it important to consider three limits when the cooperativity parameter is infinite, large enough, and small, respectively. Note
+worthy, the parameter that we introduce in this work differs from the one discussed in the game theory, cf.42. In fact, the cooperativity parameter introduced in this work reflects potential cooperation abilities between DM agents that might be obtained from their activity level in the DIS. In “Opinion formation in the presence of weak AIA–NIA coupling” section describes the limit when such an activity is low enough when the coupling between AIA–NIA is weak. In “Opinions formation in the presence of AI agents adaptive control” section establishes important results on adaptive control of AIAs in the presence of weak coupling between users and their avatars. We suggest various scenarios for increasing the AIAs controllability in this case. The “Information diffusion in DIS” section specifies the opinion formation dynamically, i.e. beyond steady-state solutions. We pay attention to the information diffusion occurrence in the DIS that can be used as a benchmark of avatars long-term adaptivity to their users. Some specific theoretical, numerical, and computational methods that we use in this work are discussed in the “DIS network model”, “Quantum-inspired model of DM agents”, and “Mean-field equations” sections, respectively. In “Discussion” we summarize the results obtained and present a vision for further research development.
+Results Quantum‐inspired model of DIS
+Fig. 1 illustrates the DIS model we consider in this work; it implies the existence of two types of agents which are
+NIAs (users) and their digital assistants (avatars), AIAs, cf.10. We suppose that AIAs and their users (NIA) are located in the nodes of a complex avatar–avatar network, see Fig. 1a. Avatars can receive and transmit information to each other within this network, while the users are only associated with their digital assistants and cannot communicate with each other directly. Different individuals’ opinions are established through their interaction with their avatars and information that they can obtain from the outside of a network community with rate γp,i. In other words, users cannot discuss with each other some decisions directly. However, they can announce and read public messages (posts, for example) in the network and come to some mental state that we specify in the framework of the circumplex
+model of affect, e.g.43. The interaction of an avatar with its user is organized as follows. Users can accept, reject, or ignore this information; they show their attitude to the information presented by avatars making “like”/ “dislike” responses if the information is meaningful/useless for them, respectively, see Fig. 1b. The avatars’ opinions and preferences form through the avatar–avatar interaction in the network. The suggestions that avatars serve for the users reflect the average “collective mind” inherent to AIAs. Thus, avatars are self-organized within the complex network through information exchange and avatar–avatar interaction facilities. Avatars can disseminate information within the network and communicate with each other and with users simultaneously. The avatars’ goal is to maximize the users’ satisfaction within the DIS and keep them emotionally happy. Below, we elucidate the conditions when it occurs. We propose a quantum-inspired approach for agent-based modeling of the DIS. In particular, each of the two DM states in our model we also recognize as mental states that relate to certain emotions of NIAs. Typically,
+
+
+4
+Vol:.(1234567890)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+basic human emotions are described by discrete categories44. The pairs of opposite primary emotions (acceptance–disgust, joy–sadness, anger–fear, anticipation–surprise) can represent some analog of “spin up” and “spin
+down” variables, respectively, e.g.45,46. To recognize the mental state of the i-th NIA (i = 1, . . . , N ), we exploit the circumplex model of valence and arousal that indicates human emotions and their intensity, respectively,
+e.g.43,47, see Fig. 2a. Although the Russell model that exploits 2D plane (phase-space) visualization of basic emo
+tions is not unique in cognitive sciences and has been debated for a long time (see, e.g. 48), it permits a relatively simple mathematical formalization and is inherent to current studies and technological applications within the
+human–computer interaction paradigm, e.g.49. Alternatively, it is possible to represent emotional (spin-like)
+states in the Bloch sphere that may be useful for using the Plutchik model of emotions, for example, c.f.50. However, as seen in Fig. 2b, the Russell model is more suitable for our case since it presumes a simple visualization of DM agents interaction with various information fields, which can change the emotional states of users. This is because the purpose of our analysis in this work is both the behavior of the two-level (cognitive) systems and the information field interacting with them.
+We regard NIAs as so-called social atoms of the DIS51, see Fig. 2b. We choose two basic mental states|g�i and |e�i from the lower and upper halves of the circle, which provide negative and positive arousal levels, respectively, see Fig. 2a. We can also recognize states |g�i and |e�i as two mutually exclusive decisions (opinions or avatar suggestions) Sg and Se in the DIS, respectively. Fig. 2b illustrates the resulting cognitive effectively two-level system (TLS) of NIA suitable to the description of information exchange in the DIS. Basic states |g�i and |e�i possess some social energies Eg,i and Ee,i, which are reminiscent of the energies of a TLS (Ee,i > Eg,i) in quantum mechanics. The other emotional states with some social energies are shown in Fig. 2b by the blue horizontal lines according to their location on the circle in Fig. 2a. The light-violet arrow in Fig. 2b indicates the change of a user’s mental state from |g�i to |e�i, when they obtain some significant information from the avatar. In other words, this information excites the user’s mental state. From Fig. 2, it is evident that the information obtained is thematically (contextually) “resonant” with transition frequency �0,i = (Ee,i − Eg,i)/ħ, i.e. energy ħi should be
+close to ħ0,i, as it takes place in quantum theory, e.g.52. Contrary, the light-green arrow in Fig. 2 demonstrates a non-resonant absorption of an s-photon by the user; after obtaining the information from their avatar, the user becomes excited and surprised; i ≡ i − 0,i characterizes specific detuning of the user’s mental energy from its resonant value Ee,i in this case, see Fig. 2. Thus, we project the variety of emotional states of NIAs represented by the valence discrete variable in Fig. 2a onto the ordinate axis of the TLS, and it may be established by a variety of detunings i. In this case, characteristic frequencies 0,i and detunings i are sufficient for the characterization of NIAs’ mental states under the interaction with AIAs. Noteworthy, we suppose that NIAs exhibit primary neutral and positive valence emotions on average; although for arbitrary social networks such an assumption is difficult to fulfill. People become aroused because of some unpleasant or even tragic events occurring in their lives and tend to emotionally discuss them in social networks. In online communities, it is possible to come across envy, hate, and other extremely negative emotions,
+e.g.53. However, for a large number of specialized DIS networks, negative (extreme) emotions that possess positive arousal and negative valence, fortunately, are not common. Thus, the DISs we consider may be associated with different marketplaces, office-oriented networks, variety of networks focused on users’ hobbies and education.
+We describe the information that the i-th avatar provides to the i-th user by the bosonic creation, aˆ†
+i , and
+annihilation, aˆi, operators, respectively; i enumerates the number of nodes in the network, i.e. the number of
+Figure 1. (a) Sketch of the distributed intelligence system (DIS) model that consists of AIA–NIA pairs located at each of N nodes; J is the avatar–avatar coupling strength. (b) Sketch of a single AIA–NIA pair, where avatars recommend information to the users received from the avatar–avatar network, assuming it to be relevant and useful for their users; users can accept or reject this information. gi is specific AIA–NIA coupling parameter that indicates frequency of i-th avatar–user communication; γp,i is the information pumping rate. Other details are given in the text.
+
+
+5
+Vol.:(0123456789)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+avatar–user pairs, i = 1, . . . , N. In particular, operators aˆ†
+i , aˆi specify the elementary processes of s-photon absorp
+tion and creation by the i-th user. Thus, we represent the Hamiltonian of the DIS in the form
+where the first two terms establish the NIA and AIA ensembles separately; σˆiz = nˆ e,i − nˆ g,i is the operator of
+DM inversion for the i-th NIA; σˆ −
+i = |g�ii�e|and σˆ +
+i = (σˆ −
+i )† are the ladder operators relevant to the excitation
+(polarization) and de-excitation of the i-th NIA as a simple TLS, cf.52. In (1) aˆ†
+i aˆi is the s-photon number opera
+tor thematically “colored” by frequency i. The third term in (1) is relevant to the i-th user–avatar interaction characterized by strength gi. For our problem, parameter gi specifies how frequently the user communicates (checks messages, gives responses, etc.) with their avatar responsible for providing information. The last term in (1) establishes the interaction (information exchange) between avatars within the network that we describe by adjacency matrix Aij; J > 0 is the strength of this interaction (hereafter we set Planck constant ħ = 1 for simplicity of notation). The mean-field equations that may be obtained with (1) look like [see also (31)]
+where we made the definition σ0,i = γp,i−γe,i
+γp,i+γe,i . In (2 ) Ei = �aˆi�ei0,it is the complex amplitude of the average
+coherent information field established by the i-th avatar within the DIS; Pi = �σˆ −
+i �ei�0,it characterizes the excita
+tion of the i-th user, σi = �σˆiz�represents the mean value of inversion operator σˆiz that reflects an average mental
+(emotional) relationship of the i-th user to the information represented by their avatar, cf.24,27. In (2) Ŵi is the i-th user excitation decay rate; κ characterizes the average rate of information losses in the DIS. In this work, we suppose that Ŵi uniformly distributed within some domain Ŵi ∈ [Ŵmin; Ŵmax]; Ŵmin and Ŵmax are minimal and maximal values of Ŵi accesible to a particular NIA community, respectively. In (2), i = i − 0,i is the detuning that characterizes the efficiency of interaction of the i-th NIA with the avatar. To be more specific, we assume that i is also uniformly distributed within some domain i ∈ [min; max] that specifies how users are susceptible to a piece of information provided by their digital assistants; min and max are minimal and maximal values of i, respectively. Therefore, users are maximally susceptible to the s-photons obtained from their avatars in the limit of i ≃ 0 illustrated by the violet arrow in
+Fig. 2b. The limit of i2 ≫ gi2 corresponds to the off-resonance NIA–AIA interaction. In this case, the excitation
+(1)
+Hˆ = ħ
+N
+∑
+i=1
+[1
+2 �0,iσˆiz + �iaˆ†
+i aˆi + gi
+(
+aˆiσˆ +
+i + aˆ†
+i σˆ −
+i
+)
+]
+− ħJ
+2
+N
+∑
+i,j=1
+Aij
+(
+aˆ †
+i aˆj + aˆ†
+j aˆi
+)
+,
+(2a)
+E ̇ i = (−i�i − κ)Ei − igiPi + iJ
+N
+∑
+j=1
+Aij Ej ;
+(2b)
+P ̇i = −ŴiPi + igiσiEi;
+(2c)
+σ ̇i = (σ0,i − σi)(γp,i + γe,i) + 2igi(Ei∗Pi − EiPi∗),
+Figure 2. Mapping of (a) Russell’s circumplex model of affect onto (b) quantum-like two-level system (TLS) for the i-th NIA that interacts with information s-field; i = 1, 2, . . . , N. Each of the thirteen emotional states of the right half of the circle in (a) are mapped to social energy levels of an effectively two-level system in (b). These levels are grouped around two mutually exclusive mental states|g�i and |e�i, respectively (the bold lines). Two vertical thick arrows establish the changes in NIA mental state when they absorb s-photon; i is the detuning from the resonant transition.
+
+
+6
+Vol:.(1234567890)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+probability of NIA rapidly vanishes, and individuals’ motivation to change their ground mental state is low enough. Such a cognitive behavior of NIAs is reminiscent of features of a two-level atom that interacts with
+the quantized irradiation, cf.52. Below we restrict ourselves by the limit of i2 ≪ gi2 that allows elucidating
+the influence of the avatars distributed within the complex network on the collective opinion formation and dissemination.
+NIAs decision‐making evaluation
+The DM process performed by the i-th user in the DIS is characterized by the mean value of inversion operator
+σi = �σˆiz� in (2). According to the circumplex model employed in this work (see Fig. 2), σi is defined within
+domain −1 ≤ σi ≤ 1. The limiting value, σi = −1, indicates the user’s decision that leaves them at the ground mental state, |g�i, supporting emotionally passive decision Sg; σi = 1 describes the user’s excited mental state, |e�i, that corresponds to decision Se; value σi = 0 leaves the user’s position (decision) uncertain on average. We can define the total population imbalance averaged over the DIS of all network nodes as
+Variable σ ̄ reflects the average level of the users’ emotions and beliefs in the DIS. Parameter σ ̄ plays a crucial role in our work and can be evaluated for the DIS by measuring the users’ positive and negative responses. Below, we focus on a domain 0 < σ ̄ ≤ 1 relevant to the users’ positive arousal and characterizing primary voting for Se. In other words, σ ̄ measures the satisfiability degree of NIAs in the DIS on average; it may be achieved within 0 < σ ̄ ≤ 1 domain. In this case, we can assume that the majority of users are satisfied. On the other hand, value σ ̄ = 0 may be recognized as some neutral (or uncertain) mental state for the DIS users, see Fig. 2.
+Noteworthy, in social studies parameter σ ̄ (or its simpler version σ ̄ = 1
+N
+∑
+i σi) is often interpreted as “social
+polarization”, that accounts for two opposite opinions inherent to the network actors, e.g.54–56. The polarized state appears as a result of agents’ homophily and echo chamber effect and features bimodal distribution for
+agents’ opinions57. The maximal social polarization occurs at σ ̄ = 0, which accounts for an approximately equal
+number of actors that exhibit opposite opinions58. Such an interpretation contradicts the solaser approach that is based on the quantum physics definition presuming that the polarization of a TLS is relevant to pi, see( 31)
+and e.g.59. However, following social science terminology in this work, we can also regard variable σ ̄ as average social polarization, while connecting pi with the socially excited state of NIAs.
+Stationary states of DIS
+First, it is necessary to study conditions for coupled AIA–NIA opinion formation at the steady-state. In particular, we consider stationary states for Eq. (2), which can elucidate a variety of characteristic opinions (modes) that occur in the DIS. Without any interaction (communication) between NIA and AIA we can set gi = 0 in Eq. (2c), which implies a steady-state solution of σi in the form
+Eq. (4) characterizes the inherent preferences of the i-th NIA determined by pumping rate γp,i and spontaneously occurring decisions with decay rate γe,i. Notably, if the external information pumping rate is high enough and γp,i > γe,i, the user becomes initially excited, i.e. σ0,i > 0 and is more likely to support decision Se. Otherwise, for γp,i < γe,i, the users represent a passive environment and tend to support decision Sg. At γp,i = γe,i the users have no preferences and σ0,i = 0. We can assume that in this case, on average users remain uncertain in their decision. In the first order of perturbation theory, we can assume that population imbalance σi is given by Eq. (4). Now for the given population imbalance, σ0,i, we can monitor NIA’s excitation level and s-field behavior, which may be recognized as a limit of social impact occurring within the DIS and carried out by AIAs through the network,
+cf.60. Stationary solutions of Eq. (2) imply variables Pi(t) = Pie−iωt Ei(t) = Eie−iωt, which evolve in time with frequency ωi that characterizes the evolution of the i-th NIA’s excitation and information field in the network, respectively. Substituting Pi(t) and Ei(t) into Eq. (2) [see also Eqs. (31), (32)], we obtain
+Equation (5) describes stationary s-field formation in the DIS, supported by avatar–avatar interaction that occurs at some population imbalance σ0,i and is relevant to some level of user excitation. The set of frequencies ω defined by (5) may be associated with the variety of opinions occurring in the DIS. Notably, the structure of (5) is similar
+to that of the De Groot-Friedkin model of opinion formation, cf.61. In particular, the first term in (5) characterizes the self-appraisals of individual avatars. The second term in (5) describes the cooperation of avatars; in practice, it is important to elucidate the influence of this term on the properties of the DIS in detail.
+Network‐free AIA–NIA interaction
+First, let us examine Eq. (5) in the limit of isolated AIA–NIA pairs, i.e. at J = 0. In this limit, each i-th node avatar–user pair possesses two opinion eigenfrequencies. The solution of Eq. (5) gives
+(3)
+σ ̄ = 1
+N �k�
+N
+∑
+i=1
+ki σi .
+(4)
+σi ≃ σ0,i = γp,i − γe,i
+γp,i + γe,i
+, i = 1, . . . , N.
+(5)
+{(ω − �i + iκ)(ω + iŴi) + σ0,igi2
+}Ei + J(ω + iŴi)
+N
+∑
+j=1
+AijEj = 0.
+
+
+7
+Vol.:(0123456789)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+where ξ±,i ≡ κ ± Ŵi represent effective losses of information in the DIS. For the chosen i-th avatar–user pair, Eq. (6) characterize the eigenfrequencies of two linearly coupled oscillators. In general, ω1,i and ω2,i are complex numbers. The imaginary parts of ω1,2,i describe the social field reinforcement or its attenuation that is inherent to the i-th avatar–user specific opinions in the DIS. We can recognize frequency difference
+as two oppositely directed and emotionally colored opinions that occur in the DIS due to avatar–user interaction, see (6). In quantum physics, �ω defined in (7) characterizes the so-called Rabi splitting frequency that determines
+the frequency (energy) gap between two eigenfrequencies and appears due to the matter–field interaction33. In the case of the DIS, we can recognize �ω as an emotionally enforced opinion gap that results from AIA–NIA communication. In other words, communication between the user and their avatar can shift the user’s emotional state, opinions, and beliefs. As seen from (7), at σ0,i = 0 this gap depends on the set of parameters that characterize the strength of AIA–NIA coupling and their peculiarities in information processing. In particular, for our approach it is fruitful
+to introduce dimensionless cooperativity parameter Ci, i = 1, . . . , N (cf.33)
+that represents the combination of key parameters inherent to AIAs and NIAs features in the DIS. Ci in Eq. (8) characterizes the abilities of the i-th user (i = 1, . . . , N ) to cooperate with other NIAs through coupling with
+common information field established in avatar-avatar network, cf.34. Since users cannot communicate with each other directly, their possible cooperation is specified by parameters gi relevant to NIA–AIA coupling rates. As seen from definition (8), for gi = 0 parameter Ci = 0 that implies the suppression of the cooperation between the NIAs performed through the coupling with AIAs. Weak cooperation corresponds to large information losses Ŵi and κ and implies the fulfillment of inequality Ci ≪ 1. On the other hand, a high level of NIAs cooperation corresponds to the condition
+that implies a strong coupling of NIA with AIA. In this limit, parameters in (9) obey condition Ŵi, κ ≪ gi. Moreover, the ideal, infinitely large cooperation between NIAs can appear for Ŵi = κ = 0. In Fig. 3, we establish the distribution of cooperativity parameters Ci, which present interest in this work. The blue dots indicate a transition from weak to strong cooperation regimes. In particular, NIAs cooperation may be strong enough for some nodes (hubs) due to the large values of parameter gi, which may be caused by continual communication between the user and their digital assistant that indicates the network enhancing effect. However, before examining this effect in detail, let us start from the instructive limit of opinion formation when cooperation is ideal for all nodes, i.e. Ci → ∞.
+(6)
+ω1,2 = ω1,2,i = 1
+2
+(
+�i − iξ+,i ±
+√
+(�i − iξ−,i)2 − 4σ0,igi2,
+)
+,
+(7)
+�ωi ≡ ω1,i − ω2,i =
+√
+(�i − iξ−,i)2 − 4σ0,igi2
+(8)
+Ci = gi2
+Ŵiκ ,
+(9)
+Ci ≫ 1
+Figure 3. Distribution of NIAs cooperativity parameters Ci for avatar–avatar complex network possessing constant user–avatar coupling strength gi = g = 1, κ = 0.1, Ŵi ∈ [0.2; 0.4] (the green dots); κ = 1,
+Ŵi ∈ [0.2; 1.8] (the red dots), and node degree dependent strength gi = √ki with κ = 1, Ŵi ∈ [0.2; 1.8] (the blue dots). The dashed line corresponds to Ci = 1; the number of nodes is N = 300.
+
+
+8
+Vol:.(1234567890)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+In Fig. 4a we represent the dependencies of the eigenfrequencies imaginary parts vs. their real parts in the ideal case of Ŵi = κ = 0. Here, we suppose gi = g = 1, i = 1, . . . , N for all AIA–NIA coupling rates. The frequency eigenvalues are situated symmetrically concerning positive and negative frequency detunings, see Fig. 4a. A real part of ωi represents spectral characteristics that define a range of opinions in the DIS. The imaginary part of ωi is relevant to discussions viability and their intensity. One can expect that the opinions withIm(ωi) > 0 are reinforced while opinions, which pose Im(ωi) < 0, are attenuated. The red dots correspond to Eq. (6) for the network-free limit, J = 0, of isolated AIA–NIA states within DIS. Contrary, the blue dots in Fig. 4a establish the numerical solution of Eq. (5) and indicate opinion variety that occurs due to the avatar–avatar complex network given in Fig. 9. For Fig. 4a we suppose that σ0,i is represented by Eq. (4) and is the same for all AIAs. Practically, this assumption is applied to a homogeneous group of users, where each user apriori possesses emotions and beliefs that are close to some average level σ ̄ = σi ≃ σ0,i, which corresponds to average social polarization σ ̄ , cf.( 3), (4). This assumption may be also realized by choosing the appropriate information pumping rate γp,i for different NIAs. The opinion formation in more general situations is considered in the next Section. We take variable i, which characterizes the variety of NIAs’ mental states in the DIS, as uniformly distributed within window i ∈ [−0.1; 0.1] relevant to the spread of the users’ initial opinions (and relevant emotions) in the DIS. In particular, for σ0,i = 0, all opinion eigenfrequencies are placed on the Im(ω1,2,i) = 0 line, see the inset to Fig. 4a. Practically, the blue dots show that all opinions occurring in the DIS are equivalent and widely represented in the DIS network. Noteworthy, the opinion gap vanishes, �ωi = |�i|, for σ0,i = 0 that reflects insufficient external information obtained by users; they behave uncertainly (on average) in this limiting case. The situation becomes more complicated when users are remarkably supported from the outside and σ0,i > 0. Eigenfrequencies ω1,i and ω2,i defined in (6) characterize the upper and lower branch opinions, respectively. At σ0,i = 1 opinion gap �ωi =
+√
+�i2 − 4gi2 appears on the imaginary axis in Fig. 4a. Practically, such a feature
+manifests that not all opinions are equivalent in the DIS. For i2 ≪ 1, the opinion gap is purely imaginary
+�ωi = 2i√|σ0,i|gi. From Fig. 4a we can see that two oppositely oriented domains of red dots are located nearby Im(ω1,2,i) = ±gi = ±g, which is relevant to value σ0,i = 1 (in this work we use dimensionless parameter g = 1). Practically, inequality Im(ω1,i) > 0 corresponds to the enhancement of the user’s opinion by the avatars due to strong AIA–NIA interaction. On the other hand, inequality Im(ω2,i) < 0 indicates opinions that are attenuated in time.
+DIS features in the presence of avatar–avatar network
+Now, let us examine the role of avatar–avatar interaction in the Ci → ∞ limit. Complex avatar–avatar network peculiarities possess a variety of opinions in the DIS at steady-state, which we establish in Fig. 4a by using the blue dots. For J = 0, we cannot associate eigenfrequencies with the nodes that possess arbitrary ki. However, for the NIAs, which possess small ki and moderate J, we can assume Ej ≃ Ei in (5). In this case, for characteristic frequencies ω1,2,i one can obtain
+Figure 4. Dimensionless imaginary parts Im(ω) vs. the real ones, Re(ω), of the set of 2N eigenfrequencies ω, which indicate opinion variety in the DIS for (a) Ŵi = κ = 0, σ0,i = 1; (b) Ŵi ∈ [0.2; 0.4], κ = 0.1, σ0,i = 0.3. The other parameters are N = 300, gi = g = 1, i ∈ [−0.1; 0.1]. Parameters i [and Ŵi for (b)] are randomly and uniformly distributed variables. For the upper and lower insets in (a) σ0,i = 0 and σ0,i = −1, respectively. The inset in (b) demonstrates the same dependence as the main plot (b) but within the window −1 ≤ Re(ω) ≤ 1. The bold blue and pink dots establish PEs. Algorithm S1 in Supplementary information explains the details.
+
+
+9
+Vol.:(0123456789)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+where δi = �i − sign(Ei)Jki is the new effective detunig that accounts DIS network peculiarities; sign(Ei) = ±1 determines sign of the i-th eigenstate Ei. Equation (10) plays an important role in understanding opinion formation in the DIS. In particular, Eq. (10) manifests a hierarchy of opinions formed in the DIS and specified by ki. In other words, the avatar–avatar network influences the mental state of each i-th user according to their avatar’s position within the network. The contribution of avatar–avatar network to the opinion formation is easy to analyze analytically by setting ξ±,i = 0 in (10); this limit corresponds to the blue dots in Fig. 4a. At σ0,i > 0 from Fig. 4a, it is evident, that three main domains manifest the variety of opinions in the DIS. Two domains are relevant to inequality |δi| < 2giσ0,i and may be obtained from (5) by (6), (10) in the form
+From (11) and Fig. 4a, it follows that the dots, which demonstrate opinions variety in the DIS, are inhomoge
+neously distributed on the circle, ω2R,i + ωI2,i = 1
+4 (4σ0,igi2 − δi2). These dots characterize avatars who are strongly
+coupled with their users. The opinions (and emotional states) that possess frequency eigenvalues ω1,i and belong to the upper half of the circle, ωI,i > 0, are reinforced and disseminated by the avatars. The opinions that possess frequency eigenvalues ω2,i (ωI,i < 0) are discriminated in the DIS. In general, the role of the avatar–avatar complex network in the DIS is established by the spectrum of the adjacency matrix, Aij. The Perron-Frobenius theorem guarantees the existence of the non-degenerate positive maximum Perron eigenvalue (PE) (the bold dots for two various values of J in Fig. 4a) that corresponds to the eigenvector with all elements positive. Since Aij appears in Hamiltonian (1) with minus, the correspondent PE in Fig. 4a is negative. In particular, from Fig. 4a it is evident that complex avatar–avatar network peculiarities possess strong positions of the avatars placed on axis Im(ω1,2,i) = 0. The interaction effect of these avatars with their users looks not so strong due to large values of |δi| in comparison with effective parameter 2|σ0,i|g ≃ 2g . Moreover, in Fig. 4a we can the distinguish the dots, which belong to Re(ω1,i) > 0 and Re(ω2,i) < 0 domains, respectively. We can expect these dots to reflect opposite tendencies in opinions and emotions within the DIS. It is important to note that these states are possessed by avatars with high ki. In terms of the distributed intelligence systems, the PE corresponds to the most powerful avatar leader in the network. Noteworthy, the PE does not necessarily belong to a hub, i.e. the most connected node as it is for the scale-free network in Fig. 9a. Here, we use the eigenvector centrality criterion for Aij to obtain some principal analytical results using the PE. The eigenvector centrality characterizes the avatar node connection with the other high-rank nodes aiming to become more influential in the DIS. We establish the eigenvector centrality
+criterion in (28); Ep,i is the field eigenstate that corresponds to the positive PE, p, cf.62. Substituting (28) into (5)
+for ω ≡ ω(p), we obtain [cf. (10)]
+where δp,i = �i − Jp is the effective detunig of the i-th node that corresponds to the PE; ξ± ≡ κ ± Ŵ ̄ ; and
+Ŵ ̄ = (Ŵmax + Ŵmin)/2 is the average value of Ŵi within domain [Ŵmin; Ŵmax]. The PE establishes a non-zero average s-field that we can introduce as
+where ki = ∑
+j Aij is the i-th node degree. The last equality in (13) is written accounting (28) in the so-called
+annealed network approximation, Aij = kikj
+N�k� that we examine below, cf.27. Then, substituting Aij into (5) and
+solving it for Ej, we obtain
+Eq. (14) characterizes the s-field at the i-th node that contains an AIA–NIA pair by the mean field induced by the avatar–avatar network. We can recognize Eq. (14) as the collective pressure, caused in the i-th node from the avatar network community. Combining (14) with (13), it is possible to obtain an estimation for the PE that is p ≃ ζ, see(27b).
+Phase transition in DIS with AIAs self‐organization
+Now let us analyze what happens in the DIS in the limit of finite cooperation between NIAs and AIAs, see (8). It is useful to consider two important limits for vital parameters Ŵi and κ. As follows from (6), (7), for Ŵi = κ, ξ−,i = 0 and opinion gap �ω is independent on ξ−,i in this case. As a result, we obtain the same picture of opinion distribution in the DIS as in Fig. 4a, but shifted down from the Im(ωi) axis on the value of ξ+,i.
+(10)
+ω1,2,i ≃ 1
+2
+(
+δi − iξ+,i ±
+√
+(δi − iξ−,i)2 − 4σ0,igi2
+)
+,
+(11a)
+ωR,i ≡ Re(ω1,2,i) = 1
+2 δi;
+(11b)
+ωI,i ≡ Im(ω1,2,i) = ± 1
+2
+√
+4σ0,igi2 − δi2.
+(12)
+ω(p)
+1,2,i = 1
+2
+(
+δp,i − iξ+ ±
+√
+(δp,i − iξ−)2 − 4σ0,igi2
+)
+,
+(13)
+E ̄p = 1
+N �k�
+N
+∑
+j=1
+kjEp,j = pEp,i
+ki
+,
+(14)
+Ep,i = − J(ω(p) + iŴ ̄ )kiE ̄p
+(ω(p) − �i + iκ)(ω(p) + iŴ ̄ ) + σ0,igi2
+.
+
+
+10
+Vol:.(1234567890)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+The picture significantly changes if Ŵi = κ and ξ−,i �= 0. In Fig. 4b we represent the dependencies of imaginary parts of the eigenfrequencies vs. their real parts for the complex network established in Fig. 9. We also assume that parameter Ŵi, which determines non-equal abilities of NIAs, uniformly varies within domain Ŵi ∈ [0.2; 0.4], i = 1, . . . , N . Strictly speaking, we analyze the case when cooperativity parameter Ci > 1, see the green dots in Fig. 3, and cf. (8). For Fig. 4b, we assume that the users are supported by the information obtained from the outside, and σ0,i = 0.3. Two groups of dots are closely located in the upper and lower parts of Fig. 4b and correspond to the main set
+of the eigenvalues of Eq. (5) and the eigenvalues of the adjacency matrix Aij, cf.63. Their main feature is the abil
+ity to “attract” each other because the Eq. (5) matrix is non-Hermitian, cf.64. Such a non-Hermitian localization
+affects the spectral curves significantly. The dashed lines correspond to asymptotes with Ŵ ̄ = 0.3 and κ = 0.1 and exhibit the opinion gap that separates these branches. In Fig. 4b, the opinion eigenfrequencies corresponding to these asymptotes are depicted by the nodes that possess large ki. In particular, the avatar–avatar coupling rate, J, essentially contributes to the total detuning, δi, in(10). We can
+find the maximal value of the detuning for the node that corresponds to the PE. Assuming|δp,i − iξ,i|2 ≫ 4σ0,igi2
+in (12), characteristic frequencies can be obtained for the PE in the form
+Eq. (15) well agree with the numerical results in Fig. 4b: valuesIm(ω(p)
+1,i ) and Im(ω(p)
+2,i ) approach the dashed lines
+denoting κ = 0.1 and Ŵ ̄ = 0.3 in Fig. 4b. It is important to note that Eq. (15) are independent on gi. We can suppose that the nodes with large ki, which are located along axis κ = 0.1 in Fig. 4b, represent maximally influential AIAs in the avatar–avatar network. The connection with the users of relevant avatars is moderate.
+In general, the Perron eigenvalues lie within [�k�, kmax], cf.63. The second PE for Eq. (2) is positive and located at the right-hand side of Fig. 4b. Thus, the self-organization of avatars with large ki within the network leads to their location on both sides of Re(ωi) = 0; the influence of these avatars on each other is balanced. In practice, this means that avatars with high ki also form a specific agenda for discussions and then impose it to the users’ community. We can expect such avatars to be concerned with promoting and establishing “their ideas” in the network more than with satisfying the needs of their users. In some sense, the self-organization of influential avatars leads to two major opinion domains separated by the opinion gap formed by two dashed lines in Fig. 4b. The situation significantly differs with the avatars that belong to the -shape peak of the upper branch of opinions in Fig. 4b. The dots located in Fig. 4b in narrow (vertical) band −gi < Re(ω) < gi (at gi = g = 1) possess small ki and describe avatars that closely cooperate with their users, who possess definite opinions with small δi ≃ 0. As a result, the avatars of these nodes are the first to pick up new ideas and innovations, which then begin to spread and reinforce themselves online. Their “mobility” is determined by the graph topology: these nodes with few connections are the least significant nodes of the opinion formation and located at the periphery of the network, see Fig. 9a. The information field enhancement occurs at Im(ω) > 0. Thus, the condition for the transition from s-field attenuation regime to the amplification one, which occurs atIm(ω) = 0, represents a primary interest for investigating the influence and innovation spread in the network. To find the frequencies of the dots in the vicinity of ω = ωi = 0, we can consider Eq. (10) assuming δi ≃ �i − Jkmin, where kmin is the minimal value of the graph node degree. Characteristic frequencies in the vicinity of Re(ωi) ≃ 0 may be obtained in the form
+where we also assume that δi2, |δi|Ŵi ≪ ξ 2+,i, and account condition
+Thus, as it follows from (16), frequency ω1,i becomes real,Im(ω1,i) = 0, that manifests the transition to enhance
+ment of social field, cf.27. The numerical calculations demonstrate that the s-field enhancement occurs when the dots in the upper part of Fig. 4b enter the real eigenvalues semi-plane, which is determined by condition (17). Eq. (17) establishes the second-order non-equilibrium phase transition that occurs in the DIS and may be characterized by using generalized cooperative parameter
+which takes into account not only the avatar–user coupling strength (Ci ∝ gi2), but also apriori personal prefer
+ences of the users σ0,i in the presence of an external information pump. Condition (17) may also be recognized
+as a criterion for social laser transfer, which implies strong information field formation in the DIS, cf.27.
+Opinion formation in the presence of weak AIA–NIA coupling
+Now let us examine the remarkable case of weak coupling between AIAs and NIAs, which implies moderate values of Ci ≤ 1. This situation is practically relevant to large values of the large parameters κ and Ŵi, respectively, see (8) and the red dots in Fig. 3. Strictly speaking, Ci is randomly distributed in the vicinity of value Ci = 1. Fig. 5
+(15a)
+ω(p)
+1,i ≃ δp,i − i
+2 (ξ− + ξ+) = δp,i − iκ;
+(15b)
+ω(p)
+2,i ≃ i
+2 (ξ− − ξ+) = −iŴ ̄ .
+(16)
+ω1,i ≃ δi
+2 , ω2,i ≃ δi
+2 − iξ+,i,
+(17)
+σ0,iCi = 1.
+(18)
+Gi ≡ σ0,iCi,
+
+
+11
+Vol.:(0123456789)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+demonstrates uncertain features of the DIS in the limit of large Ŵi and κ. At σi = 0.3, generalized cooperation parameter Gi ≤ 1. The uncertainty comes from the users’ cognitive states, which are characterized by large Ŵi; it is random and uniformly distributed within larger window Ŵi = [0.2; 1.8]. Practically, such a situation may be relevant to an inhomogeneous group of users who significantly differ from each other, and cooperation abilities between them look questionable. Coupling with avatars and obtaining relevant information from them is not
+enough for the users to overcome many uncertainties in this case, gi2 < Ŵ ̄ κ. From Fig. 5, we can see that for
+averages Ŵ ̄ = κ = 1 the nodes with high ki are located along value Im(ω) = −1. At the same time, Fig. 5 demonstrates the suppression of the opinion gap; the avatars with low ki chaotically occupy the area within domain −1 < Re(ω) < 1. Thus, relatively weak coupling of the avatars with their users results in the absence of any preferences or influence in the DIS.
+Opinions formation in the presence of AI agents adaptive control
+One of the vital problems in the framework of the DIS basic features is how NIAs can influence the processes occurring in the avatar–avatar network. Avatars’ self-organization within the network can introduce some uncertainties in the presence of weak cooperation of the users, see Fig. 5. Intuitively, we can expect an improvement of the DIS abilities with an enhancement of the AIA–NIA coupling strength. Strictly speaking, we should improve
+parameter |σ0,i|gi2 adaptively, see e.g. (10); this simply means diminishing uncertainties in users’ decisions due
+to strong coupling with the environment using high information pump rate γp,i, see( 4). However, the maximal value of parameter σ0,i is limited by magnitude |σ0,i| = 1. We suggest another way to enhance NIAs cooperation in the DIS. Namely, increasing parameter gi we suppose that
+Equation (19) means the inhomogeneous (node-dependent) avatar–user coupling strength adapted to the DIS as
+we imposed it in the solaser model, cf.27. In particular, to achieve a high level of coupling with avatars that occupy
+nodes with large ki, their users should enhance communication with the avatars at least √ki times to keep them as effective digital assistants. The i-th user cooperativity parameter, in this case, grows as Ci ∝ ki, see(8 ). The distribution of relevant cooperativity parameters is shown by the blue dots in Fig. 3. High-level cooperativity between users is achieved for the nodes relevant to the hubs or high-centrality nodes. The inset in Fig. 5 shows the depenence Im(ω) on Re(ω) for gi given by (19) at g = 1. The comparison of the main plot in Fig. 5 with the inset clearly demonstrates the formation of well-separated domains of opinions for gi given by Eq. (19) at g = 1. The results obtained here are summarized in Fig. 6; the figure demonstrates dimensionless dependence Re(ω) and Im(ω) as functions of population inversion logarithm log(σi) for the plots in Fig. 5. Here, we still adhere to the approximations presented in (3) and (4) that imply σ ̄ = σi ≃ σ0,i. In particular, Fig. 6a exhibits the key features of opinion range at g = 1 with increasing σi from σi = 0 (log(σi) → −∞) to σi = 1 (log(σi) → 0 ), respectively. Each line in Fig. 6a corresponds to the dots located along the Re(ω) axis in Fig. 5. The lowest blue curve in Fig. 6a corresponds to the PE, Re(ωp,1), and changes slightly with the growth of σi. At the same time, the upper curves in Fig. 6a are relevant to the next PEs, which correspond to the rightmost dots in Fig. 5 and the powerful avatars in Fig. 9a. Thus, we can conclude that the most powerful avatars of the DIS tend to keep their position independent. Contrary, as seen from Fig. 6a, the eigenfrequencies of the dots within area −1 < Re(ω) < 1 (see Fig. 5) start “moving” towards each other when σi grows, which demonstrates the opinion range narrowing. In other words, the avatars, which fall into domain −1 < Re(ω) < 1, with their users tend to focus on suggestions supported by information pumping. However, the chaotization of each opinion trajectory seen in Fig. 6a occurs with increasing
+(19)
+gi = g
+√
+ki .
+Figure 5. The same as in Fig. 4 but at gi = g = 1, σ0,i = 0.3, Ŵi ∈ [0.2; 1.8], κ = 1. The inset demonstrates the
+same dependences for gi = √ki.
+
+
+12
+Vol:.(1234567890)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+σi. It becomes more apparent if we analyze Fig. 6b. In particular, the total uncertainty and struggle of opinions are visible near value σi = 1. The behavior of Re(ω) andIm(ω) significantly changes in the presence of adaptive control of AIAs for node
+dependent coupling strength gi = √ki , see Fig. 6c,d. Fig. 6c shows that the opinions range in the DIS is essentially narrow due to opinion shaping management and node-dependent enhancement of avatar–user coupling parameters gi. Notably, the avatars, which occupy nodes with high ki, are also involved in this process, see the lower blue curve in Fig. 6c. The opinion gap that is evident from Fig. 6d manifests opinions separation. The behavior of the curves in Fig. 6d relevant to domain Im(ω) > 0 corresponds to the innovation spread and s-field amplification in the DIS. On the other hand, opinions within region Im(ω) < 0 are suppressed by the DIS.
+Information diffusion in DIS
+Let us examine the information diffusion problem that occurs in the DIS due to AIA–NIA coupling within the
+network. We consider Eq. (2) in the limit of steady-state polarization (P ̇i = 0), which leads to
+Steady-state solution σ ̇i = 0 of (20b) for population imbalance σi reads as [cf. (4)]
+Linearizing (21) and substituting it into (20a), we obtain
+(20a)
+E ̇ i = (−i�i − κ)Ei + κCiσiEi + iJ
+∑
+i
+Aij Ej ;
+(20b)
+σ ̇i = (σ0,i − σi)(γp,i + γe,i) − 4κCiσi|Ei|2,
+(21)
+σi ≃ σ0,i
+γp,i + γe,i
+γp,i + γe,i + 4κCi|Ei|2 .
+Figure 6. Dimensionless (a,c) real Re(ω) and (b,d) imaginary Im(ω) parts of eigenfrequencies ω for the DIS complex network vs. population inversion logarithm log(σi) within approach (3), (4) that implies σ ̄ = σi ≃ σ0,i.
+The avatar–user coupling strength is g = 1 for (a,b), and gi = g√ki for (c,d). The other parameters are: N = 100, κ = 1, i ∈ [−0.1; 0.1] and Ŵi ∈ [0.2; 1.8] are random and uniformly distributed variables.
+
+
+13
+Vol.:(0123456789)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+where Ci is defined in (8).
+Equation (20) and their simplified version Eq. (22) describe the diffusion of information in the DIS, cf.27. As seen from Eq. (22), the enhancement of socially actual information in the DIS essentially depends on generalized NIAs cooperativity parameter Gi that accounts for population imbalance σ0,i indicating the inherent preferences of NIAs without coupling with AIAs. The social lasing (information enhancement) effect occurs at
+In Fig. 7, we represent the numerical solutions of Eq. (20), which reflect the particular choices of N = 300 avatars and their users. In particular, avatar preferences result in the s-field enhancement as seen in Fig. 7. The dashed
+(solid black) curve in Fig. 7a establishes the dependence for average s-field absolute value |E ̄ |, where E ̄ defined [cf. (13)]
+Figure 7b demonstrates the relevant behavior of average population imbalance σi. Average value σ ̄ defined in (3) is shown as the dashed (solid black) curve and characterizes the average social polarization of the NIAs community in the DIS. We take the initial values for σi uniformly distributed in the domain, 0 ≤ σi ≤ 1, we are interested in this work. Noteworthy, the transition to the s-field enhancement is independent on the initial users’ opinion variety: the initial distribution of σi rapidly collapses to value σi ≃ σ0,i, see the inset in Fig. 7b. Then, one can recognize the results previously obtained within time domain 0.4 ≤ t ≤ 0.9 where the s-field and population imbalance do not change in time. Starting from t ≃ 1, s-field amplitudes Ej grow, while σi vanish. Fig. 7a
+exhibits oscillations within this limit. E ̄ approaches an average level of discussions that occur in the DIS at large t. As follows from Fig. 7a, the establishment of average s-field (opinion formation) occurs due to the high level of communication and cooperation; the generalized cooperativity parameters, Gi, for the curves in Fig. 7 obey condition (23). Simultaneously, the average social polarization, σ ̄ , tends to zero, which indicates some small resistant social polarization that occurs in the DIS at large t. Noteworthy, the users’ states in this case can be recognized as some relaxed ones. Noteworthy, this, socially preferable, limit has been studied in detail in the framework of
+cooperation emergency in evolutionary games38. In our case, one can speak about the long-term adaptivity of AIAs to the NIAs community due to the occurrence of non-vanishing average s-field shown in Fig. 7a. However, in the limit of small cooperativity parameters Ci no aforementioned long-term adaptivity of AIAs occurs. Fig. 8 illustrates the features of opinion formation in the DIS close to the phase transition point defined by condition (17). In particular, Fig. 8a determines the opinion formation above the threshold and is relevant to the parameters taken at σi(0) = σ0,i = 0.1 for the main sketch in Fig. 5. The features of the curves in Fig. 8
+(22)
+E ̇ i = −i�iEi + κ(Ciσ0,i − 1)Ei + iJ
+∑
+i
+AijEj − 4σ0,iκ2Ci2|Ei|2Ei
+γp,i + γe,i
+,
+(23)
+Gi ≡ σ0,iCi > 1.
+(24)
+E ̄ = 1
+N �k�
+N
+∑
+i=1
+ki Ei .
+Figure 7. Dependence of (a) s-field amplitude absolute value |Ei|and (b) population imbalance σi, i = 1, . . . , N
+vs. dimensionless time variable t. The black dashed curves correspond to average values|E ̄ |and σ ̄ , respectively. The parameters are N = 300, gi = g = 1, κ = 0.1, (γp + γe) = 10, σ0,i = 0.3; i ∈ [−0.1; 0.1] and Ŵi ∈ [0.2; 0.4] are random and uniformly distributed variables. The initial condition for Ei at t = 0 we took as Ei(t = 0) = 0.1; σi(t = 0) is randomly and uniformly distributed within σi(t = 0) ∈ [0; 1]. Algorithm S2 in Supplementary information explains the details.
+
+
+14
+Vol:.(1234567890)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+demonstrate the initial growth of the s-field as it occurs in Fig. 7a. However, then the s-field vanishes approaching
+value|E ̄ | = 0. Such a behavior may be explained by the inhomogeneity of generalized cooperativity parameter Gi for different users and avatars in the DIS. For some nodes, Gi > 1 that implies the s-field enhancement. Although at large time slots, the uncertainties coming from small amplitude persistent oscillations and revivals of σ0,i (see the inset in Fig. 8a finally make it impossible to support the finite (non-zero) information field in the DIS.
+Noteworthy, network-dependent AIA–NIA coupling rate gi = √ki significantly modifies this picture, see Fig. 8b,c. An improvement of the cooperativity parameters for a large number of avatars leads to overcoming phase transition level (17) inherent to the DIS; the s-field exhibits inhomogeneous amplification, see Fig. 8b,c and cf. Fig. 7. The green curves in Fig. 8 correspond to the hub that possesses maximal ki, see the highest blue dots in Fig. 3. Thus, the hierarchy of avatars and users’ features appears as a result of their position in the DIS network.
+Methods DIS network model
+In Fig. 9a, the avatar–avatar network is represented as an undirected graph. We assume the network provides N nodes and satisfies a power-law degree distribution
+that obeys the normalization condition
+(25)
+p(k) = (η − 1)kη−1
+min
+kη ,
+Figure 8. Dependence of (a,c) s-field amplitude absolute value|Ei|and (b,d) population imbalance σi vs.
+dimensionless time t. The black dashed curves correspond to average values|E ̄ |and σ ̄ , respectively. For (a,b)
+gi = g = 1; for (c,d) gi = √ki . The other parameters are N = 300, g = 1, κ = 1, γp + γe = 10; Ŵi ∈ [0.2; 1.8] and i ∈ [−0.1; 0.1] are random and uniformly distributed variables. The initial conditions are Ei(0) = 0.01, σi(0) = σ0,i = 0.1.
+
+
+15
+Vol.:(0123456789)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+In (25) η is the degree exponent that determines the topology of the network; kmin is the smallest degree. The
+properties of networks possessing distribution (25) for η = 2 and η = 3 should be calculated separately,41. Noteworthy, practically meaningful networks admit scale-free domain 2 ≤ η ≤ 3 for η parameter, where hubs occur,
+e.g.65. The largest hub for the network described by distribution (25) is determined by maximal node degree
+kmax = kmine 1
+η−1 and called a natural cutoff. We represent p(k) in Fig. 9b. The hubs in Fig. 9b are characterized by the straight group of green dots, which are displayed at the bottom of the right corner of the distribution function. In this work we suppose that degree exponent η, N, kmin and kmax are time-independent. This approach looks reasonable for the time slots when the number of users in DIS represents some close (target) community and is constant on average. In other words, we examine the DIS properties for a given feature of avatar–avatar network. For Fig. 9 we used the igraph library of R to generate the graph; NetworkX of the Python library to work with the graph; Matplotlib for the graph visualization; and Numpy of the Python library to find eigenvalues and eigenvectors. The combination of R and Python leverages the statistical rigor and versatility provided by both programming environments. The R’s igraph package offers efficient data handling and preliminary analysis capabilities, while Python’s NetworkX allows for extensive simulations and dynamic analyses, crucial for modeling the interactive dynamics of the DIS. The Matplotlib supports these analyses with high-quality visualizations, facilitating detailed examination, and presentation of results. This methodological framework ensures the comprehensive exploration and robust validation of the network’s structural and dynamic properties. To validate the scale-free nature of the network in Fig. 9, we assess the degree distribution for adherence to a power law using goodness-of-fit tests. A close fit confirms the network structural validity under the BarabásiAlbert model. The stability and consistency of the eigenvector centrality scores across various network configurations and parameter settings are evaluated to ensure reliability in identifying influential nodes. The information about the graph in Fig. 9a is stored in symmetric adjacency matrix Aij. In particular, matrix element Aij = 1 if two i and j nodes are linked and Aij = 0 otherwise. We characterize statistical properties of the network by the first (〈k〉) and normalized second (ζ) moments of the node degree defined as
+where ki is the i-th node degree.
+In this work, we use the eigenvector centrality criterion that we can represent in the form (e.g.62)
+(26)
+∫+∞
+kmin
+p(k)dk = 1.
+(27a)
+�k� = 1
+N
+N
+∑
+i=1
+ki = 1
+N
+N
+∑
+i,j
+Aij ;
+(27b)
+ζ≡ 1
+N �k�
+∑
+i
+ki2,
+(28)
+pEp,i =
+N
+∑
+j=1
+Aij Ep,j ,
+Figure 9. (a) Avatar–avatar network, (b) node degree distribution in a double logarithm scale that demonstrates power-law-like distribution (25) with η = 2.255; kmin = 2; kmax = 26; �k� ≃ 4, ζ ≃ 6.57, N = 300. Algorithm S3 in Supplementary information explains the details.
+
+
+16
+Vol:.(1234567890)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+where p is the PE; Ep,i (i = 1, . . . , N ) is the correspondent eigenvector components. The Perron–Frobenius theorem states real Ep,i. The value of each i-th component specifies the color/size of the i-th node in Fig. 9a.
+Quantum‐inspired model of DM agents
+In the framework of the considered DIS model, we establish the mental state of each NIA by two mutually orthogonal states in Hilbert space, ground (relaxed)|g�i and excited|e�i, see Fig. 2a; these states obey conditions
+In the framework of the quantum field approach, it is possible to introduce number operators ˆne,i ≡ |e�ii�e|and
+ˆng,i ≡ |g�ii�g|for the i-th user that we can recognize as DM operators, cf.12. In particular, they are relevant to Se and Sg decisions, respectively, and possess 0 and +1 eigenvalues, as it follows from (29);
+We use Eq. (30) in the mean-field approach applied throughout the work. Taking into account Eqs. (29), (30), we can determine relatively simple rules followed by NIAs in the DIS
+when interacting with AIAs. These rules are quite similar to those that we formulated in27 in the framework of the solaser approach. First, let us examine the i-th NIA’s basic features in emotionally relaxed (ground) state |g�i. We propose that the i-th user becomes excited in two primary cases. In particular, a user might obtain some (emotionally excited) information from the outside of the network with rate γp,i, which can excite their emotional state, Fig. 2. In other words, γp,i represents an analog of the classical pump field that helps create population inversion in the usual
+laser medium, see e.g.59. Another way of NIA’s mental excitation is connected with the interaction of the i-th user with their avatar that presumes to obtain some recommendations. These recommendations are realized using short messages, which carry some social energy ħi, i = 1, . . . , N. Following the social laser approach, we propose that any meaningful message forms a quantum of socially significant information (s-photon), which may be absorbed by the user in
+the ground state |g�i, cf.27. The s-photons are thematically “colored” through frequencies i. We suppose that there exists a probability to change the user’s emotional state to the excited one,|e�i, if they approve the message obtained from the avatar and support the Se opinion with a relevant probability. In this case, we can assume that the user absorbing an s-photon accumulates some additional (positive) emotions relevant to some social energy in our interpretation, see Fig. 2b. On the other hand, the users stay in emotionally relaxed (ground) states |g�i if they dislike Se or are indifferent to the message served by their avatars. The message is also considered unpleasant if it is irrelevant to the user. In this case, the user ignores or loses the message. This assumption looks reasonable since NIAs do not change their ground state in this case. Second, we assume that when in an emotionally excited state |e�i, the i-th NIA is guided by the following simple rules of behavior. The i-th user can relax and transfer their emotional state to the ground one,|g�i. Thus, the quantum-like description of NIA’s cognitive abilities in the framework of the solaser paradigm presumes the existence of some characteristic time τe,i that NIAs (humans) can spend in the emotionally excited state. In the paper, we use the inverse parameter, γe,i ≃ 1/τe,i, that characterizes the rate of the excited state |e�i decay. The user can transfer to emotional ground state|g�i changing their excited state|e�i in two other cases. First, a user can “spontaneously” emit an s-photon (send some message to their avatar, for example). Second, a user obtaining a message from the avatar immediately emits s-photon changing the state to the |g�i one. All these
+facilities of NIAs reminiscent properties of two-level atoms in the presence of quantized irradiation52. In this
+sense, we can recognize NIAs as so-called social atoms of the DIS51.
+Mean‐field equations
+Hamiltonian (1) leads to Heisenberg–Langevin operator equations. In this work, we are interested in the meanfield approximation that excludes quantum field fluctuations and relevant correlations with NIAs. After straightforward calculations, which account (29), (30), for (1), we obtain set of equations
+where αi = �aˆi�, pi = �σˆ −
+i �, and σi = �σˆiz�are the mean-field variables, i = 1, 2, . . . , N ; Ŵi is the i-th user excita
+tion decay rate; κ characterizes information losses in the DIS. For our purposes, it is fruitful to remove rapidly
+oscillating components in Eq. (31): substituting pi(t) = Pie−i�0,it , αi(t) = Eie−i�0,it into Eq. (31), we immediately obtain Eq. (2).
+In this work, we are interested in stationary solutions Pi(t) = Pie−iωt , Ei(t) = Eie−iωt of Eq. (31) assuming σi ≃ σ0,i, see(4 ). Substituting Pi(t) and Ei(t) into (31), we obtain
+(29)
+j
+〈g |g 〉
+i = j�e|e�j = δij, j
+〈g |e〉
+i = 0.
+(30)
+nˆ g,i|g�i = +1|g�i, nˆ g,i|e�i = 0, nˆ e,i|e�i = +1|e�i, nˆ e,i|g�i = 0.
+(31a)
+α ̇ i = (−i�i − κ)αi − igipi + iJ
+N
+∑
+j=1
+Aij αj ;
+(31b)
+p ̇i = (−i�0,i − Ŵi)pi + igiσiαi;
+(31c)
+σ ̇i = (γp,i − γe,i) − (γp,i + γe,i)σi + 2igi(αi∗pi − αipi∗),
+
+
+17
+Vol.:(0123456789)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+Resolving Eq. (32b) for excitation Pi and substituting it into (32a), we immediately obtain (5).
+Discussion
+Let us summarize the results obtained. In this work, we have suggested the quantum-inspired model of DIS that consists of two types of agents that are NIAs (users) and their digital assistants (avatars) AIAs, see Fig. 1. The avatars can exchange information in the avatar–avatar network that possesses N nodes; we recognize this network as an undirected graph described by the power-law degree distribution and possessing hubs, see Fig. 9. We have mapped Russell’s circumplex model of valence and arousal to an effective two-level quantum system to specify the NIAs’ cognitive abilities in the framework of a simple (binary) decision-making process, cf. Fig. 2. The users can obtain information from the outside; their cognitive states and preferences are characterized by the mean value of inversion operator σi, which describes an average mental (emotional) state of the i-th user to the information represented by their avatar. The domain we have considered in this work, 0 ≤ σi ≤ 1, indicates the role of an external information pump that can excite individuals in the DM process. The allowed frequencies characterize the variety of opinions in the DIS; the opinion gap occurs as a result of the avatar–user interaction in each node of the network and manifests two-branch opinions. Practically, the opinion gap indicates shifting the user’s emotional state, opinions, and beliefs. Some of them may be reinforced or, on the contrary, rapidly vanish. In this work, taking into account avatar–avatar coupling within the network, we have proposed clear criteria for how it happens. We have demonstrated that a nonvanishing macroscopic coherent information field in the DIS occurs in the case when the users are satisfied by their avatars. In particular, the opinion formation and social impact in the DIS are relevant to the second-order (laser-like) phase transition similar to the social laser phenomenon in social
+networks, cf.27. Otherwise, the rapidly decaying information field manifests the absence of any collective decisions for the avatars in the DIS. Long-term adaptivity of avatars to their users cannot be implemented in this limit. We have shown that a set of cooperativity parameters Ci, i = 1, . . . , N for the users in DIS plays a significant role in the DIS features and establishes the necessary condition to achieve the discussed phase transition. The cooperation between users is realized through their digital assistants. Practically, each cooperativity parameter depends on the coupling of a particular NIA with relevant AIA manifesting how frequent their communication. A sufficient condition for the opinion formation and social impact is characterized by the generalized cooperativity parameter Gi that also accounts for the user’s individual preferences and external information, embodied in σi. We have shown that the phase transition to opinion formation and social impact in the DIS occurs if a large number of avatar–user pairs fulfill the lasing-like transition criterion (17). In this case, the opinions relevant to the Im(ω) > 0 condition are enhanced in the DIS; other opinions with Im(ω) < 0 are suppressed, see Fig. 6. Dynamically, in this limit, the socially actual s-filed is amplified and information diffusion occurs in the DIS, e.g. Fig. 7. Noteworthy, the avatars that fall into domain −g < Re(ω) < g tightly cooperate with their users and tend to focus on suggestions supported by information pumping with increasing σi. Noteworthy, such avatars possess small ki within the avatar–avatar network. Noteworthy, the avatar–avatar network peculiarities play a remarkable role in the opinion formation in the DIS. We have shown that in complex networks, avatars tend to self-organize, which accounts topological properties of the network in a scale-free regime. In this limit, coupling between some of the avatars effectively becomes much stronger than with their users. Such avatars in the avatar–avatar network correspond to maximally influential AIAs, which tend to maintain their influence in the DIS. For weak AIA–NIA coupling strength (Ci ≤ 1) there are many uncertainties in the DIS, which makes it difficult for the DM agents to form a certain (non-zero) opinion, cf. Fig. 5. Below the phase transition threshold for the DIS parameters, the s-field vanishes, which indicates the inhibition of avatars adaptation to their users. We have shown that the avatar–avatar network peculiarities play a remarkable role in this limit. In particular, we have demonstrated that in complex networks, avatars tend to self-organize, which accounts topological properties of the network in a scale-free regime. In this limit, coupling between some of the avatars effectively becomes much stronger than with their users. Such avatars in the avatar–avatar network correspond to maximally influential AIAs, which tend to maintain their influence in the DIS. We have suggested a procedure that adaptively increases the users’ impact by establishing a network-dependent coupling rate with their digital assistants in the limit of weak AIA–NIA coupling strength. In this case, the i-th cooperativity parameter, Ci, may be significantly improved in ki times, see Fig. 3. In particular, the suggested mechanism of AIA adaptive control helps resolve the DM process in the presence of some uncertainties evoked by the users’ preferences, cf. Fig. 6c,d. Thus, our approach generally provides a clear way to control AIAs, distributed within complex network systems. Our findings open new prospects in different areas where AIAs can potentially represent useful teammates for humans to solve common routine problems in the framework of some network organizations. As mentioned above, some specific networks could be interesting in economy and finance (marketplaces, stocks), professional and business activities (office networks), etc. In this regard, the DIS we have examined in this work should be also considered in the framework of evolutionary game theory when the cooperative behavior of DM agents
+represents a primary interest, see e.g.35,42. We suppose that the cooperativity parameters introduced in this work may be adopted for the evolutionary game within some limits in our problem. Noteworthy, quantum probability
+(32a)
+(ω − �i + iκ)Ei − giPi + J
+N
+∑
+j=1
+AijEj = 0;
+(32b)
+(iŴi + ω)Pi + giσ0,iEi = 0.
+
+
+18
+Vol:.(1234567890)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+formalism can also be useful here to characterize the non-rational behavior of DM agents, cf.66,67. This problem requires a separate analysis. Notably, arbitrary networks require accounting for the primary emotional (cognitive) states of DM agents that the Russell circumplex model represents. In other words, a simple two-level model (see Fig. 2) should be revised; we can speak about four- or three-level models as possible generalizations of the two-level (mental) model we consider in this work. Additional levels are necessary to specify cognitive (emotional) states that possess negative valence in Fig. 2a. In quantum physics, three- and four-level systems are typically used for the
+elucidation of coherent features of atomic systems that simultaneously interact with two or more fields, e.g.52. In our case, three- and four-level models can describe cognitive states of NIA inherent to all quarters of the Russell circumplex model. Notice, that more accurate (multilevel) models may be also designed for other approaches to human basic emotional states (specified by Ekman and Plutchik). Thus, the generalization of the two-level model multilevel cognitive system for mental state specification represents a challenging task for us to investigate.
+Data availability
+All data generated or analysed during this study are included in this published article and Supplementary Information.
+Received: 11 March 2024; Accepted: 24 June 2024
+References
+1. Alavi, M. & Leidner, D. Knowledge management and knowledge management systems: Conceptual foundations and research issues. MIS Q. Rev. 25, 107 (2001).
+2. Mohan, C. Frontiers of Expert Systems. Reasoning with Limited Knowledge (Springer, 2000).
+3. Heylighen, F. Distributed intelligence technologies: Present and future applications. Future Inf. Soc. World Sci. Ser. Inf. Stud. 8, 136–145 (2021). 4. Arthur, W. Foundations of complexity economics. Nat. Rev. Phys. 3, 136–145 (2021). 5. Alsboui, T., Qin, Y., Hill, R. & Al-Aqrabi, H. Distributed intelligence in the internet of things: Challenges and opportunities. SN Comput. Sci. 2, 277 (2021).
+6. O’Neill, T., McNeese, N., Barron, A. & Schelble, B. Human-autonomy teaming: A review and analysis of the empirical literature. Hum. Factors 64, 904–938 (2022). 7. Seeber, I. et al. Machines as teammates: A research agenda on AI in team collaboration. Inf. Manag. 57, 103174 (2020). 8. Busemeyer, J. R. & Bruza, P. D. Quantum Models of Cognition and Decision Vol. 4 (Cambridge University Press, 2012). 9. Khrennikov, A. Y. Ubiquitous Quantum Structure: From Psychology to Finances (Springer, 2010). 10. Guleva, V. et al. Emerging complexity in distributed intelligent systems. Entropy 22, 1437 (2020). 11. Ardavs, A., Pudane, M., Lavendelis, E. & Nikitenko, A. Long-term adaptivity in distributed intelligent systems: Study of viabots in a simulated environment. Robotics 8, 25 (2019). 12. Bagarello, F., Basieva, I. & Khrennikov, A. Quantum field inspired model of decision making: Asymptotic stabilization of belief state via interaction with surrounding mental environment. J. Math. Psychol. 82, 159–168 (2018). 13. Haven, E., Khrennikov, A. Y. & Robinson, T. R. Quantum Methods in Social Science: A First Course (World Scientific Publishing Company, 2017). 14. Gallus, C., Pothos, E., Blasiak, P., Yearsley, J. M. & Wojciechowski, B. Bell correlations outside physics. Sci. Rep. 13, 4394 (2023). 15. Tsuchiya, N., Bruza, P. D., Yamada, M., Saigo, H. & Pothos, E. A quantum qualia hypothesis: From quantum cognition to quantum perception (2023). Last accessed 08 March 2024. 16. Fuyama, M. Does the coexistence of literal and figurative meanings in metaphor comprehension yield novel meaning?: Empirical testing based on quantum cognition. J. Front. Psychol. 14, 1664 (2023). 17. Roeder, L. et al. A quantum model of trust calibration in human–AI interactions. Entropy 25, 1362 (2023). 18. Toffano, Z. & Galofaro, F. Quantum investigations from logic to computers and robots. Semiotica e Intelligenza Artificiale : Incontri sul Senso (2022). Last accessed 08 March 2024. 19. Celeghini, E., Rasetti, M. & Vitiello, G. Quantum dissipation. Ann. Phys. 215, 156–170 (1992). 20. Lukas, A. Ising formulations of many np problems. Front. Phys. 2, 5 (2014). 21. Mohseni, M., McMahon, P. & Byrnes, T. Ising machines as hardware solvers of combinatorial optimization problems. Nat. Rev. 4, 363 (2022). 22. Huembeli, P., Arrazola, J., Killoran, N., Mohseni, M. & Wittek, P. The physics of energy-based models. Quantum Mach. Intell. 4, 1 (2022). 23. Melnikov, A., Kordzanganeh, M., Alodjants, A. & Lee, R.-K. Quantum machine learning: From physics to software engineering. Adv. Phys. X 8, 2165452 (2023). 24. Tsarev, D., Trofimova, A., Alodjants, A. & Khrennikov, A. Phase transitions, collective emotions and decision-making problem in heterogeneous social systems. Sci. Rep. 9, 1–13 (2019). 25. DeGiorgio, V. & Scully, M. O. Analogy between the laser threshold region and a second-order phase transition. Phys. Rev. A 2, 1170 (1970). 26. Khrennikov, A. ‘Social Laser’: Action amplification by stimulated emission of social energy. Philos. Trans. R. Soc. A Math. Phys. Eng. Sci. 374, 20150094 (2016). 27. Alodjants, A., Bazhenov, A., Khrennikov, A. Y. & Boukhanovsky, A. Mean-field theory of social laser. Sci. Rep. 12, 8566 (2022). 28. Kacperski, K. & Holyst, J. A. Phase transitions and hysteresis in a cellular automata-based model of opinion formation. J. Stat. Phys. 84, 169 (1996). 29. Dorogovtsev, S. N., Goltsev, A. V. & Mendes, J. F. Critical phenomena in complex networks. Rev. Mod. Phys. 80, 1275 (2008). 30. Mastroeni, L., Vellucci, P. & Naldi, M. Agent-based models for opinion formation: A bibliographic survey. IEEE Access 7, 58836 (2019). 31. Kiesling, E., Günther, M., Stummer, C. & Wakolbinger, L. Agent-based simulation of innovation diffusion: A review. Cent. Eur. J. Oper. Res. 20, 183 (2012). 32. Hamill, L. & Gilbert, N. Agent-Based Modelling in Economics (John Wiley Sons, Ltd., 2016). 33. Miller, R. et al. Trapped atoms in cavity QED: Coupling quantized light and matter. J. Phys. B At. Mol. Opt. Phys. 38, S551 (2005). 34. Alodjants, A. et al. Random lasers as social processes simulators. Entropy 25, 1601 (2023). 35. Doebeli, M. & Hauert, C. Models of cooperation based on the prisoner’s dilemma and the snowdrift game. Ecol. Lett. 8, 748 (2005). 36. Rosas, A. Evolutionary game theory meets social science: Is there a unifying rule for human cooperation?. J. Theor. Biol. 264, 450 (2010).
+
+
+19
+Vol.:(0123456789)
+Scientific Reports | (2024) 14:15438 | https://doi.org/10.1038/s41598-024-65684-z
+www.nature.com/scientificreports/
+37. Santos, F. & Pacheco, J. Scale-free networks provide a unifying framework for the emergence of cooperation. Phys. Rev. Lett. 95, 098104 (2005). 38. Challet, D. & Zhang, Y.-C. Emergence of cooperation and organization in an evolutionary game. Phys. A 246, 407 (1997). 39. Hauert, C. & Doebeli, M. Spatial structure often inhibits the evolution of cooperation in the snowdrift game. Nature 428, 643 (2004). 40. Taylor, P. & Day, T. Cooperate with thy neighbour?. Nature 428, 611 (2004). 41. Newman, M. Networks (Oxford University Press, 2018). 42. Nowak, M. Five rules for the evolution of cooperation. Science 314, 1560 (2006). 43. Russell, J. A circumplex model of affect. J. Pers. Soc. Psychol. 39, 1161–1178 (1980). 44. Feldman, Barrett L., Gendron, M. & Huang, Y.-M. Do discrete emotions exist?. Philos. Psychol. 22, 427–437 (2009). 45. TenHouten, W. A General Theory of Emotions and Social Life Vol. 2 (Routledge, 2006). 46. Deli, E. What is psychological spin? A thermodynamic framework for emotions and social behavior. Psych 5, 1224–1240 (2023). 47. Schweitzer, F. & Garcia, D. An agent-based model of collective emotions in online communities. Eur. Phys. J. B 77, 533–545 (2010). 48. Ekman, P. An argument for basic emotions. Cogn. Emot. 6, 169–200 (1992). 49. Opsis. Challenges in Emotion Recognition Today (2024). Last accessed 01 February 2024. 50. Surov, I. Quantum core affect. Color-emotion structure of semantic atom. Front. Psychol. 13, 838029 (2022). 51. Galam, S. Sociophysics: A Physicist’s Modeling of Psycho-Political Phenomena (Springer-Verlag, 2021). 52. Scully, M. O. & Zubairy, M. S. Quantum Optics Vol. 4 (CAM, 1997). 53. Walther, J. Social media and online hate. Curr. Opin. Psychol. 45, 101298 (2022). 54. Bessi, A. et al. Homophily and polarization in the age of misinformation. Eur. Phys. J. Sp. Top. 225, 2047–2059 (2016). 55. Flache, A. et al. Models of social influence: Towards the next frontiers. J. Artif. Soc. Soc. Simul. 6, 20 (2017). 56. Xing, Y., Wang, X., Qiu, C., Li, Y. & He, W. Research on opinion polarization by big data analytics capabilities in online social networks. Technol. Soc. 68, 101902 (2022). 57. Baumann, F., Lorenz-Spreen, P., Sokolov, I. M. & Starnini, M. Modeling echo chambers and polarization dynamics in social networks. Phys. Rev. Lett. 124, 048301 (2020). 58. Cota, W., Ferreira, S., Pastor-Satorras, R. & Starnini, M. Quantifying echo chamber effects in information spreading over political communication networks. EPJ Data Sci. 8, 35 (2019). 59. Haken, H. Laser Light Dynamics Vol. 2 (North-Holland, 1985). 60. Holyst, J. A., Kacperski, K. & Schweitzer, F. Phase transitions in social impact models of opinion formation. Phys. A 285, 199–210 (2000). 61. Jia, P., MirTabatabaei, A., Friedkin, N. & Bullo, F. Opinion dynamics and the evolution of social power in influence networks. SIAM Rev. 57, 367–397 (2015). 62. Newman, M. Mathematics of networks. In The New Palgrave Dictionary of Economics (eds Durlauf, S. & Blume, L. E.) (Springer, 2008). 63. Sarkar, C. & Jalan, S. Spectral properties of complex networks. Chaos 28, 102101 (2018). 64. Feinberg, J. & Zee, A. Non-Hermitian localization and delocalization. Phys. Rev. E 59, 6433 (1999). 65. Barabási, A.-L. Network Science (Cambridge University Press, 2016). 66. Pothos, E. & Busemeyer, J. A quantum probability explanation for violations of ‘rational’ decision theory. Proc. R. Soc. B 276, 2171 (2009). 67. Asano, M., Basieva, I., Khrennikov, A., Ohya, M. & Tanaka, Y. Quantum-like dynamics of decision-making. Phys. A 391, 2083–2099 (2012).
+Author contributions
+A. P. Alodjants wrote the main manuscript text and suggested the mathematical formulation of the quantuminspired DIS model. A. Yu. Khrennikov and A. V. Boukhanovsky elaborated some concepts and reviewed the text. D. V. Tsarev performed analytic calculations. A. E. Avdyushina made numerical simulations and visualization.
+Funding
+Open access funding provided by Linnaeus University. The work was supported by the Ministry of Science and Higher Education of the Russian Federation, Goszadanie no. 2019-1339. A.Yu. Khrennikov acknowledges the support from COST EU-network DYNALIFE, Information, Coding, and Biological Function: the Dynamics of Life.
+Competing interests
+The authors declare no competing interests.
+Additional information
+Supplementary Information The online version contains supplementary material available at https://doi.org/ 10.1038/s41598-024-65684-z.
+Correspondence and requests for materials should be addressed to A.Y.K.
+Reprints and permissions information is available at www.nature.com/reprints.
+Publisher’s note Springer Nature remains neutral with regard to jurisdictional claims in published maps and institutional affiliations.
+Open Access This article is licensed under a Creative Commons Attribution 4.0 International License, which permits use, sharing, adaptation, distribution and reproduction in any medium or format, as long as you give appropriate credit to the original author(s) and the source, provide a link to the Creative Commons licence, and indicate if changes were made. The images or other third party material in this article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line to the material. If material is not included in the article’s Creative Commons licence and your intended use is not permitted by statutory regulation or exceeds the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this licence, visit http://creativecommons.org/licenses/by/4.0/.
+© The Author(s) 2024

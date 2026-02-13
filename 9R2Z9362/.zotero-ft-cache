@@ -1,0 +1,971 @@
+Computers & Operations Research 165 (2024) 106592
+Contents lists available at ScienceDirect
+Computers and Operations Research
+journal homepage: www.elsevier.com/locate/cor
+Survey in Operations Research and Management Science
+Nesting and scheduling optimization of additive manufacturing systems: Mapping the territory
+Marcelo Pinto a, Cristo´va˜o Silva a, Matthias Thürer b, Samuel Moniz a,*
+a University of Coimbra, CEMMPRE, ARISE, Department of Mechanical Engineering, 3030-788 Coimbra, Portugal b Chemnitz University of Technology, Chair of Factory Planning and Intralogistics, Erfenschlager Straße 73, 09125 Chemnitz, Germany
+
+ARTICLE INFO
+Keywords: Additive manufacturing Bibliometric review Nesting Scheduling Systematic review
+
+ABSTRACT
+The application of Additive Manufacturing (AM) within industrial settings brings new challenges to operational research. This paper provides in-depth analyses of nesting and scheduling problems in the context of AM. Using bibliometric and systematic review methods, we map the progression of knowledge in this territory and provide a detailed characterization of the existing mathematical models and approaches. Our findings indicate the fundamental decisions that predominate in these models and reveal the relationships between the critical studies, which form the backbone of the research. While the nesting and scheduling problem can be categorized into six types of decision, we have also found other emerging and interrelated optimization problems associated with nesting and scheduling decisions. To provide further details, an ample number of models are systematized in a reference framework for modeling nesting and scheduling in AM. Finally, pressing future research avenues that have emerged from our analysis and that need to be addressed to further advance the field are presented.
+
+1. Introduction
+Additive Manufacturing (AM) emerged out of rapid prototyping techniques and is often referred to as 3D printing (Attaran, 2017). In contrast to conventional subtractive and formative processing tech­ niques, AM deposits successive layers of material, which enables the production of highly complex parts and offers new degrees of flexibility for product design (Li et al., 2019). Nevertheless, the introduction of AM into manufacturing systems is still in its infancy, and existing mathe­ matical models still lag behind the practical needs of the new processes offered by AM. Therefore, at a time when consumers are calling for rapid responses, practical and efficient solutions rely on operational research and optimization models.
+The scheduling problem is one of the most studied in operational research; nevertheless, AM brings additional challenges that have not received much attention until the last decade (Fera et al., 2020). This problem consists of grouping jobs into batches, and then schedule those batches over the available machines (Guzman et al., 2022) – referred as Batch Processing Machine (BPM) problem. AM machine scheduling is a variation of the pure BPM problem (Zhang et al., 2020). In this context, multiple parts, that correspond to jobs, are produced simultaneously in the same AM machine and during a single production cycle. Yet, in BPM
+
+scheduling problems most of the existing research was conducted in the context of high-volume production and modeled as one-dimensional knapsack problems (Oh et al., 2020), which means that the machine capacity is constrained to a value, such as maximum weight, area, or volume. In AM scheduling problems, representing machine capacity involves modeling it as a nesting problem.
+The nesting problem consists of packing multiple parts into a con­ strained build area or volume, which correspond to a batch in the BPM problem, for each production cycle (Alicastro et al., 2021). Typical de­ cisions include the location and orientation of the parts within the build – this introduces more complexity into the primary AM scheduling problem. In addition, the AM machine capacity in these problems can be modeled as a two-dimensional (2D) or three-dimensional (3D) binpacking problem. This is because certain processes, including Fused Deposition Modeling (FDM) and Stereolithography (SLA) require sup­ port structures, and it is not advisable to stack parts on top of each other. While other processes, such as Selective Laser Sintering (SLS), do not need support structures, and the machine capacity can be modeled as 3D. Therefore, the AM scheduling problem is characterized by inte­ grating nesting constraints into BPM scheduling problem.
+Both scheduling and nesting problems have been described in a handful of noteworthy reviews in recent years. Dyckhoff (1990)
+
+* Corresponding author. E-mail address: samuel.moniz@dem.uc.pt (S. Moniz).
+https://doi.org/10.1016/j.cor.2024.106592 Received 23 January 2023; Received in revised form 19 February 2024; Accepted 19 February 2024 Available online 22 February 2024 0305-0548/© 2024 Elsevier Ltd. All rights reserved.
+
+M. Pinto et al.
+introduced the typology of Cutting and Packing (C&P) problems, which is closely related to the nesting problem. The author suggested four classification criteria whereby C&P problems can be arranged: dimen­ sionality; kind of assignment; assortment of large objects; and assort­ ment of small items. Wa¨scher et al. (2007) proposed another typology, which is partially based on Dyckhoff’s original ideas. Araújo et al. (2019) focused on extending the existing typologies to the AM domain, proposing a classification according to four-tuples: dimensionality; optimization criteria; build volume type; and attributes of the assort­ ment of parts. This paper was instrumental in bringing together nesting and AM problems. For scheduling problems, Graves (1981) introduced a classification with three different criteria: requirements generation; processing complexity; and scheduling criteria. These criteria have been updated and outlined into systematic taxonomies (Kanet and Sridharan, 2000; Potts and Kovalyov, 2000; Slotnick, 2011; Perez-Gonzalez and Framinan, 2014).
+Recent reviews have started to integrate nesting and scheduling problems, departing from the traditional perspective of separately addressing these decisions. Oh et al. (2020) introduced a noteworthy taxonomy based on three entities: Part; Build; and Machine. Herein, the interaction from Part to Build and Build to Machine imply nesting and scheduling problems, respectively. Nevertheless, this classification is restricted to the root of the nesting and scheduling problem and does not delve into the immediate problems of AM, including part decomposi­ tion, part distribution, and pre- and post-processing operations. In addition, the authors did not extend the study to new AM scenarios, such as collaborative manufacturing and multi-robot manufacturing. Our study therefore provides an up-to-date review of how these new con­ cerns are included within the nesting and scheduling problem.
+De Anto´n et al. (2022) focused at the subproblem level. This level refers to breaking down the original nesting and scheduling problem into planning subproblems. Based on the hierarchy consisting of Part, Build, and Machine, they propose four planning stages to arrange the subproblems: Part; Part-Machine; Part-Build; and Build-Machine. The definitions of these subproblems were based on the general subproblems of Wa¨scher et al. (2007) and Maravelias and Sung (2009) and adapted to the AM context. While these authors focused on the subproblems at the operational level, we also study the integration of the operational with tactical level in AM.
+Finally, Framinan et al. (2023) provide a literature review on the use of operations research methods in AM. The authors categorize AM de­ cision problems based on three business functions: Designing the AM process; Planning in an AM process; and Operating of AM. Nevertheless, the decision problems were addressed separately, and there is no informa­ tion of how these decisions are interrelated. This highlights the need for a review to consolidate the research on the integration of these AM decision problems, and to provide a coordination scheme for the different decisions.
+Our review differs from the existing literature by specifically focusing on the incorporation of various decisions and constraints into the nesting and scheduling problem. Considering that these decisions are traditionally kept separate or loosely integrated, studying these in­ terdependencies aims at contributing to the development of new models and streamline the decision-making process. To study the progression of the knowledge in this field, we present an analysis of the critical papers, which form the backbone of the research, and utilize a scheme according to the three recognized entities in AM: Part, Build and Machine. Furthermore, this study applies a more comprehensive procedure than a traditional review, by using science mapping techniques to capture and map the existing knowledge on nesting and scheduling problems in AM. Two research questions are answered:
+RQ1. What is the research structure of nesting and scheduling problems in the context of AM?
+RQ2. What are the characteristics prevalent in the modeling of nesting and scheduling problems in AM?
+Through RQ1, this paper aims to systematize and rationalize the
+
+Computers and Operations Research 165 (2024) 106592
+previous research. Thus, we explore the intersection of qualitative and quantitative methods to ensure methodological rigor (Zupic and Cˇater, 2015). This produces the spatial representation of the field. We used two well-accepted bibliometric methods – conceptual analysis (Aria and Cuccurullo, 2017) and main path analysis (De Nooy et al., 2018). Spe­ cifically, conceptual analysis connects the fundamental concepts of the research field (Zupic and Cˇater, 2015). Afterwards, the main path analysis establishes the connections between the critical papers, which form the research backbone of the field (De Nooy et al., 2018). RQ2 navigates the characteristics of the existing mathematical models and approaches to nesting and scheduling problems according to the three entities: Part; Build and Machine; each one subject to different assump­ tions, which differ from model to model. Assumptions are referred to as the modeling gap, which represents the deviation between the problem characteristics and their representation in the model. The existing models are systematized in a reference framework for modeling nesting and scheduling in AM. Finally, a research program that summarizes pressing future research avenues that emerged from our analysis and that need to be addressed to further advance the field is presented.
+The remainder of this paper is organized as follows. Section 2 out­ lines the methodology used. Section 3 presents the conceptual analysis and main path analysis. In Section 4, the characteristics of the existing mathematical models and approaches are analyzed, and the results systematized in a framework prior to Section 5, which outlines our future research program. Finally, Section 6 concludes.
+2. Methodological approach
+This paper follows the science mapping methodology proposed by Zupic and Cˇater (2015), which is comprised of five steps: research planning, data collection, data analysis, results visualization, and interpretation. All five are illustrated in Fig. 1. Web of Science (WoS) and Scopus were used for sourcing because they are widely used bibliographic databases. A set of keywords that comprehensively rep­ resents the sphere of interest was selected and combined into the following search string: (“additive manufactur*” OR “3D print*” OR “rapid prototyp*”) AND (“production planning” OR “scheduling” OR “nesting” OR “packing”). The initial search was restricted to Englishlanguage peer-reviewed papers. For this initial search on December 18 of 2023 we retrieved a total of 963 papers from WoS and 1,324 papers from Scopus. Next, title and abstract were screened to confirm the relevance of the papers and duplicates were excluded. This reduced our sample to 143 papers. In a second screening process, where the full texts were read, some further papers were discarded. Our final sample con­ sists of 130 papers: 105 journal articles and 25 conference proceedings. Finally, 7 articles were added through the snowball method.
+The sample was subsequently exported to bibliometric software for further analysis. In this paper, the bibliometric analysis was primary conducted using Bibliometrix software, which is programmed in R lan­ guage for statistical analyses (Aria and Cuccurullo, 2017), more specif­ ically using the Biblioshiny interface. Pajek software, which has been extensively used to analyze network data, was also used to obtain the main path (De Nooy et al., 2018). Review papers were solely included for sample statistics, and for the conceptual and main path analysis. They were obviously excluded from the study on the characteristics of the models.
+2.1. Terminology
+Since the existing literature lacks a precise definition of the termi­ nology, we use a set of essential terms to reference equivalent contextrelated terms in a bid to avoid confusion. For example, the terms referring to additive manufacturing have moved from rapid prototyping (see Gogate and Pande (2008), for example) to 3D printing and additive manufacturing over time (see Fig. 2).
+Similar to additive manufacturing, also for nesting and scheduling a
+
+2
+
+M. Pinto et al.
+
+Computers and Operations Research 165 (2024) 106592
+
+Fig. 1. Science mapping methodology followed by this paper.
+
+Fig. 2. Terms referring to additive manufacturing over time.
+
+plethora of different terms exists. These terms are listed in Table 1. For example, as mentioned earlier, the knapsack and bin-packing problem exhibit some differences, even though they fall under the terminology of nesting.
+2.2. Sample statistics
+The annual scientific publication of papers is given in Fig. 3. After the seminal paper of Ikonen et al. (1997), there has been wide neglect for
+
+over a decade. This scenario significantly changed after 2017, high­ lighting the need for a review to consolidate this field and guide its progression. Furthermore, the increasing adoption of AM machines in real production systems (Fera et al., 2020), has put the need for new models and methodologies capable of effectively handling the related technologies at the forefront of AM-related research.
+Fig. 4 summarizes the five principal journals that have published papers on nesting and scheduling problems in AM. As expected, leading industrial engineering, operations research and management, and
+
+3
+
+M. Pinto et al.
+
+Table 1 Terminology applied in this paper.
+
+Terminology
+
+Context-related terms
+
+Additive manufacturing
+Nesting
+Scheduling
+
+Direct digital manufacturing; layered manufacturing; rapid prototyping; 3D manufacturing; 3D printing Batch placement; bin-packing; knapsack; grouping parts; layout problem; layout planning; packing; placement Batch machine scheduling; dispatching; multi-task scheduling; part-to-printer assignment; production planning; sequencing; task-assignment
+
+supply chain management journals feature heavily in this list. Addi­ tionally, two of the journals are focused on advanced manufacturing and systems: International Journal of Advanced Manufacturing Technology and Additive Manufacturing.
+3. The nesting and scheduling problems
+The rationale of this section is to map the research structure of nesting and scheduling problems in AM, and thus, responding to RQ1. In this study, the analysis extends conventional qualitative reviews, as we leverage the qualitative study through two well-accepted bibliometric methods - conceptual analysis (Aria and Cuccurullo, 2017) and main path analysis (De Nooy et al., 2018). Conceptual analysis is utilized to connect the fundamental concepts of the research field (Zupic and Cˇater, 2015). Specifically, it can be used to address the different decision types of the nesting and scheduling problem and its related problems. The main path reveals connections among core papers, providing significant details on the relative influence of the publications (De Nooy et al., 2018).
+
+Computers and Operations Research 165 (2024) 106592
+3.1. Conceptual analysis
+The conceptual analysis allows for a comprehensive exploration of the actual content of the papers to design the research structure of the field. Here, we focused on the decision types related to both nesting and scheduling problems to arrange the literature. Decision types refer, in this context, to the splitting of the main problem into specific decisions. Through these individual decisions, we gain valuable insights into the subtle complexities of the decision-making process within nesting and scheduling modeling. This directed the analysis towards six decision types, originating four from the nesting and two from the scheduling problem. The decisions are represented in Fig. 5 and associated to the entities: Part; Build and Machine. The entity Part is defined as the input of the nesting problem, and the resulting outcome is established by the entity Build. In the scheduling problem, the Build takes on the role of the input, and the Machine, with its schedule, is the output.
+3.1.1. Decision types The first decision type is referred to as Build formation. Although
+there are significant differences in processing techniques between traditional manufacturing processes and AM, it is noteworthy that the batch in BPM problems and the build in AM problems share similarities, albeit with some necessary adaptations. In AM, multiple parts may be grouped based on similar characteristics and produced simultaneously in the same machine (De Anto´n et al., 2022). The decision of grouping parts that share common characteristics, such as identical heights (Zhang et al., 2020; Yau and Hsu, 2022) or materials, directly impacts the production time and cost (Yau and Hsu, 2022).
+In traditional manufacturing, build formation decisions have been usually modeled as one-dimensional knapsack problem (Oh et al., 2020), which means that the batch is reduced to a value, such as maximum weight, area, or volume. In AM, however, the machine
+
+Fig. 3. Annual scientific publication (1997 – December 18, 2023).
+Fig. 4. Top 5 journals publishing papers. 4
+
+M. Pinto et al.
+
+Computers and Operations Research 165 (2024) 106592
+
+Fig. 5. Decision types of the nesting and scheduling problem in AM.
+
+capacity can be modeled as a 2D or 3D bin-packing problem. FDM and SLA are two technologies that require support structures. These struc­ tures are created simultaneously and from the same material as the parts. They serve to prevent part drifting and deformations. If a part is placed over another the support structure of the top part will interfere with the geometry of the top bottom part, at its top surfaces. This interference can significantly degrade the surface and possibly the dimensional accuracy of the bottom part, as well as increase the required post-processing time (Canellidis et al., 2013). For this reason, in FDM and SLA, parts are usually placed alongside each other; hence the binpacking problem essentially becomes 2D. Other technologies, such as SLS, do not need support structures, and the machine capacity can be modeled as 3D.
+The second type of decision is the Machine selection. Each build is matched with AM machines whose dimensions are larger than the di­ mensions of the build. A major concern is the machine performance for producing a specific build (De Anto´n et al., 2022). Therefore, a set of efficiency criteria can be considered to select machines to builds. For example, one might choose the machine that offers the highest speed among the set of options or opting for the machine that provides the most robust quality assurances (Canellidis et al., 2013). Calabrese et al. (2022) addressed this problem by providing a decision-making frame­ work for choosing feasible machines according to production quality criteria. Maranha et al. (2023) provide a classification and decisionsupport framework for selecting AM technologies based on machine characteristics, process features, physical properties of parts, and cost.
+In some studies the nesting problem is reduced to these two decision types (Kucukkoc, 2019; Yılmaz, 2020; Griffiths et al., 2019; Dickinson and Knopf, 1998). Authors utilize machine capacity constraints to ensure that the dimensions of the build do not exceed the dimensions of the machine. Nevertheless, to what extent can we claim that they have adequately addressed the nesting problem? All parts must be placed on the build so that they are fully contained within it and do not overlap. Hence, due to the modeling of overlapping needs among parts, issues related to the placement and orientation of the parts have the most substantial influence on the nesting problem (Griffiths et al., 2019).
+Part placement responds to where parts can be positioned within the build boundaries, while ensuring there is no overlap between them. Dickinson and Knopf (1998) separate this decision type into parallel and serial placement. In the parallel placement, all parts are placed at once, whereas in the serial placement a rule will determine where the next part will be placed. Part orientation is often referred to as one of the most critical decisions within the nesting problem (De Anto´n et al., 2020). It specifies the best orientation policies that optimize the AM machine utilization, production time, cost, and quality of each build. Hence, each part can be rotated around X-, Y-, and Z-axes to determine the build orientation.
+Once all the parts are placed and oriented in the builds, the nesting
+
+problem is concluded, and we move on to the scheduling problem. This problem can be distinguished into two main decision types: Machine allocation and Sequencing. In machine allocation, the availability of the machines is checked so that each build can be assigned to one machine (De Anto´n et al., 2022). One machine can be assigned to several builds (single machine configuration). However, multiple machines in parallel are able to reduce production times and increase AM’s competitiveness over the traditional manufacturing processes (Kim and Kim, 2022). Indeed, there are two possibilities of AM parallel configurations: iden­ tical parallel and non-identical parallel machines. The latter can be characterized as heterogeneous machines, where each has its specifi­ cations, like different cycle times, setup times, and capacity constraints (Che et al., 2021). Some studies have addressed pre- and post-processing operations, which can be incorporated into flow-shop and job-shop settings.
+In practice, pre- and post-processing stations can significantly differ from process to process. For example, Power Bed Fusion (PBF) tech­ nology require long cool-down times before the parts are removed (Maranha et al., 2023; Makanda et al., 2022).While in Vat photo­ polymerization, it is possible to remove the parts almost as soon as it is finished (Makanda et al., 2022). Hence, pre- and post-processing oper­ ations can significantly impact the production time. In this context, Kapadia et al. (2022) and Rossi and Lanzetta (2020) tackled flow-shop and job-shop systems, respectively. Aloui and Hadj-Hamou (2021) consider both pre- and post-processing times. Arık (2022) includes downstream post-processing times by considering assembly operations. Thürer et al. (2021) proposed workload control to provide a control solution for the post-processing shop.
+Finally, the sequence of builds on each AM machine has to be determined. This is referred to as Sequencing. The sequencing plan specifies the order in which builds are to be processed in the machines, so that they meet certain production constraints, including capacity, production levels, precedence, start and due dates, machines capabil­ ities, machine availabilities, build restrictions, machine requirements, and machine availabilities. The sequencing plan has a huge impact on the performance measures of the scheduling problems.
+3.1.2. Interdependent problems Interdependent problems, in this context, refers to adjacent optimi­
+zation problems that have been integrated with the nesting and sched­ uling problem. This section aims at extending the analysis beyond the above-mentioned decision types and study a wider spectrum of inter­ related problems, that have the potential to affect or be affected by nesting and scheduling problems. For the sake of completeness, the existing literature is arranged into operational and tactical planning levels. By distinguishing the operational and tactical levels, researchers can integrate various insights from different planning functions and timescales. This steered the analysis towards two problems at the
+
+5
+
+M. Pinto et al.
+operational level: Part decomposition and Order acceptance; and one problem from the tactical level: Part distribution. Fig. 6 illustrates the interdependent problems found within the literature of nesting and scheduling in AM.
+At the operational level, part decomposition widens the research scope to a precedent nesting-related problem. This problem can be used to split a larger part that in its current form exceeds the dimensions of the build space into multiple smaller parts (Oh et al., 2018); it can also be referred to as the printability problem (Yao et al., 2015). Part decomposition is also used to maximize productivity (production time, cost, and part quality); mechanical functionality; artistry; interchange­ ability; and to avoid the need for support structures (Thürer et al., 2021; Yao et al., 2015).
+Several part decomposition methods have been developed in the literature. For example, Luo et al. (2012) suggested a framework to decompose a larger object into smaller dependent parts (sub-assemblies of the original object), known as Chopper. In their study, the focus was only on part decomposition, with no consideration of nesting concerns. Yet, some studies have addressed both decomposition and nesting challenges. For example, Chen (2015) proposed a decompose-and-pack (Dapper) algorithm to decompose an object into minor parts which can be efficiently packed. The Dapper algorithm aims to minimize support material, build time, and the assembly cost. Yao et al. (2015) developed a partitioning-and-packing algorithm, in which the partitioning compo­ nent is based on a level set representation. Demir et al. (2018) intro­ duced a divide-and-conquer approach, wherein the parts are derived through a near-convex decomposition. For a detailed and complete understanding of part decomposition, refer to the review of Oh et al. (2018).
+Order acceptance can be related to the scheduling problem and occurs whenever the demand exceeds the available capacity of the resources, requiring the rejection of some orders (Kapadia et al., 2022). Hence, determining the set of accepted orders is of great importance within the broader decision problem. Nevertheless, in order acceptance, there exist two distinct scenarios. In the first and most prevalent scenario, the set of orders from different customers is known a priori (Kapadia et al., 2022). In the second scenario, referred to as dynamic, not all orders are known at the beginning of the decision period (Li et al., 2019). For example, Li et al. (2019) consider the order acceptance and scheduling problem with dynamic orders arrival where a part is considered accepted if it can be produced within one of the machines and completed within the delivery time requested by the customer. Kapadia et al. (2022) proposed an order acceptance and scheduling model considering placement and orienta­ tion issues, and post-processing requirements. Tafakkori et al. (2022) suggested a framework that considers negotiating with customers to change their desired due dates and assess the influence on the order acceptance and scheduling. For a thorough and comprehensive under­ standing of order acceptance and scheduling, refer to the taxonomy and review of Slotnick (2011).
+Lastly, at the tactical level, scheduling issues have been integrated with the Part distribution problem. In this context, a set of orders has to be
+
+Computers and Operations Research 165 (2024) 106592
+manufactured and transported by vehicles to customers (Yılmaz, 2020). While scheduling is vital for achieving efficient production, aligning it with distribution planning enables the minimization of transportation and inventory costs (Li et al., 2022). Solutions to this problem are characterized by production schedules that indicate the specific date, time and manufacturing location for customers’ orders as well as the distribution plan that satisfies constraints related to the availability of delivery vehicles, their capacities, and customer due dates (He et al., 2022). Although the integration of production and distribution planning has a considerable impact on supply chain performance, we found that little research attention has been paid to investigate such problems so far. Yilmaz (2020) were among the forerunners in exploring the inte­ gration of production and distribution aspects of the AM supply chain. Li et al. (2022) studied the production and distribution problem of spare parts considering two types of customers based on the urgency of de­ livery times. The authors suggest two different transportation policies to address the delivery time requirements of the two customers. He et al. (2022) integrate the production and distribution problem of spare parts with Just-In-Time (JIT) delivery times.
+Overall, as nesting and scheduling problems have grown in complexity, additional issues have surfaced, unavoidably expanding the scope of their integration with other decision problems. Still, we note that the extent of integration remains somewhat limited. While the operational level has been extended to encompass two concerns related to nesting and scheduling (part decomposition and order acceptance), the introduction of AM processes in industrial settings poses new chal­ lenges for the operational planning.
+3.2. Main path analysis: Nesting and scheduling research backbone
+This section establishes the connections between the critical papers in an attempt to represent the backbone of the field (De Nooy et al., 2018). The main path analysis provides sound information about the relative influence of specific publications (Zupic and Cˇater, 2015). It is also examined over time, which is helpful for detecting research tradi­ tions and for leveraging prospective analyses (Aria and Cuccurullo, 2017). The combination of conceptual and main path methods provides an appropriate tool to fully understand the research structure of nesting and scheduling problems in the context of AM.
+Citations indicate to some degree the scientific relevance of papers as well as their authors and journals. Citation network analysis can consequently be seen as an itinerary carrying scientific knowledge. The main path analysis is a unique method for citation analysis that explic­ itly focuses on the scientific progress of the field over time and illustrates the evolution of research (De Nooy et al., 2018). For this, each particular citation is given a traversal weight that indicates the extent to which a citation is needed for connecting papers. The search path count method was utilized to quantify the traversal weights and extract the paths. The path with the highest traversal weight is the main path. Fig. 7 presents the main path obtained using the Pajek key-route algorithm (De Nooy et al., 2018), enriched by qualitative analysis of seminal studies in the
+
+Fig. 6. Interdependent problems with nesting and scheduling in AM. 6
+
+M. Pinto et al.
+
+Computers and Operations Research 165 (2024) 106592
+
+Fig. 7. Main path of nesting and scheduling problems in AM.
+
+field. Indeed, the main path obtained from Pajek shows the most co-cited studies, but this may not be the study from which an idea originated. For example,Li et al. (2017) was the first to define a function in order to calculate a processing time for a batch on a SLM machine, which certainly had an influence on other studies, including Fera et al. (2018), who aimed at minimizing cost on a single SLM machine. Although Ransikarbum et al. (2017) lies on the main path it addressed a different additive manufacturing technique, FDM, where the processing time of the build is known beforehand. The seminal studies are introduced in section 3.2.1 before the main path analysis is further discussed.
+The figure represents the backbone of the research on nesting and scheduling problems since its inception. First the literature considered nesting problems. This occurred during a period when AM processes were primarily applied for rapid prototyping, and scheduling needs were not relevant in the context of AM. It was with the improvement of the capabilities of AM that these technologies have become suitable for in­ dustrial applications, which in turn augmented the importance of scheduling problems. Nevertheless, scheduling problems are often modeled as one-dimensional knapsack problems (Oh et al., 2020), and therefore, it was necessary to model the capacity of AM machines through bin-packing problems, which lead to the formation of the in­ tegrated nesting-scheduling problem.
+3.2.1. Seminal studies Ikonen et al. (1997) is a seminal paper of the main path. The authors
+develop a Genetic Algorithm to solve a 3D nesting problem, in which parts are represented as non-convex geometries, including holes and cavities where other smaller parts can be placed. This makes the re­ lations between those parts very complicated. Intuitively, the authors place large parts first and fill the remaining space with smaller ones (this falls under the category of the serial placement problem). A second decision was the orientation of each part in the SLS machine. Each part had 24 allowed orientations (45 degrees of increment around each co­ ordinate axis) with finite relative positions constrained by five attach­ ment points, which define the points where the next part can be placed.
+Li et al. (2017) is a seminal paper that introduced the problem of planning and scheduling in AM. The authors considered an objective
+
+function based on the production cost per unit volume of material on non-identical SLM machines. The optimum allocation of parts into such AM machines was solved by a MIP model, and two heuristic procedures best fit and adapted best fit – are developed. Meanwhile, Chergui et al. (2018) were the first to integrate the planning and scheduling problem in AM with nesting concerns. In this work, a series of order due dates were considered and allocated to identical parallel machines. In contrast to the studies that preceded it, in this model the time spent on the AM machines is expressed in terms of part’s total production area and ma­ terial volume. The objective of the study is to minimize the tardiness and maximize the utilization of the machines. To solve the proposed model, the authors developed a heuristic based on the EDD rule.
+3.2.2. Nesting problem Following the paper of Ikonen et al. (1997), Hur et al. (2001) applied
+a modified Bottom-Left approach. This is a placement rule that implies positioning parts as close as possible to the bottom left-hand corner of the machine workspace (Araújo et al., 2020). This approach was implemented by a Genetic Algorithm. Subsequently, the orientation of the parts is optimized by considering their heights to achieve the min­ imum build height, reducing the production time and improving the surface quality. The authors contend that adopting the minimum build height as the objective function for problems involving dependent parts, resulting from the division of a larger part (part decomposition prob­ lem), is the most fitting choice, given the rough surfaces that emerge from the part decomposition process.
+While the previous studies of the path have focused on the 3D nesting problem, Canellidis et al. (2006) proposed a 2D problem applied to SLA. In comparison to the SLS process, SLA requires support structures, and therefore, nesting solutions where parts are placed on top of other ones are unfeasible. The use of support structures increases the build time, as this includes the time needed to actually produce the parts and the time required for support removal, and surface finishing. In addition, the authors do not concern the actual geometries of the parts (irregular geometries) but rather minimum bounding boxes, making the problem more manageable and computationally less burdensome. In order to minimize the overall build time, a Left-Border-Down-Border rule was
+
+7
+
+M. Pinto et al.
+applied by a Genetic Algorithm for a serial placement solution. Later, the authors extended their method (Canellidis et al., 2013) by approxi­ mating the parts geometry through polygons instead of the common bounding box. A No-Fit-Polygon is employed as an additional placing rule based on the former Left-Border-Down-Border.
+Gogate and Pande (2008) proposed a 3D nesting problem in which the part orientation problem is optimized based on the user criteria. This is operationalized by giving arbitrarily weights to each of the evaluation criteria in the objective function, including build height, average stair­ case error, volume of support structures, and contact interface of parts and support structures. By assigning different weights to interpolate between the different evaluation criteria, the problem can be custom­ ized to meet the functional requirements of several AM machines. Accordingly, the Bottom-Left method is implemented by a Genetic Al­ gorithm. Parts are represented through voxel models and could be rotated around the build axis with an increment of 45 degrees.
+Zhang et al. (2016) addressed the 2D problem to solve the nesting problem through a two-step algorithm: first a AM feature-based orien­ tation involves determining the optimal build orientation for each part to ensure high production quality, and second a parallel optimization model is used to maximize the compactness of the nesting problem through the use of polygons to represent the geometry of the parts. To solve this problem, a Genetic Algorithm was used, which reinforces the idea that this metaheuristic is a competitive solution technique for solving nesting problems.
+Nesting problems were the first AM decisions tackled by researchers, which is partly explained by the primary need to build multiple proto­ type parts simultaneously on a single building platform (Hur et al., 2001). As AM matured, there was an increasing need to be able to not only manufacture prototypes to facilitate rapid product development but also directly manufacture functional or end-use parts for specific applications (Zhang and Bernard, 2014). Owing to its advantage of manufacturing complex parts (surpassing traditional processes), AM has played a significant role in customized production. For all these reasons, nesting problems are critical to the AM planning decision-making.
+3.2.3. Scheduling problem In comparison to the nesting problem, the focus here is not on
+achieving the optimal placement and orientation of multiple parts on a build but rather on finding the best allocation and sequencing of builds in the AM machines (Oh et al., 2020). Li et al. (2017) paved the way for this problem (see section 3.2.1), leading to the subsequent studies indicated in our main path. For example, Ransikarbum et al. (2017), who consider a set of non-identical parallel FDM machines, and used a Mixed-Integer Linear Programming (MILP) model to assign a build per machine with the objectives of minimizing cost, maximizing load bal­ ance among machines, minimizing the total tardiness and minimizing the total number of unprinted builds.
+Fera et al. (2018) addressed the single-machine scheduling; a set of builds were sequenced in a SLM machine, and a multi-objective model was formulated to minimize the production cost and the weight of the total earliness/tardiness. In their approach, the schedule that meets due dates with the least cost is solved using a modified Genetic Algorithm.
+Meanwhile, Kucukkoc (2019) provides a stepping-stone to model advances for AM scheduling, since the authors addressed three different SLM configurations: single machine, parallel identical machines, and non-identical parallel machines. The different configurations were tackled through three MILP models to minimize the makespan, and the optimum solutions have been reported. The results showed limited applicability when problem size increases, which indicates the need for effective heuristics and metaheuristics to solve large problem instances.
+The main path analysis also reveals that, at some point, the literature on nesting and scheduling is branched into two research streams. One stream is dominated by Fera et al. (2020), which represents the most evident research trajectory when compared to the previous papers. The other stream is led by the paper of Yılmaz (2020), which explores the
+
+Computers and Operations Research 165 (2024) 106592
+scheduling together with other supply chain functions. Later on, Oh et al. (2020) integrated both research streams in a comprehensive re­ view on nesting and scheduling problems in AM.
+Fera et al. (2020) developed an improved Tabu Search to solve the same problem proposed in Fera et al. (2018). They showed that their algorithm outperforms the earlier modified Genetic Algorithm in solving small to large size instances. Yılmaz (2020) took the pioneering approach of investigating the combination of production and distribu­ tion functions in an AM supply chain to propose a two-stage scheduling problem, in which parts are produced on SLM machines by one manu­ facturer in the production step and then distributed to various customers by means of solving a transportation problem. A heuristic procedure with five selection rules was proposed to minimize the makespan, and computational experiments were conducted using problem instances generated for small and large size problems.
+The need for solving AM scheduling problems results from an increasing adoption of AM machines in real manufacturing contexts (Fera et al., 2020). This shift asked for innovative models and methods capable of efficiently dealing with AM technologies. While the nesting problem looked at the AM problem in the realm of a single machine, this second problem comes as a step forward in bringing the AM planning closer to practical scenarios. Nevertheless, the models that address this problem are often modeled as one-dimensional knapsack, and thus it was necessary to model the capacity of AM machines through nesting issues, which lead to the development of the integrated nestingscheduling problem.
+3.2.4. Integrated nesting-scheduling problem Although the integration of nesting and scheduling problems has
+been only recently addressed, it remains of utmost importance to model the interdependence between these decisions. Following the research by Chergui et al. (2018), which is a seminal paper for integrated nesting and scheduling (see section 3.2.1), the comprehensive review of Oh et al. (2020) holds a pivotal position in our main path because it was the first review paper that has thoroughly combined both nesting and scheduling papers in a holistic manner. The authors proposed a taxonomy to classify nesting and scheduling problems into four classes depending on Part; Build, and AM Machine. In the M/S/S class, problems consider multiple parts grouped into a single build and assigned to a single machine. M/ M/S class covers problems where a single AM machine sequentially processes multiple builds, whereas in the M/M/M class a set of identical or non-identical machines are assigned to builds. Finally, if the optimi­ zation problem considers that only one part is assigned to each machine for a build cycle, these are classified into -/M/M class. Hence, by comprehensively covering nesting and scheduling problems in AM, the developed taxonomy complements the literature with a hierarchical perspective.
+Faced with the hardness of solving both nesting and scheduling problems, Alicastro et al. (2021) used a Q-learning variable neighbor­ hood search to develop a Reinforcement Learning Iterated Local Search metaheuristic. The nesting problem discussed in their paper is called a strip-packing problem, which can be described through a rectangular bin with finite width and infinite height, in which the objective of this problem is to minimize the nesting height. In pursuit of simplicity, the authors considered bounding boxes to represent the parts. Thus, the problem is solved through a level-oriented method where parts are ar­ ranged in rows forming levels, such that in each level the set of parts are bottom-aligned. For the scheduling problem, non-identical SLM ma­ chines are considered to minimize the makespan.
+Rohaninejad et al. (2022) addressed a non-identical SLM machines environment. Differing from the earlier efforts, this study did not investigate single-material part production, but rather SLM machines capable of working with different powder types, including steel, iron-, aluminum-, and titanium-based alloys. Hence, the parts belonging to a particular job must be of the same material type, while different material types can be used for successive builds. To produce a sequence of builds
+
+8
+
+M. Pinto et al.
+with different material types, it is necessary to clean the SLM machine as well as to replace the related powder. This setup process requires additional time, and the setup time is sequence-dependent. Accordingly, a bi-objective MILP model was proposed considering the makespan and the total tardiness cost, and a hybrid metaheuristic was developed combining the Non-Dominated Sorting Genetic Algorithm (NSGA-II) with a learning-based local search founded on a k-means clustering al­ gorithm and a regression neural network.
+While previous papers have been broadening the efforts to encom­ pass mainly economic goals, Tafakkori et al. (2022) have been at the forefront of the research addressing sustainability concerns in AM. In their study, a multi-objective model was developed on the basis of the triple bottom line that includes profit, energy utilization of machines, and goodwill losses as the three sustainability criteria. Beyond part placement, the part orientation problem along with irregular geometries were considered into the nesting problem, and a non-identical parallel machine scheduling was solved. An order acceptance problem, in which the manufacturer has set some negotiation strategy to win orders based on increasing due date desired by customers for price reductions, were also considered. The model was solved by three algorithms: robust improved ε-constraint method, NSGA-II, and the multi-objective meta­ heuristic Grey Wolf Optimizer.
+3.3. Critical remarks on the main path analysis
+Although the main path analysis of nesting and scheduling in AM
+
+Computers and Operations Research 165 (2024) 106592
+provides a thorough view about the influence of each specific publica­ tion (Zupic and Cˇater, 2015), it is crucial to recognize that the AM field’s relative youth and rapid pace of progress may not be adequately captured in the citation network. To address this shortcoming, we included in the main path a secondary path analysis. The secondary paths point to pertinent research that ultimately contributes to draft a complete research territory. To conduct this analysis, we examined each pair of interconnected papers to uncover secondary streams gaining relevance within the nesting and scheduling domain. Fig. 8 shows two other paths - processing operations and collaborative manufacturing alongside the main path presented above.
+3.3.1. Collaborative manufacturing This research stream introduces the collaborative multi-site pro­
+duction problem in AM, wherein orders must be batched and scheduled at several geographically dispersed manufacturing sites. Given the unique characteristics of AM, this problem is particularly relevant. One of the strengths of AM is that apart from being a toolless production technologies, the entire production process is handled by a machinereadable format, i.e., each phase of the manufacturing process is digi­ tally captured and can be readily interpreted by machines or computer systems. These advantages allow the digital transfer of production batches from one machine to another, without the need for costly transfer methods (Zehetner and Gansterer, 2022). Therefore, firms could easily exchange orders among manufacturing plants to balance the use of facilities or even save transportation costs, as one manufacturing site
+
+Fig. 8. Secondary paths of the nesting and scheduling problem in AM. 9
+
+M. Pinto et al.
+may be situated closer to customers. Zehetner and Gansterer (2022) were the first to introduce the
+collaborative multi-site production problem in AM. They developed a two-step approach, wherein the overall problem is decomposed into a nesting and a scheduling problem. Two different Genetic Algorithms were proposed for the nesting problem and a MILP model for the scheduling problem. Their following work (Zehetner and Gansterer, 2023) studies the relationship between collaborative production and Cloud Manufacturing (CMfg), since CMfg is considered an essential enabler for achieving collaborative production goals. The research conducted by Zehetner and Gansterer (2023) was influenced by the work of Zhou et al. (2018) and Liu et al. (2021). Zhou et al. (2018) focused their study on the supply–demand matching problem for AM services in CMfg. Different service attributes were considered, including model size, material, accuracy, cost, time, and transportation. To minimize the delivery time from service providers to customers, a Ge­ netic Algorithm was proposed. Likewise, Liu et al. (2021) developed a non-cooperative game model of AM services in a CMfg. The objective is to reduce the makespan, cost and to maximize the service quality.
+CMfg can be seen as a technology-driven approach that uses cloud computing and networking technologies to facilitate the sharing of manufacturing resources, information, and capabilities over a network (Zhou et al., 2018). It acts as a technological infrastructure that supports efficient management and operation of the manufacturing process. AM can serve as a catalyst and demonstration of CMfg applications (Liu et al., 2021). At the same time, CMfg is a key technology to leverage AM systems, connecting suppliers to customers and to the CMfg operator, who is responsible for managing and operating the CMfg platform (Wang et al., 2019). Although collaborative manufacturing is a complex decision problem, for the convenience of AM research, the scheduling problem related to CMfg has been studied previously (Liu et al., 2021). Hence, the introduction of AM within CMfg is a sound direction to further improve the utilization of idle resources and achieve cost re­ ductions (Wu et al., 2022).
+Recently, there has also been a proliferation of research on collab­ orative multi-robot manufacturing (Jin et al., 2019; Poudel et al., 2020; McPherson and Zhou, 2018; Poudel et al., 2021; Shen et al., 2019; Jiang et al., 2021; Weber et al., 2023). These studies suggest a new approach to provide scalability to AM, allowing multiple robots to cooperate on a single printing job (Shen et al., 2019). A large part is first divided into multiple chunks (divisions), which are then assigned to multiple robots to work cooperatively (Poudel et al., 2021). In this scenario, typical decisions include geometric partition of the large part into chunks, scheduling of robots to chunks, path planning (collision-free moving path planning for robots to transition from one workstation to another) and motion planning (collision-free infill paths generation for neigh­ boring robots to work together during manufacturing).
+3.3.2. Processing operations Pre- and post-processing operations have a substantial impact on the
+AM scheduling problem, namely when the parts have due dates and fixed delivery times. Aloui and Hadj-Hamou (2021) introduced two models for Power-based Laser and Multi Jet Fusion (MJF) technologies to estimate the production time, including file and machine preparation, layer construction, and post-processing operations (finishing, sorting and packaging). The objective is to reduce the total delay of the parts to be produced and to maximize the use rate of the AM machines. The authors solved the problem with an exact method using Mixed-Linear Programming and a heuristic procedure based on the Earliest Due Date (EDD) rule and the shortest estimated manufacturing time.
+Meanwhile, Kapadia et al. (2022) considered the problem of order acceptance and scheduling, satisfying all technological constraints, including part placement and part orientation into the AM machine and post-processing operations for support removal and surface finishing. The authors used a Genetic Algorithm to select orders for complete or partial acceptance and to produce machine schedules such that the
+
+Computers and Operations Research 165 (2024) 106592
+profit is maximized. Specifically, post-processing operations pose sig­ nificant challenges for production scheduling since routings and pro­ cessing requirements vary, and therefore parts produced at AM machines often require alternative post-processing operations and in different sequences. Thürer et al. (2021) considered the use of workload control in a flow-shop where nine distinct pool sequencing rules aimed at minimizing shop floor throughput times and preventing starvation. Once a job is released and enters the queue at the AM station, three dispatching rules prioritize jobs awaiting processing in the queue of the station.
+The work carried out in this stream suggests that explicit consider­ ation of pre- and post-processing operations can significantly improve the performance of AM scheduling, while also approaching practical needs. Particularly, the delivery time seems to be largely determined by post-processing stations, which may significantly constrain the effec­ tiveness of AM (Thürer et al., 2021). These stations, cause difficulties for production planning and, as a result, problems in adhering to promised due dates.
+4. Model characteristics
+To answer our second research question, we review the main char­ acteristics of the mathematical formulations for nesting and scheduling problems in AM. Model variants can be attributed to the different levels of detail and industrial contexts under consideration. Our analysis was centered on seven fundamental model aspects. Part placement and part orientation decisions were brought to the forefront of the discussion, since both have a great level of influence on the nesting problem. Given the different machine configurations addressed in the literature, we adopt a categorization considering single-machine, identical parallel machines, non-identical parallel machines, flow-shop, and job-shop. Machine allocation and sequencing decisions were considered main features of the scheduling problem. Finally, optimization issues are detailed through the assumptions or constraints, the objective function, and the solution approach used in the models. Table 2 shows the various assumptions used in the literature. The models were categorized based on the problems of nesting (N), scheduling (S), part decomposition (D), part distribution (T), and order acceptance (OA). Table 3 classifies the studies through the above-mentioned aspects.
+To facilitate comprehension of Table 3, “✓” indicates that the aspect was covered in the paper, while “×” denotes that the aspect was not addressed in the paper. In addition, to properly interpret the column of
+
+Table 2 Assumptions of nesting and scheduling problems in AM.
+
+Code Assumptions or constraints
+
+N1
+
+The orientation of parts is pre-determined
+
+N2
+
+Parts are not allowed to stack on top of each other (2D nesting)
+
+N3
+
+Parts are allowed to stack on top of each other (3D nesting)
+
+N4
+
+Parts are placed at once (parallel placement)
+
+N5
+
+A rule determines where the next part will be placed next (serial placement)
+
+N6
+
+Parts are approximated by regular geometries (e.g., bounding boxes)
+
+D1
+
+A larger part can be divided into smaller parts to fit in the build (dependent
+
+parts)
+
+S1
+
+Sequence-independent setup time (setup time is included in the production
+
+time)
+
+S2
+
+Sequence-dependent setup time
+
+S3
+
+The machines are compatible for producing parts with any type of material
+
+S4
+
+Sequence restrictions (e.g., due dates or dependencies)
+
+S5
+
+Uncertainty factors (e.g., arrival times, production times, and machine
+
+availability)
+
+S6
+
+The AM machines belong to multiple suppliers in different geographical
+
+locations
+
+S7
+
+Hybrid manufacturing systems, combining AM with traditional
+
+manufacturing
+
+T1
+
+Each build is transported from the manufacturer to the customers by a
+
+vehicle
+
+OA1 The decision-maker can accept or reject orders (order acceptance problem)
+
+10
+
+M. Pinto et al.
+
+Table 3 Framework on the characteristics of the models.
+
+Paper
+
+Placement
+
+Ikonen et al. (1997)
+
+✓
+
+Dickinson and Knopf (1998)
+
+✓
+
+Hur et al. (2000)
+
+✓
+
+Hur et al. (2001)
+
+✓
+
+Zhang et al. (2002)
+
+✓
+
+Dickinson and Knopf (2002)
+
+✓
+
+Canellidis et al. (2005)
+
+✓
+
+Canellidis et al. (2006)
+
+✓
+
+Gogate and Pande (2008)
+
+✓
+
+Yang et al. (2008)
+
+✓
+
+Kim et al. (2010)
+
+×
+
+Canellidis et al. (2013)
+
+✓
+
+Wu et al. (2014)
+
+✓
+
+Feng and Jia (2015)
+
+×
+
+Freens et al. (2015)
+
+×
+
+Cao et al. (2015)
+
+✓
+
+Edelkamp and Wichern (2015)
+
+✓
+
+Zhang et al. (2016)
+
+✓
+
+Koblasa et al. (2016)
+
+✓
+
+Canellidis et al. (2016)
+
+✓
+
+Li et al. (2017)
+
+×
+
+Ransikarbum et al. (2017)
+
+×
+
+Kim et al. (2017)
+
+×
+
+Zhou et al. (2018)
+
+×
+
+Li and Zhang (2018)
+
+✓
+
+Chergui et al. (2018)
+
+✓
+
+Li and Zhang (2018)
+
+✓
+
+Dvorak et al. (2018)
+
+✓
+
+Oh et al. (2018)
+
+✓
+
+Romanova et al. (2018)
+
+✓
+
+Zhang et al. (2018)
+
+✓
+
+Gopsill and Hicks (2018)
+
+✓
+
+Fera et al. (2018)
+
+×
+
+Romanova et al. (2019)
+
+✓
+
+Griffiths et al. (2019)
+
+✓
+
+Kucukkoc (2019)
+
+×
+
+Kucukkoc (2019)
+
+×
+
+Kucukkoc (2019)
+
+×
+
+Li et al. (2019)
+
+×
+
+Litvinchev et al. (2019)
+
+✓
+
+Chen (2019)
+
+×
+
+Fera et al. (2020)
+
+×
+
+Chekanin (2020)
+
+✓
+
+Darwish et al. (2020)
+
+✓
+
+Valizadeh et al. (2020)
+
+×
+
+Che et al. (2021)
+
+✓
+
+Li et al. (2019)
+
+✓
+
+Arndt et al. (2020)
+
+✓
+
+Tavakkoli-Moghaddam et al. (2020)
+
+×
+
+Zhang et al. (2020)
+
+✓
+
+Ransikarbum et al. (2020)
+
+✓
+
+Yılmaz (2020)
+
+×
+
+Rossi and Lanzetta (2020)
+
+×
+
+Chugay et al. (2020)
+
+✓
+
+Romanova (2021)
+
+✓
+
+Kim and Kim (2021)
+
+×
+
+Chekanin and Chekanin (2021)
+
+✓
+
+Kucukkoc et al. (2021)
+
+✓
+
+Aloui and Hadj-Hamou (2021)
+
+✓
+
+Chugay and Zhuravka (2021)
+
+✓
+
+Rohaninejad et al. (2021)
+
+×
+
+Darwish et al. (2021)
+
+×
+
+Alicastro et al. (2021)
+
+✓
+
+Kapadia et al. (2021)
+
+✓
+
+Pantoja-Benavides and A´lvarez-Martínez (2022)
+
+✓
+
+Yang et al. (2022)
+
+✓
+
+Kim and Kim (2021)
+
+×
+
+Garashchenko et al. (2022)
+
+✓
+
+Arık (2022)
+
+✓
+
+Yu et al. (2022)
+
+✓
+
+Toksarı and Tog˘a (2022)
+
+×
+
+Li et al. (2022)
+
+×
+
+Makanda et al. (2022)
+
+✓
+
+Tafakkori et al. (2022)
+
+✓
+
+Orientation
+✓ ✓ × ✓ ✓ ✓ × ✓ × ✓ × × ✓ × × ✓ ✓ ✓ ✓ ✓ × × × × ✓ × ✓ ✓ ✓ ✓ ✓ ✓ × ✓ ✓ × × × × ✓ × × ✓ × × ✓ × ✓ × ✓ × × × ✓ ✓ × ✓ × × ✓ × × × × ✓ ✓ × ✓ ✓ ✓ × × ✓ ✓
+
+Machine
+Single Single Single Single Single Single Single Single Single Single Single Single Single RM1 RM Single Single Single Single Single RM RM PM3 RM Single PM RM Job-shop Flow-shop Single Single PM Single Single Single Single PM RM RM Single RM2 Single Single RM Flow-shop RM RM Single RM PM RM RM Job-shop Single Single PM Single RM RM Single RM RM RM Flow-shop Single Single PM Single Flow-shop RM Single Single RM RM
+
+Scheduling
+× × × × × × × × × × ✓ × × ✓ ✓ × × × × × ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ × × ✓ ✓ × × ✓ ✓ ✓ ✓ × ✓ ✓ × ✓ ✓ ✓ ✓ × ✓ ✓ ✓ ✓ ✓ × × ✓ × ✓ ✓ × ✓ ✓ ✓ ✓ × × ✓ × ✓ ✓ ✓ ✓ ✓ ✓
+
+Computers and Operations Research 165 (2024) 106592
+
+Assumptions
+N3;N4 N3;N5 N1;N3;N5;N6 N3;N5;D1 N3;N5;N6 N3;N5 N2;N5;N6 N2;N5;N6 N1;N3;N5 N2;N3;N5;N6 S1;S3 N1;N2;N5 N2;N5 S1;S4;S7 S4 N2;N6 N3;N4 N2;N3 N3;N5;N6 N2;N5 N1;N2;N6 S4 D1;S1 S4;S6 N2;N5;N6 N2;N6;S4 N2;N5;N6;S1 N2;S4 N2;N5;N6;D1 N3;N5 N2;N4 N2;N6;S3 S4 N3;N5 N2;N5 S1 S1 S1 S6;OA1 N3;N5 S5;S6;T1 S4 N2;N5 N2;S4;OA1 S7 N2;N6;S1 N1;N2;S5;OA1 N3;N4 S2;S4 N2;N5;S7 N2;N3;S;S4 S1;T1 S1;S7 N3;N4 N2;N4 S2 N3;N5 N1;N2;N6;S4 N2;N6;S4;S7 N3;N4 S1;S3;S4 S4;OA1 N1;N2;N6;S1 N1;N2;N6;OA1 N3;N4 N2;N4 D1;S3 N2;N4 N2;N6;S1;S7 N2;N6;S1;S4 S2;S3 S4;T1 N2;S6;OA1 N2;N6;S4;OA1
+
+Objective
+
+Approach
+
+Part distance Compactness Compactness Compactness Build height Compactness Compactness Compactness Multi-objective Compactness Material switches Compactness Multi-objective Multi-objective Tardiness cost Compactness Centrality Overlap area Compactness Compactness Build cost Multi-objective Makespan Total tardiness Makespan Total tardiness Makespan Tardiness Total time Part distance Overlap area Productivity Tardiness & cost Part distance Total build cost Makespan Makespan Makespan Profit Build height Makespan Build time & cost Part distance Workload Makespan Makespan Profit Multi-objective Makespan Makespan Multi-objective Makespan Makespan Build height Compactness Makespan Compactness Total tardiness Total tardiness Build height Total tardiness Workload Makespan Profit Compactness Compactness Makespan Build height Makespan Total tardiness Makespan Multi-objective Cost and time Multi-objective
+
+GA SA GA GA SA SA SA GA GA GA Heuristic GA GA DP3 ILP4 SA SA GA Heuristic GA MIP;Heuristic MILP GA GA MIP5;Heuristic Heuristic Heuristic Local search GA NLP6 Heuristic GA;Heuristic GA MIP Tabu Search MILP MILP MILP Heuristic MIP FMILP;FMIQP7 Tabu Search Heuristic Heuristic PSO8 MILP;SA Heuristic GA MILP GA MILP Heuristic ACO9 NLP MIP MIP;GA Heuristic GA MIP;Heuristic NLP Matheuristic10 Heuristic Hybrid11 GA Hybrid12 Heuristic MILP GA MIP;Heuristic MILP MILP MIP Heuristic Three methods13
+
+(continued on next page)
+
+11
+
+M. Pinto et al.
+
+Computers and Operations Research 165 (2024) 106592
+
+Table 3 (continued )
+
+Paper
+
+Placement
+
+Orientation
+
+Machine
+
+Scheduling
+
+Assumptions
+
+Objective
+
+Approach
+
+Wu et al. (2022) Hu et al. (2022) Altekin and Bukchin (2022) Rohaninejad et al. (2022) He et al. (2022) Ying et al. (2022) Oh and Cho (2022) Kim and Kim (2022) Yau and Hsu (2022) Zipfel et al. (2023) Yang et al. (2023) Lee and Kim (2023) Uzunoglu et al. (2023) Yu et al. (2023) Calabrese et al. (2022) Nascimento et al. (2023) Ying and Lin (2023) Zehetner and Gansterer (2023) Lu et al. (2023) Chandra Sugianto and Soo Kim (2023) Hu et al. (2023) Lin et al. (2023)
+
+✓
+
+×
+
+✓
+
+✓
+
+✓
+
+×
+
+✓
+
+×
+
+×
+
+×
+
+✓
+
+×
+
+×
+
+×
+
+×
+
+×
+
+✓
+
+✓
+
+×
+
+×
+
+✓
+
+✓
+
+✓
+
+✓
+
+×
+
+×
+
+✓
+
+×
+
+✓
+
+✓
+
+✓
+
+×
+
+✓
+
+×
+
+✓
+
+×
+
+✓
+
+✓
+
+×
+
+×
+
+✓
+
+✓
+
+✓
+
+✓
+
+RM
+
+✓
+
+RM
+
+✓
+
+RM
+
+✓
+
+RM
+
+✓
+
+Single
+
+✓
+
+Single
+
+✓
+
+Flow-shop
+
+✓
+
+RM3
+
+✓
+
+Single
+
+×
+
+RM
+
+×
+
+Single
+
+✓
+
+RM
+
+✓
+
+RM
+
+✓
+
+Single
+
+✓
+
+Single
+
+×
+
+RM
+
+✓
+
+Job-shop
+
+✓
+
+RM
+
+✓
+
+RM
+
+✓
+
+RM
+
+✓
+
+RM
+
+✓
+
+RM
+
+✓
+
+N1;N6;S6 N2;N6;S1 N1;N2;N6;S1 N1;N2;N6;S4 T1 N1;N2;N6;S4 D1;S1;S7 S2 N3;N6;D1 S2;S4 N3;N4 N2;N5;N6 S1;S4 N1;N2;N6 N2;N6 N1;N2;S4 N1;N2;N6;S7 N2;N6;S1;T1 N2;N5;S1 S2;T1 N2;N6;S4 N2;N6
+
+Average cost Makespan Makespan Total Tardiness Makespan Tardiness Makespan Makespan Build height Total tardiness Compactness Makespan Total tardiness Makespan Compactness Cost; Tardiness Makespan Total cost Makespan Makespan Total tardiness Multi-objective
+
+MILP;Heuristic MILP;Heuristic MILP;Heuristic NSGA-II MIP Heuristic MIP Four methods14 FPA15 MIP;ILS16 Heuristic MILP;GA;PSO MILP;Hybrid17 MIP Heuristic CP18 MILP;Hybrid19 Heuristic Heuristic PSO MILP;Heuristic MILP
+
+1Non-identical parallel machines; 2Identical parallel machines; 3Dynamic Programming; 4Mixed-Integer Programming; 5Integer-Linear Programming; 6Non-Linear Programming; 7Fuzzy Mixed-Integer Linear Programming Model and Fuzzy Mixed-Integer Quadratic Programming Model; 8Particle Swarm Optimization; 9Ant Colony Optimization; 10Genetic Algorithm and MIP; 11Reinforcement Learning Iterated Local Search metaheuristic; 12Simulation and Tabu Search; 13Robust improved ε-constraint method; NSGA- II; and Grey Wolf Optimizer; 14Mixed-Integer Programming; 8Particle Swarm Optimization; Genetic Algorithm; and Imperialist Competitive Algorithm; 15Flower Pollination Algorithm; 16Iterad Local Search; 17Learning-augmented heuristic; 18Constraint Programming; 19Reinforcement Learning Iterated Greedy Algorithm.
+
+assumptions, it should be cross-referenced with Table 2. The nesting problem (led by placement and orientation decisions)
+has been studied with the primary objective of maximizing the compactness of the build. The outcome is evident; by optimizing the compactness more parts within the build are accommodated and more parts are produced during one cycle time (Kucukkoc, 2021). Yet, the pressing question that emerges when considering compactness is how to model overlapping requirements between parts. While some authors model this issue by geometric approximations to represent the real form of the parts, thereby introducing a tolerance between the parts (Fera et al., 2018; Demir et al., 2018; Zehetner and Gansterer, 2022), other authors consider overlap concerns in the objective function (Che et al., 2021; Wu et al., 2022).
+Even considering simplifications, such as geometric approximations, the optimization problem is not trivial, and the computational burden increases sharply with the irregularity of the geometries, and hence the model solution time also increases (Araújo et al., 2020). To overcome this situation, it is common practice to simplify the parts to regular ge­ ometries, including bounding boxes (Oh et al., 2018), cylinders (Zhang et al., 2002), and spheres (Dickinson and Knopf, 2002). Simplifications, while theoretically useful to reduce the computational burden, are far from practical for real-world scenarios. This has been noticed by scholars who have effectively solved the nesting problem involving irregular geometries. For a thorough and comprehensive understanding of nesting problems with irregular geometries, refer to the noteworthy review of Araújo et al. (2019).
+To a lesser extent, the second most often discussed objective, the build height, directly impacts the production time and cost (Yau and Hsu, 2022). This occurs since AM machines operate layer-by-layer, and as the number of layers increases, the build time also grows. Given this premise, some authors consider that the build time corresponds to the production time of the highest part within the build (Edelkamp and Wichern, 2015). Other nesting objectives were considered on an ad hoc basis, including the minimization of the part’s distance within the build and the distance between parts and the build boundaries (Ikonen and Biles, 1997).
+Regarding placement decisions, two alternative strategies have been discussed in the literature: parallel placement and serial placement. In
+
+the parallel placement, all parts are positioned at once, and therefore, it is evident that parallel placements are usually solved by metaheuristics, including Simulated Annealing or Genetic Algorithms. Otherwise, serial placement decisions are essentially rule-based approaches, making them computationally less demanding, which often leads to their resolution using heuristics.
+Ensuring the proper orientation of parts within the build is another critical aspect of modeling. According to the literature, there are two different strategies: two-step and integrated. In the two-step approach, orientations are determined first and then the placement of parts is decided already with the orientations fixed from the preceding phase (Cao et al., 2015). In some models, the first step considers rotations on Xand Y-axes for build orientation, and then in the following step, rotations on the Z-axis (Gogate and Pande, 2008; Che et al., 2021; Li et al., 2019; Aloui and Hadj-Hamou, 2021). In general, the two-step approach pro­ vides lower computational complexity than the integrated approach. In the integrated method, the above-mentioned first and second steps are iteratively or simultaneously used to reach an optimized solution. It should be noted that modeling the orientation of parts elevates the nesting problem to the category of NP-hard (Li and Zhang, 2018), which leads some authors to adopt a pre-determined part orientation, and therefore reducing the orientation aspect to a single rotation along an axis (Shen et al., 2019; Jiang et al., 2021; Garashchenko et al., 2022).
+In scheduling problems, the primary objective is the minimization of makespan, followed by the minimization of tardiness. In this sense, nonidentical parallel machines were well-addressed by the literature, fol­ lowed by identical parallel machines and then single-machine configu­ rations. Slightly less considered were configurations with upstream and downstream operations (Li et al., 2022; Canellidis et al., 2006). This means that pre-processing and post-processing operations, which are integral stages for the majority of AM systems (Thürer et al., 2021), have been widely neglected when developing scheduling models. It is a novel research stream identified by our main path analysis.
+In multi-material AM scenarios, where various materials may need to be used in a single build or production cycle, including setup times be­ comes essential to address practical scenarios. When solving the scheduling problem, some authors considered sequence-dependent setup times (Rohaninejad et al., 2021). However, this requirement
+
+12
+
+M. Pinto et al.
+needs to be further studied in AM. Another modeling characteristic is the allocation of orders from
+different customer in an CMfg environment. This scenario is gaining popularity in the AM scheduling problem. Likewise, hybrid manufacturing appears to be a likely scenario in the foreseeable future given the coexistence of AM and traditional processes. However, only a restricted number of studies model the scheduling problem based on the conditions of coexistence, such as Flow-shop and Job-shop configurations.
+In terms of used approaches, nesting problems are often addressed using metaheuristic algorithms, being the Genetic Algorithm the pre­ dominant technique, followed by Simulated Annealing. Rule-based heuristics were frequently incorporated in these metaheuristics, for example, both Bottom-Left (Hur et al., 2001) and Left Border-Down Border algorithms (Canellidis et al., 2013) are widely used for serial part placement. Exact algorithms were considered to a lesser extent in the domain of nesting.
+In the context of scheduling problems, heuristic and metaheuristics methods continue to stand out as the most often used algorithms. Yet, there is an increased application of exact algorithms, including MixedInteger Programming (Griffiths et al., 2019; Jiang et al., 2021; Weber et al., 2023) and MILP (Rohaninejad et al., 2022; Hur et al., 2000; Zhang et al., 2002) models. It is important to acknowledge that exact algo­ rithms still have limited practicality when dealing with large-scale optimization problems, like those encountered in industrial-sized scheduling challenges.
+Finally, integrated nesting-scheduling models were usually solved by metaheuristic algorithms (Arık, 2022; Zehetner and Gansterer, 2023; Dickinson and Knopf, 2002) due to their complexity. Nevertheless, in recent developments, hybrid algorithms that blend metaheuristics with machine learning techniques have emerged as prominent directions of research to solve the integrated nesting-scheduling problem.
+5. Future research avenues
+The nesting and scheduling problem has progressed significantly. But there remain relevant issues in this field that still require further attention. The most pressing research avenues to further advance the field are outlined in the following sub sections.
+5.1. Closing the distance between modeling and reality
+Assumptions specify the conditions under which a mathematical model is expected to be accurate and relevant for decision-support. Yet, relaxed assumptions, in some cases, become necessary to address more complex real-world situations and to strike a balance between model simplicity and utility. In contrast, tightening the models is a natural move to elevate the quality of solutions.
+An important relaxation issue is associated with the complexity of parts in the nesting models. There is an expectation for a future increase in the adoption of real-world geometries, rather than oversimplified regular geometries, including bounding boxes. This oversimplification may result in suboptimal nesting solutions, impacting material utiliza­ tion and production efficiency. Future research should include the ability to handle irregular geometries more effectively, allowing for a more realistic representation of each part. Nonetheless, this stresses the importance of the model also incorporating advanced non-overlapping constraints, since the interaction between irregular geometries poses a significant modelling challenge.
+Incorporating uncertainties is also essential for delivering robust solutions. For example, uncertainty in demand, parts’ characteristics, arrival times, and availability of machines. Some quality issues may also be considered, for example, parts being damaged that need to be pro­ duced again.
+
+Computers and Operations Research 165 (2024) 106592
+5.2. Solving interrelated problems
+One of those sound integrations is the consideration of AM sched­ uling with the distribution of parts to the final customer. The scarcity of research here indicates that while the integration of nesting and scheduling problems has witnessed substantial attention, the extension to include distribution of parts is an offshoot where further in­ vestigations are warranted.
+Another key integration that has unfolded, though with subtle expression, is the consideration of part decomposition concerns with nesting. Given the interrelated nature of these decisions that have been typically addressed separately, there is ample room for integration. Going a little further, it would be interesting to extend the decomposition-and-nesting problem to include scheduling consider­ ations. For example, when a part is divided into smaller parts and grouped into builds, these parts are typically manufactured on a single machine. Nonetheless, an extension of this problem would involve manufacturing the parts into different builds that are then distributed across parallel AM machines.
+Other decisions can be further considered with nesting and sched­ uling problems in AM. One of the less frequent but important ones, is the integration of inventory issues, including supply chain management and spare parts management. AM features should be distinguished from traditional inventory topics. In traditional manufacturing, inventory management often focuses on maintaining stock levels of finished goods, raw materials, and components. Yet, in AM the dynamic nature of pro­ duction and on-demand manufacturing necessitate a reevaluation of inventory strategies. Integrating inventory decisions into the nesting and scheduling problems in AM facilitates a more streamlined process.
+5.3. Modeling emerging AM technologies and scenarios
+CMfg and mobile printing robots seem to be two key technologies for leveraging the AM system and vice versa. CMfg is a sound avenue to further improve the utilization of idle AM machines and achieve cost reductions based on collaborative production models. Although prom­ ising, CMfg has only recently been brought into the discussion of AM scheduling problems, and thus, there is still ample room for further research. For example, the consideration of factors such as dynamic arrival of orders, acceptance of orders, downtime of AM machines, and capabilities of logistic services are all needed to further advance CMfg AM scheduling.
+Collaborative multi-robot manufacturing suggests a new paradigm to provide scalability to AM, but as for CMfg AM scheduling research, also the research on AM multi-robot scheduling is still in its infancy. A major challenge is to delineate multiple chunks within complex shapes. In this domain, different avenues to represent the chunks could be considered. Furthermore, existing works utilize a limited number of robots. Future research should focus on the application of more robots for cooperative AM, promoting higher utilization of the available robots.
+Another technological improvement in AM systems is multi-material technologies, such as the multi-material SLA machines, which can pro­ duce a single part using different materials. This technique could simplify certain decisions, including the scheduling of parts from different materials in the same build. A paper exploring this technology is Kim et al. (2010). Given the surging demand for orders requiring multiple materials, multi-material technologies can be used for diverse applications that can take advantage of not only SLA but many other AM technologies. Investigations could also be extended to specialized AM machines supporting multi-laser, multi-extruder, and multi-axis. Furthermore, advanced AM machines that are capable of a multi-step process can reduce the complexity of production scheduling.
+5.4. Integrating AM into existing processes
+
+It is foreseeable that AM and traditional processes will coexist.
+
+13
+
+M. Pinto et al.
+Nevertheless, only few works have modelled the AM scheduling problem based on these conditions (Makanda et al., 2022; Kapadia et al., 2022; Rossi and Lanzetta, 2020; Freens et al., 2015). In a coexistence scenario, the decision-maker has the flexibility to select between AM machines and traditional manufacturing machines for producing a set of specific parts. This decision can prove advantageous for planning purposes, considering that AM is characterized by reduced throughput and rela­ tively high costs, even though the specific cost is contingent on factors including material choices and build volume (Maranha et al., 2023). However, in opposition to traditional manufacturing machines, AM enables the production of geometrically complex parts and offers flexi­ bility for product design (Maranha et al., 2023). This scenario provides the opportunity to adapt production scheduling, particularly for dy­ namic orders.
+Even when all parts are manufactured through AM, there is evidence suggesting that, specifically, post-processing stations are required to ensure surface quality, support removal, and dimensional accuracy. However, most AM scheduling studies are based on single and parallel machine settings. This suggests an opportunity to extend the research horizon to incorporate flow-shop and job-shop models. Rework and repair operations can also be included as downstream AM options. Indeed, post-processing operations poses significant challenges for production scheduling and control since routings and processing re­ quirements vary. This may result in unbalanced workloads at down­ stream AM stations. Future research could explore optimization-based workload control. Integrating post-processing operations with workload control and order acceptance decisions seems to be another interesting research stream.
+5.5. Adopting new solution approaches
+Our analysis demonstrated that hybrid algorithms that blend meta­ heuristics with machine learning techniques represent the most recent advancements in solution approaches. More research is required to further advance this promising field. Meanwhile, machine learning is widely used to recognize patterns, which is commonly referred to as computer vision. In AM, for part orientation decisions, machine learning could analyze the characteristics of 3D CAD models and determine the optimal orientation for each part. This approach can minimize support structures, reduce build time, and improve the quality of parts. Addi­ tionally, for part placement, machine learning can autonomously arrange parts on the build. Moreover, a distinct aspect is that these al­ gorithms can learn from historical data and adapt to different shapes and product requirements.
+Another opportunity lies in the application of machine learning to dynamic manufacturing, based on real-time factors, including machine and material availability, and machine downtimes. Additionally, these models can be trained to predict the quality of parts, considering various parameters, including machine settings, material characteristics, and environmental conditions. Another potential venue is the use of machine learning to optimize AM supply chain processes, including inventory management and logistics.
+5.6. Achieving environmental sustainability
+A paramount concern pervading several manufacturing systems todate relates to the environment and the sustainability of operations. By examining various aspects of AM, from material selection to printing techniques, researchers have identified opportunities to minimize the carbon footprint of AM operations, specifically studying the reduction of energy consumption and cost through nesting and scheduling or adjusting of process parameters. For example, Karimi et al. (2021) conducted a first study addressing energy issues while scheduling AM machines, while Tafakkori et al. (2022) and Lin et al. (2023) focused on reducing energy consumption by better utilizing the build space of machines and scheduling. Rupp et al. (2021) and Kucukkoc (2023) were
+
+Computers and Operations Research 165 (2024) 106592
+among the first to address the AM machine scheduling considering emissions caused by production and transportation activities.
+Despite these promising first steps, future research is needed that expands and deepens the investigation of carbon emissions in AM. This includes modeling low-emission strategies in which nesting and sched­ uling decisions benefit, for example, from better material usage, lower energy consumption, and more sustainable supply chains. In particular, additional research work is required to reduce material waste (some AM processes may generate more waste material than others) and remanu­ facturing possibilities (this could involve fixing damaged parts or mak­ ing design changes to enhance the durability or functionality of parts). Regarding energy consumption, more work can be done to improve energy efficiency and reduce the energy bill in AM. Incorporating renewable energy sources is a new challenge that may require consid­ erations of the intermittency and variability of renewable energy gen­ eration and how it impacts the overall energy consumption profile of AM technologies. Finally, future work should address the carbon emissions associated with production and transportation in AM supply chains. This involves production scheduling decisions aimed at reducing peak power demand and shift electricity usage in response to time-varying rates, along with optimizing transportation modes and distance from raw materials to manufacturing and from manufacturing to the customer.
+6. Conclusion
+This paper set out to summarize the challenges posed by AM in the field of operational research. Science mapping techniques and tradi­ tional systematic review methods were used to capture the progression of knowledge on nesting and scheduling models in the context of AM. One major critique on the proposed models is that most of them still lag behind the practical needs of real manufacturing systems. In the midst of this issue, industries are demanding solutions to smoothly integrate AM processes into their supply chains and manufacturing systems.
+As main findings of our study, the nesting and scheduling problems can be classified into six decision types. Modeling the interdependencies between all these decisions poses a complex, yet important problems for research. Although we notice that there are various assumptions that restrict existing models, we argue that nesting and scheduling research in AM has experienced notable advancement in recent years. Our find­ ings demonstrate that this progression is supported by sound research streams that include new perspectives and functional integrations to the primary problem. In short, we identified relevant research problems: part decomposition, part distribution, order acceptance and scheduling, processing operations, collaborative manufacturing, and multi-robot manufacturing to be addressed together with the nesting and sched­ uling problem.
+CRediT authorship contribution statement
+Marcelo Pinto: Conceptualization, Data curation, Writing – original draft, Writing – review & editing, Investigation. Cristo´va˜o Silva: Conceptualization, Investigation, Methodology, Validation, Resources. Matthias Thürer: Writing – review & editing, Methodology, Validation. Samuel Moniz: Conceptualization, Funding acquisition, Writing – original draft, Writing – review & editing, Investigation, Methodology, Supervision.
+Declaration of Competing Interest
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+Data availability
+The data that support the findings of this study are available from the
+
+14
+
+M. Pinto et al.
+corresponding author, Samuel Moniz (samuel.moniz@dem.uc.pt), upon reasonable request.
+Acknowledgments
+This research is supported by the doctoral Grant 2023.00991.BD financed by the Portuguese Foundation for Science and Technology (FCT), by national funds through FCT under the project UIDB/00285/ 2020 and LA/P/0112/2020; and by the Operational Programme for Competitivity and Internationalization of Portugal 2020 Partnership Agreement (PRODUTECH4S&C), grant number POCI-01-0247-FEDER046102. It also received funds through the Federal Ministry for Eco­ nomic Affairs and Climate Action (BMWK): 01MK22001B.
+References
+Alicastro, M., Ferone, D., Festa, P., Fugaro, S., Pastore, T., 2021. A reinforcement learning iterated local search for makespan minimization in additive manufacturing machine scheduling problems. Comput. Oper. Res. 131, 105272 https://doi.org/ 10.1016/j.cor.2021.105272.
+Aloui, A., Hadj-Hamou, K., 2021. A heuristic approach for a scheduling problem in additive manufacturing under technological constraints. Comput. Ind. Eng. 154, 107115 https://doi.org/10.1016/j.cie.2021.107115.
+Altekin, F.T., Bukchin, Y., 2022. A multi-objective optimization approach for exploring the cost and makespan trade-off in additive manufacturing. Eur. J. Oper. Res. 301 (1), 235–253. https://doi.org/10.1016/j.ejor.2021.10.020.
+Araújo, L.J.P., O¨ zcan, E., Atkin, J.A.D., Baumers, M., 2019. Analysis of irregular threedimensional packing problems in additive manufacturing: a new taxonomy and dataset. Int. J. Prod. Res. 57 (18), 5920–5934. https://doi.org/10.1080/ 00207543.2018.1534016.
+Araújo, L.J.P., Panesar, A., O¨ zcan, E., Atkin, J., Baumers, M., Ashcroft, I., 2020. An experimental analysis of deepest bottom-left-fill packing methods for additive manufacturing. Int. J. Prod. Res. 58 (22), 6917–6933. https://doi.org/10.1080/ 00207543.2019.1686187.
+Aria, M., Cuccurullo, C., 2017. bibliometrix: an R-tool for comprehensive science mapping analysis. J. Informetr. 11 (4), 959–975. https://doi.org/10.1016/j. joi.2017.08.007.
+Arık, O.A., 2022. Additive manufacturing scheduling problem considering assembly operations of parts. Oper. Res. 22 (3), 3063–3087. https://doi.org/10.1007/s12351021-00649-y.
+A. Arndt, H. Hackbusch, and R. Anderl, “An algorithm-based method for process-specific three-dimensional nesting for additive manufacturing processes,” 2020. [Online]. Available: https://www.scopus.com/inward/record.uri?eid=2-s2.085084929865&partnerID=40&md5=019fdc40e76e3f09fd78ab706c44b197.
+Attaran, M., 2017. The rise of 3-D printing: the advantages of additive manufacturing over traditional manufacturing. Bus. Horiz. 60 (5), 677–688. https://doi.org/ 10.1016/j.bushor.2017.05.011.
+Calabrese, M., Primo, T., Del Prete, A., Filitti, G., 2022. Nesting algorithm for optimization part placement in additive manufacturing. Int. J. Adv. Manuf. Technol. 119 (7–8), 4613–4634. https://doi.org/10.1007/s00170-021-08130-y.
+Canellidis, V., Dedoussis, V., Mantzouratos, N., Sofianopoulou, S., 2006. Pre-processing methodology for optimizing stereolithography apparatus build performance. Comput. Ind. 57 (5), 424–436. https://doi.org/10.1016/j.compind.2006.02.004.
+V. Canellidis, V. Dedoussis, and S. Sofianopoulou, “Application of simulated annealing in improving the performance of stereolithography,” 2005. [Online]. Available: https://www.scopus.com/inward/record.uri?eid=2-s2.078649880893&partnerID=40&md5=0ec0c7b98e6ed57d111daf5513428af3.
+V. Canellidis, J. Giannatsis, and V. Dedoussis, “Evolutionary Computing and Genetic Algorithms: Paradigm Applications in 3D Printing Process Optimization,” in Intelligent Computing Systems: Emerging Application Areas, vol. 627, G. A. Tsihrintzis, M. Virvou, and L. C. Jain, Eds. Heidelberger Platz 3, D-14197 Berlin, Germany: Springer-Verlag Berlin, 2016, pp. 271–298. doi: 10.1007/978-3-662-49179-9_13.
+Canellidis, V., Giannatsis, J., Dedoussis, V., 2013. Efficient parts nesting schemes for improving stereolithography utilization. Comput. Des. 45 (5), 875–886. https://doi. org/10.1016/j.cad.2012.12.002.
+P. Cao, Z. Fan, R. Gao, and J. Tang, “A Multi-Objective Simulated Annealing Approach Towards 3D Packing Problems With Strong Constraints: CMOSA,” Aug. 2015. doi: 10.1115/DETC2015-47670.
+W. Chandra Sugianto and B. Soo Kim, “Particle swarm optimization for integrated scheduling problem with batch additive manufacturing and batch direct-shipping delivery,” Comput. Oper. Res., vol. 161, no. September 2023, p. 106430, Jan. 2024, doi: 10.1016/j.cor.2023.106430.
+Che, Y., Hu, K., Zhang, Z., Lim, A., 2021. Machine scheduling with orientation selection and two-dimensional packing for additive manufacturing. Comput. Oper. Res. 130, 105245 https://doi.org/10.1016/j.cor.2021.105245.
+Chekanin, V.A., Chekanin, A.V., 2021. Development of algorithms for the formation and placement of N-dimensional orthogonal polyhedrons into containers of complex geometric shape. Int. J. Adv. Manuf. Technol. 117 (7–8), 2467–2479. https://doi. org/10.1007/s00170-021-06974-y.
+V. Chekanin, “Solving the Problem of Packing Objects of Complex Geometric Shape into a Container of Arbitrary Dimension,” Proc. 30th Int. Conf. Comput. Graph. Mach. Vis.
+
+Computers and Operations Research 165 (2024) 106592
+(GraphiCon 2020). Part 2, pp. paper50-1-paper50-13, Dec. 2020, doi: 10.51130/ graphicon-2020-2-3-50. Chen, X., et al., 2015. Dapper: decompose-and-pack for 3D printing. ACM Trans. Graph. 34 (6), 1–12. https://doi.org/10.1145/2816795.2818087. Chen, T.-C.-T., 2019. Fuzzy approach for production planning by using a threedimensional printing-based ubiquitous manufacturing system. Artif. Intell. Eng. Des. Anal. Manuf. 33 (4), 458–468. https://doi.org/10.1017/S0890060419000222. Chergui, A., Hadj-Hamou, K., Vignat, F., 2018. Production scheduling and nesting in additive manufacturing. Comput. Ind. Eng. 126, 292–301. https://doi.org/10.1016/ j.cie.2018.09.048. Chugay, A., Pankratov, A., Romanova, T., 2020. Irregular layout problem for additive production. Comput. Model. Intell. Syst. 2608, 569–579. https://doi.org/10.32782/ cmis/2608-44. Chugay, A.M., Zhuravka, A.V., 2021. Packing optimization problems and their application in 3D printing. In: In Advances in Intelligent Systems and Computing, pp. 75–85. https://doi.org/10.1007/978-3-030-55506-1_7. Darwish, L.R., Farag, M.M., El-Wakad, M.T., 2020. Towards reinforcing healthcare 4.0: a green real-time IIoT scheduling and nesting architecture for COVID-19 large-scale 3D printing tasks. IEEE Access 8, 213916–213927. https://doi.org/10.1109/ ACCESS.2020.3040544. Darwish, L.R., El-Wakad, M.T., Farag, M.M., 2021. Towards sustainable industry 4.0: a green real-time IIoT multitask scheduling architecture for distributed 3D printing services. J. Manuf. Syst. 61, 196–209. https://doi.org/10.1016/j.jmsy.2021.09.004. J. De Anto´n, F. Villaf´an˜ez, D. Poza, and A. Lo´pez-Paredes, “A framework for production planning in additive manufacturing,” Int. J. Prod. Res., pp. 1–18, Dec. 2022, doi: 10.1080/00207543.2022.2160026. De Anto´n, J., Senovilla, J., Gonz´alez, J.M., Acebes, F., 2020. Production planning in 3D printing factories. Int. J. Prod. Manag. Eng. 8 (2), 75. https://doi.org/10.4995/ ijpme.2020.12944. W. De Nooy, A. Mrvar, and V. Batagelj, Exploratory Social Network Analysis with Pajek: Revised and Expanded Edition for Updated Software, 3rd ed. Cambridge: Cambridge University Press, 2018. doi: DOI: 10.1017/9781108565691. Demir, I˙., Aliaga, D.G., Benes, B., 2018. Near-convex decomposition and layering for efficient 3D printing. Addit. Manuf. 21, 383–394. https://doi.org/10.1016/j. addma.2018.03.008. Dickinson, J.K., Knopf, G.K., 1998. Serial packing of arbitrary 3D objects for optimizing layered manufacturing. Intelligent Robots and Computer Vision Xvii: Algorithms, Techniques, and Active Vision, Oct. 3522, 130–138. https://doi.org/10.1117/ 12.325756. Dickinson, J.K., Knopf, G.K., 2002. Packing subsets of 3D parts for layered manufacturing. Int. J. Smart Eng. Syst. Des. 4 (3), 147–161. https://doi.org/ 10.1080/10255810213478. Dvorak, F., Micali, M., Mathieu, M., Mathieug, M., Mathieu, M., 2018. Planning and scheduling in additive manufacturing. Intel. Artif. 21 (62), 40–52. https://doi.org/ 10.4114/intartif.vol21iss62 pp40-52. Dyckhoff, H., 1990. A typology of cutting and packing problems. Eur. J. Oper. Res. 44 (2), 145–159. https://doi.org/10.1016/0377-2217(90)90350-K. S. Edelkamp and P. Wichern, “Packing Irregular-Shaped Objects for 3D Printing,” in Lecture Notes in Computer Science (including subseries Lecture Notes in Artificial Intelligence and Lecture Notes in Bioinformatics), 2015, pp. 45–58. doi: 10.1007/978-3319-24489-1_4. Y. Feng and G. Jia, “Scheduling under hybrid mode with additive manufacturing,” in 2015 IEEE 19th International Conference on Computer Supported Cooperative Work in Design (CSCWD), May 2015, pp. 281–285. doi: 10.1109/CSCWD.2015.7230972. Fera, M., Fruggiero, F., Lambiase, A., Macchiaroli, R., Todisco, V., 2018. A modified genetic algorithm for time and cost optimization of an additive manufacturing single-machine scheduling. Int. J. Ind. Eng. Comput. 423–438. https://doi.org/ 10.5267/j.ijiec.2018.1.001. Fera, M., Macchiaroli, R., Fruggiero, F., Lambiase, A., 2020. A modified tabu search algorithm for the single-machine scheduling problem using additive manufacturing technology. Int. J. Ind. Eng. Comput. 401–414. https://doi.org/10.5267/j. ijiec.2020.1.001. Framinan, J.M., Perez-Gonzalez, P., Fernandez-Viagas, V., 2023. An overview on the use of operations research in additive manufacturing. Ann. Oper. Res. 322 (1), 5–40. https://doi.org/10.1007/s10479-022-05040-4. J. P. N. Freens, I. J. B. F. Adan, A. Y. Pogromsky, and H. Ploegmakers, “Automating the production planning of a 3D printing factory,” in 2015 Winter Simulation Conference (WSC), Dec. 2015, pp. 2136–2147. doi: 10.1109/WSC.2015.7408327. Garashchenko, Y., Vitiaziev, J., Grimzin, I., 2022. “Packing 3D-models of products in build space of additive manufacturing machine by genetic algorithm”, in lecture notes. Mechanical Engineering 67–77. https://doi.org/10.1007/978-3-030-91327-4_ 7. Gogate, A.S., Pande, S.S., 2008. Intelligent layout planning for rapid prototyping. Int. J. Prod. Res. 46 (20), 5607–5631. https://doi.org/10.1080/00207540701277002. Gopsill, J.A., Hicks, B.J., 2018. Investigating the effect of scale and scheduling strategies on the productivity of 3D managed print services. Proc. Inst. Mech. Eng. Part B J. Eng. Manuf. 232 (10), 1753–1766. https://doi.org/10.1177/0954405417708217. Graves, S.C., 1981. A review of production scheduling. Oper. Res. 29 (4), 646–675. https://doi.org/10.1287/opre.29.4.646. Griffiths, V., Scanlan, J.P., Eres, M.H., Martinez-Sykora, A., Chinchapatnam, P., 2019. Cost-driven build orientation and bin packing of parts in selective laser melting (SLM). Eur. J. Oper. Res. 273 (1), 334–352. https://doi.org/10.1016/j. ejor.2018.07.053. E. Guzman, B. Andres, and R. Poler, “Models and algorithms for production planning, scheduling and sequencing problems: A holistic framework and a systematic
+
+15
+
+M. Pinto et al.
+review,” J. Ind. Inf. Integr., vol. 27, no. October, p. 100287, May 2022, doi: 10.1016/ j.jii.2021.100287. He, P., Li, K., Kumar, P.N.R., 2022. An enhanced branch-and-price algorithm for the integrated production and transportation scheduling problem. Int. J. Prod. Res. 60 (6), 1874–1889. https://doi.org/10.1080/00207543.2021.1876941. Hu, K., Che, Y., Zhang, Z., 2022. Scheduling unrelated additive manufacturing machines with practical constraints. Comput. Oper. Res. 144, 105847 https://doi.org/ 10.1016/j.cor.2022.105847. K. Hu, Y. Che, T. S. Ng, and J. Deng, “Unrelated parallel batch processing machine scheduling with time requirements and two-dimensional packing constraints,” Comput. Oper. Res., vol. 162, no. November 2023, p. 106474, Feb. 2024, doi: 10.1016/j.cor.2023.106474. Hur, S.-M., Choi, K.-H., Lee, S.-H., Chang, P.-K., 2001. Determination of fabricating orientation and packing in SLS process. J. Mater. Process. Technol. 112 (2–3), 236–243. https://doi.org/10.1016/S0924-0136(01)00581-7. Hur, J., Lee, K., Ahn, J., Lee, H.C., 2000. A three-dimensional algorithm using twodimensional slice data for building multiple parts in layered manufacturing. Proc. Inst. Mech. Eng. Part B J. Eng. Manuf. 214 (5), 365–378. https://doi.org/10.1243/ 0954405001518152. I. T. Ikonen, W. E. Biles, J. E. Lewis, A. Kumar, and R. K. Ragade, “A genetic algorithm for packing three-dimensional non-convex objects having cavities and holes,” in Proc. 7th Int. Conf. Genet. Algorithms, 1997, pp. 591–598. Ikonen, I., Biles, W.E., 1997. A genetic algorithm with 3-dimensional chromosome for packing non-convex parts for selective laser sintering. In: In Proceedings of the Third Nordic Workshop on Genetic Algorithms and Their Applications (3NWGA), pp. 83–96. Jiang, Z., Wang, H., Sun, Y., 2021. Improved co-scheduling of multi-layer printing path scanning for collaborative additive manufacturing. IISE Trans. 53 (9), 960–973. https://doi.org/10.1080/24725854.2020.1807076. Jin, Y., Pierson, H.A., Liao, H., 2019. Toolpath allocation and scheduling for concurrent fused filament fabrication with multiple extruders. IISE Trans. 51 (2), 192–208. https://doi.org/10.1080/24725854.2017.1374582. Kanet, J.J., Sridharan, V., 2000. Scheduling with inserted idle time: problem taxonomy and literature review. Oper. Res. 48 (1), 99–110. https://doi.org/10.1287/ opre.48.1.99.12447. Kapadia, M.S., Uzsoy, R., Starly, B., Warsing Jr., D.P., 2021. A genetic algorithm for order acceptance and scheduling in additive manufacturing. Int. J. Prod. Res. https://doi.org/10.1080/00207543.2021.1991023. Kapadia, M.S., Uzsoy, R., Starly, B., Warsing, D.P., 2022. A genetic algorithm for order acceptance and scheduling in additive manufacturing. Int. J. Prod. Res. 60 (21), 6373–6390. https://doi.org/10.1080/00207543.2021.1991023. Karimi, S., Kwon, S., Ning, F., 2021. Energy-aware production scheduling for additive manufacturing. J. Clean. Prod. 278 (2021), 123183 https://doi.org/10.1016/j. jclepro.2020.123183. Kim, H., Choi, J.-W., Wicker, R., 2010. Scheduling and process planning for multiple material stereolithography. Rapid Prototyp. J. 16 (4), 232–240. https://doi.org/ 10.1108/13552541011049243. J. Kim, S.-S. Park, and H.-J. Kim, “Scheduling 3D printers with multiple printing alternatives,” in 2017 13th IEEE Conference on Automation Science and Engineering (CASE), Aug. 2017, vol. 2017-Augus, pp. 488–493. doi: 10.1109/ COASE.2017.8256151. Kim, J., Kim, H.-J., 2021. An exact algorithm for an identical parallel additive machine scheduling problem with multiple processing alternatives. Int. J. Prod. Res. https:// doi.org/10.1080/00207543.2021.2007426. Kim, J., Kim, H.-J., 2021. Parallel machine scheduling with multiple processing alternatives and sequence-dependent setup times. Int. J. Prod. Res. 59 (18), 5438–5453. https://doi.org/10.1080/00207543.2020.1781278. Kim, Y.J., Kim, B.S., 2022. Part-grouping and build-scheduling with sequence-dependent setup time to minimize the makespan for non-identical parallel additive manufacturing machines. Int. J. Adv. Manuf. Technol. 119 (3–4), 2247–2258. https://doi.org/10.1007/s00170-021-08361-z. F. Koblasa, M. Vavrousek, and F. Manlig, “Three dimensional Bin Packing Problem in batch scheduling,” in 34TH International Conference Mathematical Methods in Economics (MME 2016), 2016, pp. 407–412. Kucukkoc, I., 2019. MILP models to minimise makespan in additive manufacturing machine scheduling problems. Comput. Oper. Res. 105, 58–67. https://doi.org/ 10.1016/j.cor.2019.01.006. Kucukkoc, I., 2021. “Metal additive manufacturing: nesting vs. Scheduling”, in AIRO Springer Series 169–180. https://doi.org/10.1007/978-3-030-86286-2_13. Kucukkoc, I., 2023. Scheduling of distributed additive manufacturing machines considering carbon emissions. An. Int. J. Optim. Control Theor. Appl. 14 (1), 20–31. https://doi.org/10.11121/ijocta.1444. Kucukkoc, I., Li, Z., Li, Q., 2021. 2D nesting and scheduling in metal additive manufacturing. In: Communications in Computer and Information Science, pp. 97–112. https://doi.org/10.1007/978-3-030-76307-7_8. Lee, S.J., Kim, B.S., 2023. Two-stage meta-heuristic for part-packing and buildscheduling problem in parallel additive manufacturing. Appl. Soft Comput. 136, 110132 https://doi.org/10.1016/j.asoc.2023.110132. Li, K., He, P., Ram Kumar, P.N., 2022. A column generation based approach for an integrated production and transportation scheduling problem with dual delivery modes. Int. J. Prod. Res. 1–19. https://doi.org/10.1080/00207543.2022.2102451. Li, Q., Kucukkoc, I., Zhang, D.Z., 2017. Production planning in additive manufacturing and 3D printing. Comput. Oper. Res. 83, 157–172. https://doi.org/10.1016/j. cor.2017.01.013.
+
+Computers and Operations Research 165 (2024) 106592
+Li, X., Zhang, K., 2018. Single batch processing machine scheduling with twodimensional bin packing constraints. Int. J. Prod. Econ. 196, 113–121. https://doi. org/10.1016/j.ijpe.2017.11.015.
+Li, Q., Zhang, D., Kucukkoc, I., 2019. Order acceptance and scheduling in direct digital manufacturing with additive manufacturing. IFAC-PapersOnLine 52 (13), 1016–1021. https://doi.org/10.1016/j.ifacol.2019.11.328.
+Li, Q., Zhang, D., Wang, S., Kucukkoc, I., 2019. A dynamic order acceptance and scheduling approach for additive manufacturing on-demand production. Int. J. Adv. Manuf. Technol. 105 (9), 3711–3729. https://doi.org/10.1007/s00170-019-03796x.
+J. Lin, C. Yu, and J. Lu, “A Bi-Objective Optimization Method to Minimize The Makespan and Energy Consumption On Parallel SLM Machines,” in 2023 IEEE 19th International Conference on Automation Science and Engineering (CASE), Aug. 2023, vol. 2023Augus, pp. 1–6. doi: 10.1109/CASE56687.2023.10260369.
+Litvinchev, I., Pankratov, A., Romanova, T., 2019. 3D irregular packing in an optimized cuboid container. IFAC-PapersOnLine 52 (13), 2014–2019. https://doi.org/ 10.1016/j.ifacol.2019.11.499.
+Liu, S., Zhang, L., Zhang, W., Shen, W., 2021. Game theory based multi-task scheduling of decentralized 3D printing services in cloud manufacturing. Neurocomputing 446, 74–85. https://doi.org/10.1016/j.neucom.2021.03.029.
+Z. Lu, K. Hu, and T. S. Ng, “Improving Additive Manufacturing production planning: A sub-second pixel-based packing algorithm,” Comput. Ind. Eng., vol. 181, no. May, p. 109318, Jul. 2023, doi: 10.1016/j.cie.2023.109318.
+Luo, L., Baran, I., Rusinkiewicz, S., Matusik, W., 2012. Chopper: partitioning models into 3D-printable parts. ACM Trans. Graph. 31 (6), 1–9. https://doi.org/10.1145/ 2366145.2366148.
+Makanda, I.L.D., Yang, M., Shi, H., Guo, W., Jiang, P., 2022. A multi-part production planning system for a distributed network of 3D printers under the context of social manufacturing. Machines 10 (8), 605. https://doi.org/10.3390/machines10080605.
+Maranha, J., Nascimento, P.J., Calcerano, T.A., Silva, C., Mueller, S., Moniz, S., 2023. A decision-support framework for selecting additive manufacturing technologies. J. Manuf. Technol. Manag. 34 (7), 1279–1311. https://doi.org/10.1108/JMTM-022023-0047.
+Maravelias, C.T., Sung, C., 2009. Integration of production planning and scheduling: overview, challenges and opportunities. Comput. Chem. Eng. 33 (12), 1919–1930. https://doi.org/10.1016/j.compchemeng.2009.06.007.
+McPherson, J., Zhou, W., 2018. A chunk-based slicer for cooperative 3D printing. Rapid Prototyp. J. 24 (9), 1436–1446. https://doi.org/10.1108/RPJ-07-2017-0150.
+Nascimento, P., Silva, C., Mueller, S., Moniz, S., 2023. Nesting and scheduling for additive manufacturing: an approach considering order due dates. In: In Springer Proceedings in Mathematics and Statistics, pp. 117–128. https://doi.org/10.1007/9783-031-20788-4_8.
+Oh, Y., Cho, Y., 2022. Scheduling of build and post processes for decomposed parts in additive manufacturing. Addit. Manuf. 59 (PB) https://doi.org/10.1016/j. addma.2022.103164, 103164.
+Oh, Y., Zhou, C., Behdad, S., 2018. Part decomposition and 2D batch placement in singlemachine additive manufacturing systems. J. Manuf. Syst. 48 (A), 131–139. https:// doi.org/10.1016/j.jmsy.2018.07.006.
+Oh, Y., Zhou, C., Behdad, S., 2018. Part decomposition and assembly-based (Re) design for additive manufacturing: a review. Addit. Manuf. 22, 230–242. https://doi.org/ 10.1016/j.addma.2018.04.018.
+Oh, Y., Witherell, P., Lu, Y., Sprock, T., 2020. Nesting and scheduling problems for additive manufacturing: a taxonomy and review. Addit. Manuf. 36, 101492 https:// doi.org/10.1016/j.addma.2020.101492.
+Pantoja-Benavides, G.F., A´lvarez-Martínez, D., 2022. A hybrid approach of simulation and metaheuristic for the polyhedra packing problem. Int. J. Ind. Eng. Comput. 13 (1), 81–100. https://doi.org/10.5267/j.ijiec.2021.7.003.
+Perez-Gonzalez, P., Framinan, J.M., 2014. A common framework and taxonomy for multicriteria scheduling problems with interfering and competing jobs: multi-agent scheduling problems. Eur. J. Oper. Res. 235 (1), 1–16. https://doi.org/10.1016/j. ejor.2013.09.017.
+Potts, C.N., Kovalyov, M.Y., 2000. Scheduling with batching: a review. Eur. J. Oper. Res. 120 (2), 228–249. https://doi.org/10.1016/S0377-2217(99)00153-8.
+Poudel, L., Zhou, W., Sha, Z., 2020. A generative approach for scheduling multi-robot cooperative three-dimensional printing. J. Comput. Inf. Sci. Eng. 20 (6) https://doi. org/10.1115/1.4047261.
+Poudel, L., Zhou, W., Sha, Z., 2021. Resource-constrained scheduling for multi-robot cooperative three-dimensional printing. J. Mech. Des. 143 (7) https://doi.org/ 10.1115/1.4050380.
+Ransikarbum, K., Ha, S., Ma, J., Kim, N., 2017. Multi-objective optimization analysis for part-to-printer assignment in a network of 3D fused deposition modeling. J. Manuf. Syst. 43, 35–46. https://doi.org/10.1016/j.jmsy.2017.02.012.
+Ransikarbum, K., Pitakaso, R., Kim, N., 2020. A decision-support model for additive manufacturing scheduling using an integrative analytic hierarchy process and multiobjective optimization. Appl. Sci. 10 (15), 5159. https://doi.org/10.3390/ app10155159.
+Rohaninejad, M., Hanz´alek, Z., Tavakkoli-Moghaddam, R., Hanzalek, Z., TavakkoliMoghaddam, R., 2021. Scheduling of parallel 3D-printing machines with incompatible job families: a matheuristic algorithm. Advances in Production Management Systems: Artificial Intelligence For Sustainable And Resilient Production Systems, APMS 2021 PT I 630, 51–61, 10.1007/978-3-030-85874-2_6.
+Rohaninejad, M., Tavakkoli-Moghaddam, R., Vahedi-Nouri, B., Hanza´lek, Z., Shirazian, S., 2022. A hybrid learning-based meta-heuristic algorithm for scheduling of an additive manufacturing system consisting of parallel SLM machines. Int. J. Prod. Res. 60 (20), 6205–6225. https://doi.org/10.1080/00207543.2021.1987550.
+
+16
+
+M. Pinto et al.
+Romanova, T., et al., 2021. Optimal layout of ellipses and its application for additive manufacturing. Int. J. Prod. Res. 59 (2), 560–575. https://doi.org/10.1080/ 00207543.2019.1697836.
+Romanova, T., Bennell, J., Stoyan, Y., Pankratov, A., 2018. Packing of concave polyhedra with continuous rotations using nonlinear optimisation. Eur. J. Oper. Res. 268 (1), 37–53. https://doi.org/10.1016/j.ejor.2018.01.025.
+Romanova, T., Stoyan, Y., Pankratov, A., Litvinchev, I., Yanchevsky, I., Mozgova, I., 2019. Optimal packing in additive manufacturing. IFAC-PapersOnLine 52 (13), 2758–2763. https://doi.org/10.1016/j.ifacol.2019.11.625.
+Rossi, A., Lanzetta, M., 2020. Integration of hybrid additive/subtractive manufacturing planning and scheduling by metaheuristics. Comput. Ind. Eng. 144, 106428 https:// doi.org/10.1016/j.cie.2020.106428.
+M. Rupp, M. Buck, R. Klink, M. Merkel, and D. K. Harrison, “Additive manufacturing of steel for digital spare parts – A perspective on carbon emissions for decentral production,” Clean. Environ. Syst., vol. 4, no. December 2021, p. 100069, Mar. 2022, doi: 10.1016/j.cesys.2021.100069.
+Shen, H., Pan, L., Qian, J., 2019. Research on large-scale additive manufacturing based on multi-robot collaboration technology. Addit. Manuf. 30, 100906 https://doi.org/ 10.1016/j.addma.2019.100906.
+Slotnick, S.A., 2011. Order acceptance and scheduling: a taxonomy and review. Eur. J. Oper. Res. 212 (1), 1–11. https://doi.org/10.1016/j.ejor.2010.09.042.
+Tafakkori, K., Tavakkoli-Moghaddam, R., Siadat, A., 2022. Sustainable negotiation-based nesting and scheduling in additive manufacturing systems: a case study and multiobjective meta-heuristic algorithms. Eng. Appl. Artif. Intell. 112, 104836 https:// doi.org/10.1016/j.engappai.2022.104836.
+Tavakkoli-Moghaddam, R., Shirazian, S., Vahedi-Nouri, B., 2020. A bi-objective scheduling model for additive manufacturing with multiple materials and sequencedependent setup time. In: IFIP Advances in Information and Communication Technology, pp. 451–459. https://doi.org/10.1007/978-3-030-57997-5_52.
+Thürer, M., Huang, Y., Stevenson, M., 2021. Workload control in additive manufacturing shops where post-processing is a constraint: an assessment by simulation. Int. J. Prod. Res. 59 (14), 4268–4286. https://doi.org/10.1080/00207543.2020.1761038.
+Toksarı, M.D., Tog˘a, G., 2022. Single batch processing machine scheduling with sequence-dependent setup times and multi-material parts in additive manufacturing. CIRP J. Manuf. Sci. Technol. 37, 302–311. https://doi.org/10.1016/j. cirpj.2022.02.007.
+Uzunoglu, A., Gahm, C., Wahl, S., Tuma, A., 2023. Learning-augmented heuristics for scheduling parallel serial-batch processing machines. Comput. Oper. Res. 151, 106122 https://doi.org/10.1016/j.cor.2022.106122.
+Valizadeh, S., Fatahi Valilai, O., Houshmand, M., 2020. Flexible flow line scheduling considering machine eligibility in a digital dental laboratory. Int. J. Prod. Res. 58 (21), 6513–6531. https://doi.org/10.1080/00207543.2019.1683247.
+Wang, Y., Zheng, P., Xu, X., Yang, H., Zou, J., 2019. Production planning for cloud-based additive manufacturing—A computer vision-based approach. Robot. Comput. Integr. Manuf. 58 (March), 145–157. https://doi.org/10.1016/j.rcim.2019.03.003.
+Wa¨scher, G., Haußner, H., Schumann, H., 2007. An improved typology of cutting and packing problems. Eur. J. Oper. Res. 183 (3), 1109–1130. https://doi.org/10.1016/j. ejor.2005.12.047.
+D. H. Weber, W. Zhou, and Z. Sha, “Job Placement for Cooperative 3D Printing,” in Volume 2: Manufacturing Equipment and Automation; Manufacturing Processes; Manufacturing Systems; Nano/Micro/Meso Manufacturing; Quality and Reliability, Jun. 2023, vol. Volume 2:, p. V002T07A005. doi: 10.1115/MSEC2023-104613.
+S. Wu, M. Kay, R. King, A. Vila-Parrish, and D. Warsing, “Multi-objective optimization of 3D packing problem in additive manufacturing,” 2014. [Online]. Available: https:// www.scopus.com/inward/record.uri?eid=2-s2.084910090427&partnerID=40&md5=1621bbb0bf11c8787ee6e7a9fd9c876c.
+Wu, Q., Xie, N., Zheng, S., Bernard, A., 2022. Online order scheduling of multi 3D printing tasks based on the additive manufacturing cloud platform. J. Manuf. Syst. 63, 23–34. https://doi.org/10.1016/j.jmsy.2022.02.007.
+W. Yang, W. Liu, L. Liu, and A. Xu, “A genetic algorithm for automatic packing in rapid prototyping processes,” in Advanced Intelligent Computing Theories And Applications,
+
+Computers and Operations Research 165 (2024) 106592
+Proceedings: With Aspects Of Theoretical And Methodological Issues, 2008, vol. 5226, pp. 1072+-1072+. Yang, Y., Liu, B., Li, H., Li, X., Wang, G., Li, S., 2022. A nesting optimization method based on digital contour similarity matching for additive manufacturing. J. Intell. Manuf. https://doi.org/10.1007/s10845-022-01967-4. Yang, Y., Li, H., Zhang, K., Jia, X., Wang, G., Liu, B., 2023. A 3D nesting method based on the convex-concave coding similarity of the voxelized model for additive manufacturing. Addit. Manuf. 64, 103429 https://doi.org/10.1016/j. addma.2023.103429. Yao, M., Chen, Z., Luo, L., Wang, R., Wang, H., 2015. Level-set-based partitioning and packing optimization of a printable model. ACM Trans. Graph. 34 (6), 1–11. https:// doi.org/10.1145/2816795.2818064. Yau, H.-T., Hsu, C.-W., 2022. Nesting of 3D irregular shaped objects applied to powderbased additive manufacturing. Int. J. Adv. Manuf. Technol. 118 (5–6), 1843–1858. https://doi.org/10.1007/s00170-021-07954-y. Yilmaz, O.F., 2020. Examining additive manufacturing in supply chain context through an optimization model. Comput. Ind. Eng. 142 https://doi.org/10.1016/j. cie.2020.106335. Yılmaz, O¨ .F., 2020. Examining additive manufacturing in supply chain context through an optimization model. Comput. Ind. Eng. 142, 106335 https://doi.org/10.1016/j. cie.2020.106335. Ying, K.-C., Lin, S.-W., 2023. Minimizing makespan in two-stage assembly additive manufacturing: a reinforcement learning iterated greedy algorithm. Appl. Soft Comput. 138, 110190 https://doi.org/10.1016/j.asoc.2023.110190. Ying, K.-C., Fruggiero, F., Pourhejazy, P., Lee, B.-Y., 2022. Adjusted iterated greedy for the optimization of additive manufacturing scheduling problems. Expert Syst. Appl. 198, 116908 https://doi.org/10.1016/j.eswa.2022.116908. Yu, Y., Liu, L., Wu, Z., 2023. A branch-and-price algorithm to perform single-machine scheduling for additive manufacturing. J. Manag. Sci. Eng. 8 (2), 273–286. https:// doi.org/10.1016/j.jmse.2022.10.001. Yu, C., Matta, A., Semeraro, Q., Lin, J., 2022. Mathematical models for minimizing Total tardiness on parallel additive manufacturing machines. IFAC-PapersOnLine 55 (10), 1521–1526. https://doi.org/10.1016/j.ifacol.2022.09.606. Zehetner, D., Gansterer, M., 2022. The collaborative batching problem in multi-site additive manufacturing. Int. J. Prod. Econ. vol. 248, no. January, 108432 https:// doi.org/10.1016/j.ijpe.2022.108432. Zehetner, D., Gansterer, M., 2023. Decentralised collaborative job reassignments in additive manufacturing. Int. J. Prod. Res. 1–19. https://doi.org/10.1080/ 00207543.2023.2285403. Zhang, Y., Bernard, A., 2014. Grouping parts for multiple parts production in additive manufacturing. Procedia CIRP 17, 308–313. https://doi.org/10.1016/j. procir.2014.01.096. Zhang, Y., Gupta, R.K., Bernard, A., 2016. Two-dimensional placement optimization for multi-parts production in additive manufacturing. Robot. Comput. Integr. Manuf. 38, 102–117. https://doi.org/10.1016/j.rcim.2015.11.003. Zhang, Y., Bernard, A., Harik, R., Fadel, G., 2018. A new method for single-layer-part nesting in additive manufacturing. Rapid Prototyp. J. 24 (5), 840–854. https://doi. org/10.1108/RPJ-01-2017-0008. Zhang, J., Yao, X., Li, Y., 2020. Improved evolutionary algorithm for parallel batch processing machine scheduling in additive manufacturing. Int. J. Prod. Res. 58 (8), 2263–2282. https://doi.org/10.1080/00207543.2019.1617447. Zhang, X., Zhou, B., Zeng, Y., Gu, P., 2002. Model layout optimization for solid ground curing rapid prototyping processes. Robot. Comput. Integr. Manuf. 18 (1), 41–51. https://doi.org/10.1016/S0736-5845(01)00022-9. Zhou, L., Zhang, L., Laili, Y., Zhao, C., Xiao, Y., 2018. Multi-task scheduling of distributed 3D printing services in cloud manufacturing. Int. J. Adv. Manuf. Technol. 96 (9–12), 3003–3017. https://doi.org/10.1007/s00170-017-1543-z. Zipfel, B., Neufeld, J., Buscher, U., 2023. An iterated local search for customer order scheduling in additive manufacturing. Int. J. Prod. Res. 1–21. https://doi.org/ 10.1080/00207543.2023.2167015. Zupic, I., Cˇater, T., 2015. Bibliometric methods in management and organization. Organ. Res. Methods 18 (3), 429–472. https://doi.org/10.1177/1094428114562629.
+
+17
+

@@ -1,0 +1,556 @@
+1
+Domain-Guided Conditional Diffusion Model
+for Unsupervised Domain Adaptation
+Yulong Zhang, Shuhao Chen, Weisen Jiang, Yu Zhang, Jiangang Lu, and James T. Kwok
+Abstract—Limited transferability hinders the performance of deep learning models when applied to new application scenarios. Recently, Unsupervised Domain Adaptation (UDA) has achieved significant progress in addressing this issue via learning domaininvariant features. However, the performance of existing UDA methods is constrained by the large domain shift and limited target domain data. To alleviate these issues, we propose DomAinguided Conditional Diffusion Model (DACDM) to generate highfidelity and diversity samples for the target domain. In the proposed DACDM, by introducing class information, the labels of generated samples can be controlled, and a domain classifier is further introduced in DACDM to guide the generated samples for the target domain. The generated samples help existing UDA methods transfer from the source domain to the target domain more easily, thus improving the transfer performance. Extensive experiments on various benchmarks demonstrate that DACDM brings a large improvement to the performance of existing UDA methods.
+Index Terms—Diffusion models, conditional diffusion models, transfer learning, unsupervised domain adaptation.
+I. INTRODUCTION
+Deep neural networks have achieved remarkable advances in a variety of applications due to their powerful representation learning capabilities [1]–[4]. However, when domain shift occurs, a model trained from a source domain may suffer noticeable performance degradation in the target domain [5]. To handle this issue, Unsupervised Domain Adaptation (UDA) [6]–[8] is proposed to learn knowledge from the source domain as well as unlabeled target domain, and then transfer the knowledge to help learn from the unlabeled target domain. To alleviate domain shift, many UDA methods [9]–[14] have been proposed to learn domain-invariant features explicitly or implicitly. Specifically, [9]–[11] explicitly minimize the distribution discrepancy between the source and target domains. On the other hand, adversarial-based UDA methods
+Yulong Zhang is with the State Key Laboratory of Industrial Control Technology, College of Control Science and Engineering, Zhejiang University, Hangzhou, China. (e-mail: zhangylcse@zju.edu.cn) Shuhao Chen and Yu Zhang are with the Department of Computer Science and Engineering, Southern University of Science and Technology, Shenzhen, China. (e-mail: 12232388@mail.suctech.edu.cn; yu.zhang.ust@gmail.com) Weisen Jiang is with the Department of Computer Science and Engineering, Southern University of Science and Technology and Hong Kong University of Science and Technology. (e-mail: wjiangar@cse.ust.hk) Jiangang Lu is with the State Key Laboratory of Industrial Control Technology, College of Control Science and Engineering, Zhejiang University, Hangzhou, China, and also with the Zhejiang Laboratory, Hangzhou, China. (e-mail: lujg@zju.edu.cn) James T. Kwok is with the Department of Computer Science and Engineering, Hong Kong University of Science and Technology, Hong Kong, China. (e-mail: jamesk@cse.ust.hk). Yulong Zhang and Shuhao Chen contributed equally to this work. Corresponding author: Yu Zhang.
+enhance transfer learning capabilities by confusing the source and target domain features [12]–[14] or generating auxiliary samples to bridge the source and target domains [15], [16]. However, the performance of existing UDA methods is constrained by the unlabeled target domain. When there is a large domain shift across domains, it further poses challenges to the UDA methods. Moreover, when the target domain samples are limited1, it is difficult for UDA methods to accurately model the data distribution of the target domain. As a result, direct domain alignment between the source samples and limited target samples could cause suboptimal transfer effects. To address the aforementioned limitations, in this paper, we propose a DomAin-guided Conditional Diffusion Model (DACDM) to generate “labeled” target samples for UDA methods. Built on the Diffusion Probabilistic Models (DPM) [17], [18], which are also called diffusion models, DACDM can control the class and domain of each generated sample. Specifically, to control the class of each generated sample, we inject label information into the adaptive group normalization (AdaGN) layers [18], where for source samples, we use their ground truth labels, and for unlabeled target samples, we use their pseudo-labels predicted by a pretrained UDA model. To control the domain of each generated sample, we train a domain classifier to guide the diffusion sampling process toward the target domain in the generation, where the DPMSolver++ sampler [19] is used for efficiency. The generated samples for the target domain are combined with the source samples as an augmented source domain. Finally, we train a UDA model to transfer from the augmented source domain to the target domain. Empirical results show that the target domain is closer to the augmented source domain than the original source domain, making it easier for UDA methods to perform transfer learning. The proposed DACDM framework is a plug-and-play module that can be integrated into any existing UDA method to boost performance. We theoretically analyze the generalization bound of DACDM. Empirically, we combine the proposed DACDM framework with some state-of-the-art UDA methods and conduct extensive experiments on four UDA benchmark datasets to demonstrate the superiority of the proposed DACDM framework. The contributions of this paper are four-fold. 1) We bring domain guidance into DPMs and propose a novel DACDM framework that directly generates high
+1For example, in the experiments, the Dslr and Webcam domains in the Office31 dataset have an average of only 16 and 26 samples per class, respectively. The Art domain in the Office-Home dataset has an average of 37 samples per class.
+arXiv:2309.14360v1 [cs.LG] 23 Sep 2023
+
+
+2
+fidelity and diverse samples for the target domain. To the best of our knowledge, this is the first application of DPMs for UDA. 2) DACDM can be integrated into any existing UDA methods to improve performance. Specifically, in our experiments, we combine DACDM with MCC [20] and ELS [14] to achieve state-of-the-art performance on various benchmark datasets. 3) We establish a generalization bound of DACDM. 4) We perform extensive experiments on UDA benchmark datasets to demonstrate the effectiveness of the proposed DACDM method. Results show that the generated samples are similar to the target samples, and the augmented source domain consisting of source samples and generated target samples can help reduce domain shift.
+II. RELATED WORK
+A. Unsupervised Domain Adaptation
+UDA methods [8], [9], [21] extract knowledge from the labeled source domain to facilitate learning in the unlabeled target domain. As the data distribution of the target domain differs from that of the source domain, various methods are proposed to reduce the domain discrepancy. They can mainly be classified into two categories: discrepancy-based methods and adversarial methods. Most discrepancy-based methods learn a feature extractor to minimize the distribution discrepancy between source and target domains. For example, DAN [9] tries to minimize the maximum mean discrepancy (MMD) [22] between domains, while [11] considers the relationship between two subdomains within the same class but across different domains. Margin disparity discrepancy (MDD) [10] performs domain alignment with generalization error analysis. Adaptive feature norm (AFN) [23] progressively adapts the feature norms of the source and target domains to improve transfer performance. Maximum structural generation discrepancy (MSGD) [24] introduces an intermediate domain to gradually reduce the domain shift between the source and target domains. Unlike the above methods that explicitly align domains, minimum class confusion (MCC) [20] introduces a general class confusion loss as regularizer. On the other hand, adversarial methods align the source and target distributions through adversarial training [25]. For example, domain adversarial neural network (DANN) [21] learns a domain discriminator to distinguish samples in the two domains, and uses a feature generator to confuse the domain discriminator. Conditional domain adversarial network (CDAN) [26] injects class-specific information into the discriminator to facilitate the alignment of multi-modal distributions. Smooth domain adversarial training (SDAT) [13] employs sharpness-aware minimization [27] to seek a flat minimum for better generalization. Additionally, environment label smoothing (ELS) [14] alleviates the effect of label noise by encouraging the domain discriminator to output soft domain labels. Adversarial training can also serve as a generative method to bridge the source and target domains. For instance, cycleconsistent adversarial domain adaptation (CyCADA) [15] uses
+the GAN for image-to-image translation via the cycle consistency loss [28] and semantic consistency loss. Bi-directional generation (BDG) [16] uses two cross-domain generators to synthesize data of each domain conditioned on the other, and learns two task-specific classifiers. The aforementioned generation-based UDA methods [15], [16] require complex mechanisms to preserve the detailed and semantic information in the generated images, leading to training instability and requires careful tuning of the hyperparameters and regularizers for convergence [18], [29]. Different from the GAN-based methods, the proposed DACDM framework directly generates target samples. Instead of using adversarial training strategies as in CyCADA and BDG, DACDM is based on the diffusion models [18], which are better at covering the modes of a distribution than GANs [30]. In DACDM, the label and domain information of each generated sample are controllable.
+B. Diffusion Probabilistic Model (DPM)
+In recent years, the DPM [31] has achieved great success in various generative tasks. It includes a forward diffusion process that converts an original sample x0 to a Gaussian noise xT , and a reverse denoising process that infers the Gaussian noise back to a sample. Specifically, the forward process gradually injects noise to x0 until it becomes a random noise xT ,
+via the sampling: q (xt|xt−1) = N √αtxt−1, (1 − αt)I , where N (μ, Σ) is the multivariate normal distribution with mean μ and variance Σ, and αt’s follow a decreasing schedule. On the other hand, the reverse process denoises xT to x0 using a decoder pθ (xt−1|xt). Specifically, a model εθ (xt, t), parameterized by θ, is trained to predict the noise injected in the forward process by minimizing an approximate loss
+Et∼U(1,T ),x0,ε∼N (0,I)ωt∥ε − εθ (xt, t)∥2, (1)
+where U(1, T ) is the uniform distribution on {1, . . . , T }, ωt = (1 − αt)2/2σt2αt (1 − α ̄t) with α ̄t = Qt
+s=0 αs,
+σt = 1−α ̄t−1
+1−α ̄t (1 − αt), and xt = √α ̄tx0 + √1 − α ̄tε. During
+inference, the learned model εθ (xt, t) generates a sample x0 by gradually denoising the random noise xT ∼ N (0, I)
+according to xt−1 = √1αt xt − 1−αt
+√1−α ̄t εθ (xt, t) + σtz,
+where z ∼ N (0, I). The DPM is unable to control the classes of generated samples. To deal with this issue, conditional diffusion probabilistic model (CDPM) [30] incorporates label information into the model by adding a label embedding to the time embedding. Dhariwal and Nichol [18] further improve the CDPM by embedding the condition (i.e., label) into the AdaGN layers [18] of the UNet [32]. Moreover, classifier guidance is also introduced, and the denoising process of class c is modified as ε ̃θ(xt, t, c) = εθ(xt, t, c) − sσt∇xt log pφ(c|xt, t), where φ is a learned classifier and s is a scale factor. The DPM suffers from slow sampling, as thousands of denoising steps are required to generate samples [17], [19], [30], [33]. To improve efficiency, the denoising diffusion implicit model (DDIM) [17] uses a non-Markov diffusion process to achieve 10× faster sampling. DPM-Solver [34] formulates DPM as diffusion ordinary differential equations
+
+
+3
+: Pretrained Model
+CE Loss
+Guidance
+UDA Loss
+Label-Conditional Training
+Trainable
+Fixed
+: Train from Scratch
+Augmented Source Domain
+: UDA Model
+: Domain Classifier
+Domain-Guided Generation
+Fig. 1. An overview of the proposed DACDM framework. In label-conditional training, a conditional diffusion model εθ is trained on source samples with
+ground truth labels and target samples with pseudo labels given by the pretrained classifier f ⋆. A domain classifier φ is trained to discriminate samples from source and target domains. In domain-guided generation, the generated target domain data Dg are sampling from the trained ε⋆
+θ with guidance provided by
+domain classifier φ⋆. Finally, a UDA model fˆ is trained to transfer from the augmented source domain Dsˆ = Ds ∪ Dg to the target domain Dt.
+and reduces the number of denoising steps from 1000 to about 10. DPM-Solver++ [19] further improves the robustness of classifier guidance in DPM-Solver by using a high-order solver.
+III. DOMAIN-GUIDED CONDITIONAL DIFFUSION MODEL (DACDM)
+In UDA, we are given a labeled source domain Ds = {(xsd, ysd)} and an unlabeled target domain Dt = {xtd}. Let Ns = |Ds| and Nt = |Dt| be the number of samples in Ds and Dt, respectively. Usually, Nt is much smaller than Ns [6]. UDA aims to train a model from Ds ∪ Dt, and then use this model to make predictions on Dt. However, the target domain has limited samples, which are also unlabeled, hindering the transfer performance. To alleviate this problem, the proposed DACDM aims to generate more “labeled” target domain samples. As illustrated in Fig. 1, it has two stages: label-conditioned training and domain-guided generation. In label-conditioned training, we train a label-conditioned diffusion model on the source and target domain samples to control the labels of generated samples. For target samples whose labels are unavailable, we first train a UDA model f ⋆ to predict their pseudo-labels as conditional information. In domain-guided generation, we first train a domain classifier φ⋆, which is then used in domainguidance sampling for generating target samples. Finally, the generated samples are combined with the source samples as an augmented source domain to train a UDA model.
+A. Label-Conditioned Training
+To generate more target domain samples, a straightforward solution is to train a DPM on the target domain. Analogous
+to (1), a noise prediction model εθ xttd, t can be trained by minimizing the following loss:
+Et∼U (1,T ),xtd
+0 ∼Dt,ε∼N (0,I)ωt ε − εθ xtd
+t , t 2. (2)
+However, this cannot control the samples’ labels, and thus the generated samples may not cover all classes. To alleviate this problem, one can use the label embedding of xt0d as condition c and feed this to a CDPM [30]
+εθ xttd, t, c (Section II-B). However, while labels for the source domain samples are available, those for the target domain samples are not. To address this issue, we propose to first train a UDA model f ⋆ by minimizing the following commonly-used objective [35]:
+mfin
+1
+Ns
+X
+(x,y)∈Ds
+l(f (x), y) + βR(Ds, Dt), (3)
+where l(·, ·) is a supervised loss (e.g., cross-entropy (CE) loss for classification problems), β > 0 is a regularization parameter, and R(·, ·) is a loss used to bridge the source and target domains (e.g., domain discrepancy loss in discrepancybased methods [9], [10], [20], and domain discrimination loss in adversarial-based methods [13], [14], [21]). We then use f ⋆’s predictions (yˆ) on the target domain samples as their pseudo-labels. The loss in (2) is consequently changed to:
+Et∼U (1,T ),xtd
+0 ∼Dt,ε∼N (0,I)ωt ε − εθ xtd
+t , t, f ⋆(xtd
+0 ) 2. (4)
+Using more training data is always beneficial to DPM training. It can also improve the quality and diversity of the generated samples [36]. Thus, instead of using only the target domain samples to train εθ as in (4), we use both the source and target domain samples to minimize the loss
+Et∼U(1,T ),x0∼Ds∪Dt,ε∼N (0,I)ωt∥ε−εθ (xt, t, c)∥2, (5)
+
+
+4
+where c is the (true) label when x0 is from the source domain, and the pseudo-label predicted by f ⋆ when x0 is from the target domain. The complete label-conditioned training procedure is shown in Algorithm 1.
+Algorithm 1 Label-conditioned training. Input: Source domain Ds, target domain Dt, step size γ, decreasing sequence α1, . . . , αT , mini-batch B; 1: Train a UDA model f ⋆ on Ds ∪ Dt; 2: repeat
+3: Sample a mini-batch {x0,i}B
+i=1 from Ds ∪ Dt; 4: for i = 1, . . . , B do 5: if x0,i ∈ Ds then 6: ci = yi; 7: else
+8: ci = f ⋆(x0,i); 9: end if 10: end for
+11: t ∼ U (1, T ); 12: ε ∼ N (0, I); 13: α ̄t = Qt
+j=1 αj , σt = 1−α ̄t−1
+1−α ̄t (1 − αt);
+14: xt,i = √α ̄tx0,i + √1 − α ̄tε; i = 1, . . . , B;
+15: ωt = (1−αt)2
+2σ2
+t αt(1−α ̄t) ;
+16: Lmini-batch(θ) = ωt
+B
+PB
+i=1 ∥ε − εθ (xt,i, t, ci)∥2; 17: θ ← θ − γ∇θLmini-batch(θ); 18: until converged. 19: return θ⋆.
+B. Domain-Guided Generation
+While label-conditioned training can control the generated sample’s class label, it does not control its domain. In UDA, as we focus on the performance of the target domain, it is more crucial to generate samples for the target domain. To achieve this, we use classifier guidance [18], and use a domain classifier to guide generation towards the target domain. Specifically, we first train a domain classifier (with parameter φ) on the noisy images xt’s by minimizing the loss
+φ⋆ = arg mφin
+T
+X
+t=1
+X
+(x0 ,·)∈Ds ∪Dt
+l(φ(xt, t), d), (6)
+where xt = √α ̄tx0 + √1 − α ̄tε, l(·, ·) is the cross-entropy loss, d is ground-truth domain label of x. After obtaining φ⋆, the gradient ∇xt log pφ⋆ (dtd|xt, t) (where pφ⋆ (dtd|xt, t) is the predicted domain probability, dtd denotes the target domain label) is used to guide the sampling process towards the target domain. The domain-guided noise prediction model becomes
+ε ̃θ(xt, t, ˆc) = εθ(xt, t, y)−s√1 − α ̄t ∇xt log pφ⋆ (dtd|xt, t), (7)
+where s is a scale factor, and cˆ = [y, dtd] with y being the label for class conditional controlling. To accelerate the sampling procedure, we use DPMSolver++ [19] to generate samples Dg for the target domain.
+Algorithm 2 Domain-guided generation.
+Input: Initial xT , time steps {ti}M
+i=0, noise prediction model εθ⋆ obtained from Algorithm 1, domain classifier model φ⋆, target domain label dtd, and guidance scale s, decreasing sequence α1, . . . , αT ; 1: xt0 = xT ∼ N (0, I); 2: Sample a class y; 3: ˆc = [y, dtd];
+4: for i = 1, . . . , M do 5: α ̄ti = Qti
+j=1 αj ;
+6: λti = 1
+2 log α ̄ti
+1−α ̄ti
+;
+7: bi = λti − λti−1 ;
+8: Compute guidance dti =
+√1−α ̄ti ∇xtilog pφ⋆ (d|xti , ti);
+9: ε ̃θ(xti , ti, ˆc) = εθ⋆ (xti , ti, y) − sdti ; 10: if i = 1 then
+11: xti =
+√1−α ̄ti
+√1−α ̄ti−1
+xti−1 + √α ̄ti (1 − e−bi ) xti−1 −
+√1−α ̄ti
+√α ̄ti
+ε ̃θ(xti−1 , ti−1, cˆ) ;
+12: else 13: Compute xti according to Eq. (8); 14: end if 15: end for 16: return (xtM , y).
+Given an initial noisy xT ∼ N (0, I) and time steps {ti}M
+i=0,
+the multi-step second-order solver iterates
+xti = √αti e−bi − 1 bi
+2bi−1
+xθ xti−2 , ti−2, ˆc
+− 1+ bi
+2bi−1
+xθ xti−1 , ti−1, cˆ +
+√1 − α ̄ti
+p1 − α ̄ti−1
+xti−1 , (8)
+for i = 0, ..., M , where xθ(xt, t, ˆc) = xt−√1−α ̄tε ̃θ(xt,t,cˆ)
+√α ̄t , bi =
+λti −λti−1 , and λt = 1
+2 log α ̄t
+1−α ̄t . The whole domain-guided generation procedure is shown in Algorithm 2. To reduce the domain shifts, we combine the generated samples Dg with the source domain samples Ds to form an augmented source domain data Dsˆ. The effectiveness of this combination is verified in Section IV-E. A UDA model is then used to transfer from the augmented source domain Dsˆ to the target domain Dt by minimizing the following objective
+fˆ = arg mfin
+1
+Nsˆ
+X
+(x,y)∈Dsˆ
+l(f (x), y) + βR(Dsˆ, Dt), (9)
+where Nsˆ = |Dsˆ| = Ns + Ng is the number of samples in Dsˆ. Finally, the learned fˆ is evaluated on the target domain samples. The whole DACDM algorithm is shown in Algorithm 3. DACDM can be integrated into any UDA method. In the experiments, DACDM is combined with MCC [20] and ELS [14].
+C. Generalization Analysis
+In this section, we study the generalization properties of DACDM. Let Es(f, f ′) = P(x,y)∈Ds (f (x) ̸= f ′(x)),
+
+
+5
+Algorithm 3 Domain-guided Conditional Diffusion Model (DACDM). Input: Source domain Ds, target domain Dt, number of generated samples Ng; 1: Train a label-conditioned diffusion model εθ⋆ on Ds ∪ Dt by Algorithm 1; 2: Train a domain classifier φ⋆ on Ds ∪ Dt; 3: Dg = ∅;
+4: for i = 1, . . . , Ng do
+5: Generate (xi, yi) with φ⋆ by Algorithm 2; 6: Append (xi, yi) to Dg; 7: end for
+8: Dsˆ = Dg ∪ Ds;
+9: Train a UDA model fˆ on Dsˆ ∪ Dt;
+10: Evaluate the learned fˆ on Dt; 11: return Evaluation results.
+Et(f, f ′) = P(x,y)∈Dt (f (x) ̸= f ′(x)), and Eg(f, f ′) =
+P(x,y)∈Dg (f (x) ̸= f ′(x)) be the disagreement between
+models f and f ′ on data distribution Ds, Dt, and Dg, respectively. When f ′ is an oracle (i.e., f ′(x) is the ground-truth label y of x), we simply write Es(f ) = P(x,y)∈Ds (f (x) ̸= y), Et(f ) = P(x,y)∈Dt (f (x) ̸= y), and Eg(f ) = P(x,y)∈Dg (f (x) ̸= y) (the expected risks of f on Ds, Dt, and Dg, respectively). The corresponding empirical risks are Eˆs(f ) = 1
+Ns
+P
+(xi,yi)∈Ds I(f (xi) ̸= yi);
+Eˆt(f ) = 1
+Nt
+P
+(xi,yi)∈Dt I(f (xi) ̸= yi) and Eˆs(f ) =
+1 Nˆs
+P
+(xi,yi)∈Dsˆ I(f (xi) ̸= yi), where I(·) is the indicator function.
+Proposition III.1. Let the VC dimension of the hypothesis space H be V for classifier model fˆ. Given fs⋆ trained from
+the source domain and fˆ in (9), for δ > 0, with the probability 1 − 2δ, the expected risk of Et(fˆ) satisfies
+Et(fˆ) ≤η Eˆs (f ⋆
+s)+ 1
+2 dH∆H(Ds, Dt) + C + ε(δ, V, Nsˆ)
++ (1 − η) Eˆg(f ⋆
+s)+ 1
+2 dH∆H(Dg, Dt) + C , (10)
+where η = Ns/Nsˆ, C = 4
+q 2V log(2Nsˆ)+log 2
+δ
+Nsˆ , ε(δ, V, Nsˆ) =
+q1
+2Nsˆ ln 2V
+δ , and dH∆H(D, D′) is the empirical H∆H
+distance between D and D′ [37].
+Proof. Using Theorem 2 in [37], for any fˆ, f ̃ ∈ H, with probability 1 − δ,
+Et(fˆ) ≤ Esˆ(fˆ) + 1
+2 dH∆H(Dsˆ, Dt) + C.
+dH∆H(Dsˆ, Dt), the H∆H-distance between Dsˆ and Dt,
+TABLE I STATISTICS OF THE DATASETS USED.
+number of number of number of number of dataset #images classes domains tasks
+Office-31 4, 110 31 3 6 Office-Home 15, 500 65 4 12 VisDA-2017 207, 785 12 2 1 miniDomainNet 140, 006 126 4 12
+satisfies
+1
+2 dH∆H(Dsˆ, Dt)
+= sup
+fˆ,f ̃
+|Et(fˆ, f ̃) − Esˆ(fˆ, f ̃)|
+= sup
+fˆ,f ̃
+(|η(Et(fˆ, f ̃) − Es(fˆ, f ̃))
++(1 − η)(Et(fˆ, f ̃) − Eg(fˆ, f ̃))|)
+≤1
+2 ηdH∆H (Ds,Dt)+ 1
+2 (1−η)dH∆H (Dg, Dt) . (11)
+Combining those two inequalities gives
+Et(fˆ)
+≤ Esˆ(fˆ) + 1
+2 dH∆H(Dsˆ, Dt) + C
+= Esˆ(fˆ) + Eˆsˆ (f ⋆
+s ) − Eˆsˆ (f ⋆
+s)+ 1
+2 dH∆H(Dsˆ, Dt) + C
+≤ Eˆsˆ(fˆ) + ε(δ, V, Nsˆ) + Eˆsˆ (f ⋆
+s ) − Eˆsˆ (f ⋆
+s)
++1
+2 dH∆H(Dsˆ, Dt) + C (12)
+≤ Eˆsˆ (f ⋆
+s)+ 1
+2 dH∆H(Dsˆ, Dt) + C + ε(δ, V, Nsˆ) (13)
+≤ ηEˆs (f ⋆
+s ) + (1 − η)Eˆg (f ⋆
+s)+ 1
+2 ηdH∆H(Ds, Dt)
++ (1 − η) dH∆H(Dg, Dt) + C + ε(δ, V, Nsˆ) (14)
+= η Eˆs (f ⋆
+s)+ 1
+2 dH∆H(Ds, Dt) + C + ε(δ, V, Nsˆ)
++(1 − η) Eˆg(f ⋆
+s)+ 1
+2 dH∆H(Dg, Dt) + C .
+Inequality (12) holds with probability 1 − δ (Eq. (2.1) in [38]). Inequality (13) holds since fˆ is optimized by the UDA methods based on the augmented source domain and target domain, while fs⋆ is optimized only on the source domain,
+leading to Eˆsˆ(fˆ) ≤ Eˆsˆ (fs⋆), and inequality (14) holds due to
+Eˆsˆ(fs⋆) = ηEˆs (fs⋆) + (1 − η)Eˆg (fs⋆) and inequality (11).
+Proposition III.1 shows that the expected risk of DACDM on the target domain consists of two terms. The first one is determined by the empirical risk on the source domain and the distance between the source and target domains, while the second term depends on the empirical risk on the generated domain and its distance to the target domain.
+IV. EXPERIMENTS
+In this section, we empirically evaluate the proposed DACDM on a number of domain adaptation datasets.
+
+
+6
+Amazon Webcam Dslr
+(a) Office-31.
+Art Clipart Product Real_World
+(b) Office-Home.
+Synthetic Real
+(c) VisDA-2017.
+Clipart Painting Real Sketch
+(d) miniDomainNet. Fig. 2. Example images from Office-31, Office-Home, VisDA-2017, and miniDomainNet datasets.
+TABLE II ACCURACY (%) ON THE Office-31 DATASET WITH ResNet-50. ↑ DENOTES THE ACCURACY IMPROVEMENT BROUGHT BY THE DACDM FRAMEWORK OVER THE CORRESPONDING BASELINE. THE BEST IS IN BOLD. RESULTS WITH ∗ ARE FROM THE ORIGINAL PAPERS.
+A→W D→W W→D A→D D→A W→A Average
+ERM [39] 77.07 96.60 99.20 81.08 64.11 64.01 80.35 DANN [21] 89.85 97.95 99.90 83.26 73.28 73.75 86.33 AFN [23] 91.82 98.77 100.00 95.12 72.43 70.71 88.14 CDAN [26] 92.42 98.62 100.00 91.44 74.61 72.80 88.32 BDG∗ [16] 93.60 99.00 100.00 93.60 73.20 72.00 88.50 MDD [10] 93.55 98.66 100.00 93.92 75.29 73.95 89.23 SDAT [13] 91.32 98.83 100.00 95.25 76.97 73.19 89.26 MSGD∗ [24] 95.50 99.20 100.00 95.60 77.30 77.00 90.80
+MCC [20] 94.09 98.32 99.67 94.25 75.89 75.46 89.61 MCC+DACDM 95.51 98.58 99.93 95.31 78.26 78.43 91.01
+ELS [14] 93.84 98.78 100.00 95.78 77.72 75.13 90.21 ELS+DACDM 96.90 98.91 100.00 97.46 79.79 77.74 91.80
+A. Settings
+Datasets. Experiments are performed on four image classification benchmark datasets (example images are shown in Fig. 2 and dataset statistics are in Table I): (i) Office-31 [40], which contains 4, 110 images from 31 classes of three domains (Amazon (A), DSLR (D), and Webcam (W)). Six transfer tasks (A→W, D→W, W→D, A→D, D→A, W→A) are constructed. (ii) Office-Home [41], which contains 15, 500 images from 65 classes of four domains (Art (Ar), Clipart (Cl), Product (Pr), and Real-World (Rw)). All combinations of domain transfer are considered, leading to a total of 12 transfer tasks. (iii) VisDA-2017 [42], which is a large-scale synthetic-to-real dataset with 207, 785 images from 12 classes of two domains (Synthetic and Real). Following [10], [13], [20], we consider the transfer task Synthetic → Real. (iv) miniDomainNet [43], which is a subset of DomainNet [44], with 140, 006 images from 126 classes of four domains (Clipart (C), Painting (P), Real (R), Sketch (S)). Following [45], 12 transfer tasks are constructed. Baselines. We compare with ERM [39] and a number of UDA methods, including (i) discrepancy-based methods: AFN [23], MDD [10], MSGD [24], MCC [20], and (ii) adversarial-based methods: DANN [21], CDAN [26], BDG [16], SDAT [13], ELS [14]. We combine the proposed DACDM with the stateof-the-art in these two categories (namely, MCC and ELS). Note that the same UDA method is used in label-conditioned training and domain-guided generation, though in general they can be different.
+Implementation Details. To initialize εθ, we use the CDPM in [30], which is pretrained on ImageNet and has a U-Net [32] architecture. The resolutions of generated images are 128 × 128 for the miniDomainNet dataset, and 256 × 256 for the other three datasets. And we use an image size of 96×96 in miniDomainNet dataset [43], and 256 × 256 for the other three datasets [14], [20]. The images in the source and target domains are processed to the same resolution as the generated images. For each class, 200, 200, 2, 000, and 200 images are generated for Office-31, Office-Home, VisDA-2017, and miniDomainNet, respectively. For the backbones of the UDA models, following [13], [43], ResNet-50 [46] is used for both Office-31 and Office-Home datasets, while ResNet-101 and ResNet-18 are used for the VisDA-2017 and miniDomainNet datasets, respectively. The learning rate scheduler follows [21]. For ELS+DACDM, the initial learning rate is 0.002 for Office31 and VisDA-2017, and 0.01 for the other two datasets. As for MCC+DACDM, the initial learning rate is 0.002 for VisDA2017, and 0.005 for the other three datasets. All experiments are run on an NVIDIA V100 GPU.
+B. Results
+Table II shows the accuracies on six transfer tasks of Office31. As can be seen, ELS+DACDM performs the best on average. Furthermore, MCC+DACDM outperforms MCC, showing the effectiveness of DACDM. Specifically, ELS+DACDM achieves an average accuracy of 91.80%, which surpasses ELS by 1.59%. MCC+DACDM achieves an average accuracy of 91.01%, showing DACDM brings an improvement of 1.40% over MCC. On the three challenging tasks (A→W, W→A, and D→A), both MCC+DACDM and ELS+DACDM perform better than the baselines by a large margin. Table III shows the accuracies on the 12 tasks in OfficeHome. As can be seen, MCC+DACDM achieves the highest average accuracy. Furthermore, ELS+DACDM outperforms ELS, showing the effectiveness of DACDM. Table IV shows the accuracies on VisDA-2017. As can be seen, the proposed DACDM is beneficial to both MCC and ELS. Specifically, DACDM brings noticeable improvements (> +1%) to both MCC and ELS in all classes, demonstrating its effectiveness. Table V shows the accuracy on 12 tasks in miniDomainNet. Again, DACDM brings a large improvement to both MCC and ELS in average accuracy. Moreover, DACDM is beneficial to MCC and ELS on all tasks, demonstrating its effectiveness.
+
+
+7
+TABLE III ACCURACY (%) ON THE Office-Home DATASET. ↑ DENOTES THE ACCURACY IMPROVEMENT BROUGHT BY THE DACDM FRAMEWORK OVER THE CORRESPONDING BASELINE (I.E., MCC OR ELS). THE BEST IS IN BOLD. RESULTS WITH ∗ ARE FROM THE ORIGINAL PAPERS.
+Ar→Cl Ar→Pr Ar→Rw Cl→Ar Cl→Pr Cl→Rw Pr→Ar Pr→Cl Pr→Rw Rw→Ar Rw→Cl Rw→Pr Average
+ERM [39] 44.06 67.12 74.26 53.26 61.96 64.54 51.91 38.90 72.94 64.51 43.84 75.39 59.39 DANN [21] 52.53 62.57 73.20 56.89 67.02 68.34 58.37 54.14 78.31 70.78 60.76 80.57 65.29 AFN [23] 52.58 72.42 76.96 64.90 71.14 72.91 64.08 51.29 77.83 72.21 57.46 82.09 67.99 CDAN [26] 54.21 72.18 78.29 61.97 71.43 72.39 62.96 55.68 80.68 74.71 61.22 83.68 69.12 BDG∗ [16] 51.50 73.40 78.70 65.30 71.50 73.70 65.10 49.70 81.10 74.60 55.10 84.80 68.70 MDD [10] 56.37 75.53 79.17 62.95 73.21 73.55 62.56 54.86 79.49 73.84 61.45 84.06 69.75 SDAT [13] 58.20 77.46 81.35 66.06 76.45 76.41 63.70 56.69 82.49 76.02 62.09 85.24 71.85 MSGD∗ [24] 58.70 76.90 78.90 70.10 76.20 76.60 69.00 57.20 82.30 74.90 62.70 84.50 72.40
+MCC [20] 56.83 79.81 82.66 67.80 77.02 77.82 66.98 55.43 81.79 73.95 61.41 85.44 72.24 MCC+DACDM 58.23 80.33 82.91 70.14 79.15 81.36 68.49 57.75 83.44 74.18 63.81 85.67 73.71
+ELS [14] 57.79 77.65 81.62 66.59 76.74 76.43 62.69 56.69 82.12 75.63 62.85 85.35 71.84 ELS+DACDM 60.35 78.81 82.74 69.59 80.53 79.55 65.16 58.26 83.11 75.81 64.18 85.55 73.64
+TABLE IV ACCURACY (%) ON THE VisDA-2017 DATASET USING ResNet-101. ↑ DENOTES THE ACCURACY IMPROVEMENT BROUGHT BY THE DACDM FRAMEWORK OVER THE CORRESPONDING BASELINE. THE BEST IS IN BOLD. RESULTS WITH ∗ ARE FROM THE ORIGINAL PAPERS.
+aero bicycle bus car horse knife motor person plant skate train truck mean
+ERM [39] 81.71 22.46 54.08 76.21 74.83 10.69 83.81 18.71 80.88 28.66 79.66 5.98 51.47 DANN [21] 94.75 73.47 83.46 47.91 87.00 88.30 88.47 77.18 88.16 90.05 87.21 42.26 79.02 AFN [23] 93.13 54.76 81.03 69.74 92.36 75.88 92.11 73.83 93.16 55.55 90.48 23.63 74.64 CDAN [26] 94.55 74.41 82.22 58.92 90.56 96.22 89.71 78.90 86.11 89.06 84.81 43.42 80.74 MDD [10] 92.68 65.26 82.29 66.78 91.68 92.09 93.18 79.67 92.12 84.95 83.85 48.66 81.10 SDAT [13] 94.51 83.56 74.28 65.78 93.00 95.83 89.61 80.04 90.86 91.47 84.95 54.93 83.23 MSGD∗ [24] 97.50 83.40 84.40 69.40 95.90 94.10 90.90 75.50 95.50 94.60 88.10 44.90 84.60
+MCC [20] 95.26 86.14 77.12 69.98 92.83 94.84 86.52 77.78 90.26 90.98 85.68 52.52 83.32 MCC+DACDM 96.43 87.28 83.16 74.37 94.59 96.13 88.60 81.90 92.98 94.45 87.26 61.56 86.56
+ELS [14] 94.76 83.38 75.44 66.45 93.16 95.14 89.09 80.13 90.77 91.06 84.09 57.36 83.40 ELS+DACDM 96.20 84.79 83.15 73.28 94.76 96.58 90.99 82.21 92.98 93.37 87.49 59.70 86.29
+TABLE V ACCURACY (%) ON THE miniDomainNet DATASET USING ResNet-18. ↑ DENOTES THE ACCURACY IMPROVEMENT BROUGHT BY THE DACDM FRAMEWORK OVER THE CORRESPONDING BASELINE. THE BEST IS IN BOLD.
+C→P C→R C→S P→C P→R P→S R→C R→P R→S S→C S→P S→R Average
+ERM [39] 39.48 53.27 42.93 49.55 68.18 41.99 49.30 55.52 37.35 54.60 45.33 53.08 49.22 DANN [21] 45.94 56.12 49.40 50.72 65.61 50.07 55.15 60.55 49.95 58.54 54.64 58.99 54.64 AFN [23] 49.23 60.11 51.11 55.60 70.59 51.78 55.84 60.41 47.46 60.69 56.36 62.28 56.79 CDAN [26] 47.99 58.50 51.17 56.36 68.71 53.01 61.15 62.85 53.44 60.89 55.90 60.88 57.57 MDD [10] 48.53 61.75 52.32 59.74 70.62 55.43 62.18 62.22 54.04 63.07 58.55 64.50 59.41 SDAT [13] 50.97 62.42 53.91 60.57 69.97 55.85 64.39 64.83 55.86 64.07 59.43 64.28 60.55
+MCC [20] 51.95 67.73 52.66 60.96 76.61 54.67 64.15 64.02 50.34 63.64 59.68 69.78 61.35 MCC+DACDM 55.28 70.21 54.42 63.25 77.05 55.74 65.16 65.01 51.96 65.76 60.83 71.09 62.98
+ELS [14] 50.11 61.45 53.02 60.77 70.61 56.04 62.43 64.16 54.89 63.93 59.19 64.47 60.09 ELS+DACDM 56.14 68.52 55.51 64.96 73.44 58.23 64.67 64.36 57.66 67.23 62.56 69.90 63.60
+TABLE VI A-DISTANCE ACROSS DOMAINS ON SIX TASKS OF THE Office-31 DATASET.
+A→W D→W W→D A→D D→A W→A Average
+Ds and Dt 1.84 0.71 0.89 1.90 1.68 1.90 1.54 Dg and Dt 0.45 0.33 0.51 0.57 1.20 1.31 0.73 Dsˆ and Dt 0.64 0.51 0.52 0.65 1.31 1.39 0.84
+C. Analysis on Generated Samples
+In this section, we show fidelity and diversity of the generated samples. Fig. 3 shows the generated images of the
+transfer task Ar→Cl on Office-Home. As can be seen, the style of the generated samples (Fig. 3(c)) is similar to that of the real target samples (Fig. 3(b)), showing the effectiveness of DACDM. Moreover, the generated samples exhibit high fidelity and diversity, and thus well simulate the distribution of the target domain. Furthermore, the classes of generated samples are accurately controlled.
+Fig. 4 shows the generated target samples of the transfer task A→W on Office-31. Again, the generated samples (Fig. 4(c)) are of high quality and have a similar style as the real
+
+
+8
+(a) Real source samples. (b) Real target samples. (c) Generated target samples.
+Fig. 3. Real and generated images for the transfer task Ar→Cl on the Office-Home dataset.
+(a) Real source samples. (b) Real target samples (c) Generated target samples.
+Fig. 4. Real and generated images for the transfer task A→W on the Office-31 dataset.
+(a) Real source samples (b) Generated target samples Fig. 5. Real source images and generated target images for the transfer task W→A on the Office-31 dataset.
+target samples (Fig. 4(b)). Furthermore, the generated images improve diversity of the target domain images. For example, in the second row of Fig. 4, the real target domain has only black backpacks, while the generated images contain backpacks in various colors. One possible reason is that DACDM incorporates source samples during the diffusion training process, allowing it to generate backpacks with more colors related to the source domain while preserving the style of the target domain. Similarly, in the third row of Fig. 4, the target samples contain only metal-style file cabinets, while the generated images have cabinets of more styles related to the source domain with backgrounds similar to the target domain. This demonstrates domain guidance can generate diverse images for the target domain.
+(a) Real source samples.
+(b) Real target samples.
+(c) Generated target samples.
+Fig. 6. Real and generated images for the transfer task Synthetic→Real on the VisDA dataset.
+Traditional DA may suffer from spurious correlation in the source domain [47]. For example, on the transfer task W→A of Office-31, all backpacks in domain W are black (Fig. 5(a)), while backpacks in target domain A have various colors. When transferring from domain W to domain A, the UDA model may focus on recognizing black backpacks. Fig. 5(b) shows the generated target images. As can be seen, the generated backpacks have various colors. By combining
+
+
+9
+TABLE VII ABLATION STUDIES ON THE Office-31 DATASET USING ResNet-50 IN TERMS OF ACCURACY (%). THE BEST IS IN BOLD.
+A→W D→W W→D A→D D→A W→A Average
+ELS [14] 93.84 98.78 100.00 95.78 77.72 75.13 90.21 ELS+PseudoLabel 94.55 98.74 100.00 95.71 78.95 75.45 90.57 ELS+DACDM (w/o domain guidance) 94.48 99.00 100.00 96.92 79.09 76.88 91.06 ELS+DACDM (Dg → Dt) 96.56 98.74 100.00 97.06 79.66 76.96 91.50 ELS+DACDM 96.90 98.91 100.00 97.46 79.79 77.74 91.80
+(a) Real source samples.
+(b) Real target samples.
+(c) Generated target samples.
+Fig. 7. Real and generated images for the transfer task R→S on the miniDomainNet dataset.
+the generated data and source domain data, the accuracy on the class ‘backpacks’ is improved from 96.74% to 97.83% using ELS+DACDM, demonstrating that DACDM can help existing UDA methods to learn more transferrable features. Fig. 6 and 7 show the generated images for the transfer tasks Synthetic→Real and R→S on VisDA-2017 and miniDomainNet, respectively. Again, the generated images have a similar style as the target samples, demonstrating usefulness of the proposed DACDM. With domain guidance, the trained DACDM can also generate source domain images. Fig. 8 shows the real source domain images and generated source domain images for the transfer task A→W on Office-31. As can be seen, their styles are similar, demonstrating effectiveness of domain guidance. Fig. 9 shows the t-SNE visualization [48] of feature embeddings for samples from the six transfer tasks on Office31 based on a pretrained ResNet-50 on ImageNet. As can be seen, embeddings of the generated target samples (in red) are close to those of the real target samples (in blue), verifying usefulness of DACDM. Moreover, we use the A-distance [49] to measure the distributional discrepancy on Office-31. Table VI shows the A-distances of Ds, Dg and Dsˆ to Dt. As can be seen, compared with Ds, Dg and Dsˆ are closer to Dt on all six tasks, implying that the generated samples by DACDM make it easier to transfer from the augmented source domain Dsˆ to the target domain Dt than the source domain Ds.
+D. Analysis on Convergence
+Fig. 10 shows convergence of the test accuracy for ELS and ELS+DACDM w.r.t. the number of iterations for the six transfer tasks on Office-31. As can be seen, ELS+DACDM con
+TABLE VIII ABLATION STUDIES ABOUT CLASS AND DOMAIN CONTROL ON THE Office-31 DATASET USING ResNet-50 IN TERMS OF ACCURACY (%). THE BEST IS IN BOLD.
+Class Domain A→W D→W W→D A→D D→A W→A Average
+Condition Condition 96.86 98.99 100.00 96.59 79.23 77.32 91.50 Condition Guidance 96.90 98.91 100.00 97.46 79.79 77.74 91.80 Guidance Condition 93.96 98.36 100.00 93.17 72.88 73.34 88.62 Guidance Guidance 90.82 96.73 99.00 90.56 70.86 68.65 86.10
+TABLE IX ACCURACY (%) W.R.T. THE NUMBER OF GENERATED SAMPLES PER CLASS ON THE Office-31 DATASET. THE BEST IS IN BOLD.
+A→W D→W W→D A→D D→A W→A Average
+0 93.84 98.78 100.00 95.78 77.72 75.13 90.21 50 97.15 98.74 100.00 96.92 79.54 76.86 91.54 100 97.40 98.74 100.00 97.06 79.57 77.31 91.68 200 96.90 98.91 100.00 97.46 79.79 77.74 91.80 300 97.40 98.74 100.00 97.39 79.65 77.30 91.75 400 97.15 98.74 100.00 97.26 80.06 77.46 91.78 800 97.36 98.74 99.80 97.39 80.23 77.74 91.88 1600 97.11 98.74 99.80 97.19 79.87 77.53 91.71
+verges faster and generalizes better than ELS. Fig. 11 shows convergence of the test accuracy of MCC and MCC+DACDM w.r.t. the number of iterations on Office-31. MCC+DACDM again performs better than MCC. These demonstrate usefulness of DACDM.
+E. Ablation Studies
+Effects of Components in DACDM. We perform ablation experiments on Office-31 to analyze the effects of (i) domain guidance, (ii) transferring from the augmented source domain to the target domain, and (iii) using generated target samples. We compare three variants of ELS+DACDM: (i) DACDM trained on Dt only (denoted by ELS+DACDM (w/o domain guidance)); (ii) Dg→Dt instead of Dsˆ→Dt (denoted by ELS+DACDM (Dg→Dt)); (iii) ELS trained on Ds and Dt with pseudo labels, i.e., generated target samples are replaced by target samples with pseudo labels (denoted by ELS+PseudoLabel). Table VII shows the results of six transfer tasks on Office31. As can be seen, ELS+DACDM achieves better performance than ELS+DACDM (w/o domain guidance) on average, demonstrating the effectiveness of using the domain guidance for generating samples. Fig. 13 shows the target backpack images generated by ELS+DACDM (w/o domain guidance) and ELS+DACDM for the transfer task A→W. As can be seen, when training with only the target domain (w/o domain guidance), only black backpacks can be generated (Fig. 13(a)). In
+
+
+10
+Fig. 8. Real source images (top) and generated source images (bottom) for the transfer task A→W on the Office-31 dataset.
+(a) A→W (b) D→W (c) W→D
+(d) A→D (e) D→A (f) W→A
+Fig. 9. t-SNE visualization of six tasks on the Office-31 dataset. Red and blue points denote generated target samples and original target samples, respectively. Best viewed in color.
+0 2000 4000 6000 800010000
+Number of Iterations
+40
+50
+60
+70
+80
+90
+100
+Accuracy (%)
+ELS ELS+DACDM
+(a) A→W
+0 2000 4000 6000 800010000
+Number of Iterations
+80
+85
+90
+95
+100
+Accuracy (%)
+ELS ELS+DACDM
+(b) D→W
+0 2000 4000 6000 800010000
+Number of Iterations
+80
+85
+90
+95
+100
+Accuracy (%)
+ELS ELS+DACDM
+(c) W→D
+0 2000 4000 6000 800010000
+Number of Iterations
+40
+50
+60
+70
+80
+90
+100
+Accuracy (%)
+ELS ELS+DACDM
+(d) A→D
+0 2000 4000 6000 8000 10000
+Number of Iterations
+40
+45
+50
+55
+60
+65
+70
+75
+80
+Accuracy (%)
+ELS ELS+DACDM
+(e) D→A
+0 2000 4000 6000 8000 10000
+Number of Iterations
+40
+45
+50
+55
+60
+65
+70
+75
+80
+Accuracy (%)
+ELS ELS+DACDM
+(f) W→A
+Fig. 10. Test accuracy (%) of ELS and ELS+DACDM w.r.t. the number of iterations on the Office-31 dataset.
+contrast, with the introduction of source samples and domain guidance, backpacks of various colors following the target domain distribution are generated (Fig. 13(b)). Moreover, simply transferring from the generated target samples to the target domain (i.e., ELS+DACDM (Dg→Dt)) is slightly worse than ELS+DACDM on all six tasks, showing the advantage
+0 2000 4000 6000 800010000
+Number of Iterations
+40
+50
+60
+70
+80
+90
+100
+Accuracy (%)
+MCC MCC+DACDM
+(a) A→W
+0 2000 4000 6000 800010000
+Number of Iterations
+80
+85
+90
+95
+100
+Accuracy (%)
+MCC MCC+DACDM
+(b) D→W
+0 2000 4000 6000 800010000
+Number of Iterations
+80
+85
+90
+95
+100
+Accuracy (%)
+MCC MCC+DACDM
+(c) W→D
+0 2000 4000 6000 800010000
+Number of Iterations
+40
+50
+60
+70
+80
+90
+100
+Accuracy (%)
+MCC MCC+DACDM
+(d) A→D
+0 2000 4000 6000 8000 10000
+Number of Iterations
+20
+30
+40
+50
+60
+70
+80
+Accuracy (%)
+MCC MCC+DACDM
+(e) D→A
+0 2000 4000 6000 8000 10000
+Number of Iterations
+20
+30
+40
+50
+60
+70
+80
+Accuracy (%)
+MCC MCC+DACDM
+(f) W→A
+Fig. 11. Test accuracy (%) of MCC and MCC+DACDM w.r.t. the number of iterations on the Office-31 dataset.
+of transferring from the augmented source domain Dsˆ to the target domain Dt. Moreover, ELS+DACDM always performs better than ELS+PesudoLabel, verifying that using generated target samples is effective.
+Effects of Condition and Guidance in DACDM. We perform ablation experiments on Office-31 to further study the effects of different combinations of guidance and conditional methods for controlling classes and domains. The other parts of DACDM remain unchanged. There are four options: (i) Both classes and domains are controlled by condition, where label embeddings and domain embeddings are added together to train the conditional diffusion model in Algorithm 1; (ii) The classes are controlled by condition (Section III-A) while the domains are controlled by guidance (Section III-B), i.e., the proposed DACDM; (iii) The classes are controlled by guidance while domains are controlled by condition, where the classifier is trained on the source domain data and target domain samples with pseudo labels, and the domain labels are used as the condition c in (5); (iv) Both classes and domains are controlled by guidance, i.e., the sum of gradients of class classifier and domain classifier, which are trained separately. Table VIII shows the testing accuracy of six transfer tasks on Office-31. As can be seen, the design choice of using class condition and domain guidance in DACDM achieves the best performance, while controlling both classes and domains by condition is slightly inferior. Furthermore, when guidance is
+
+
+11
+0 50 100 200 300 400 800 1600 #Samples per class
+90.00
+90.50
+91.00
+91.50
+92.00
+92.50
+Accuracy (%)
+(a) Office-31.
+0 50 100 200 300 400 800 16002400 #Samples per class
+70.00
+71.10
+72.20
+73.30
+74.40
+75.50
+Accuracy (%)
+(b) Office-Home.
+0 500 1000 2000 3000 4000 800016000 #Samples per class
+82.00
+83.25
+84.50
+85.75
+87.00
+Accuracy (%)
+(c) VisDA-2017.
+0 50 100 200 300 400 800 1600 #Samples per class
+58.00
+59.60
+61.20
+62.80
+64.40
+66.00
+Accuracy (%)
+(d) miniDomainNet. Fig. 12. Accuracy w.r.t. samples per class on the Office-31, Office-Home, VisDA-2017, and miniDomainNet datasets.
+(a) ELS+DACDM (w/o domain guidance).
+(b) ELS+DACDM.
+Fig. 13. Generated target images for the transfer task A→W on the Office-31 dataset for different methods.
+(a) (b) (c) (d) Fig. 14. Generated target images for the transfer task A→D on the Office31 dataset for ablation studies. (a) The class and domain are controlled both by condition. (b) The classes are controlled by condition and domains are controlled by guidance. (c) The classes are controlled by guidance and domains are controlled by condition. (d) The class and domain are controlled both by guidance.
+used for controlling classes (i.e., “Guidance + Condition” and “Guidance + Guidance”), the performance is largely worse. This is because the trained class classifier may not be good enough for guiding, as some classes have limited samples, e.g., in Dslr and Webcam domains, 16 and 26 samples per class in average; however, the domain classification is a binary classification, which is much easier, thus, the trained domain classifier can be good enough for guidance. Figs. 14(c) and 14(d) visualize some generated images when using “Guidance + Condition” and “Guidance + Guidance” (the controlled class is backpack). As shown, some images are not backpack, leading to worse performance (Table VIII).
+F. Effects of the Number of Generated Samples
+In this section, we perform experiments to study the effect of the number of generated target samples to the performance of ELS+DACDM on Office-31, Office-Home, VisDA-2017, and miniDomainNet. Fig. 12 shows the accuracy w.r.t. number of samples per class. As can be seen, increasing the number of generated samples boosts performance, demonstrating effectiveness of the proposed DACDM. When there is no generated
+sample, ELS+DACDM degenerates to ELS, which performs worse than ELS+DACDM on all four datasets. Furthermore, when the number of generated samples increases to a certain extent, the performance tends to stabilize and may even slightly decrease. As a result, the number of generated target samples for each class can be set to 200, 200, 2000, and 200 for Office-31, Office-Home, VisDA, and miniDomainNet, respectively, which is the default adopted in the above experiments. Tables IX, X, XI, and XII show the detailed results of the transfer tasks on Office-31, Office-Home, VisDA-2017, and miniDomainNet datasets, respectively. As can be seen, increasing the number of generated samples improves transfer performance, verifying the effectiveness of DACDM. For datasets with a small number of real samples per class (e.g., Office-31, Office-Home, and miniDomainNet), a small number of generated samples per class (e.g., 200-400 per class) is sufficient for better performance, while for datasets with a larger number of real samples per class (e.g., VisDA-2017), a large number of generated samples per class (e.g., 2,000-4,000 per class) is more preferred.
+V. CONCLUSION
+In this paper, we propose the DACDM method to generate high-quality samples for the target domain in UDA. The classes of generated samples are controlled by conditional diffusion models, while the domain is guided by the domain classifier. DACDM can be integrated into any UDA model. Extensive experimental results demonstrate that DACDM achieves state-of-the-art performance. In the future work, we are interested in applying DACDM to other transfer learning settings such as multi-source domain adaptation [50].
+ACKNOWLEDGEMENTS
+This work is supported by NSFC key grant 62136005, NSFC general grant 62076118, and Shenzhen fundamental research program JCYJ20210324105000003.
+REFERENCES
+[1] Z. Li, F. Liu, W. Yang, S. Peng, and J. Zhou, “A survey of convolutional neural networks: analysis, applications, and prospects,” IEEE Trans. Neural Netw. Learn. Syst., vol. 33, no. 12, pp. 6999–7019, Dec. 2022. [2] Y. Zhang and Q. Yang, “A survey on multi-task learning,” IEEE Trans. Knowl. Data Eng., vol. 34, no. 12, pp. 5586–5609, Dec. 2022. [3] V. Subramanian, R. Arya, and A. Sahai, “Generalization for multiclass classification with overparameterized linear models,” in Proc. Adv. Neural Inf. Process. Syst (NeurIPS), Nov. 2022, pp. 23 479–23 494.
+
+
+12
+TABLE X ACCURACY (%) W.R.T. THE NUMBER OF GENERATED SAMPLES PER CLASS ON THE Office-Home DATASET. THE BEST IS IN BOLD.
+Ar→Cl Ar→Pr Ar→Rw Cl→Ar Cl→Pr Cl→Rw Pr→Ar Pr→Cl Pr→Rw Rw→Ar Rw→Cl Rw→Pr Average
+0 57.79 77.65 81.62 66.59 76.74 76.43 62.69 56.69 82.12 75.63 62.85 85.35 71.84 50 58.38 76.86 81.83 68.63 79.75 78.62 64.40 57.70 82.65 74.63 63.47 84.87 72.65 100 58.38 77.89 81.74 68.41 79.87 78.40 64.15 57.81 82.61 75.24 64.60 85.40 72.88 200 60.35 78.81 82.74 69.59 80.53 79.55 65.16 58.26 83.11 75.81 64.18 85.55 73.64 300 60.44 78.82 82.52 69.63 81.05 79.56 64.49 58.06 83.11 75.77 65.33 85.50 73.69 400 61.14 78.82 82.93 69.47 81.21 79.88 64.51 58.96 83.24 75.28 65.54 85.75 73.89 800 60.92 79.16 83.04 69.72 81.08 80.24 64.73 59.61 83.41 75.69 65.91 86.06 74.13 1600 60.57 79.25 83.06 70.09 81.89 80.45 64.89 59.38 83.50 75.73 65.80 85.90 74.21 2400 60.94 79.27 83.34 69.67 81.53 80.40 65.06 58.97 83.45 75.90 65.61 85.99 74.18
+TABLE XI ACCURACY (%) W.R.T. THE NUMBER OF GENERATED SAMPLES PER CLASS ON THE VisDA-2017 DATASET. THE BEST IS IN BOLD.
+aero bicycle bus car horse knife motor person plant skate train truck mean
+0 94.76 83.38 75.44 66.45 93.16 95.14 89.09 80.13 90.77 91.06 84.09 57.36 83.40 500 96.16 84.29 79.29 69.91 94.20 96.79 89.35 71.72 92.93 92.49 86.55 57.05 84.23 1000 95.68 85.32 81.22 72.36 93.74 96.58 90.43 81.91 93.02 92.97 86.34 56.42 85.50 2000 96.20 84.79 83.15 73.28 94.76 96.58 90.99 82.21 92.98 93.37 87.49 59.70 86.29 3000 96.31 86.13 81.50 72.28 94.50 96.74 90.25 82.92 93.21 93.13 88.09 60.30 86.28 4000 96.19 86.23 83.08 74.39 94.24 96.66 89.54 82.73 94.87 94.01 87.72 60.11 86.65 8000 96.77 88.49 85.06 72.48 95.35 96.21 90.33 82.49 94.52 94.52 88.32 60.89 87.15 16000 97.01 87.48 83.45 72.59 95.76 95.37 89.91 82.78 94.04 94.39 89.94 59.77 86.87
+TABLE XII ACCURACY (%) W.R.T. THE NUMBER OF GENERATED SAMPLES PER CLASS ON THE miniDomainNet DATASET. THE BEST IS IN BOLD.
+C→P C→R C→S P→C P→R P→S R→C R→P R→S S→C S→P S→R Average
+0 50.11 61.45 53.02 60.77 70.61 56.04 62.43 64.16 54.89 63.93 59.19 64.47 60.09 50 54.12 66.20 54.78 62.88 72.73 56.28 63.45 64.13 56.19 65.60 60.12 67.15 61.97 100 54.83 67.48 55.24 64.02 73.12 57.44 63.92 64.31 56.69 66.25 61.02 68.17 62.71 200 56.14 68.52 55.51 64.96 73.44 58.23 64.67 64.36 57.66 67.23 62.56 69.90 63.60 300 56.73 69.15 55.38 65.80 73.55 58.41 64.72 64.19 58.29 67.23 63.05 70.61 63.92 400 56.57 69.48 55.25 66.42 73.77 58.18 65.09 64.09 58.02 67.46 63.31 71.06 64.06 800 56.23 69.63 53.88 65.94 73.74 58.32 65.17 63.77 61.55 67.07 62.83 71.32 64.12 1600 54.77 69.70 52.43 65.02 73.58 55.78 64.79 62.89 59.74 66.51 62.50 71.42 63.26
+[4] Y. Zhang, Y. Wang, Z. Jiang, F. Liao, L. Zheng, D. Tan, J. Chen, and J. Lu, “Diversifying tire-defect image generation based on generative adversarial network,” IEEE Trans. Instrum. Meas., vol. 71, pp. 1–12, Mar. 2022. [5] P. Oza, V. A. Sindagi, V. V. Sharmini, and V. M. Patel, “Unsupervised domain adaptation of object detectors: A survey,” IEEE Trans. Pattern Anal. Mach. Intell., pp. 1–24, Mar. 2023.
+[6] Q. Yang, Y. Zhang, W. Dai, and S. J. Pan, Transfer learning. Cambridge, U.K.: Cambridge Univ. Press, 2020. [7] X. Gu, J. Sun, and Z. Xu, “Unsupervised and semi-supervised robust spherical space domain adaptation,” IEEE Trans Pattern Anal. Mach. Intell., pp. 1–17, Mar. 2022. [8] S. Zhao, X. Yue, S. Zhang, B. Li, H. Zhao, B. Wu, R. Krishna, J. E. Gonzalez, A. L. Sangiovanni-Vincentelli, S. A. Seshia, and K. Keutzer, “A review of single-source deep unsupervised visual domain adaptation,” IEEE Trans. Neural Netw. Learn. Syst., vol. 33, no. 2, pp. 473–493, Feb. 2022. [9] M. Long, Y. Cao, J. Wang, and M. Jordan, “Learning transferable features with deep adaptation networks,” in Proc. Int. Conf. Mach. Learn. (ICML), vol. 1. PMLR, Jul. 2015, pp. 97–105. [10] Y. Zhang, T. Liu, M. Long, and M. Jordan, “Bridging theory and algorithm for domain adaptation,” in Proc. Int. Conf. Mach. Learn. (ICML), Jun. 2019, pp. 12 805–12 823. [11] Y. Zhu, F. Zhuang, J. Wang, G. Ke, J. Chen, J. Bian, H. Xiong, and Q. He, “Deep subdomain adaptation network for image classification,” IEEE Trans. Neural Netw. Learn. Syst., vol. 32, no. 4, pp. 1713–1722, Apr. 2021. [12] J. Chen, X. Wu, L. Duan, and S. Gao, “Domain adversarial reinforce
+ment learning for partial domain adaptation,” IEEE Trans. Neural Netw. Learn. Syst., vol. 33, no. 2, pp. 539–553, Feb. 2022. [13] H. Rangwani, S. K. Aithal, M. Mishra, A. Jain, and V. B. Radhakrishnan, “A closer look at smoothness in domain adversarial training,” in Proc. Int. Conf. Mach. Learn. (ICML), vol. 162. PMLR, Jul. 2022, pp. 18 378–18 399. [14] Y. Zhang, X. Wang, J. Liang, Z. Zhang, L. Wang, R. Jin, and T. Tan, “Free lunch for domain adversarial training: Environment label smoothing,” in Proc. Int. Conf. Learn. Represent. (ICLR), May 2023.
+[15] J. Hoffman, E. Tzeng, T. Park, J.-Y. Zhu, P. Isola, K. Saenko, A. Efros, and T. Darrell, “CyCADA: Cycle-consistent adversarial domain adaptation,” in Proc. Int. Conf. Mach. Learn. (ICML), vol. 5. Pmlr, Jul 2018, pp. 1989–1998. [16] G. Yang, H. Xia, M. Ding, and Z. Ding, “Bi-directional generation for unsupervised domain adaptation,” in Proc. AAAI Conf. Artif. Intell., vol. 34, no. 04, Feb. 2020, pp. 6615–6622. [17] J. Ho, A. Jain, and P. Abbeel, “Denoising diffusion probabilistic models,” Proc. Adv. Neural Inf. Process. Syst. (NeurIPS), vol. 33, pp. 6840–6851, Dec. 2020. [18] P. Dhariwal and A. Nichol, “Diffusion models beat GANs on image synthesis,” Proc. Adv. Neural Inf. Process. Syst. (NeurIPS), vol. 34, pp. 8780–8794, Dec. 2021. [19] C. Lu, Y. Zhou, F. Bao, J. Chen, C. Li, and J. Zhu, “DPM-Solver++: Fast solver for guided sampling of diffusion probabilistic models,” Preprint arXiv:2211.01095, May 2023. [20] Y. Jin, X. Wang, M. Long, and J. Wang, “Minimum class confusion for versatile domain adaptation,” in Proc. Eur. Conf. Comput. Vis. (ECCV). Springer, Aug. 2020, pp. 464–480.
+
+
+13
+[21] Y. Ganin, E. Ustinova, H. Ajakan, P. Germain, H. Larochelle, F. Laviolette, M. Marchand, and V. Lempitsky, “Domain-adversarial training of neural networks,” J. Mach. Learn. Res., vol. 17, no. 1, pp. 2096–2030, Apr. 2016. [22] A. Gretton, K. M. Borgwardt, M. J. Rasch, B. Sch ̈olkopf, and A. Smola, “A kernel two-sample test,” J. Mach. Learn. Res., vol. 13, no. 1, pp. 723–773, Mar. 2012. [23] R. Xu, G. Li, J. Yang, and L. Lin, “Larger norm more transferable: An adaptive feature norm approach for unsupervised domain adaptation,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. (ICCV), Oct. 2019.
+[24] H. Xia, T. Jing, and Z. Ding, “Maximum structural generation discrepancy for unsupervised domain adaptation,” IEEE Trans Pattern Anal. Mach. Intell., vol. 45, no. 3, pp. 3434–3445, Mar. 2023. [25] I. J. Goodfellow, J. Shlens, and C. Szegedy, “Explaining and harnessing adversarial examples,” in Proc. Int. Conf. Learn. Represent. (ICLR), May 2015. [26] M. Long, Z. Cao, J. Wang, and M. I. Jordan, “Conditional adversarial domain adaptation,” Proc. Adv. Neural Inf. Process. Syst. (NeurIPS), vol. 31, pp. 1640–1650, Dec. 2018. [27] P. Foret, A. Kleiner, H. Mobahi, and B. Neyshabur, “Sharpness-aware minimization for efficiently improving generalization,” in Proc. Int. Conf. Learn. Represent. (ICLR), May 2021.
+[28] J.-Y. Zhu, T. Park, P. Isola, and A. A. Efros, “Unpaired image-toimage translation using cycle-consistent adversarial networks,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. (ICCV), Dec. 2017, pp. 2223–2232. [29] K. P. Murphy, Probabilistic machine learning: Advanced topics. MIT Press, 2023. [30] A. Q. Nichol and P. Dhariwal, “Improved denoising diffusion probabilistic models,” in Proc. Int. Conf. Mach. Learn. (ICML), vol. 139. PMLR, Jul. 2021, pp. 8162–8171. [31] J. Sohl-Dickstein, E. Weiss, N. Maheswaranathan, and S. Ganguli, “Deep unsupervised learning using nonequilibrium thermodynamics,” in Proc. Int. Conf. Mach. Learn. (ICML), vol. 3. PMLR, Jul. 2015, pp. 22562265. [32] O. Ronneberger, P. Fischer, and T. Brox, “U-Net: Convolutional networks for biomedical image segmentation,” in Proc. Int. Conf. Med. Image Comput. Comput.-Assist. Intervent. Springer, Oct. 2015, pp. 234–241. [33] L. Yang, Z. Zhang, Y. Song, S. Hong, R. Xu, Y. Zhao, Y. Shao, W. Zhang, B. Cui, and M.-H. Yang, “Diffusion models: A comprehensive survey of methods and applications,” Preprint arXiv:2209.00796, Mar. 2023. [34] C. Lu, Y. Zhou, F. Bao, J. Chen, C. Li, and J. Zhu, “DPM-Solver: A fast ODE solver for diffusion probabilistic model sampling in around 10 steps,” in Proc. Adv. Neural Inf. Process. Syst. (NeurIPS), vol. 35, Nov. 2022.
+[35] J. Wang and Y. Chen, Introduction to Transfer Learning: Algorithms and Practice. Springer Nature, 2023. [Online]. Available: jd92.wang/tlbook [36] F.-A. Croitoru, V. Hondru, R. T. Ionescu, and M. Shah, “Diffusion models in vision: A survey,” IEEE Trans Pattern Anal. Mach. Intell., pp. 1–20, Mar. 2023. [37] S. Ben-David, J. Blitzer, K. Crammer, A. Kulesza, F. Pereira, and J. W. Vaughan, “A theory of learning from different domains,” Mach. Learn., vol. 79, no. 1, pp. 151–175, May 2010. [38] Y. S. Abu-Mostafa, M. Magdon-Ismail, and H.-T. Lin, Learning from data. AMLBook New York, 2012, vol. 4.
+[39] V. Vapnik, The nature of statistical learning theory. Springer science & business media, 1999. [40] K. Saenko, B. Kulis, M. Fritz, and T. Darrell, “Adapting visual category models to new domains,” in Proc. Eur. Conf. Comput. Vis. (ECCV), vol. 6314. Springer, Sep. 2010, pp. 213–226. [41] H. Venkateswara, J. Eusebio, S. Chakraborty, and S. Panchanathan, “Deep hashing network for unsupervised domain adaptation,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR), Nov. 2017, pp. 5018–5027. [42] X. Peng, B. Usman, N. Kaushik, J. Hoffman, D. Wang, and K. Saenko, “VisDA: The visual domain adaptation challenge,” Preprint arXiv:1710.06924, Nov. 2017. [43] K. Zhou, Y. Yang, Y. Qiao, and T. Xiang, “Domain adaptive ensemble learning,” IEEE Trans. Image Process., vol. 30, pp. 8008–8018, 2021. [44] X. Peng, Q. Bai, X. Xia, Z. Huang, K. Saenko, and B. Wang, “Moment matching for multi-source domain adaptation,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. (ICCV), Oct. 2019, pp. 1406–1415.
+[45] M. Xie, S. Li, R. Zhang, and C. H. Liu, “Dirichlet-based uncertainty calibration for active domain adaptation,” in Proc. Int. Conf. Learn. Represent. (ICLR), May 2023.
+[46] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning for image recognition,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR), Dec. 2016, pp. 770–778. [47] Y. Bao, S. Chang, and R. Barzilay, “Learning stable classifiers by transferring unstable features,” in International Conference on Machine Learning. (ICML),. PMLR, 2022, pp. 1483–1507. [48] L. Van der Maaten and G. Hinton, “Visualizing data using t-SNE,” J. Mach. Learn. Res., vol. 9, no. 11, pp. 2579–2625, Nov. 2008. [49] S. Ben-David, J. Blitzer, K. Crammer, and F. Pereira, “Analysis of representations for domain adaptation,” Proc. Adv. Neural Inf. Process. Syst. (NeurIPS), vol. 19, pp. 137–144, Dec. 2006. [50] S. Sun, H. Shi, and Y. Wu, “A survey of multi-source domain adaptation,” Inf. Fusion, vol. 24, pp. 84–92, Jul. 2015.

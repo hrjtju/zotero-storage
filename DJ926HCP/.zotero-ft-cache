@@ -1,0 +1,171 @@
+Parallel Sampling of Diffusion Models on SO(3)
+Yan-Ting Chen, Hao-Wei Chen, Tsu-Ching Hsiao, and Chun-Yi Lee
+Elsa Lab, Department of Computer Science and Information Engineering National Taiwan University, Taiwan
+Abstract
+In this paper, we design an algorithm to accelerate the diffusion process on the SO(3) manifold. The inherently sequential nature of diffusion models necessitates substantial time for denoising perturbed data. To overcome this limitation, we proposed to adapt the numerical Picard iteration for the SO(3) space. We demonstrate our algorithm on an existing method that employs diffusion models to address the pose ambiguity problem. Moreover, we show that this acceleration advantage occurs without any measurable degradation in task reward. The experiments reveal that our algorithm achieves a speed-up of up to 4.9×, significantly reducing the latency for generating a single sample.
+1 Introduction
+Diffusion generative models [1–6] constitute a class of probabilistic models that generate data through the reversal of a noising process. Researchers have applied diffusion models [3, 7–9] to tasks such as 6D pose estimation, which requires the estimation of an object’s rigid transformation. A key challenge in object pose estimation involves the management of pose ambiguity [3, 10–12], as symmetric objects can present multiple valid solutions. Several recent works [3, 7, 13] have introduced probabilistic models specifically designed to address this challenge. These approaches leverage a score-based diffusion method on SE(3) and employ a variant of the Geodesic Random Walk [14] to mitigate symmetry-induced ambiguities and enhance the robustness of pose predictions. Nevertheless, these methods face performance limitations due to their sequential nature, which prohibits parallelization and thus often results in extended computational latency. To address the non-parallelizable denoising process, methods like DDIM [15] and DPMSolver [16] reduce the number of denoising steps via coarser discretizations, trading sample quality for speed. In contrast, ParaDiGMS [17] investigates whether a method exists to balance computation and speed without sample quality degradation. This approach applies the Picard iteration [18], a fixed-point iteration for solving ODEs, to restructure the sampling process in diffusion models. Rather than adhere to a strictly sequential computation graph, ParaDiGMS introduces a parallelizable structure that enables more efficient sampling. Unlike standard parallelization, which improves throughput
+through simultaneous generation of multiple samples, ParaDiGMS aims to reduce sample latency. This reduction minimizes the time required to produce a single sample. However, the method proposed in ParaDiGMS accelerates image generation [1, 15, 16], where data resides in Euclidean space. In contrast, LiePoseDiffusion [3] addresses the pose ambiguity problem on the SO(3) manifold. To the best of our knowledge, no existing work explores Picard iteration on the SO(3) manifold to address pose estimation and acceleration. Motivated by the parallelizable characteristics of ParaDiGMS, this study aims to accelerate the diffusion process for 6D pose estimation through numerical Picard iteration adapted to the SO(3) manifold. To this end, we provide a mathematical derivation that interprets the forward diffusion process on SO(3) as a stochastic differential equation (SDE) in the Lie algebra, and demonstrate the efficient solution of the corresponding ordinary differential equation (ODE) via Picard iteration. This approach enables parallel computation across time steps, which significantly reduces sampling latency. We evaluate our method on the SYMSOL dataset [7], which consists of images of symmetric objects. The experimental evidence demonstrates that our algorithm achieves up to a 4.9× speedup, which significantly reduces the latency of generating a single sample. Without any model retraining, our method achieves the same minimum angular distance as LiePoseDiffusion [3]. Moreover, we provide qualitative results that illustrate the accurate capture of symmetric pose distribution of objects by our method. Our main contributions can be summarized as follows:
+• We apply a numerical method on the SO(3) manifold to solve the probability flow ODE and propose a parallelizable algorithm. Our method reliably captures both continuous and discrete symmetries, as demonstrated by the visualized sample results. • By exploiting parallelism in the Picard iteration, our algorithm achieves up to a 4.9× speedup over the sequential sampling method, that reduces latency without necessitating any model retraining.
+2 Preliminary
+2.1 Lie Group
+A Lie group [19], denoted as G, is a mathematical structure that combines the properties of both a group and a smooth manifold. A smooth manifold is a
+arXiv:2507.10347v1 [cs.LG] 14 Jul 2025
+
+
+Figure 1: Left: Overview of the proposed framework. The diffusion model conditions on the input image and the timestep t; the image is first processed by an encoder, while t is embedded using a sinusoidal function. Right: (a) Computation graph of the sequential geodesic random walk, where each update depends on the previous timestep. (b) Parallelizable computation graph based on Picard iteration, where the update at iteration k + 1 depends only on values from iteration k, and is independent across different timesteps.
+space that locally resembles Euclidean space, enabling calculus. As a group, G satisfies the group axioms, with an operation defined by a map ◦ : G × G → G that combines two elements. The product of two elements X, Y ∈ G is typically denoted as X ◦ Y , which we will write XY for convenience. Each Lie group G has an associated Lie algebra g, connected via the exponential map Exp : g → G and the logarithmic map Log : G → g. In the 6D pose estimation domain, SO(3) and SE(3) are the most commonly used Lie groups.
+2.2 Stochastic Differential Equation (SDE)
+Prior endeavors [4, 20] show that both the forward and reverse diffusion processes can be formulated as SDEs. The reverse-time SDE involves the score function ∇x log pt(x), which directs the trajectory toward high-density regions of the data distribution. These processes are governed by the following equations:
+dx = f (x, t) dt + g(t) dw, (1) dx = f (x, t) − g(t)2∇x log pt(x) dt + g(t)dw ̄ , (2)
+where w represents the standard Wiener process in forward time, and w ̄ denotes its reverse-time counterpart. Here, f (x, t) is the drift coefficient, and g(t) is the diffusion coefficient. For any diffusion process, there exists a corresponding deterministic process whose trajectories share identical marginal probability densities {pt(x)}tT=0 with the SDE in Eq. (2). This process satisfies the probability flow ODE, given by:
+dx = f (x, t) − 1
+2 g(t)2∇x log pt(x) dt, xt ∼ N (0, I). (3)
+Generalizing score-based diffusion models to an SDE and converting them into a probability flow ODE constitutes a critical aspect in previous works [4, 15, 16], which enables efficient sampling with reduced denoising steps. This transformation is equal importance in our work, allowing the use of numerical ODE solvers such as Euler–Maruyama methodology or Picard iteration.
+2.3 Picard Iteration
+Picard iteration [18] serves as a common method to solve ODEs via fixed-point iteration. ParaDiGMS [17] proposed this approach to accelerate sampling in diffusion models. Consider the ODE formulated as follows: dx(t) = s(x(t), t)dt, (4)
+where s(x(t), t) denotes the drift coefficient. This equation can be iteratively solved through initialization of a guess {xk(t) : 0 ≤ t ≤ 1} at k = 0. The update formula takes the form expressed as follows:
+xk+1(t) = xk(0) +
+Zt
+0
+s(xk(u), u)du. (5)
+The Picard-Lindel ̈of theorem [18] ensures that these iterates form a convergent sequence, while the Banach fixed-point theorem [18] guarantees convergence to the unique ODE solution with initial value x(0). We discretize Eq. (5) with a step size 1
+T for t ∈ [0, T ]:
+xk+1
+t = xk
+0+ 1
+T
+t−1
+X
+i=0
+s(xk
+i , i/T ). (6)
+From Eq. (6), we identified the two key observations. 1. The computation for each timestep operates independently, which enables potential parallelization.
+2. Even in worst-case scenarios, the exact convergence occurs in K ≤ T iterations, where K is the number of iterations required for convergence. In practice, the required iterations for convergence falls substantially below T , as proven in [17]. To illustrate the first property, we visualized the computation graph of Eq. (6). Fig. 1 (right, subfigure (b)) demonstrates that the (k+1)-th update depends exclusively on results from iteration k. This structure permits parallel computation across different timesteps. In contrast, the original geodesic random walk, shown in Fig. 1 (right, subfigure (a)), requires sequential computation due to its timestep-dependent update structure.
+3 Methodology
+In this section, we demonstrate the application of Picard iteration to the Lie group SO(3) and derive a parallelizable update equation for sampling elements from diffusion models. We first establish that the perturbation kernel on SO(3) can be interpreted as an SDE in the Lie algebra. Subsequently, by transforming the problem to the Lie algebra, which can be treated as a Euclidean space, we apply Picard iteration to solve the corresponding ODE. To begin with, the perturbation kernel employed in LiePoseDiffusion on the SO(3) manifold can be formally expressed as the following:
+2
+
+
+pΣ(Y |X) = 1
+ζ(Σ) exp − 1
+2 Log(X−1Y )T Σ−1Log(X−1Y ) , (7)
+where ζ(·) denotes the normalizing constant, and X, Y are rotation matrices on the SO(3) manifold. Assume that Σ = σ2I, where σ is the standard deviation and I denotes the identity matrix, and let Y = Xi, X = X0, Eq. (7) can be re-written as the following formulation:
+pσ2I (Xi | X0) = 1
+ζ(σ2I) exp − 1
+2σ2 Log(X−1
+i X0) 2
+2 . (8)
+The exp(·) in Eq. (8) refers to the standard exponential function, not the exponential mapping Exp(·) used for mapping between a Lie algebra and its corresponding Lie group. Eq. (8) represents a Gaussian distribution with diagonal covariance. The logarithmic transformation z = Log(X−1
+0 Xi) characterizes the relative rotation between elements in the manifold, and it follows the gaussian distribution z ∼ N (0, σ2I). Under
+the assumption that X0 approximates Xi such that
+X −1
+0 Xi ≈ I, this logarithmic term permits approxi
+mation as Log(X−1
+0 Xi) ≈ Log(Xi) − Log(X0). This approximation leads to the stochastic formulation:
+Log(Xi) − Log(X0) = σε, (9)
+where ε = N (0, I). Let yi = Log(Xi), and yi = y0+σiε, which defines the SMLD perturbation kernel [5] in the Euclidean space. Research by [4] demonstrates that this formulation converges to the Variance Exploding SDE (VE-SDE) as:
+dy =
+r
+σ2(t)
+dt dw. (10)
+The derivation above establishes that the diffusion process on SO(3) can be interpreted as an SDE in the Lie algebra, which exhibits Euclidean space properties. Eq. (10) takes the form of Eq. (1), where f (t) = 0 and
+g(t) =
+q
+σ 2 (t)
+dt . The corresponding reverse-time SDE
+emerges from Eq. (2), which then transforms into a probability flow ODE via Eq. (3). This ODE yields to solution through Picard iteration. Finally, Eq. (6) produces the discretized update rule as the following:
+yk+1
+t = yk
+0+ 1
+T
+t−1
+X
+i=0
+−1
+2 g2(i/T )∇y log pi(yi). (11)
+The relation yt = Log(Xt), when substituted into Eq. (11) and rearranged followed by the exponential mapping to both sides, produces the update equation:
+X k+1
+t = X0k
+Qt−1
+i=0 Exp −g2(i/T )
+2T ∇LogX log pi(LogXk
+i ) . (12)
+The final update equation in Eq. (12) enables adaptation of the algorithm from [17] to operate on the SO(3) manifold. Algorithm 1 presents the pseudocode, while Fig. 1 (left) illustrates the overall framework. The algorithm employs score function parameterization with θ. Line 5 in Algorithm 1 constitutes the most significant step, which implements the update in Eq. (12). The forward pass of the neural network represented in Line 4 permits parallel computation.
+Algorithm 1 Parallel Sampling via Picard Iteration on SO(3)
+Input: Diffusion model sθ(·, ·) with variances σt, tolerance τ , step count T , batch window size p, and coefficient ct. Output: A sample from sθ. 1: t,k←0,0 2: Xk
+0 =Exp(ε), ε ∼ N (0, I), Xk
+i ← Xk
+0 ∀i ∈ [1, p].
+3: while t < T do 4: yt+j ← sθ (Xk
+i , σt) ∀i ∈ [0, p)
+5: Xk+1
+t+j+1 ← Xk
+t
+Qt+j
+i=t ciExp(yi) ∀j ∈ [0, p) 6: error ← {∥Xk+1
+t+j − Xk
+t+j ∥ : ∀j ∈ [1, p)} 7: stride ← min({j : errorj > τ 2σ2
+j } ∪ {p}) 8: Xk+1
+t+p+j ← Xk+1
+t+p ∀j ∈ [1, stride] 9: t ← t + stride, k ← k + 1 10: p ← min(p, T − t) 11: end while 12: return xk
+T
+4 Experimental Results
+4.1 Experimental Setups
+Dataset. We employ the SYMSOL dataset in accordance with [3, 7]. SYMSOL comprises images of symmetric objects which serve to evaluate an algorithm’s capabilities in addressing the pose ambiguity problem. SYMSOL further incorporates textured variants which increase task complexity by requiring texture information consideration during pose distribution prediction.
+Model Architecture. Following the JAX implementation of LiePoseDiffusion [21], we re-implemented the method in PyTorch. The model accepts an RGB image I and a timestep t as conditional inputs. The denoising component predicts the score for the noised input x ̃t. The image encoder E, constructed upon a ResNet-34 backbone [22], processes images with dimensions 224 × 224 pixels. The denoising network subsequently processes x ̃t, t, and E(I) to predict the final score, denoted as sθ(x ̃t, t, E(I)). The image encoding E(I) remains consistent across all timesteps, thus requires computation only once for each input image.
+Evaluation Method. In our experiments, we evaluate our proposed algorithm through dual perspectives: performance and efficiency. For performance assessment, we report the average angular distances in degrees. For efficiency evaluation, we measure the inference time required to sample either individual or multiple objects. Our experiments operate on an Intel i7-12700H CPU and an RTX 4070 GPU. We compare our parallelizable algorithm with LiePoseDiffusion [3].
+4.2 Quantitative Results
+Time Distribution in Forward Pass. Table 1 (left) reports the processing time of the sequential sampling method [3] across different components in the forward pass. The image undergoes initial processing by the encoder, followed by 100 iterations of the MLP-head denoising process. The results suggest that the MLP-head dominates computation, constituting 98.6% of the total time, while the backbone contributes merely 1.4%. The sequential nature of MLP-head iter
+3
+
+
+Figure 2: Left: Visualization of 2,000 samples generated by our algorithm using images from the SYMSOL dataset. Right: The x-axis represents the batch window size, which determines the number of data points considered at each step. The y-axis shows the relative speed, indicating the performance improvement as a ratio compared to the baseline. Table 1: Left: Processing time for each component in the forward pass. Right: Comparison of wall-clock time between the original sequential and our parallelizable algorithm across different denoising steps. D: Minimum angular distance. T: Inference time per sample.
+Components Time (ms) Percentage (%)
+Backbone 1.98 1.42 Head 138.60 98.59 Total 140.58 100.00
+Steps Sequential Parallel (Ours)
+D (deg) T (ms) D (deg) T (ms)
+100 1.48 142.0 1.40 29.0 50 1.42 72.6 1.39 25.3
+ations reveals a substantial parallelizable region, which presents a significant opportunity for acceleration.
+Total Inference Time Comparison. We next present a speed comparison between the sequential algorithm and our parallelized version in Table 1 (right). At 100 and 50 steps, our proposed method achieves speedups of 4.9× and 2.9×, respectively, without significant degradation in minimum angular distance.
+Sampling Multiple Instances. We evaluate the performance for multi-sample inference. Table 2 shows that our method achieves real-time performance (> 30 fps) with small sample sizes, which executes 7× faster than the sequential version. Even with 2, 000 samples, ours maintains a 1.3× speed advantage. This reduction derives from a relative increase in the number of model evaluations as compared to the sequential approach.
+4.3 Qualitative Results
+Fig. 2 (left) presents the visualization results of 2, 000 samples for nine objects. The cylinder and cone exhibit continuous symmetry, whereas the tetrahedron, cube, and icosahedron possess 12, 24, and 60 discrete symmetries, respectively. The remaining three objects, which constitute textured versions of the tetrahedron, cylinder, and ball, feature surface patterns that reduce symmetry when the textured side appears. For instance, the pose distribution with the object in the middle-left subfigure does not display the pattern on the ball, which results in a widely dispersed pose distribution. In contrast, the bottom-left subfigure reveals the textured pattern, which diminishes the symmetry and produces a concentrated pose distribution. Our proposed algorithm generates results that closely align with those reported in [3], which demonstrates the strong reliability and capability of our method.
+4.4 Ablation Studies
+We additionally conduct ablation analysis on the relationship between speedup and batch window size under different step sizes T . Specifically, we adopt the Al
+Table 2: Speedup: the run-time ratio between the sequential and our parallelized implementation. The best and second-best results are highlighted in red, and blue, respectively.
+# of Samples Sequential/ms Parallel (Ours)/ms Speedup
+10 138.0 17.3 8.0× 50 140.0 20.5 6.8× 100 139.0 20.6 6.8× 2,000 173.0 131.7 1.3×
+gorithm inefficiency (AI) metric from [17], which quantifies the relative number of model evaluations required by Picard iteration compared to its sequential counterpart. This metric reflects the computational overhead introduced by Picard Iteration. Fig. 2 (right) indicates that when T = 100, the maximum relative speed occurs with a batch window size of 12, which yields performance approximately five times faster than the sequential version. The experiment also reveals that the AI index increases with larger batch window sizes.
+5 Conclusion
+In this paper, we proposed a mathematical formulation that interpreted the diffusion process on SO(3) as a SDE in the Lie algebra. We subsequently solved the corresponding probability flow ODE through Picard iteration and derived a discretized update equation. Based on these formulations, we developed a parallelizable algorithm that eliminated the need to retrain existing deep learning models and accelerated the denoising process through parallel computation. The experimental results demonstrated the effectiveness and efficiency of our proposed method. Compared to the baseline approach, our methodology achieved a speedup of up to 4.9× without any degradation in accuracy.
+6 Acknowledgements
+The authors gratefully acknowledge the support from the National Science and Technology Council (NSTC) in Taiwan under grant numbers MOST 111-2223-E-002-011-MY3, NSTC 113-2221-E-002-212MY3, and NSTC 113-2640-E-002-003. The authors would like to express their appreciation for the donation of the GPUs from NVIDIA Corporation and NVIDIA AI Technology Center (NVAITC) used in this work. Furthermore, the authors extend their gratitude to the National Center for High-Performance Computing (NCHC) for providing the necessary computational and storage resources.
+4
+
+
+References
+[1] J. Ho, A. Jain, and P. Abbeel, “Denoising diffusion probabilistic models,” in Proc. Conf. on Neural Information Processing Systems (NeurIPS), 2020.
+[2] R. Rombach, A. Blattmann, D. Lorenz, P. Esser, and B. Ommer, “High-resolution image synthesis with latent diffusion models,” in Proc. IEEE Conf. on Computer Vision and Pattern Recognition (CVPR), 2022.
+[3] T.-C. Hsiao, H.-W. Chen, H.-K. Yang, and C.Y. Lee, “Confronting ambiguity in 6D object pose estimation via score-based diffusion on SE(3),” in Proc. IEEE Conf. on Computer Vision and Pattern Recognition (CVPR), 2024.
+[4] Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon, and B. Poole, “Score-based generative modeling through stochastic differential equations,” in Proc. Conf. on Neural Information Processing Systems (NeurIPS), 2021.
+[5] Y. Song and S. Ermon, “Generative modeling by estimating gradients of the data distribution,” in Proc. Conf. on Neural Information Processing Systems (NeurIPS), 2020.
+[6] L. Yang, Z. Zhang, Y. Song, S. Hong, R. Xu, Y. Zhao, W. Zhang, B. Cui, and M.-H. Yang, “Diffusion models: A comprehensive survey of methods and applications,” ACM Computing Surveys, vol. 56, no. 4, pp. 1–39, 2023.
+[7] K. Murphy, C. Esteves, V. Jampani, S. Ramalingam, and A. Makadia, “Implicit-PDF: Nonparametric representation of probability distributions on the rotation manifold,” in Proc. Int. Conf. on Machine Learning (ICML), vol. 139 of Proceedings of Machine Learning Research, pp. 78827893, PMLR, 2021.
+[8] T. Wang, G. Hu, and H. Wang, “Object pose estimation via the aggregation of diffusion features,” in Proc. IEEE Conf. on Computer Vision and Pattern Recognition (CVPR), 2024.
+[9] L. Xu, H. Qu, Y. Cai, and J. Liu, “6D-diff: A keypoint diffusion framework for 6D object pose estimation,” in Proc. IEEE Conf. on Computer Vision and Pattern Recognition (CVPR), 2024.
+[10] F. Manhardt, D. M. Arroyo, C. Rupprecht, B. Busam, T. Birdal, N. Navab, and F. Tombari, “Explaining the ambiguity of object detection and 6D pose from visual data,” in Proc. IEEE Int. Conf. on Computer Vision (ICCV), 2019.
+[11] K. Park, T. Patten, and M. Vincze, “Pix2Pose: Pixel-wise coordinate regression of objects for 6D
+pose estimation,” in 2019 IEEE/CVF International Conference on Computer Vision (ICCV), p. 7667–7676, IEEE, Oct. 2019.
+[12] S. Thalhammer, T. Patten, and M. Vincze, “COPE: End-to-end trainable constant runtime object pose estimation,” 2023.
+[13] T. H ̈ofer, B. Kiefer, M. Messmer, and A. Zell, “Hyperposepdf hypernetworks predicting the probability distribution on SO(3),” in Proc. IEEE Winter Conf. on Applications of Computer Vision (WACV), 2023.
+[14] V. D. Bortoli, E. Mathieu, M. J. Hutchinson, J. Thornton, Y. W. Teh, and A. Doucet, “Riemannian score-based generative modelling,” in Proc. Conf. on Neural Information Processing Systems (NeurIPS) (S. Koyejo, S. Mohamed, A. Agarwal, D. Belgrave, K. Cho, and A. Oh, eds.), 2022.
+[15] J. Song, C. Meng, and S. Ermon, “Denoising diffusion implicit models,” in Proc. Int. Conf. on Learning Representations (ICLR), 2022.
+[16] C. Lu, Y. Zhou, F. Bao, J. Chen, C. Li, and J. Zhu, “DPM-solver: A fast ODE solver for diffusion probabilistic model sampling in around 10 steps,” in Proc. Conf. on Neural Information Processing Systems (NeurIPS), 2022.
+[17] A. Shih, S. Belkhale, S. Ermon, D. Sadigh, and N. Anari, “Parallel sampling of diffusion models,” in Proc. Conf. on Neural Information Processing Systems (NeurIPS), 2023.
+[18] V. Berinde, Iterative Approximation of Fixed Points, vol. 1912. Springer, 2007.
+[19] J. Sola, J. Deray, and D. Atchuthan, “A micro Lie theory for state estimation in robotics,” arXiv preprint arXiv:1812.01537, 2018.
+[20] B. D. Anderson, “Reverse-time diffusion equation models,” Stochastic Processes and their Applications, vol. 12, no. 3, pp. 313–326, 1982.
+[21] J. Bradbury, R. Frostig, P. Hawkins, M. J. Johnson, C. Leary, D. M. rin, G. Necula, A. Paszke, J. VanderPlas, S. Wanderman-Milne, and Q. Zhang, “JAX: composable transformations of python+numpy programs,” 2018.
+[22] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning for image recognition,” in Proc. IEEE Conf. on Computer Vision and Pattern Recognition (CVPR), pp. 770–778, IEEE Computer Society, 2016.
+5

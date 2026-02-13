@@ -1,0 +1,3114 @@
+Springer Series in the Data Sciences
+First-order and
+Stochastic Optimization
+Methods for Machine
+Learning
+Guanghui Lan
+
+
+ Springer Series in the Data Sciences
+Series Editors
+David Banks, Duke University, Durham, NC, USA Jianqing Fan, Department of Financial Engineering, Princeton University, Princeton, NJ, USA Michael Jordan, University of California, Berkeley, CA, USA Ravi Kannan, Microsoft Research Labs, Bangalore, India Yurii Nesterov, CORE, Universite Catholique de Louvain, Louvain-la-Neuve, Belgium Christopher Ré, Department of Computer Science, Stanford University, Stanford, USA Ryan J. Tibshirani, Department of Statistics, Carnegie Melon University, Pittsburgh, PA, USA Larry Wasserman, Department of Statistics, Carnegie Mellon University, Pittsburgh, PA, USA
+
+
+ Springer Series in the Data Sciences focuses primarily on monographs and graduate level textbooks. The target audience includes students and researchers working in and across the fields of mathematics, theoretical computer science, and statistics. Data Analysis and Interpretation is a broad field encompassing some of the fastestgrowing subjects in interdisciplinary statistics, mathematics and computer science. It encompasses a process of inspecting, cleaning, transforming, and modeling data with the goal of discovering useful information, suggesting conclusions, and supporting decision making. Data analysis has multiple facets and approaches, including diverse techniques under a variety of names, in different business, science, and social science domains. Springer Series in the Data Sciences addresses the needs of a broad spectrum of scientists and students who are utilizing quantitative methods in their daily research. The series is broad but structured, including topics within all core areas of the data sciences. The breadth of the series reflects the variation of scholarly projects currently underway in the field of machine learning.
+More information about this series at http://www.springer.com/series/13852
+
+
+ Guanghui Lan
+First-order and Stochastic
+Optimization Methods
+for Machine Learning
+
+
+ Guanghui Lan Industrial and Systems Engineering Georgia Institute of Technology Atlanta, GA, USA
+ISSN 2365-5674 ISSN 2365-5682 (electronic) Springer Series in the Data Sciences ISBN 978-3-030-39567-4 ISBN 978-3-030-39568-1 (eBook) https://doi.org/10.1007/978-3-030-39568-1
+Mathematics Subject Classification (2010): 90C15, 90C25, 90C30, 68Q32, 93E35
+© Springer Nature Switzerland AG 2020 This work is subject to copyright. All rights are reserved by the Publisher, whether the whole or part of the material is concerned, specifically the rights of translation, reprinting, reuse of illustrations, recitation, broadcasting, reproduction on microfilms or in any other physical way, and transmission or information storage and retrieval, electronic adaptation, computer software, or by similar or dissimilar methodology now known or hereafter developed. The use of general descriptive names, registered names, trademarks, service marks, etc. in this publication does not imply, even in the absence of a specific statement, that such names are exempt from the relevant protective laws and regulations and therefore free for general use. The publisher, the authors, and the editors are safe to assume that the advice and information in this book are believed to be true and accurate at the date of publication. Neither the publisher nor the authors or the editors give a warranty, expressed or implied, with respect to the material contained herein or for any errors or omissions that may have been made. The publisher remains neutral with regard to jurisdictional claims in published maps and institutional affiliations.
+This Springer imprint is published by the registered company Springer Nature Switzerland AG The registered company address is: Gewerbestrasse 11, 6330 Cham, Switzerland
+
+
+ To Zhaohui and my lovely children: Jesse and Warrina.
+
+
+ Preface
+Since its beginning, optimization has played a vital role in data science. The analysis and solution methods for many statistical and machine learning models rely on optimization. The recent surge of interest in optimization for computational data analysis also comes with a few significant challenges. The high problem dimensionality, large data volumes, inherent uncertainty, unavoidable nonconvexity, together with the increasing need to solve these problems in real time and sometimes under a distributed setting all contribute to create a considerable set of obstacles for existing optimization methodologies. During the past 10 years or so, significant progresses have been made in the design and analysis of optimization algorithms to tackle some of these challenges. Nevertheless, they were scattered in a large body of literature across a few different disciplines. The lack of a systematic treatment for these progresses makes it more and more difficult for young researchers to step into this field, build up the necessary foundation, understand the current state of the art, and push forward the frontier of this exciting research area. In this book, I attempt to put some of these recent progresses into a slightly more organized manner. I mainly focus on the optimization algorithms that have been widely applied or may have the applied potential (from my perspective) to large-scale machine learning and data analysis. These include quite a few first-order methods, stochastic optimization methods, randomized and distributed methods, nonconvex stochastic optimization methods, projection-free methods, and operator sliding and decentralized methods. My goal is to introduce the basic algorithmic schemes that can provide the best performance guarantees under different settings. Before discussing these algorithms, I do provide a brief introduction to a few popular machine learning models to inspire the readers and also review some important optimization theory to equip the readers, especially the beginners, with a good theoretic foundation. The target audience of this book includes the graduate students and senior undergraduate students who are interested in optimization methods and their applications in machine learning or machine intelligence. It can also be used as a reference book for more senior researchers. The initial draft of this book has been used as the text for a senior undergraduate class and a Ph.D. class here at Georgia Institute
+vii
+
+
+ viii Preface
+of Technology. For a one-semester senior undergraduate course, I would suggest to cover the following sections: 1.1, 1.2, 1.4, 1.5, 1.6, 1.7, 2.1, 2.2, 3.1, 3.2, 4.1, and 7.1 and encourage students to work on a course project. For a one-semester Ph.D. course, I would suggest to cover Sects. 1.1–1.7, 2.1–2.4, 3.1–3.6, 4.1–4.3, 5.1, 5.3, 5.4, 6.1–6.5, and 7.1–7.4 and encourage students to read and present those uncovered materials either in the book or from the literature. Many of the materials that I selected to cover in this book originated from our research in the past few years. I am deeply indebted to my Ph.D. supervisors, former Ph.D. students, post-docs, and other collaborators. My foremost and sincerest appreciation will go to Arkadi Nemirovski, who guided me through different stages of my academic life and shaped me into whom I am now. Alex Shapiro provided much guidance to me regarding how to write the book and constantly reminded me of its status. Without his encouragement, I would probably have given up this effort. I am very thankful to Renato Monteiro for his kindness, support, and friendship. Working on this book often refreshes my pleasant memory of collaborating in this area with some very dedicated colleagues such as Yunmei Chen and Hongchao Zhang, and highly talented former students and post-docs including Cong Dang, Qi Deng, Saeed Ghadimi, Soomin Lee, Yuyuan Ouyang, Wei Zhang, and Yi Zhou. I am fortunate that my present students also work quite independently which helped me to spare some time to be dedicated to this book.
+Atlanta, GA, USA Guanghui Lan May 2019
+
+
+ Contents
+1 Machine Learning Models . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1 1.1 Linear Regression . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1 1.2 Logistic Regression . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4 1.3 Generalized Linear Models . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7 1.3.1 Exponential Family . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7 1.3.2 Model Construction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8 1.4 Support Vector Machines . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11 1.5 Regularization, Lasso, and Ridge Regression . . . . . . . . . . . . . . . . . . . 15 1.6 Population Risk Minimization . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16 1.7 Neural Networks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17 1.8 Exercises and Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+2 Convex Optimization Theory . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 2.1 Convex Sets . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 2.1.1 Definition and Examples . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 2.1.2 Projection onto Convex Sets . . . . . . . . . . . . . . . . . . . . . . . . . . . 23 2.1.3 Separation Theorem . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25 2.2 Convex Functions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29 2.2.1 Definition and Examples . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29 2.2.2 Differentiable Convex Functions . . . . . . . . . . . . . . . . . . . . . . . 30 2.2.3 Non-differentiable Convex Functions . . . . . . . . . . . . . . . . . . . 31 2.2.4 Lipschitz Continuity of Convex Functions . . . . . . . . . . . . . . . 33 2.2.5 Optimality Conditions for Convex Optimization . . . . . . . . . . 35 2.2.6 Representer Theorem and Kernel . . . . . . . . . . . . . . . . . . . . . . . 36 2.3 Lagrange Duality . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 37 2.3.1 Lagrange Function and Duality . . . . . . . . . . . . . . . . . . . . . . . . . 38 2.3.2 Proof of Strong Duality . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 39 2.3.3 Saddle Points . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41 2.3.4 Karush–Kuhn–Tucker Conditions . . . . . . . . . . . . . . . . . . . . . . 42 2.3.5 Dual Support Vector Machine . . . . . . . . . . . . . . . . . . . . . . . . . . 44
+ix
+
+
+ x Contents
+2.4 Legendre–Fenchel Conjugate Duality . . . . . . . . . . . . . . . . . . . . . . . . . . 45 2.4.1 Closure of Convex Functions . . . . . . . . . . . . . . . . . . . . . . . . . . 45 2.4.2 Conjugate Functions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 48 2.5 Exercises and Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 50
+3 Deterministic Convex Optimization . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 53 3.1 Subgradient Descent . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 53 3.1.1 General Nonsmooth Convex Problems . . . . . . . . . . . . . . . . . . 54 3.1.2 Nonsmooth Strongly Convex Problems . . . . . . . . . . . . . . . . . . 57 3.1.3 Smooth Convex Problems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 58 3.1.4 Smooth and Strongly Convex Problems . . . . . . . . . . . . . . . . . . 60 3.2 Mirror Descent . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 60 3.3 Accelerated Gradient Descent . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 64 3.4 Game Interpretation for Accelerated Gradient Descent . . . . . . . . . . . 69 3.5 Smoothing Scheme for Nonsmooth Problems . . . . . . . . . . . . . . . . . . . 72 3.6 Primal–Dual Method for Saddle-Point Optimization . . . . . . . . . . . . . 74 3.6.1 General Bilinear Saddle Point Problems . . . . . . . . . . . . . . . . . 78 3.6.2 Smooth Bilinear Saddle Point Problems . . . . . . . . . . . . . . . . . 79 3.6.3 Smooth and Strongly Convex Bilinear Saddle Point Problems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 80 3.6.4 Linearly Constrained Problems . . . . . . . . . . . . . . . . . . . . . . . . . 81 3.7 Alternating Direction Method of Multipliers . . . . . . . . . . . . . . . . . . . . 84 3.8 Mirror-Prox Method for Variational Inequalities . . . . . . . . . . . . . . . . . 86 3.8.1 Monotone Variational Inequalities . . . . . . . . . . . . . . . . . . . . . . 87 3.8.2 Generalized Monotone Variational Inequalities . . . . . . . . . . . 89 3.9 Accelerated Level Method . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 92 3.9.1 Nonsmooth, Smooth, and Weakly Smooth Problems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 93 3.9.2 Saddle Point Problems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 102 3.10 Exercises and Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 108
+4 Stochastic Convex Optimization . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 113 4.1 Stochastic Mirror Descent . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 113 4.1.1 General Nonsmooth Convex Functions . . . . . . . . . . . . . . . . . . 114 4.1.2 Smooth Convex Problems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 118 4.1.3 Accuracy Certificates . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 122 4.2 Stochastic Accelerated Gradient Descent . . . . . . . . . . . . . . . . . . . . . . . 128 4.2.1 Problems Without Strong Convexity . . . . . . . . . . . . . . . . . . . . 134 4.2.2 Nonsmooth Strongly Convex Problems . . . . . . . . . . . . . . . . . . 137 4.2.3 Smooth and Strongly Convex Problems . . . . . . . . . . . . . . . . . . 139 4.2.4 Accuracy Certificates . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 144 4.3 Stochastic Convex–Concave Saddle Point Problems . . . . . . . . . . . . . . 148 4.3.1 General Algorithmic Framework . . . . . . . . . . . . . . . . . . . . . . . 149 4.3.2 Minimax Stochastic Problems . . . . . . . . . . . . . . . . . . . . . . . . . . 153 4.3.3 Bilinear Matrix Games . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 155
+
+
+ Contents xi
+4.4 Stochastic Accelerated Primal–Dual Method . . . . . . . . . . . . . . . . . . . . 158 4.4.1 Accelerated Primal–Dual Method . . . . . . . . . . . . . . . . . . . . . . 160 4.4.2 Stochastic Bilinear Saddle Point Problems . . . . . . . . . . . . . . . 170 4.5 Stochastic Accelerated Mirror-Prox Method . . . . . . . . . . . . . . . . . . . . 181 4.5.1 Algorithmic Framework . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 182 4.5.2 Convergence Analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 184 4.6 Stochastic Block Mirror Descent Method . . . . . . . . . . . . . . . . . . . . . . . 199 4.6.1 Nonsmooth Convex Optimization . . . . . . . . . . . . . . . . . . . . . . 201 4.6.2 Convex Composite Optimization . . . . . . . . . . . . . . . . . . . . . . . 211 4.7 Exercises and Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 218
+5 Convex Finite-Sum and Distributed Optimization . . . . . . . . . . . . . . . . . . 221 5.1 Random Primal–Dual Gradient Method . . . . . . . . . . . . . . . . . . . . . . . . 221 5.1.1 Multi-Dual-Player Game Reformulation . . . . . . . . . . . . . . . . . 225 5.1.2 Randomization on Gradient Computation . . . . . . . . . . . . . . . . 227 5.1.3 Convergence for Strongly Convex Problems . . . . . . . . . . . . . . 230 5.1.4 Lower Complexity Bound for Randomized Methods . . . . . . . 241 5.1.5 Generalization to Problems Without Strong Convexity . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 246 5.2 Random Gradient Extrapolation Method . . . . . . . . . . . . . . . . . . . . . . . 251 5.2.1 Gradient Extrapolation Method . . . . . . . . . . . . . . . . . . . . . . . . 253 5.2.2 Deterministic Finite-Sum Problems . . . . . . . . . . . . . . . . . . . . . 260 5.2.3 Stochastic Finite-Sum Problems . . . . . . . . . . . . . . . . . . . . . . . . 271 5.2.4 Distributed Implementation . . . . . . . . . . . . . . . . . . . . . . . . . . . . 276 5.3 Variance-Reduced Mirror Descent . . . . . . . . . . . . . . . . . . . . . . . . . . . . 278 5.3.1 Smooth Problems Without Strong Convexity . . . . . . . . . . . . . 282 5.3.2 Smooth and Strongly Convex Problems . . . . . . . . . . . . . . . . . . 284 5.4 Variance-Reduced Accelerated Gradient Descent . . . . . . . . . . . . . . . . 287 5.4.1 Smooth Problems Without Strong Convexity . . . . . . . . . . . . . 290 5.4.2 Smooth and Strongly Convex Problems . . . . . . . . . . . . . . . . . . 294 5.4.3 Problems Satisfying an Error-Bound Condition . . . . . . . . . . . 300 5.5 Exercises and Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 302
+6 Nonconvex Optimization . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 305 6.1 Unconstrained Nonconvex Stochastic Optimization . . . . . . . . . . . . . . 305 6.1.1 Stochastic First-Order Methods . . . . . . . . . . . . . . . . . . . . . . . . 308 6.1.2 Stochastic Zeroth-Order Methods . . . . . . . . . . . . . . . . . . . . . . . 318 6.2 Nonconvex Stochastic Composite Optimization . . . . . . . . . . . . . . . . . 328 6.2.1 Some Properties of Prox-Mapping . . . . . . . . . . . . . . . . . . . . . . 330 6.2.2 Nonconvex Mirror Descent Methods . . . . . . . . . . . . . . . . . . . . 332 6.2.3 Nonconvex Stochastic Mirror Descent Methods . . . . . . . . . . . 334 6.2.4 Stochastic Zeroth-Order Methods for Composite Problems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 347 6.3 Nonconvex Stochastic Block Mirror Descent . . . . . . . . . . . . . . . . . . . . 352
+
+
+ xii Contents
+6.4 Nonconvex Stochastic Accelerated Gradient Descent . . . . . . . . . . . . . 359 6.4.1 Nonconvex Accelerated Gradient Descent . . . . . . . . . . . . . . . 361 6.4.2 Stochastic Accelerated Gradient Descent Method . . . . . . . . . 374 6.5 Nonconvex Variance-Reduced Mirror Descent . . . . . . . . . . . . . . . . . . 388 6.5.1 Basic Scheme for Deterministic Problems . . . . . . . . . . . . . . . . 389 6.5.2 Generalization for Stochastic Optimization Problems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 392 6.6 Randomized Accelerated Proximal-Point Methods . . . . . . . . . . . . . . . 395 6.6.1 Nonconvex Finite-Sum Problems . . . . . . . . . . . . . . . . . . . . . . . 396 6.6.2 Nonconvex Multi-Block Problems . . . . . . . . . . . . . . . . . . . . . . 408 6.7 Exercises and Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 419
+7 Projection-Free Methods . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 421 7.1 Conditional Gradient Method . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 421 7.1.1 Classic Conditional Gradient . . . . . . . . . . . . . . . . . . . . . . . . . . 423 7.1.2 New Variants of Conditional Gradient . . . . . . . . . . . . . . . . . . . 433 7.1.3 Lower Complexity Bound . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 439 7.2 Conditional Gradient Sliding Method . . . . . . . . . . . . . . . . . . . . . . . . . . 444 7.2.1 Deterministic Conditional Gradient Sliding . . . . . . . . . . . . . . 446 7.2.2 Stochastic Conditional Gradient Sliding Method . . . . . . . . . . 456 7.2.3 Generalization to Saddle Point Problems . . . . . . . . . . . . . . . . . 464 7.3 Nonconvex Conditional Gradient Method . . . . . . . . . . . . . . . . . . . . . . 468 7.4 Stochastic Nonconvex Conditional Gradient . . . . . . . . . . . . . . . . . . . . 469 7.4.1 Basic Scheme for Finite-Sum Problems . . . . . . . . . . . . . . . . . . 470 7.4.2 Generalization for Stochastic Optimization Problems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 474 7.5 Stochastic Nonconvex Conditional Gradient Sliding . . . . . . . . . . . . . . 477 7.5.1 Wolfe Gap vs Projected Gradient . . . . . . . . . . . . . . . . . . . . . . . 477 7.5.2 Projection-Free Method to Drive Projected Gradient Small . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 478 7.6 Exercises and Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 482
+8 Operator Sliding and Decentralized Optimization . . . . . . . . . . . . . . . . . 483 8.1 Gradient Sliding for Composite Optimization . . . . . . . . . . . . . . . . . . . 483 8.1.1 Deterministic Gradient Sliding . . . . . . . . . . . . . . . . . . . . . . . . . 486 8.1.2 Stochastic Gradient Sliding . . . . . . . . . . . . . . . . . . . . . . . . . . . . 497 8.1.3 Strongly Convex and Structured Nonsmooth Problems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 504 8.2 Accelerated Gradient Sliding . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 509 8.2.1 Composite Smooth Optimization . . . . . . . . . . . . . . . . . . . . . . . 512 8.2.2 Composite Bilinear Saddle Point Problems . . . . . . . . . . . . . . . 527
+
+
+ Contents xiii
+8.3 Communication Sliding and Decentralized Optimization . . . . . . . . . . 532 8.3.1 Problem Formulation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 535 8.3.2 Decentralized Communication Sliding . . . . . . . . . . . . . . . . . . 538 8.3.3 Stochastic Decentralized Communication Sliding . . . . . . . . . 549 8.3.4 High Probability Results . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 555 8.3.5 Convergence Analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 557 8.4 Exercises and Notes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 565
+References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 567
+Index . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 577
+
+
+ Chapter 1
+Machine Learning Models
+In this chapter, we introduce some widely used statistics and machine learning models in order to motivate our later discussion about optimization theory and algorithms.
+1.1 Linear Regression
+To motivate our discussion, let us start with a simple example. Julie needs to decide whether she should go to the restaurant “Bamboo Garden” for lunch or not. She went to ask for her friends Judy and Jim, who had been to this restaurant. Both of them gave a rating of 3 in the scale between 1 and 5 for the service in this restaurant. Given these ratings, it is a bit difficult for Julie to decide if she should pay a visit to “Bamboo Garden.” Fortunately, she has kept a table of Judy and Jim’s ratings for some other restaurants, as well as her own ratings in the past, as shown in Table 1.1.
+Table 1.1 Historical ratings for the restaurants
+Restaurant Judy’s rating Jim’s rating Julie’s ratings? Goodfellas 1 5 2.5 Hakkasan 4.5 4 5 ··· ··· ··· ··· Bamboo Garden 3 3 ?
+To fix notation, let us use u(i) to denote the “input” variables (ratings of Judy and Jim in this example), also called input features, and v(i) to denote the “output” or target variable (rating of Julie’s) to predict. A pair (u(i), v(i)) is called a training example, and the dataset—a list of N training examples {(u(i), v(i)}, i = 1, . . . , N—is called a training set. We will also use U to denote the space of input values, and V
+© Springer Nature Switzerland AG 2020
+G. Lan, First-Order and Stochastic Optimization Methods for Machine Learning, Springer Series in the Data Sciences, https://doi.org/10.1007/978-3-030-39568-1_1
+1
+
+
+ 2 1 Machine Learning Models
+the space of output values. In this example, U = R2 and V = R. Specifically, u(1)
+1 and
+u(1)
+2 are the Judy and Jim’s ratings for Goodfellas, respectively, and v(1) represents Julie’s rating for Goodfellas. Our goal is, given a training set, to learn a function h : U → V so that h(u) is a “good” predictor for the corresponding value of v. This function h is usually called a hypothesis or decision function. Machine learning tasks of these types are called supervised learning. When the output v is continuous, we call the learning task regression. Otherwise, if v takes values on a discrete set of values, the learning task is called classification. Regression and classification are the two main tasks in supervised learning. One simple idea is to approximate v by a linear function of u:
+h(u) ≡ hθ(u) = θ0 + θ1u1 + . . . + θnun.
+In our example, n simply equals 2. For notational convenience, we introduce the convention of u0 = 1 so that
+h(u) = ∑n
+i=0θiui = θT u,
+where θ = (θ0; . . . ;θn) and u = (u0; . . . ; un). In order to find the parameters θ ∈
+Rn+1, we formulate an optimization problem of
+mθin
+{
+f (θ) := ∑N
+i=1(hθ(u(i)) − v(i))2}
+, (1.1.1)
+which gives rise to the ordinary least square regression model. To derive a solution of θ for (1.1.1), let
+U=
+⎡
+⎢⎢⎢⎢⎣
+u(1)T
+u(2)T
+...
+u(N)T
+⎤
+⎥⎥⎥⎥⎦ .
+U is sometimes called the design matrix and it consists of all the input variables. Then, f (θ) can be written as:
+f (θ) = ∑N
+i=1(u(i)T θ − v(i))2
+= (Uθ − v)T (Uθ − v)
+= θT UT Uθ − 2θT UT v − vT v.
+Taking the derivative of f (θ) and setting it to zero, we obtain the normal equation
+UTUθ −UT v = 0.
+
+
+ 1.1 Linear Regression 3
+Thus the minimizer of (1.1.1) is given by
+θ∗ = (U T U )−1U T v.
+The ordinary least square regression is among very few machine learning models that has an explicit solution. Note, however, that to compute θ∗, one needs to compute the inverse of an (n + 1) × (n + 1) matrix (UTU). If the dimension of n is big, computing the inverse of a large matrix can still be computationally expensive. The formulation of the optimization problem in (1.1.1) follows a rather intuitive approach. In the sequel, we provide some statistical reasoning about this formulation. Let us denote
+ε(i) = v(i) − θT u(i), i = 1, . . . , N. (1.1.2)
+In other words, ε(i) denotes the error associated with approximating v(i) by θT u(i). Moreover, assume that ε(i), i = 1, . . . , N, are i.i.d. (independently and identically distributed) according to a Gaussian (or Normal) distribution with mean 0 and variance σ2. Then, the density of ε(i) is then given by
+p(ε(i)) = √21πσ exp
+(
+− (ε(i))2
+2σ2
+) .
+Using (1.1.2) in the above equation, we have
+p(v(i)|u(i);θ) = √21πσ exp
+(
+− (v(i)−θT u(i))2
+2σ2
+)
+. (1.1.3)
+Here, p(v(i)|u(i);θ) denotes the distribution of the output v(i) given input u(i) and parameterized by θ. Given the input variables u(i) and output v(i), i = 1, . . . , N, the likelihood function with respect to (w.r.t.) the parameters θ is defined as
+L(θ) :=
+N
+∏
+i=1
+p(v(i)|u(i);θ) =
+N
+∏
+i=1
+√21πσ exp
+(
+− (v(i)−θT u(i))2
+2σ2
+) .
+The principle of maximum likelihood tells us that we should choose θ to maximize the likelihood L(θ), or equivalently, the log likelihood
+l(θ) := log L(θ)
+= ∑N
+i=1 log
+[ √21πσ exp
+(
+− (v(i)−θT u(i))2
+2σ2
+)]
+= N log √21πσ − 1
+2σ2 ∑N
+i=1(v(i) − θT u(i))2.
+This is exactly the ordinary least square regression problem, i.e., to minimize ∑N
+i=1(v(i) − θT u(i))2 w.r.t. θ. The above reasoning tells us that under certain probabilistic assumptions, the ordinary least square regression is the same as maximum likelihood estimation. It should be noted, however, that the probabilistic assumptions are by no means necessary for least-squares to be a rational procedure for regression.
+
+
+ 4 1 Machine Learning Models
+1.2 Logistic Regression
+Let us come back to the previous example. Suppose that Julie only cares about whether she will like the restaurant “Bamboo Garden” or not, rather her own ratings. Moreover, she only recorded some historical data indicating whether she likes or dislikes some restaurants, as shown in Table 1.2. These records are also visualized in Fig. 1.1, where each restaurant is represented by a green “O” or a red “X,” corresponding to whether Julie liked or disliked the restaurant, respectively. The question is: with the rating of 3 from both of her friends, will Julie like Bamboo Garden? Can she use the past data to come up with a reasonable decision?
+Table 1.2 Historical ratings for the restaurants
+Restaurant Judy’s rating Jim’s rating Julie likes? Goodfellas 1 5 No Hakkasan 4.5 4 Yes ··· ··· ··· ··· Bamboo Garden 3 3 ?
+Similar to the regression model, the input values are still denoted by U =
+(u(1)T ; . . . ; u(N)T ), i.e., the ratings given by Judy and Jim. But the output values are now binary, i.e., v(i) ∈ {0, 1}, i = 1, . . . , N. Here v(i) = 1 means that Julie likes the i-th restaurant and v(i) = 0 means that she dislikes the restaurant. Julie’s goal is to come up with a decision function h(u) to approximate these binary variables v. This type of machine learning task is called binary classification. Julie’s decision function can be as simple as a weighted linear combination of her friends’ ratings: hθ(u) = θ0 + θ1 u1 + . . . + θnun (1.2.1)
+with n = 2. One obvious problem with the decision function in (1.2.1) is that its values can be arbitrarily large or small. On the other hand, Julie wishes its values to fall between 0 and 1 because those represent the range of v. A simple way to force h to fall within 0 and 1 is to map the linear decision function θT u through another function called the sigmoid (or logistic) function
+g(z) = 1
+1+exp(−z) (1.2.2)
+and define the decision function as
+hθ(u) = g(θT u) = 1
+1+exp(−θT u) . (1.2.3)
+Note that the range of the sigmoid function is given by (0, 1), as shown in Fig. 1.2.
+
+
+ 1.2 Logistic Regression 5
+Now the question is how to determine the parameters θ for the decision function in (1.2.3). We have seen the derivation of the ordinary least square regression model as the consequence of maximum likelihood estimation under certain probabilistic assumptions. We will follow a similar approach for the classification problem.
+Jim
+Judy
+X
+5
+12345
+4
+3
+2
+1
+O
+Goodfellas
+Hakkasan
+XX
+O O
+X
+X
+OO
+<>
+Bamboo Garden
+O
+X
+Fig. 1.1 Visualizing ratings of the restaurants
+We assume that v(i), i = 1, . . . , N, are independent Bernoulli random variables with success probability (or mean) of hθ(u(i)). Thus their probability mass functions are given by
+p(v(i)|u(i);θ) = [hθ(u(i))]v(i) [1 − hθ(u(i))]1−v(i) , v(i) ∈ {0, 1},
+and the associated likelihood function L(θ) is defined as
+L(θ) =
+N
+∏
+i=1
+{
+[hθ(u(i))]v(i) [1 − hθ(u(i))]1−v(i) }
+.
+In view of the principle of maximum likelihood, we intend to maximize L(θ), or equivalently, the log likelihood
+
+
+ 6 1 Machine Learning Models
+–100
+0.0 0.2 0.4 0.6 0.8 1.0
+–50 0 50 100
+Fig. 1.2 The sigmoid (logistic) function
+l(θ) = ∑N
+i=1 log
+{
+[hθ(u(i))]v(i) [1 − hθ(u(i))]1−v(i) }
+= ∑N
+i=1
+{
+v(i) log hθ(u(i)) + [1 − v(i)] log[1 − hθ(u(i))]
+} .
+Accordingly, we formulate an optimization problem of
+mθax ∑N
+i=1
+{
+− log[1 + exp(−θT u(i))] − [1 − v(i)]θT u(i)}
+. (1.2.4)
+Even though this model is used for binary classification, it is often called logistic regression for historical reasons. Unlike linear regression, (1.2.4) does not have an explicit solution. Instead, we need to develop some numerical procedures to find its approximate solutions. These procedures are called optimization algorithms, a subject to be studied intensively later in our lectures. Suppose that Julie can solve the above problem and find at least one of its optimal solutions θ∗. She then obtained a decision function hθ∗ (u) which can be used to predict whether she likes a new restaurant (say “Bamboo Garden”) or not. More specifically, recall that the example corresponding to “Bamboo Garden” is u = (1, 3, 3) (recall u1 = 1). If hθ∗ ((1, 3, 3)) > 0.5, then Julie thinks she will like the restaurant, otherwise she will not. The values of u’s that cause hθ∗ (u) to be 0.5 are called the “decision boundary” as shown in Fig. 1.3. The black line is the “decision boundary.” Any point lying above the decision boundary represents a restaurant that Julie likes, while any point lying below the decision boundary is a restaurant that she does not
+
+
+ 1.3 Generalized Linear Models 7
+Jim
+Judy
+X
+5
+12345
+4
+3
+2
+1
+O
+Goodfellas
+Hakkasan
+XX
+O O
+X
+X
+OO
+<>
+Bamboo Garden
+O
+X
+Fig. 1.3 Decision boundary
+like. With this decision boundary, it seems that Bamboo Garden is slightly on the positive side, which means she may like this restaurant.
+1.3 Generalized Linear Models
+In the previous two sections, we have introduced two supervised machine learning models: the ordinary least square regression and the logistic regression. In the former model, we had assumed that v|u;θ ∼ N (μ,σ2), and in the latter model, v|u;θ ∼ Bernoulli(q), for some appropriate definitions of μ and q as functions of u and θ. We will show in this section that both of them are certain special cases of a broader family of models, called Generalized Linear Models (GLMs), which essentially apply maximum likelihood estimation for exponential distribution family.
+1.3.1 Exponential Family
+An exponential family is a set of probability distributions given in the form of
+p(v;η) = b(v) exp(ηT T (v) − a(η)) (1.3.1)
+for a fixed choice of T , a, and b. This family is parameterized by η in the sense that different distributions can be obtained by varying η.
+
+
+ 8 1 Machine Learning Models
+Let us first check that the normal distribution can indeed be written in the form of (1.3.1). For simplicity, we consider random variable v ∼ N (μ, 1), i.e.,
+p(v; μ) = √12πexp
+(
+− (v−μ)2
+2
+)
+= √12πexp
+(
+− v2
+2
+)
+exp
+(
+μT v − μ2
+2
+) .
+Clearly, p(v;μ) is a special case of (1.3.1) with η = μ,
+b(v) = √12πexp
+(
+− v2
+2
+)
+, T (v) = v and a(η) = μ2
+2 = η2
+2.
+To check that Bernoulli is a special exponential distribution, we first rewrite its density function
+p(v; q) = qv(1 − q)1−v
+= exp (v log q + (1 − v) log(1 − q))
+= exp
+(
+v log q
+1−q + log(1 − q)
+) .
+Clearly, in view of (1.3.1), we have
+η = log q
+1−q , b(v) = 1, T (v) = v and a(η) = − log(1 − q).
+It is interesting to note that by the first identity, we have
+q= 1
+1+exp(−η) ,
+which gives exactly the logistic (sigmoid) function. The exponential family covers a broad class of distributions, including normal, exponential, gamma, chi-squared, beta, Dirichlet, Bernoulli, categorical, Poisson, Wishart and Inverse Wishart distributions, etc.
+1.3.2 Model Construction
+Following how we construct the ordinary least square and logistic regression models, we can summarize the basic elements of the GLM model as follows.
+• We need to know the distribution of the response (output) v, given input u and parameters θ to be estimated. More specifically, we assume that v|u;θ satisfies a family of exponential distribution parameterized by η. • Given u, we need to construct a decision function (or hypothesis) h(u) to predict the outcome T (v) (in most cases T (v) = v as in the ordinary least square and logistic regression). T (v) is random and we expect that h(u) = E[T (v)|u]. For
+
+
+ 1.3 Generalized Linear Models 9
+example, in logistic regression, we have chosen h in a way such that hθ(u) = E[v|u].
+• We assume that η linearly depends on the input values u, i.e., η = θT u. If η is a vector, we assume that ηi = θT
+i u.
+While the first two elements are assumptions we make, the last element is more related to the design of the model. In particular, with this type of design, the resulting models are most likely easier to fit. Let us check these elements have indeed been used in our development for the ordinary least square model. Recall we assume that ε = v − θT u is normally distributed according to N (0,σ2). Hence, v|u;θ ∼ N (η,σ2) with η = θT u. This implies that all the above three elements hold since v|u;θ is normally distributed, η = E[v|u;θ] and h(u) = θT u = η.
+Next we can check that these elements also hold for the logistic regression. Recall that we assume that v|u;θ satisfies a family of Bernoulli distribution with mean
+q = h(u) = 1
+1+exp(−θT u) .
+Denoting η = θT u, and using it in the above identity, we obtain
+q= 1
+1+exp(−η) ,
+or equivalently, η = log q
+1−q ,
+which is exactly the parameter we used to write Bernoulli distribution in the form of exponential family. These discussions imply that all the aforementioned elements of GLM hold. Let us look at one more example of a GLM. Consider a classification problem in which the response variable v can take on any one of the k values, i.e., v ∈ {1, 2, . . . , k}. The response variable is still discrete, but can now take on more than two values. This type of machine learning task is called multi-class classification. In order to derive a GLM for modeling this type of task, we first assume that v is distributed according to a multinomial distribution and show that multinomial is an exponential family distribution. To parameterize a multinomial over k possible outcomes, we could use k parameters q1, . . . , qk to specify the probability of each outcome. However, these parameters would not be independent because any k − 1 of the qi’s uniquely determines the last one due to the fact that ∑k
+i=1qi = 1. So, we will instead parameterize the multino
+mial with only k − 1 parameters, q1, . . . , qk−1, where qi = p(y = i; q). For notational
+convenience, we also let qk = p(y = k; q) = 1 − ∑k−1
+i=1 qi.
+To show that multinomial is an exponential distribution, let us define T (v) ∈ Rk−1 as follows:
+
+
+ 10 1 Machine Learning Models
+T (1) =
+⎡
+⎢⎢⎢⎢⎢⎣
+1 0 0
+...
+0
+⎤
+⎥⎥⎥⎥⎥⎦
+, T (2) =
+⎡
+⎢⎢⎢⎢⎢⎣
+0 1 0
+...
+0
+⎤
+⎥⎥⎥⎥⎥⎦
+, . . . , T (k − 1) =
+⎡
+⎢⎢⎢⎢⎢⎣
+0 0 0
+...
+k−1
+⎤
+⎥⎥⎥⎥⎥⎦
+, T (k) =
+⎡
+⎢⎢⎢⎢⎢⎣
+0 0 0
+...
+0
+⎤
+⎥⎥⎥⎥⎥⎦
+.
+Unlike our previous examples, here we do not have T (v) = v. Moreover, T (v) is now in Rk−1, instead of a real number. We will write (T (v))i to denote the i-th element of the vector T (v). We introduce one more useful piece of notation. An indicator function I{·} takes on a value of 1 if its argument is true, and 0 otherwise. So, we can also write the relationship between T (v) and v as (T (v))i = I{v = i}. Further, we have that E[(T (v))i] = p(v = i) = qi.
+We are now ready to show that multinomial distribution is a member of the exponential family. We have:
+p(v; q) = qI{v=1}
+1 qI{v=2}
+2 . . . qI{v=k}
+k
+= qI{v=1}
+1 qI{v=2}
+2 . . . q1−∑k−1
+i=1 I{v=i} k
+= q(T (v))1
+1 q(T (v))2
+2 . . . q1−∑k−1
+i=1 (T (v))i k
+= exp
+(
+∑k−1
+i=1 (T (v))i log qi + (1 − ∑k−1
+i=1 (T (v))i) log qk
+)
+= exp
+(
+∑k−1
+=1 (T (v))i log qi
+qk + log qk
+) .
+This is an exponential distribution with
+ηi = log qi
+qk , i = 1, . . . , k − 1, a(η) = − log qk, and b = 1. (1.3.2)
+In order to define the decision function, we first represent qi’s in terms of ηi’s, since E[(T (y))i] = p(y = i) = qi and we would like hi(u) = qi. By (1.3.2), we have
+qi
+qk = exp(ηi), i = 1, . . . , k − 1. (1.3.3)
+For convenience, let us also denote ηk = 0 and
+qk
+qk = exp(ηk).
+Summing up these identities and using the fact that ∑k
+i=1qi = 1, we have 1
+qk = ∑k
+i=1exp(ηi), and hence
+qi = exp(ηi)
+∑k
+i=1exp(ηi) , i = 1, . . . , k − 1. (1.3.4)
+To finish the definition of the decision function, we assume hi(u) = qi and set ηi = θT
+i u. Using these two relations together with (1.3.4), we obtain
+
+
+ 1.4 Support Vector Machines 11
+hi(u) = exp(θiT u)
+∑k
+i=1exp(θiT u) , i = 1, . . . , k − 1.
+Finally, these parameters θi, i = 1, . . . , k − 1, used in the definition of hi(u) can be estimated by maximizing the log likelihood
+l(θ) = ∑N
+i=1 log p(v(i)|u(i);θ) = ∑N
+i=1 log
+k
+∏
+j=1
+(
+exp(ηj ) ∑k
+j=1 exp(ηj )
+)I(v(i)= j)
+.
+1.4 Support Vector Machines
+In this section, we will provide a brief introduction to support vector machine, which has been considered as one of the most successful classification models. Consider the binary classification problem with N training examples (u(i), v(i)), i = 1, . . . , N. For convenience, we assume throughout this section that the output v(i) is given by either 1 or −1, i.e., v(i) ∈ {−1, 1}, rather than v(i) ∈ {0, 1} as in the previous sections. Observe that this is just a change of label for the class, but does not affect at all the fact that one particular example belongs to one class or the other. We assume for this moment that these observed examples are separable. Formally speaking, we assume that there exists a linear function of u, denoted by
+hw,b(u) = b + w1u1 + w2u2 + . . . wnun,
+such that for all i = 1, . . . , N,
+hw,b(u(i))
+{
+> 0, if v(i) = 1,
+< 0, Otherwise(i.e., v(i) = −1).
+In particular, hw,b(u) = 0 defines a hyperplane that separates the observed examples into two different classes. The examples that fall above the hyperplane are labeled by v(i) = 1, while those below the hyperplane are labeled by v(i) = −1. Notice that our notations for the decision function hw,b here also slightly differ from the previous sections. First of all, we get rid of u0 which was assumed to be 1. Second, we denote the normal vector w := (w1, . . . , wn) and the intercept b by different notations, rather than a single n + 1 vector (θ0,θ1, . . . ,θn). The main reason is that we will investigate the geometric meaning of the normal vector w for the separating hyperplane hw,b(u) = 0. By using logistic regression, we can possibly define a separating hyperplane. Recall that we use a decision function hθ(u) = g(θT u) to approximate the probability p(y = 1|x;θ). Given an u, we predict its output to be either 1 or 0 depending on whether hθ(u) ≥ 0.5 or hθ(u) < 0.5, or equivalently, whether θT u ≥ 0 or θT u < 0. Therefore, this vector θ gives rise to a possible separating hyperplane as denoted by H1 in Fig. 1.4.
+
+
+ 12 1 Machine Learning Models
+Jim
+Judy
+X
+5
+12345
+4
+3
+2
+1
+O
+Goodfellas
+Hakkasan
+XX
+O O
+X
+X
+OO
+<>
+Bamboo Garden
+O
+X
+H1
+H2 H3
+Fig. 1.4 Inspiration of SVM
+However, there exist quite many other hyperplanes separating these observed examples, e.g., H2 and H3 as shown in Fig. 1.4. Given potentially an infinite number of separating hyperplanes, how should we evaluate their strength and thus choose the strongest separating hyperplane? In order to answer this question, let us examine the so-called “margin” associated with a separating hyperplane wT u + b = 0. For a given example u(i), i.e., the
+point A = (u(i)
+1 , . . . , u(ni)) in Fig. 1.5, we first compute its distance to the separating hyperplane. Let B be the projection of A to the separating hyperplane, it suffices to
+compute the length of the line segment B−→A, denoted by d(i) = |B−→A|. Note that the
+unit direction of B−→A is given by w/‖w‖, and hence the coordinates of B are given by u(i) − d(i)w/‖w‖. Meanwhile, since B belongs to the separating hyperplane, we
+have
+wT (
+u(i) − d(i) w
+‖w‖
+)
++ b = 0.
+Solving the above equation for d(i), we have
+d(i) = wT u(i)+b
+‖w‖ . (1.4.1)
+In the above derivation, we have implicitly assumed that the point A sits above the separating hyperplane (i.e., v(i) = 1). In case the point A sits below the hyperplane (v(i) = −1), then the point B should be written as u(i) + d(i)w/‖w‖, and hence
+d(i) = − wT u(i)+b
+‖w‖ . (1.4.2)
+Putting (1.4.1) and (1.4.2) together, we can represent the distance d(i) by
+
+
+ 1.4 Support Vector Machines 13
+d(i) = v(i)[wT u(i)+b]
+‖w‖ (1.4.3)
+for any i = 1, . . . , N.
+Jim
+Judy
+X
+5
+12345
+4
+3
+2
+1
+O
+Goodfellas
+Hakkasan
+XX
+O O
+X
+X
+OO
+O
+Xw
+A B
+Fig. 1.5 Inspiration of SVM
+With the above computation of d(i)’s, we can now define the margin associated with the separating hyperplane wT u + b by
+d(w, b) := min
+i=1,...,N di ≡ mini=1,...,N v(i)[wT u(i)+b]
+‖w‖ . (1.4.4)
+The margin d(w, b) provides a way to evaluate the strength of a separating hyperplane. Intuitively, a larger margin implies that the separating hyperplane can distinguish these two different classes of examples more significantly. Therefore, a reasonable goal is to find (w, b) to maximize the margin d(w, b), i.e.,
+mw,abx
+mini=1,...,N v(i)[wT u(i)+b]
+‖w‖ .
+Specifically, this will result in a classifier that separates the positive and the negative training examples with a large “gap.” The above optimization problem can be written equivalently as
+maxw,b,r r
+‖w‖
+s.t. v(i)[wT u(i) + b] ≥ r, i = 1, . . . , N.
+For many reasons, most importantly for tractability, we wish the formulated optimization problem for machine learning to be convex (see definitions in Chap. 2). However, neither of these two formulations is convex as their objective functions
+
+
+ 14 1 Machine Learning Models
+are nonconvex. Fortunately, observing that multiplying w, b, and r by a scaling factor does not change the optimal value of the above problem, we can then assume r = 1 and reformulate it as
+maxw,b 1
+‖w‖
+s.t. v(i)[wT u(i) + b] ≥ 1, i = 1, . . . , N, (1.4.5)
+or equivalently, minw,b 1
+2 ‖w‖2
+s.t. v(i)[wT u(i) + b] ≥ 1, i = 1, . . . , N.
+The latter is a convex optimization problem as we will see shortly in Chap. 2. Now we should provide some explanation regarding why the above model is called support vector machine. Suppose that we have a very large number of examples, i.e., N is very large. Once we solve (1.4.5) to optimality by identifying the optimal (w∗, b∗), we will find out that only a small number (out of N) of constraints of (1.4.5) are active at (w∗, b∗), i.e., only a small number of constraints are satisfied with equality. The corresponding u(i)’s are then called supportvectors. Geometrically, the support vectors gave the shortest distance to the optimal separating hyperplane (w∗)T u + b∗ = 0 among all training examples. If we move the optimal separating hyperplane along the direction of w∗/‖w∗‖ and stop until some vectors from the training examples are encountered, we will find the first set of support vectors. Similarly, moving the optimal separating hyperplane along −w∗/‖w∗‖, we will obtain another set of support vectors. These two set of support vectors resides on two hyperplanes parallel to the optimal separating hyperplane. They define the gap between these two different classes of training examples, which is exactly twice the objective value of (1.4.5).
+X
+O
+X
+X
+O
+O
+X
+X
+O
+O
+O
+X
+X
+O
+X
+X
+O
+O
+X
+X
+O
+O
+O
+X
+X
+Fig. 1.6 SVM outliners
+The derivation of the SVM as presented so far assumed that the training examples are linearly separable. However, this might not be the case in practice. Moreover, in some cases it is not clear that finding a separating hyperplane is exactly what we want, since that might be susceptible to outliers. To see this, Fig. 1.6a shows an optimal margin classifier. However, when a single outlier is added in Fig. 1.6b, the optimal separating hyperplane has to make a dramatic swing, leading to a much smaller margin for the resulting classifier.
+
+
+ 1.5 Regularization, Lasso, and Ridge Regression 15
+In order to address these issues, we reformulate (1.4.5) as
+minw,b 1
+2 ‖w‖2 + λ∑N
+i=1ξi
+s.t. v(i)[wT u(i) + b] ≥ 1 − ξi, i = 1, . . . , N, ξi ≥ 0, i = 1, . . . , N,
+(1.4.6)
+for some λ > 0. In the above formulation, we allow the constraints in (1.4.5) to be violated and then penalize the total amount of violations. Observe that problem (1.4.6) can be written equivalently as
+minw,b 1
+2 ‖w‖2 + λ∑N
+i=1 max{0, 1 − v(i)[wT u(i) + b]}. (1.4.7)
+These formulations are called soft-margin support vector machine.
+1.5 Regularization, Lasso, and Ridge Regression
+Many supervised machine learning models, including a few problems discussed above, can be written in the following form:
+f ∗ := min
+x∈Rn
+{ f (x) := ∑N
+i=1L(xT ui, vi) + λr(x)} , (1.5.1)
+for some λ ≥ 0, where L(·, ·) and r(·) are called the loss and regularization functions, respectively. For instance, in SVM, we have x = (w, b), L(z, v) = max{0, 1 − vz} and r(x) = ‖w‖2. In the ordinary least square regression, we have x = θ, L(z, v) = (z − v)2, and r(θ) = 0. In fact, we can add many different types of regularization to the square loss function to avoid over-fitting, reduce variance of the prediction error, and handle correlated predictors. The two most commonly used penalized models are ridge regression and Lasso regression. Ridge regression is given in the form of (1.5.1) with L(z, v) = (z−v)2 and r(x) = ‖x‖2
+2, while Lasso regression is represented by (1.5.1) with L(z, v) = (z − v)2
+and r(x) = ‖x‖1. Here ‖x‖2
+2 = ∑n
+i=1xi2 and ‖x‖1 = ∑n
+i=1|xi|. The elastic net combines both l1 and l2 penalty and is defined as
+λPα(β) = λ (α‖β‖1 + 1
+2 (1 − α)‖β‖2
+2
+).
+Lasso regression leads to a sparse solution when the tuning parameter is sufficiently large. As the tuning parameter value λ is increased, all coefficients are set to zero. Since reducing parameters to zero removes them from the model, Lasso is a good selection tool. Ridge regression penalizes the l2 norm of the model coefficients. It provides greater numerical stability and is easier and faster to compute than Lasso. Ridge regression reduces coefficient values simultaneously as the penalty is increased without however setting any of them to zero.
+
+
+ 16 1 Machine Learning Models
+Variable selection is important in numerous modern applications with many features where the l1 penalty has proven to be successful. Therefore, if the number of variables is large or if the solution is known to be sparse, we recommend using Lasso, which will select a small number of variables for sufficiently high λ that could be crucial to the interpretability of the model. The l2 penalty does not have this effect: it shrinks the coefficients, but does not set them exactly to zero. The two penalties also differ in the presence of correlated predictors. The l2 penalty shrinks coefficients for correlated columns towards each other, while the l1 penalty tends to select only one of them and set the other coefficients to zero. Using the elastic net argument α combines these two behaviors. The elastic net both selects variables and preserves the grouping effect (shrinking coefficients of correlated columns together). Moreover, while the number of predictors that can enter a Lasso model saturates at min(N, n), where N is the number of observations and n is the number of variables in the model, the elastic net does not have this limitation and can fit models with a larger number of predictors.
+1.6 Population Risk Minimization
+Let us come back to our motivating example. When Julie examines her decision process, she observes that her true objective was to design the decision function to predict her judgment about the restaurant “Bamboo Garden,” rather than just fit the historical data she collected. In other words, the problem she intended to solve was not really the one in (1.1.1). Rather, her problem could be better formulated as mw,ibn Eu,v[h(u; w, b) − v]2, (1.6.1)
+where u and v are random variables denoting Judy’s and Jim’s ratings, and her own judgment for a restaurant. During the process, she has implicitly assumed that the optimal solution of (1.1.1) will be a good approximate solution to (1.6.1). In fact, Julie’s intuition can be proved more rigorously. In stochastic optimization, (1.1.1) is called the sample average approximation (SAA) problem of (1.6.1). It can be shown that as N increases, an optimal solution of (1.1.1) will approximately solve problem (1.6.1). It is worth noting that in machine learning, problems (1.6.1) and (1.1.1) are called population and empirical risk minimization, respectively. A few problems remain. First, how should we solve problem (1.1.1) efficiently if both the dimension of examples and the sample size N are very large? Second, should we really need to solve the empirical risk minimization problem? Why should not we design an algorithm to solve the population risk minimization problem directly? These are the problems that we will deal with mostly in this book.
+
+
+ 1.7 Neural Networks 17
+1.7 Neural Networks
+In the past few years, deep learning has generated much excitement in machine learning, especially in industry, due to many breakthrough results in speech recognition, computer vision, and text processing. For many researchers, deep learning is another name for a set of algorithms that use a neural network as an architecture. Even though neural networks have a long history, they became more successful in recent years due to the availability of inexpensive, parallel hardware (GPUs, computer clusters), massive amounts of data, and the recent development of efficient optimization algorithms, especially those designed for population risk minimization. In this section, we will start with the concept of a linear classifier and use that to develop the concept of neural networks. Let us continue our discussion about the restaurant example. In the previous case, Julie was lucky because the examples are linearly separable which means that she can draw a linear decision function to separate the positive from negative instances. Her friend Jenny has different food tastes. If we plot Jenny’s data, the graph will look rather different (see Fig. 1.7). Jenny likes some of the restaurants that Judy and Jim rated poor. The question is how we can come up with a decision function for Jenny. By looking at the data, the decision function must be more complex than the decision we saw before. Our heuristic approach to solve a complex problem is to
+Jim
+Judy
+X
+5
+12345
+4
+3
+2
+1
+O
+Goodfellas
+Hakkasan
+XX
+O O
+X
+X
+OO
+<>
+Bamboo Garden
+O
+X
+OO
+O
+Fig. 1.7 Visualizing ratings of the restaurants without linear separability
+decompose it into smaller problems that we can solve. For our particular situation, we know that if we throw away the “weird” examples from the bottom left corner of the figure, then the problem becomes simpler. Similarly, if we throw the “weird” examples on the top right figure, the problem is again also simpler. We solve for each case using our presumed stochastic optimization algorithm and the decision functions look like Fig. 1.8.
+
+
+ 18 1 Machine Learning Models
+Jim
+Judy
+X
+5
+12345
+4
+3
+2
+1
+O
+Goodfellas
+Hakkasan
+XX
+O O
+X
+X
+OO
+<>
+Bamboo Garden
+O
+X
+OO
+O
+Fig. 1.8 Visualizing ratings of the restaurants without linear separability
+Is it possible to combine these two decision functions into one final decision function for the original data? Let us suppose, as stated above, that the two decision functions are h1(u) := g(w1u1 + w2u2 + b1) and h2(u) := g(w3u1 + w4u2 + b2),
+where g denotes the sigmoid function defined in (1.2.2). For every example u(i), we can then compute h1(u(i)) and h2(u(i)), respectively. Table 1.3 lays out the data associated with these decision functions.
+Table 1.3 Two separate linear decision functions
+Restaurant Judy’s rating Jim’s rating Jenny likes? Goodfellas h1(u(1)) h2(u(1)) No Hakkasan h1(u(2)) h2(u(2)) Yes ··· ··· ··· ··· Bamboo Garden h1(u(n+1)) h2(u(n+1)) ?
+Now the problem reduces to find a new parameter set to weight these two decision functions to approximate v. Let’s call these parameters ω, c, and we intend to find them such that h(u; w, b,ω, c) := g(ω1h1(u) +ω2h2(u) + c) can approximate the label v. This can be formulated, again, as an optimization problem. In summary, we can find the decision function for Jenny by using the following two steps:
+(a) Partition the data into two sets. Each set can be simply classified by a linear decision. Then use the previous sections to find the decision function for each set; (b) Use the newly found decision functions and compute the decision values for each example. Then treat these values as input to another decision function. Use optimization methods to find the final decision function.
+
+
+ 1.7 Neural Networks 19
+Figure 1.9 provides a graphical way to visualize the above process.
+Sig.
+u1
+u2
+w1
+w2
+Sig.
+Sig.
+c
+w3
+w4
+ω1
+ω2
+b1
+b2
+h(u; w, b, ω, c)
+Fig. 1.9 A simple neural network
+What we have just discussed is a special architecture in machine learning known as “neural networks.” This instance of neural networks has one hidden layer, which has two “neurons.” The first neuron computes values for function h1 and the second neuron computes values for function h2. The sigmoid function that maps real value to bounded values between 0 and 1 is also known as “the nonlinearity” or the “activation function.” Since we are using sigmoid, the activation function is also called “sigmoid activation function.” There exist many other types of activation functions. The parameters inside the network, such as w, ω are called “weights” whereas b, c are called “biases.” If we have a more complex function to approximate, we may need to have a deeper network, i.e., one with more hidden layers and each layer with more than two neurons. Let us get back to our problem of finding a good decision function for Jenny. It seems that in the above steps, we cheated a little bit when we divided the dataset into two sets because we looked at the data and decided that the two sets should be partitioned that way. Is there any way that such a step can be automated? It turns out that the natural way is to find the parameters ω, c, w, and b all at once on the complex dataset rather than doing the aforementioned two steps sequentially. To see this more clearly, let us write down how we will compute h(u):
+h(u) = g(ω1h1(u; w1, w2, b1) + ω2h2(u, w3, w4, b2) + c)
+= g(ω1g(w1u1 + w2u2 + b1) + ω2g(w3u1 + w4u2 + b2) + c).
+We will find all these parameters ω1,ω2, c, w1, w2, w3, w4, b1 and b2 at the same time by solving
+min
+ω1 ,ω2 ,c,w1 ,w2 ,w3 ,w4 ,b1 ,b2
+Eu,v[(h(u) − v)2].
+
+
+ 20 1 Machine Learning Models
+This problem turns out to be a nonconvex stochastic optimization problem. The big question remains: how we solve this problem efficiently and whether we can provide any guarantee to our solution procedure?
+1.8 Exercises and Notes
+Exercises.
+1. Consider the following loss function for logistic regression:
+l(θ) = ∑N
+i=1
+{
+− log[1 + exp(−θT u(i))] − [1 − v(i)]θT u(i)}
+.
+Find the Hessian H for this function and show that l is a concave function. 2. Consider the Poisson distribution parameterized by λ:
+p(v;λ) = e−λλy
+y! .
+Please show that the Poisson distribution is in the exponential family. If you would like to design a generalized linear model, what would be the decision function? How would you formulate the maximum log-likelihood for a given set of training examples? 3. Let u and v be given and denote x ≡ (w1, w2, b1, w3, w4, b2,ω1,ω2, c). Also let us denote
+h(u; x) := g(ω1h1(u; w1, w2, b1) + ω2h2(u, w3, w4, b2) + c)
+= g(ω1g(w1u1 + w2u2 + b1) + ω2g(w3u1 + w4u2 + b2) + c),
+where
+g(z) = 1
+1+exp(−z) .
+and define f (x) = [h(u; x) − v]2
+(a) Compute the Hessian of f and show that f is not necessarily convex. (b) Compute the gradient of f with respect to x. (c) Discuss how to evaluate the gradient of f efficiently in computer. (d) Derive the conditions under which the gradients of f are Lipschitz continuous, i.e.,
+‖∇ f (x1) − ∇ f (x2)‖ ≤ L‖x1 − x2‖, ∀x1, x2 ∈ R9,
+for some L > 0.
+Notes. Further reading on statistical learning models and deep learning architectures can be found in [46] and [8], respectively. Some recent online course materials for machine learning can be found, e.g., in [30].
+
+
+ Chapter 2
+Convex Optimization Theory
+Many machine learning tasks can be formulated as an optimization problem given in the form of xm∈iXn f (x), (2.0.1)
+where f , x, and X denote the objective function, decision variables, and feasible set, respectively. Unfortunately, solving an optimization problem is challenging. In general, we cannot guarantee whether one can find an optimal solution, and if so, how much computational effort one needs. However, it turns out that we can provide such guarantees for a special but broad class optimization problems, namely convex optimization, where X is a convex set and f is a convex function. In fact, many machine learning models we formulated so far, such as least square linear regression, logistic regression, and support vector machine, are convex optimization problems. Our goal in this chapter is to provide a brief introduction to the basic convex optimization theory, including convex sets, convex functions, strong duality, and KKT conditions. We will also briefly discuss some consequences of these theoretic results in machine learning, e.g., the representer theorem, Kernel trick, and dual support vector machine. We include proofs for some important results but the readers can choose to skip them for the first pass through the text.
+2.1 Convex Sets
+2.1.1 Definition and Examples
+We begin with the definition of the notion of a convex set.
+Definition 2.1. A set X ⊆ Rn is said to be convex if it contains all of its segments, that is
+λx + (1 −λ)y ∈ X, ∀(x, y,λ) ∈ X × X × [0, 1].
+© Springer Nature Switzerland AG 2020
+G. Lan, First-Order and Stochastic Optimization Methods for Machine Learning, Springer Series in the Data Sciences, https://doi.org/10.1007/978-3-030-39568-1_2
+21
+
+
+ 22 2 Convex Optimization Theory
+Note that the point λx + (1 − λ)y is called a convex combination of x and y. Figure 2.1 show the examples of a convex set (left) and a nonconvex set (right).
+Fig. 2.1 Convex vs. nonconvex sets
+It is easy to check that the following sets are convex.
+(a) n-dimensional Euclidean space, Rn. Given x, y ∈ Rn, we must have λx + (1 − λ)y ∈ Rn.
+(b) Nonnegative orthant, Rn+ := {x ∈ Rn : xi ≥ 0, i = 1, . . . , n}. Let x, y ∈ Rn+ be given. Then for any λ ∈ [0, 1],
+(λx + (1 − λ)y)i = λxi + (1 − λ)yi ≥ 0.
+(c) Balls defined by an arbitrary norm, {x ∈ Rn|‖x‖ ≤ 1} (e.g., the l2 norm ‖x‖2 =
+√
+∑n
+i=1xi2 or l1 norm ‖x‖1 = ∑n
+i=1|xi| balls). To show this set is convex, it suffices to apply the Triangular inequality and the positive homogeneity associated with a norm. Suppose that ‖x‖ ≤ 1, ‖y‖ ≤ 1 and λ ∈ [0, 1]. Then
+‖λx + (1 −λ)y‖ ≤ ‖λx‖ + ‖(1 −λ)y‖ = λ‖x‖ + (1 −λ)‖y‖ ≤ 1.
+(d) Affine subspace, {x ∈ Rn|Ax = b}. Suppose x, y ∈ Rn, Ax = b, and Ay = b. Then
+A(λx + (1 −λ)y) = λAx + (1 −λ)Ay = b.
+(e) Polyhedron, {x ∈ Rn|Ax ≤ b}. For any x, y ∈ Rn such that Ax ≤ b and Ay ≤ b, we have
+A(λx + (1 −λ)y) = λAx + (1 −λ)Ay ≤ b
+for any λ ∈ [0, 1]. (f) The set of all positive semidefinite matrices Sn+. Sn+ consists of all matrices A ∈
+Rn×n such that A = AT and xT Ax ≥ 0 for all x ∈ Rn. Now consider A, B ∈ Sn+ and λ ∈ [0, 1]. Then we must have
+[λA + (1 − λ)B]T = λAT + (1 − λ)BT = λA + (1 − λ)B.
+Moreover, for any x ∈ Rn,
+xT (λA + (1 − λ)B)x = λxT Ax + (1 − λ)xT Bx ≥ 0.
+
+
+ 2.1 Convex Sets 23
+(g) Intersections of convex sets. Let Xi, i = 1, . . . , k, be convex sets. Assume that x, y ∈ ∩k
+i=1Xi, i.e., x, y ∈ Xi for all i = 1, . . . , k. Then for any λ ∈ [0, 1], we have
+λx + (1 −λ)y ∈ Xi by the convexity of Xi, i = 1, . . . , k, whence λx + (1 −λ)y ∈ ∩k
+i=1Xi.
+(h) Weighted sums of convex sets. Let X1, . . . , Xk ⊆ Rn be nonempty convex subsets and λ1, . . . ,λk be reals. Then the set
+λ1X1 + . . . + λkXk ≡ {x = λ1x1 + . . . + λkxk : xi ∈ Xi, 1 ≤ i ≤ k}
+is convex. The proof also follows directly from the definition of convex sets.
+2.1.2 Projection onto Convex Sets
+In this subsection we define the notion of projection over a convex set, which is important to the theory and computation of convex optimization.
+Definition 2.2. Let X ⊂ Rn be a closed convex set. For any y ∈ Rn, we define the closest point to y in X as:
+ProjX (y) = argmin
+x∈X
+‖y − x‖2
+2. (2.1.2)
+ProjX (y) is called the projection of y onto X.
+In the above definition, we require the set X to be closed in order to guarantee the existence of projection. On the other hand, if X is not closed, then the projection over X is not well defined. As an example, the projection of the point {2} onto the interval (0, 1) does not exist. The existence of the projection over a closed convex set is formally stated as follows.
+Proposition 2.1. Let X ⊂ Rn be a closed convex set, and y ∈ Rn be given. Then ProjX (y) must exist.
+Proof. Let {xi} ⊆ X be a sequence such that
+‖y − xi‖2 → xi∈nXf ‖y − x‖2, i → ∞.
+The sequence {xi} clearly is bounded. Passing to a subsequence, we may assume that xi → x ̄ as i → ∞. Since X is closed, we have x ̄ ∈ X, and
+‖y − x ̄‖2 = ili→m∞ ‖y − xi‖2 = xi∈nXf ‖y − x‖2.
+The following result further shows that the projection onto a closed convex set X is unique.
+
+
+ 24 2 Convex Optimization Theory
+Proposition 2.2. Let X be a closed convex set, and y ∈ Rn be given. Then ProjX (y) is unique.
+Proof. Let a and b be the two closet points in X to the given point y, so that ‖y − a‖2 = ‖y − b‖2 = d. Since X is convex, the point z = (a + b)/2 ∈ X. Therefore ‖y − z‖2 ≥ d. We now have
+‖(y − a) + (y − b)‖2
+2
+} {{ }
+=‖2(y−z)‖22≥4d2
++ ‖(y − a) − (y − b)‖2
+2
+} {{ }
+=‖a−b‖2
+= 2‖y − a‖2
+2 + 2‖y − b‖2
+2
+} {{ }
+4d2
+,
+whence ‖a − b‖2 = 0. Thus, the closest to y point in X is unique.
+In many cases when the set X is relatively simple, we can compute ProjX (y)
+explicitly. In fact, in Sect. 1.4, we computed the distance from a given point y ∈ Rn to a given hyperplane H := {x ∈ Rn|wT x + b = 0} by using projection. Following the same reasoning (see Fig. 2.2a), we can write down
+ProjH (y) = y − (wT y+b)w
+‖w‖22
+.
+Fig. 2.2 Projection over convex sets
+As another example, let us consider the projection of y ∈ Rn onto the standard Euclidean ball defined as B := {x ∈ Rn|‖x‖2 ≤ 1} (see Fig. 2.2b). We can easily see
+that ProjB(y) = y
+‖y‖2 .
+Projection over a convex set will be used extensively as a subroutine for solving more complicated optimization problems later in this book.
+
+
+ 2.1 Convex Sets 25
+2.1.3 Separation Theorem
+One fundamental result in convex analysis is the Separation Theorem. In this section, we will prove this theorem based on the projection onto a closed convex set and discuss some of its consequences. We first discuss the separation of a point from a closed convex set.
+Theorem 2.1. Let X ⊆ Rn be a nonempty closed convex set, and a point y ∈/ X be given. Then there exists w ∈ Rn, w = 0 such that
+〈w, y〉 < 〈w, x〉, ∀x ∈ X.
+Proof. Our proof is based on projecting y onto the set X. In particular, let ProjX (y) be defined in (2.1.2), we show that the vector w = y − ProjX (y) separates y and X. Note that w = 0 since y ∈/ X. Also let x ∈ X be given and denote z = tx + (1 − t)ProjX (y) for any t ∈ [0, 1]. Then we must have z ∈ X and hence
+‖y − ProjX (y)‖2
+2 ≤ ‖y − z‖2 = ‖y − [tx + (1 − t)ProjX (y)]‖2
+2
+= ‖y − ProjX (y) − t(x − ProjX (y))‖2
+2
+= ‖w − t(x − ProjX (y))‖2
+2.
+Define φ(t) := ‖y − ProjX (y) − t(x − ProjX (y))‖2
+2. It then follows from the above
+inequality that φ(0) ≤ φ(t) for any t ∈ [0, 1]. We have
+0 ≤ φ′(0) = −2wT (x − ProjX (y)),
+which implies that
+∀x ∈ X : wT x ≤ wT ProjX (y) = wT (y − w) = wT y − ‖w‖2
+2.
+We can generalize the above theorem to separate a closed convex set from another compact convex set.
+Corollary 2.1. Let X1, X2 be two nonempty closed convex sets and X1 ∩ X2 = 0/ . If X2 is bounded, there exists w ∈ Rn such that
+sup
+x∈X1
+wT x < inf
+x∈X2
+wT x. (2.1.3)
+Proof. The set X1 − X2 is convex (the weighted sum of convex sets) and closed (the difference of a closed with a compact set). Moreover, X1 ∩ X2 = 0/ implies 0 ∈/ X1 − X2. So by Theorem 2.1, there exists w such that
+sup
+y∈X1−X2
+wT y < wT 0 = 0.
+Or equivalently,
+
+
+ 26 2 Convex Optimization Theory
+0 > sup
+x1 ∈X1 ,x2 ∈X2
+wT (x1 − x2)
+= sup
+x1 ∈X1
+wT x1 + sup
+x2 ∈X2
+wT (−x2)
+= sup
+x1 ∈X1
+wT x1 − inf
+x2 ∈X2
+wT x2.
+Since X2 is bounded, the last infimum becomes a min. Moreover, it is finite and can be moved to the left-hand side.
+When X2 is unbounded, Corollary 2.1 may fail. One possible fix is to replace the strict inequality in (2.1.3) by an inequality. However, this might cause some problems. For example, consider the line segment connecting (−1, 0) and (0, 0), and the other one connecting (−1, 0) and (2, 0). Observe that the inner product between (0, 1) and any point from these line segments equals 0. The vector w = (0, 1) appears to “separate” these two line segments, while apparently they are not separable. To address this issue, we say that a linear form wT x properly separates nonempty sets S and T if and only if sup
+x∈S
+wT x ≤ yi∈nTf wT y
+xin∈fS wT x < sup
+y∈T
+wT y. (2.1.4)
+In this case, the hyperplanes associated with w that separate S and T are exactly the hyperplanes {x : wT x − b = 0} with sup
+x∈S
+wT x ≤ b ≤ yi∈nTf wT y.
+The proper separation property holds under quite general assumptions on the intersection X1 ∩ X2. To state this more general result, we need to introduce the notion of relative interior ri(X), defined as the interior of X when we view it as subset of the affine subspace it generates. Without specific mention, we assume that the set X is full dimensional so that int(X) = ri(X).
+Theorem 2.2. If the two nonempty convex sets X1 and X2 satisfy ri(X1) ∩ ri(X2) = 0/ , they can be properly separated.
+The above separation theorem can be derived from Theorem 2.1, but requiring us to establish a few technical results. We will first prove the result about the separability of a set in Rn.
+Lemma 2.1. Every nonempty subset S ⊆ Rn is separable: one can find a sequence {xi} of points from S which is dense in S such that every point x ∈ S is the limit of an appropriate subsequence of the sequence.
+Proof. Let r1, r2, . . . be the countable set of all rational vectors in Rn. For every positive integer t, let Xt ⊂ S be the countable set given by the following construction: we examine, one after another, at the points r1, r2, . . . and for every point rs check whether there is a point z ∈ S which is at most at the distance 1/t away from rs. If points z with this property exist, we take one of them and add it to Xt and then pass to rs+1, otherwise directly pass to rs+1.
+
+
+ 2.1 Convex Sets 27
+It is clear that every point x ∈ S is at the distance at most 2/t from certain point of Xt . Indeed, since the rational vectors are dense in Rn, there exists s such that rs is at the distance ≤ 1
+t from x. Therefore, when processing rs, we definitely add to
+Xt a point z which is at the distance ≤ 1/t from rs and thus is at the distance ≤ 2/t
+from x. By construction, the countable union ∪t∞=1Xt of countable sets Xt ⊂ S is a
+countable set in S, and by the fact that every point x ∈ S is at most 2/t from Xt , this set is dense in S.
+With the help of Lemma 2.1, we can refine the basic separation result stated in Theorem 2.1 by removing the “closedness” assumption, and using the notion of proper separation.
+Proposition 2.3. Let X ⊆ Rn be a nonempty convex set and y ∈ Rn, y ∈/ X be given. Then there exists w ∈ Rn, w = 0 such that
+sup
+x∈X
+wT x ≤ wT y,
+xi∈nXf wT x < wT y.
+Proof. First note that we can perform the following simplification.
+• Shifting X and {y} by −y (which clearly does not affect the possibility of separating the sets), we can assume that {0} ⊂ X. • Replacing, if necessary, Rn with Lin(X), we may further assume that Rn = Lin(X), i.e., the linear subspace generated by X.
+In view of Lemma 2.1, let {xi ∈ X} be a sequence which is dense in X. Since X is convex and does not contain 0, we have
+0 ∈ Conv({x1, . . . , xi}) ∀i.
+Noting that Conv({x1, . . . , xi}) are closed convex sets, we conclude from Theorem 2.1 that
+∃wi : 0 = wT
+i 0 > max
+1≤ j≤i wT
+i x j. (2.1.5)
+By scaling, we may assume that ‖wi‖2 = 1. The sequence {wi} of unit vectors pos
+sesses a converging subsequence {wis }s∞=1 and the limit w of this subsequence is also
+a unit vector. By (2.1.5), for every fixed j and all large enough s we have wT
+is x j < 0, whence wT x j ≤ 0 ∀ j. (2.1.6)
+Since {x j} is dense in X, (2.1.6) implies that wT x ≤ 0 for all x ∈ X, and hence that
+sup
+x∈X
+wT x ≤ 0 = wT 0. (2.1.7)
+Now, it remains to verify that
+xi∈nXf wT x < wT 0 = 0.
+
+
+ 28 2 Convex Optimization Theory
+Assuming the opposite, (2.1.7) would imply that wT x = 0 for all x ∈ X, which is impossible, since Lin(X) = Rn and w is nonzero.
+We can now further show that two nonempty convex sets (not necessarily bounded or closed) can be properly separated.
+Proposition 2.4. If the two nonempty convex sets X1 and X2 satisfy X1 ∩ X2 = 0/ , they can be properly separated.
+Proof. Let ̂X = X1 − X2. The set ̂X clearly is convex and does not contain 0 (since
+X1 ∩ X2 = 0/ ). By Proposition 2.3, ̂X and {0} can be separated: there exists f such
+that sup
+x∈X1
+wT s − inf
+y∈X2
+wT y = sup
+x∈X1,y∈X2
+[wT x − wT y] ≤ 0 = inf
+z∈{0} wT z,
+inf
+x∈X1
+wT x − sup
+y∈X2
+wT y = inf
+x∈X1,y∈X2
+[wT x − wT y] < 0 = sup z∈{0}
+wT z,
+whence sup
+x∈X1
+wT x ≤ inf
+y∈X2
+wT y,
+inf
+x∈X1
+wT x < sup
+y∈X2
+wT y.
+We are now ready to prove Theorem 2.2, which is even stronger than Proposition 2.4 in the sense that we only need ri(X1) ∩ ri(X2) = 0/ . In other words, these two sets can possibly intersect on their boundaries. Proof of Theorem 2.2. The sets X1′ = ri(X1) and X2′ = ri(X2) are convex and
+nonempty, and these sets do not intersect. By Proposition 2.4, X1′ and X2′ can be separated: for properly chosen w, one has
+sup
+x∈X1′
+wT x ≤ inf
+y∈X2′
+wT y,
+inf
+x∈X1′
+wT x < sup
+y∈X2′
+wT y.
+Since X1′ is dense in X1 and X2′ is dense in X2, inf’s and sup’s in the above relations
+remain the same when replacing X1′ with X1 and X2′ with X2. Thus, w separates X1 and X2. In fact, we can show the reverse statement of Theorem 2.2 also holds.
+Theorem 2.3. If the two nonempty convex sets X1 and X2 can be properly separated, then ri(X1) ∩ ri(X2) = 0/ .
+Proof. We will first need to prove the following claim. Claim. Let X be a convex set, f (x) = wT x be a linear form, and a ∈ ri(X). Then
+wT a = max
+x∈X wT x ⇔ f (x) = const ∀x ∈ X.
+
+
+ 2.2 Convex Functions 29
+Indeed, shifting X, we may assume a = 0. Let, on the contrary to what should be proved, wT x be nonconstant on X, so that there exists y ∈ X with wT y = wT a = 0. The case of wT y > 0 is impossible, since wT a = 0 is the maximum of wT x on X. Thus, wT y < 0. Since 0 ∈ ri(X), all points z = −εy belong to X, provided that ε > 0 is small enough. At every point of this type, wT z > 0, which contradicts the fact that maxx∈X wT x = wT a = 0.
+Now let us use the above claim to prove our main result. Let a ∈ riX1 ∩ riX2. Assume, on contrary to what should be proved, that wT x separates X1 and X2, so that sup
+x∈X1
+wT x ≤ inf
+y∈X2
+wT y.
+Since a ∈ X2, we get wT a ≥ supx∈X1 wT x, that is, wT a = maxx∈X1 wT x. By the above
+claim, wT x = wT a for all x ∈ X1. Moreover, since a ∈ X1, we get wT a ≤ infy∈X2 wT y,
+that is, wT a = miny∈T wT y. By the above claim, wT y = wT a for all y ∈ X2. Thus,
+z ∈ X1 ∪ X2 ⇒ wT z ≡ wT a,
+so that w does not properly separate X1 and X2, which is a contradiction.
+As a consequence of Theorem 2.2, we have the following supporting hyperplane theorem.
+Corollary 2.2. Let X ⊆ Rn be a convex set, and y be a point from its relative boundary. Then there exists w ∈ Rn and w = 0 such that
+〈w, y〉 ≥ sup
+x∈X
+〈w, x〉, and 〈w, y〉 > xi∈nXf 〈w, x〉.
+The hyperplane {x|〈w, x〉 = 〈w, y〉} is called a supporting hyperplane of X at y.
+Proof. Since y is a point from the relative boundary of X, it is outside the relative interior of X and therefore {x} and riX can be separated by the Separation Theorem. The separating hyperplane is exactly the desired supporting hyperplane to X at y.
+2.2 Convex Functions
+2.2.1 Definition and Examples
+Let X ⊆ Rn be a given convex set. A function f : X → R is said to be convex if it always lies below its chords (Fig. 2.3), that is
+f (λx + (1 −λ)y) ≤ λ f (x) + (1 −λ) f (y), ∀(x, y,λ) ∈ X × X × [0, 1]. (2.2.8)
+
+
+ 30 2 Convex Optimization Theory
+(x,f(x))
+(y,f(y))
+Fig. 2.3 The graph of a convex function
+We say a function is strictly convex if (2.2.8) holds with strict inequality for any x = y and λ ∈ (0, 1). We say that f is concave if − f is convex, and similarly that f is strictly concave if − f is strictly concave. Some examples of convex functions are given as follows.
+(a) Exponential, f (x) = exp(ax) for any a ∈ R. (b) Negative logarithm, f (x) = − log x with x > 0. (c) Affine functions, f (x) = wT x + b. (d) Quadratic functions, f (x) = 1
+2 xT Ax + bT x with A ∈ Sn+ or A 0.
+(e) Norms, f (x) = ‖x‖. (f) Nonnegative weighted sums of convex functions. Let f1, f2, . . . , fk be convex functions and w1, w2, . . . , wk be nonnegative real numbers. Then f (x) = ∑k
+i=1wi fi(x) is a convex function.
+2.2.2 Differentiable Convex Functions
+Suppose that a function f : X → R is differentiable over its domain. Then f is convex if and only if
+f (y) ≥ f (x) + 〈∇ f (x), y − x〉
+for any x, y ∈ X, where ∇ f denotes the gradients of f . The function f (x) + 〈∇ f (x), y − x〉 is the first-order Taylor approximation of f at the point x. The above first-order condition for convexity says that f is convex if and only if the tangent line underestimates f everywhere in its domain. Similar to the definition of convexity, f will be strictly convex if this condition holds with strict inequality, concave if the inequality is reversed, and strictly concave if the reverse inequality is strict. Suppose that a function f : X → R is twice differentiable. Then f is convex if and only if its Hessian is positive semidefinite, i.e.,
+∇2 f (x) 0.
+
+
+ 2.2 Convex Functions 31
+In one dimension, this is equivalent to the condition that the second-order derivative f ′′(x) is nonnegative. Again analogous to both the definition and the first-order conditions for convexity, f is strictly convex if its Hessian is positive definite, concave if the Hessian is negative semidefinite, and strictly concave if the Hessian is negative definite. The function f is said to be strongly convex modulus μ with respect to the norm ‖ · ‖ if
+f (y) ≥ f (x) + 〈g, y − x〉 + μ
+2 ‖y − x‖2
+for some μ > 0. Clearly, strong convexity implies strict convexity.
+2.2.3 Non-differentiable Convex Functions
+Note that convex functions are not always differentiable everywhere over its domain. For example, the absolute value function f (x) = |x| is not differentiable when x = 0. In this subsection, we will introduce an important notion about convex functions, i.e., subgradients, to generalize the gradients for differentiable convex functions.
+Definition 2.3. g ∈ Rn is a subgradient of f at x ∈ X if for any y ∈ X
+f (y) ≥ f (x) + 〈g, y − x〉.
+The set of subgradients of f at x is called the subdifferential, denoted by ∂ f (x).
+In order to show the existence of the subgradients for a convex function, we need to use the epigraph of a function f : X → R given by
+epi( f ) = {(x,t) ∈ X × R : f (x) ≤ t} .
+It can be easily shown that f is convex if and only if epi( f ) is a convex set. The next result establishes the existence of subgradients for convex functions.
+Proposition 2.5. Let X ⊆ Rn be convex and f : X → R. If ∀x ∈ X, ∂ f (x) = 0/ , then f is convex. Moreover, if f is convex, then for any x ∈ ri(X), ∂ f (x) = 0/ .
+Proof. The first claim is obvious. Let g ∈ ∂ f (λx + (1 −λ)y) for some λ ∈ [0, 1]. Then by definition we have
+f (y) ≥ f (λx + (1 −λ)y) +λ〈g, y − x〉,
+f (x) ≥ f (λx + (1 −λ)y) + (1 −λ)〈g, x − y〉.
+Multiplying the first inequality by 1−λ and the second one by λ, and then summing them up, we show the convexity of f . We now show that f has subgradients in the interior of X. We will construct such a subgradient by using a supporting hyperplane to the epigraph of f . Let x ∈ X. Then (x, f (x)) ∈ epi( f ). By the convexity of epi( f ) and the separating hyperplane theorem, there exists (w, v) ∈ Rn × R ((w, v) = 0) such that
+
+
+ 32 2 Convex Optimization Theory
+〈w, x〉 + v f (x) ≥ 〈w, y〉 + vt, ∀(y,t) ∈ epi( f ). (2.2.9)
+Clearly, by tending t to infinity, we can see that v ≤ 0. Now let us assume that x is in the interior of X. Then for ε > 0 small enough, y = x + εw ∈ X, which implies that v = 0, since otherwise, we have 0 ≥ ε‖w‖2
+2 and hence w = 0, contradicting with the
+fact that (w, v) = 0. Letting t = f (y) in (2.2.9), we obtain
+f (y) ≥ f (x) + 1
+v 〈w, y − x〉,
+which implies that w/v is a subgradient of f at x.
+Let f be a convex and differentiable function. Then by definition,
+f (y) ≥ 1
+λ [ f ((1 −λ)x +λy) − (1 −λ) f (x)]
+= f (x) + 1
+λ [ f ((1 −λ)x +λy) − f (x)] .
+Tending λ to 0, we show that ∇ f (x) ∈ ∂ f (x).
+Below we provide some basic subgradient calculus for convex functions. Observe that many of them mimic the calculus for gradient computation.
+(a) Scaling: ∂(a f ) = a∂ f provided a > 0. The condition a > 0 makes function f remain convex. (b) Addition: ∂( f1 + f2) = ∂( f1) + ∂( f2). (c) Affine composition: if g(x) = f (Ax + b), then ∂g(x) = AT ∂ f (Ax + b). (d) Finite pointwise maximum: if f (x) = maxi=1,...,m fi(x), then
+∂ f (x) = conv {∪i: fi(x)= f (x)∂ fi(x)} ,
+which is the convex hull of union of subdifferentials of all active i : fi(x) = f (x) functions at x. (e) General pointwise maximum: if f (x) = maxs∈S fs(x), then under some regularity conditions (on S and fs),
+∂ f (x) = cl {conv (∪s: fs(x)= f (x)∂ fs(x))} .
+(f) Norms: important special case, f (x) = ‖x‖p. Let q be such that 1/p + 1/q = 1, then
+∂ f (x) = {y : ‖y‖q ≤ 1 and yT x = max{zT x : ‖z‖q ≤ 1}.
+Other notions of convex analysis will prove to be useful. In particular the notion of closed convex functions is convenient to exclude pathological cases: these are convex functions with closed epigraphs (see Sect. 2.4 for more details).
+
+
+ 2.2 Convex Functions 33
+2.2.4 Lipschitz Continuity of Convex Functions
+Our goal in this section is to show that convex functions are Lipschitz continuous inside the interior of its domain. We will first show that a convex function is locally bounded.
+Lemma 2.2. Let f be convex and x0 ∈ int dom f . Then f is locally bounded, i.e., ∃ε > 0 and M(x0,ε) > 0 such that
+f (x) ≤ M(x0,ε) ∀ x ∈ Bε(x0) := {x ∈ Rn : ‖x − x0‖2 ≤ ε}.
+Proof. Since x0 ∈ int dom f , ∃ε > 0 such that the vectors x0 ± εei ∈ int dom f for i = 1, . . . , n, where ei denotes the unit vector along coordinate i. Also let Hε(x0) := {x ∈ Rn : ‖x − x0‖∞ ≤ ε} denote the hypercube formed by the vectors x0 ± εei. It can be easily seen that Bε(x0) ⊆ Hε(x0) and hence that
+max
+x∈Bε(x0) f (x) ≤ max
+x∈Hε(x0) f (x) ≤ max
+i=1,...,n f (x0 ± εei) =: M(x0,ε).
+Next we show that f is locally Lipschitz continuous.
+Lemma 2.3. Let f be convex and x0 ∈ int dom f . Then f is locally Lipschitz, i.e., ∃ε > 0 and M ̄ (x0,ε) > 0 such that
+| f (y) − f (x0)| ≤ M ̄ (x0,ε)‖x − y‖, ∀y ∈ Bε(x0) := {x ∈ Rn : ‖x − x0‖2 ≤ ε}.
+(2.2.10)
+Proof. We assume that y = x0 (otherwise, the result is obvious). Let α = ‖y − x0‖2/ε. We extend the line segment connecting x0 and y so that it intersects the ball Bε(x0), and then obtain two intersection points z and u (see Fig. 2.4). It can be easily seen that
+y = (1 −α)x0 +αz, (2.2.11)
+x0 = [y +αu]/(1 +α). (2.2.12)
+It then follows from the convexity of f and (2.2.11) that
+f (y) − f (x0) ≤ α[ f (z) − f (x0)] = f (z)− f (x0)
+ε ‖y − x0‖2
+≤ M(x0,ε)− f (x0)
+ε ‖y − x0‖2,
+where the last inequality follows from Lemma 2.2. Similarly, by the convexity f , (2.2.11), and Lemma 2.2, we have
+f (x0) − f (y) ≤ ‖y − x0‖2
+M(x0,ε)− f (x0)
+ε.
+Combining the previous two inequalities, we show (2.2.10) holds with M ̄ (x0,ε) = [M(x0,ε) − f (x0)]/ε.
+
+
+ 34 2 Convex Optimization Theory
+Fig. 2.4 Local Lipschitz continuity of a convex function
+The following simple result shows the relation between the Lipschitz continuity of f and the boundedness of subgradients.
+Lemma 2.4. The following statements hold for a convex function f .
+(a) If x0 ∈ int dom f and f is locally Lipschitz (i.e., (2.2.10) holds), then ‖g(x0)‖ ≤ M ̄ (x0,ε) for any g(x0) ∈ ∂ f (x0). (b) If ∃g(x0) ∈ ∂ f (x0) and ‖g(x0)‖2 ≤ M ̄ (x0,ε), then f (x0) − f (y) ≤ M ̄ (x0,ε)‖x0 − y‖2.
+Proof. We first show part (a). Let y = x0 +εg(x0)/‖g(x0)‖2. By the convexity of f and (2.2.10), we have
+ε‖g(x0)‖2 = 〈g(x0), y − x0〉 ≤ f (y) − f (x0) ≤ M ̄ (x0,ε)‖y − x0‖ = εM ̄ (x0,ε),
+which implies part (a). Part (b) simply follows the convexity of f , i.e.,
+f (x0) − f (y) ≤ 〈g(x0), x0 − y〉 ≤ M ̄ (x0,ε)‖x0 − y‖2.
+Below we state the global Lipschitz continuity of a convex function in its interior of domain.
+Theorem 2.4. Let f be a convex function and let K be a closed and bounded set contained in the relative interior of the domain dom f of f . Then f is Lipschitz continuous on K, i.e., there exists constant M such that
+| f (x) − f (y)| ≤ MK‖x − y‖2 ∀x, y ∈ K. (2.2.13)
+Proof. The result directly follows from the local Lipschitz continuity of a convex function (see Lemmas 2.3 and 2.4) and the boundedness of K.
+Remark 2.1. All three assumptions on K—i.e., (a) closedness, (b) boundedness, and (c) K ⊂ ridom f —are essential, as it is seen from the following three examples:
+
+
+ 2.2 Convex Functions 35
+• f (x) = 1/x, dom f = (0, +∞), K = (0, 1]. We have (b), (c) but not (a); f is neither bounded, nor Lipschitz continuous on K. • f (x) = x2, dom f = R, K = R. We have (a), (c) and not (b); f is neither bounded nor Lipschitz continuous on K.
+• f (x) = −√x, dom f = [0, +∞), K = [0, 1]. We have (a), (b) and not (c); f is not Lipschitz continuous on K although is bounded. Indeed, we have
+limt→+0
+f (0)− f (t)
+t = limt→+0 t−1/2 = +∞, while for a Lipschitz continuous f the
+ratios t−1( f (0) − f (t)) should be bounded.
+2.2.5 Optimality Conditions for Convex Optimization
+The following results state the basic optimality conditions for convex optimization.
+Proposition 2.6. Let f be convex. If x is a local minimum of f , then x is a global minimum of f . Furthermore this happens if and only if 0 ∈ ∂ f (x).
+Proof. It can be easily seen that 0 ∈ ∂ f (x) if and only if x is a global minimum of f . Now assume that x is a local minimum of f . Then for λ > 0 small enough one has for any y,
+f (x) ≤ f ((1 −λ)x +λy) ≤ (1 −λ) f (x) +λ f (y),
+which implies that f (x) ≤ f (y) and thus that x is a global minimum of f .
+The above result can be easily generalized to the constrained case. Given a convex set X ⊆ Rn and a convex function f : X → R, we intend to
+xm∈iXn f (x).
+We first define the indicator function of the convex set X, i.e.,
+IX (x) :=
+{
+0, x ∈ X,
+∞, Otherwise.
+By definition of subgradients, we can see that the subdifferential of IX is given by the normal cone of X, i.e.,
+∂IX (x) = {w ∈ Rn|〈w, y − x〉 ≤ 0, ∀y ∈ X}. (2.2.14)
+Proposition 2.7. Let f : X → R be a convex function and X be a convex set. Then x∗ is an optimal solution of minx∈X f (x) if and only if there exists g∗ ∈ ∂ f (x∗) such that
+〈g∗, y − x∗〉 ≥ 0, ∀y ∈ X.
+
+
+ 36 2 Convex Optimization Theory
+Proof. Clearly the problem is equivalent to minx∈Rn f (x)+IX (x), where the IX denotes the indicator function of X. The results then immediately follow from (2.2.14) and Proposition 2.6.
+In particular, if X = Rn, then we must have 0 ∈ ∂ f (x), which reduces to the case in Proposition 2.6.
+2.2.6 Representer Theorem and Kernel
+In this subsection, we introduce a very important application of the optimality condition for convex optimization in machine learning. Recall that many supervised machine learning models can be written in the following form:
+f ∗ := min
+x∈Rn
+{ f (x) := ∑N
+i=1L(xT ui, vi) + λr(x)} , (2.2.15)
+for some λ ≥ 0. For the sake of simplicity we assume that r(x) = ‖x‖2
+2/2. It turns out that under these assumptions, we can always write the solutions to problem (2.2.15) as a linear combination of the input variables ui’s as shown in the following statement.
+Theorem 2.5. The optimal solution of (2.2.15) with r(x) = ‖x‖2
+2/2 can be written as x∗ = ∑N
+i=1αiu(i)
+for some real-valued weights αi.
+Proof. Let L′(z, v) denote a subgradient of L w.r.t. z. Then by the chain rule of subgradient computation, the subgradients of f can be written in the form of
+f ′(x) = ∑N
+i=1L′(xT u(i))u(i) + λx.
+Noting that 0 ∈ ∂ f (x∗) and letting wi = L′(xT u(i)), there must exist wi’s such that
+x=−1
+λ ∑N
+i=1wiu(i).
+The result then follows by setting αi = −1/(λwi).
+This result has some important consequence in machine learning. For any inner product of xT u in machine learning models, we can replace it with
+xT u = uT x = ∑N
+i=1αi(u(i))T u(i),
+and then view these αi, i = 1, . . . , N, as unknown variables (or parameters). More generally, we may consider a nonlinear transformation of our original input variables u. Recall in our regression example in Chap. 1, we have an input variable u, i.e., the rating of a friend (say Judy), and we can consider regression using the
+
+
+ 2.3 Lagrange Duality 37
+features u, u2, and u3 to obtain a cubic function. We can use φ(u) to define such a nonlinear mapping from the original input to a new feature space. Rather than learning the parameters associated with the original input variables u, we may instead learn using these expanded features φ(u). To do so, we simply need to go over our previous models, and replace u everywhere in it with φ(u). Since the model can be written entirely in terms of the inner products 〈u, z〉, we can replace all those inner products with 〈φ(u),φ(z)〉. Given a feature mapping φ, let us define the so-called kernel
+K(u, z) = φ(u)T φ(z).
+Then, we replace everywhere we previously had 〈u, z〉 with K(u, z). In particular, we can write the new objective function as
+Φ(α) = f (x) = ∑N
+i=1L(xT u(i), v(i)) + λ
+2 ‖x‖2
+2
+= ∑N
+i=1L
+(
+φ(u(i))T ∑N
+j=1αjφ(u( j)), vi
+)
++λ
+2 ‖∑N
+j=1αjφ(u( j))‖2
+2
+= ∑N
+i=1L
+(
+φ(u(i))T ∑N
+j=1αjφ(u( j)), vi
+)
++λ
+2 ∑N
+i=1∑N
+j=1αiαjφ(u(i))T φ(u( j))
+= ∑N
+i=1L
+(
+∑N
+j=1αjK(u(i), u( j)), vi
+)
++λ
+2 ∑N
+i=1∑N
+j=1αiαjK(u(i), u( j)).
+In this way, we can write the objective function in terms of the Kernel matrix
+K = {K(u(i), v( j))}N
+i, j=1.
+Even more interestingly, in many cases, we do not need to compute the nonlinear mapping φ(u) explicitly for every u, since the Kernel might be easier to compute than φ. One commonly used Kernel is the Gaussian or Radial Basis Function (RBF) kernel given by
+K(u, z) = exp
+(
+−1
+2τ2 ‖u − z‖2
+2
+)
+applicable to data in any dimension and the other one is the min-kernel given by K(x, z) = min(x, z) applicable to data in R.
+2.3 Lagrange Duality
+In this section, we consider differentiable convex optimization problems of the form
+f ∗ ≡ minx∈X f (x)
+s.t. gi(x) ≤ 0, i = 1, . . . , m, h j(x) = 0, j = 1, . . . , p,
+(2.3.16)
+
+
+ 38 2 Convex Optimization Theory
+where X ⊆ Rn is a closed convex set, f : X → R and gi : X → R are differentiable convex functions, and h j : Rn → R are affine functions. Our goal is to introduce Lagrange duality and a few optimality conditions for these convex optimization problems with function constraints.
+2.3.1 Lagrange Function and Duality
+We define the Lagrangian function L for (2.3.16) as
+L(x,λ, y) = f (x) + ∑m
+i=1λigi(x) + ∑p
+j=1y jh j(x),
+for some λi ∈ R+, i = 1, . . . , m, and y j ∈ R, j = 1, . . . , p. These λi’s and y j’s are called dual variables or Lagrange multipliers. Intuitively, the Lagrangian function L can be viewed as a relaxed version of the objective function in the original problem (2.3.16) by allowing violation of the constraints (gi(x) ≤ 0 and h j(x) ≤ 0). Let us consider the minimization of L(x,λ, y) w.r.t. x. Suppose that λ ≥ 0 and y ∈ Rp are given. Let us define
+φ(λ, y) := xm∈iXn L(x,λ, y).
+Clearly, for any feasible point x to (2.3.16) (i.e., x ∈ X, gi(x) ≤ 0, and h j(x) = 0), we have
+L(x,λ, y) = f (x) + ∑m
+i=1λigi(x) + ∑p
+j=1y jh j(x)
+= f (x) + ∑m
+i=1λigi(x) ≤ f (x).
+In particular, letting x = x∗ be the optimal solution of (2.3.16), we must have
+φ(λ, y) ≤ f ∗.
+In other words, φ(λ, y) gives us a lower bound on the optimal value f ∗. In order to obtain the strongest lower bound, we intend to maximize φ(λ, y) w.r.t. λ ≥ 0 and y ∈ Rp, and thus define the Lagrange dual as
+φ∗ ≡ max
+λ≥0,y
+{
+φ(λ, y) := xm∈iXn L(x,λ, y)
+}
+. (2.3.17)
+By construction, we must have
+φ∗ ≤ f ∗.
+This relation is the so-called weakduality. What is more interesting is that under certain conditions, we have φ∗ = f ∗ as stated in Theorem 2.6. The proof of this result, however, is more involved. Hence, we provide this proof separately in Sect. 2.3.2.
+
+
+ 2.3 Lagrange Duality 39
+Theorem 2.6. Suppose that (2.3.16) is below bounded and that there exists x ̄ ∈ intX s.t. g(x ̄) < 0 and h(x ̄) = 0. Then the Lagrange dual is solvable and we must have
+φ∗ = f ∗.
+The above theorem says that as long as the primal problem (2.3.16) has a strictly feasible solution (called Slater condition), the optimal value for the Lagrange dual must be equal to the optimal value of the primal. This result is called strongduality. In practice, nearly all convex problems satisfy this type of constraint qualification, and hence the primal and dual problems have the same optimal value.
+2.3.2 Proof of Strong Duality
+In this subsection, we provide a proof for the strong duality for convex optimization. The proof follows from the separation theorem and the consequent convex theorem on alternatives. For the sake of simplicity, we focus on the case when there exist only nonlinear inequality constraints. The readers can easily adapt the proof to the case when affine constraints do exist, or even further refine the results if there only exist affine constraints. Before proving Theorem 2.6, we will first establish the Convex Theorem on Alternative (CTA). Consider a system of constraints on x
+f (x) < c,
+g j(x) ≤ 0, j = 1, . . . , m, x ∈ X,
+(I)
+along with system of constraints on λ:
+xi∈nXf [ f (x) + ∑m
+j=1λjg j(x)] ≥ c,
+λj ≥ 0, j = 1, . . . , m. (II)
+We first discuss the trivial part of the CTA.
+Proposition 2.8. If (II) is solvable, then (I) is insolvable.
+What is more interesting is that the reverse statement is also true under the slater condition.
+Proposition 2.9. If (I) is insolvable and the subsystem
+g j(x) < 0, j = 1, . . . , m, x∈X
+is solvable, then (II) is solvable.
+
+
+ 40 2 Convex Optimization Theory
+Proof. Assume that (I) has no solutions. Consider two sets S and T in Rm+1:
+S := {u ∈ Rm+1 : u0 < c, u1 ≤ 0, . . . , um ≤ 0} ,
+T :=
+⎧⎪⎪⎨
+⎪⎪⎩
+u ∈ Rm+1 : ∃x ∈ X :
+f (x) ≤ u0 g1(x) ≤ u1 .......... gm(x) ≤ um
+⎫⎪⎪⎬
+⎪⎪⎭
+.
+First observe that S and T are nonempty convex sets. Moreover, S and T do not intersect (otherwise (I) would have a solution). By Theorem 2.2, S and T can be separated: ∃(a0, . . . , am) = 0 such that
+ui∈nTf aT u ≥ sup
+u∈S
+aT u
+or equivalently,
+xi∈nXf inf
+u0 ≥ f (x) u1 ≥ g1(x)
+...
+um ≥ gm(x)
+[a0u0 + a1u1 + . . . + amum]
+≥ sup u0 < c u1 ≤ 0
+...
+um ≤ 0
+[a0u0 + a1u1 + . . . + amum].
+In order to bound the RHS, we must have a ≥ 0, whence
+xi∈nXf [a0 f (x) + a1g1(x) + . . . + amgm(x)] ≥ a0c. (2.3.18)
+Finally, we observe that a0 > 0. Indeed, otherwise 0 = (a1, . . . , am) ≥ 0 and
+xi∈nXf [a1g1(x) + . . . + amgm(x)] ≥ 0,
+while ∃x ̄ ∈ X : g j(x ̄) < 0 for all j. Now, dividing both sides of (2.3.18) by a0, we have
+xi∈nXf
+[ f (x) + ∑m
+j=1
+(aj a0
+)
+g j(x)] ≥ c.
+By setting λj = a j/a0 we obtain the result.
+We are now ready to prove the strong duality. Proof of Theorem 2.6. The system
+f (x) < f ∗, g j(x) ≤ 0, j = 1, . . . , m, x ∈ X
+has no solutions, while the system
+
+
+ 2.3 Lagrange Duality 41
+g j(x) < 0, j = 1, . . . , m, x ∈ X
+has a solution. By CTA,
+∃λ∗ ≥ 0 : f (x) + ∑ jλj∗g j(x) ≥ f ∗ ∀x ∈ X,
+whence
+φ(λ∗) ≥ f ∗.
+Combined with Weak Duality, the above inequality says that
+f ∗ = φ(λ∗) = φ∗.
+2.3.3 Saddle Points
+Now let us examine some interesting consequences of strong duality. In particular, we can derive a few optimality conditions for convex optimization in order to check whether an x∗ ∈ X is optimal to (2.3.16) or not. The first one is given in the form of a pair of saddle points.
+Theorem 2.7. Let x∗ ∈ X be given.
+(a) If x∗ can be extended, by a λ∗ ≥ 0 and y∗ ∈ Rp, to a saddle point of the Lagrange function on X × {λ ≥ 0}:
+L(x,λ∗, y∗) ≥ L(x∗,λ∗, y∗) ≥ L(x∗,λ, y) ∀(x ∈ X,λ ≥ 0, y ∈ Rp),
+then x∗ is optimal for (2.3.16). (b) If x∗ is optimal for (2.3.16) which is convex and satisfies the Slater condition, then x∗ can be extended, by a λ∗ ≥ 0 and y∗ ∈ Rp, to a saddle point of the Lagrange function on X × {λ ≥ 0} × Rp.
+Proof. We first prove part (a). Clearly,
+sup λ≥0,y
+L(x∗,λ, y) =
+{ +∞, x∗ is infeasible f (x∗), otherwise
+Thus, λ∗ ≥ 0, L(x∗,λ∗, y∗) ≥ L(x∗,λ, y) ∀λ ≥ 0 ∀y is equivalent to
+g j(x∗) ≤ 0∀ j, λi∗gi(x∗) = 0∀i, h j(x∗) = 0∀ j.
+Consequently, L(x∗,λ∗, y∗) = f (x∗), hence
+L(x,λ∗, y∗) ≥ L(x∗,λ∗, y∗) ∀x ∈ X
+
+
+ 42 2 Convex Optimization Theory
+reduces to
+L(x,λ∗, y∗) ≥ f (x∗) ∀x.
+Since for λ ≥ 0 and y, one has f (x) ≥ L(x,λ, y) for all feasible x, the above inequality then implies that x is feasible ⇒ f (x) ≥ f (x∗).
+We now show part (b). By Lagrange Duality, ∃λ∗ ≥ 0, y∗:
+f (x∗) = φ(λ∗, y∗) ≡ xi∈nXf
+[ f (x) + ∑iλi∗gi(x) + ∑ jy∗j h j(x)] . (2.3.19)
+Since x∗ is feasible, we have
+xi∈nXf
+[ f (x) + ∑iλi∗gi(x) + ∑ jy∗j h j(x)] ≤ f (x∗) + ∑iλi∗gi(x∗) ≤ f (x∗).
+By (2.3.19), the last ” ≤ ” here should be ” = ”. This identity, in view of the fact that λ∗ ≥ 0, is possible if and only if λj∗g j(x∗) = 0 ∀ j.T here f ore, wehave
+f (x∗) = L(x∗,λ∗, y∗) ≥ L(x∗,λ, y) ∀λ ≥ 0, ∀y ∈ Rp,
+where the last inequality follows from the definition of L (or weak duality). Now (2.3.19) reads L(x,λ∗, y∗) ≥ f (x∗) = L(x∗,λ∗, y∗).
+2.3.4 Karush–Kuhn–Tucker Conditions
+We are now ready to derive the Karush–Kuhn–Tucker (KKT) optimality conditions for convex programming.
+Theorem 2.8. Let (2.3.16) be a convex program, let x∗ be its feasible solution, and let the functions f , g1,. . . ,gm be differentiable at x∗. Then
+(a) Exist Lagrange multipliers λ∗ ≥ 0 and y∗ such that the following KKT conditions
+∇ f (x∗) + ∑m
+i=1λi∗∇gi(x∗) + ∑p
+i=1y∗j ∇h j(x∗) ∈ NX∗ (x∗) [stationarity]
+λi∗gi(x∗) = 0, 1 ≤ i ≤ m [complementary slackness]
+gi(x∗) ≤ 0, 1 ≤ i ≤ m; h j(x∗) = 0, 1 ≤ j ≤ p [primal feasibility]
+are sufficient for x∗ to be optimal.
+(b) If (2.3.16) satisfies restricted Slater condition: ∃x ̄ ∈ rintX : gi(x ̄) ≤ 0, h j(x ̄) = 0 for all constraints and g j(x ̄) < 0 for all nonlinear constraints, then the KKT
+conditions are necessary and sufficient for x∗ to be optimal.
+Proof. We first prove part (a). Indeed, complementary slackness plus λ∗ ≥ 0 ensure that
+L(x∗,λ∗, y∗) ≥ L(x∗,λ, y) ∀λ ≥ 0, ∀y ∈ Rp.
+
+
+ 2.3 Lagrange Duality 43
+Further, L(x,λ∗, y∗) is convex in x ∈ X and differentiable at x∗ ∈ X, so that the stationarity condition implies that
+L(x,λ∗, y∗) ≥ L(x∗,λ∗, y∗) ∀x ∈ X.
+Thus, x∗ can be extended to a saddle point of the Lagrange function and therefore is optimal for (2.3.16). We now show that part (b) holds. By Saddle Point Optimality condition, from optimality of x∗ it follows that ∃λ∗ ≥ 0 and y∗ ∈ Rp such that (x∗,λ∗, y∗) is a saddle point of L(x,λ, y) on X × {λ ≥ 0} × Rp. This is equivalent to h j(x∗) = 0,
+λi∗gi(x∗) = 0 ∀i,
+and
+xm∈iXn L(x,λ∗, y∗) = L(x∗,λ∗, y∗).
+Since the function L(x,λ∗, y∗) is convex in x ∈ X and differentiable at x∗ ∈ X, the last identity implies the stationarity condition.
+Let us look at one example.
+Example 2.1. Assuming ai > 0, p ≥ 1, show that the solution of the problem
+mxin
+{ ∑i
+ai
+xi : x > 0, ∑ixp
+i ≤1
+}
+is given by
+xi∗ = a1/(p+1)
+i
+(∑ jap/(p+1)
+j
+)1/p .
+Proof. Assuming x∗ > 0 is a solution such that ∑i(xi∗)p = 1, the KKT stationarity condition reads
+∇x
+{ ∑i
+ai
+xi + λ(∑ixp
+i − 1)
+}
+= 0 ⇔ ai
+xi2
+= pλxp−1
+i
+whence xi = [ai/(pλ)]1/(p+1). Since ∑ixp
+i should be 1, we get
+xi∗ = a1/(p+1)
+i
+(∑ jap/(p+1)
+j
+)1/p .
+This x∗ is optimal because the problem is convex and the KKT conditions are satisfied at this point. By examining the KKT conditions, we can obtain explicit solutions for many simple convex optimization problems, which can be used as subproblems in iterative algorithms for solving more complicated convex or even nonconvex optimization problems.
+
+
+ 44 2 Convex Optimization Theory
+2.3.5 Dual Support Vector Machine
+In this subsection, we discuss one interesting application of the optimality conditions for convex programming in support vector machines. Recall that the support vector machine can be formulated as
+minw,b 1
+2 ‖w‖2
+s.t. v(i)(wT u(i) + b) ≥ 1, i = 1, . . . , m.
+We can write the constraints equivalently as
+gi(w, b) = −v(i)(wT u(i) + b) + 1 ≤ 0.
+Thus Lagrangian function L for our problem is given by
+L(w, b,λ) = 1
+2 ‖w‖2 − ∑N
+i=1λi[v(i)(wT u(i) + b) − 1].
+For fixed λi’s, the problem is unconstrained. Let us minimize L(w, b,λ) w.r.t. w and b. Setting the derivatives of L w.r.t. w and b to zero, i.e.,
+∇wL(w, b,λ) = w − ∑N
+i=1λiv(i)u(i) = 0,
+we have
+w = ∑m
+i=1λiv(i)u(i). (2.3.20)
+Moreover, we have
+∇bL(w, b,λ) = ∑m
+i=1λiv(i) = 0. (2.3.21)
+Plugging the above definition of w into L(w, b,λ), we obtain
+L(w, b,λ) = ∑N
+i=1λi − 1
+2 ∑N
+i, j=1v(i)v( j)λiλj(u(i))T u( j) − b∑m
+i=1λiv(i).
+Since by (2.3.21), the last term must be zero, we have
+L(w, b,λ) = ∑N
+i=1λi − 1
+2 ∑N
+i, j=1v(i)v( j)λiλj(u(i))T u( j).
+Therefore, we can write the dual SVM problem as
+maxλ ∑N
+i=1λi − 1
+2 ∑N
+i, j=1v(i)v( j)λiλj(u(i))T u( j) s.t. λi ≥ 0, i = 1, . . . , m ∑N
+i=1λiv(i) = 0.
+Once we find the optimal λ∗, we can use (2.3.20) to compute optimal w∗. Moreover, with optimal w∗, we can easily solve the primal problem to find the intercept term b as
+b∗ = − maxi:v(i)=−1 w∗T v(i)+mini:v(i)=1 w∗T v(i)
+2.
+
+
+ 2.4 Legendre–Fenchel Conjugate Duality 45
+It is also interesting to observe that the dual problem only depends on the inner product and we can generalize it easily by using the Kernel trick (Sect. 2.2.6).
+2.4 Legendre–Fenchel Conjugate Duality
+2.4.1 Closure of Convex Functions
+We can extend the domain of a convex function f : X → R to the whole space Rn by setting f (x) = +∞ for any x ∈/ X. In view of the definition of a convex function in (2.2.8), and our discussion about the epigraphs in Sect. 2.2, a function f : Rn → R ∪ {+∞} is convex if and only if its epigraph
+epi( f ) = {(x,t) ∈ Rn+1 : f (x) ≤ t}
+is a nonempty convex set. As we know, closed convex sets possess many nice topological properties. For example, a closed convex set is comprised of the limits of all converging sequences of elements. Moreover, by the Separation Theorem, a closed and nonempty convex set X is the intersection of all closed half-spaces containing X. Among these halfspaces, the most interesting ones are the supporting hyperplanes touching X on the relative boundary. In functional Language, the “closedness” of epigraph corresponds to a special type of continuity, i.e., the lower semicontinuity. Let f : Rn → R ∪ {+∞} be a given function (not necessarily convex). We say that f is lower semicontinuous (l.s.c.) at a point x ̄, if for every sequence of points {xi} converging to x ̄ one has
+f (x ̄) ≤ lim ii→nf∞ f (xi).
+Of course, lim inf of a sequence with all terms equal to +∞ is +∞. f is called lower semicontinuous, if it is lower semicontinuous at every point. A trivial example of a lower semicontinuous function is a continuous one. Note, however, that a semicontinuous function is not necessarily continuous. What it is obliged is to make only “jumps down.” For example, the function
+f (x) =
+{
+0, x = 0
+a, x = 0
+is lower semicontinuous if a ≤ 0 (“jump down at x = 0 or no jump at all”), and is not lower semicontinuous if a > 0 (“jump up”).
+The following statement links lower semicontinuity with the geometry of the epigraph.
+
+
+ 46 2 Convex Optimization Theory
+Proposition 2.10. A function f defined on Rn and taking values from R ∪ {+∞} is lower semicontinuous if and only if its epigraph is closed (e.g., due to its emptiness).
+Proof. We first prove the “only if” part (from lower semicontinuity to closed epigraph). Let (x,t) be the limit of the sequence {xi,ti} ⊂ epi f . Then we have f (xi) ≤ ti. Thus the following relation holds: t = limi→∞ ti ≥ limi→∞ f (xi) ≥ f (x). We now show the “if” part (from closed epigraph to lower semicontinuity). Suppose for contradiction that f (x) > γ > limi→∞ f (xi) for some constant γ, where xi converges to x. Then there exists a subsequence {xik } such that f (xik ) ≤ γ for all ik. Since the epigraph is closed, then x must belong to this set, which implies that f (x) ≤ γ, which is a contradiction.
+As an immediate consequence of Proposition 2.10, the upper bound
+f (x) = sup α∈A
+fα(x)
+of arbitrary family of lower semicontinuous functions is lower semicontinuous. Indeed, the epigraph of the upper bound is the intersection of the epigraphs of the functions forming the bound, and the intersection of closed sets always is closed. Now let us look at proper lower semicontinuous (l.s.c.) convex functions. According to our general convention, a convex function f is proper if f (x) < +∞ for at least one x and f (x) > −∞ for every x. This implies that proper convex functions have convex nonempty epigraphs. Also as we just have seen, “lower semicontinuous” means “with closed epigraph.” Hence proper l.s.c. convex functions always have closed convex nonempty epigraphs. Similar to the fact that a closed convex set is intersection of closed half-spaces, we can provide an outer description of a proper l.s.c. convex function. More specifically, we can show that a proper l.s.c. convex function f is the upper bound of all its affine minorants given in the form of t ≥ dT x − a. Moreover, at every point x ̄ ∈ ri dom f from the relative interior of the domain f , f is even not the upper bound, but simply the maximum of its minorants: there exists an affine function fx ̄(x) which underestimates f (x) everywhere in Rn and is equal to f at x = x ̄. This is exactly the first-order approximation f (x ̄)+〈g(x ̄), x−x ̄〉 given by the definition of subgradients. Now, what if the convex function is not lower semicontinuous (see Fig. 2.5)? A similar question also arises about convex sets—what to do with a convex set which is not closed? To deal with these convex sets, we can pass from the set to its closure and thus get a “normal” object which is very “close” to the original one. Specifically, while the “main part” of the original set—its relative interior—remains unchanged, we add a relatively small “correction,” i.e., the relative boundary, to the set. The same approach works for convex functions: if a proper convex function f is not l.s.c. (i.e., its epigraph, being convex and nonempty, is not closed), we can “correct” the function—replace it with a new function with the epigraph being the closure of epi( f ). To justify this approach, we should make sure that the closure of the epigraph of a convex function is also an epigraph of such a function. Thus, we conclude that the closure of the epigraph of a convex function f is the epigraph of certain function, referred to as the closure cl f of f . Of course, this
+
+
+ 2.4 Legendre–Fenchel Conjugate Duality 47
+Fig. 2.5 Example for an upper semicontinuous function. The domain of this function is [0, +∞), and it “jumps up” at 0. However, the function is still convex
+latter function is convex (its epigraph is convex—it is the closure of a convex set), and since its epigraph is closed, cl f is proper. The following statement gives direct description of cl f in terms of f :
+(i) For every x one has cl f (x) = rl→im+0 inf
+x′ :‖x′ −x‖2 ≤r
+f (x′). In particular,
+f (x) ≥ cl f (x)
+for all x, and
+f (x) = cl f (x)
+whenever x ∈ ridom f , or equivalently whenever x ∈ cldom f . Thus, the “correction” f → cl f may vary f only at the points from the relative boundary of dom f , dom f ⊂ domcl f ⊂ cldom f ,
+hence ri dom f = ri domcl f .
+(ii) The family of affine minorants of cl f is exactly the family of affine minorants of f , so that
+cl f (x) = sup{φ(x) : φ is an affine minorant of f },
+due to the fact that cl f is l.s.c. and is therefore the upper bound of its affine minorants, and the sup in the right-hand side can be replaced with max whenever x ∈ ri domcl f = ridom f .
+
+
+ 48 2 Convex Optimization Theory
+2.4.2 Conjugate Functions
+Let f be a convex function. We know that f “basically” is the upper bound of all its affine minorants. This is exactly the case when f is proper, otherwise the corresponding equality takes place everywhere except, perhaps, some points from the relative boundary of dom f . Now, when an affine function dT x − a is an affine minorant of f ? It is the case if and only if
+f (x) ≥ dT x − a
+for all x or, which is the same, if and only if
+a ≥ dT x − f (x)
+for all x. We see that if the slope d of an affine function dT x − a is fixed, then in order for the function to be a minorant of f we should have
+a ≥ sup x∈Rn
+[dT x − f (x)].
+The supremum in the right-hand side of the latter relation is certain function of d and this function, denoted by f ∗, is called the Legendre–Fenchel conjugate of f :
+f ∗(d) = sup x∈Rn
+[dT x − f (x)].
+Geometrically, the Legendre–Fenchel transformation answers the following question: given a slope d of an affine function, i.e., given the hyperplane t = dT x in Rn+1, what is the minimal “shift down” of the hyperplane which places it below the graph of f ? From the definition of the conjugate it follows that this is a proper l.s.c. convex function. Indeed, we lose nothing when replacing supx∈Rn [dT x − f (x)] by
+supx∈dom f [dT x − f (x)], so that the conjugate function is the upper bound of a family of affine functions. This bound is finite at least at one point, namely, at every d coming from affine minorant of f , and we know that such a minorant exists. Therefore, f ∗ must be a proper l.s.c. convex function, as claimed. The most elementary (and the most fundamental) fact about the conjugate function is its symmetry.
+Proposition 2.11. Let f be a convex function. Then ( f ∗)∗ = cl f . In particular, if f is l.s.c., then ( f ∗)∗ = f .
+Proof. The conjugate function of f ∗ at the point x is, by definition,
+sup d∈Rn
+[xT d − f ∗(d)] = sup
+d∈Rn,a≥ f ∗(d)
+[dT x − a].
+The second sup here is exactly the supremum of all affine minorants of f due to the origin of the Legendre–Fenchel transformation: a ≥ f ∗(d) if and only if the affine
+
+
+ 2.4 Legendre–Fenchel Conjugate Duality 49
+form dT x − a is a minorant of f . The result follows since we already know that the upper bound of all affine minorants of f is the closure of f .
+The Legendre–Fenchel transformation is a very powerful tool—this is a “global” transformation, so that local properties of f ∗ correspond to global properties of f .
+• d = 0 belongs to the domain of f ∗ if and only if f is below bounded, and if it is the case, then f ∗(0) = − inf f ; • if f is proper and l.s.c., then the subgradients of f ∗ at d = 0 are exactly the minimizers of f on Rn; • dom f ∗ is the entire Rn if and only if f (x) grows, as ‖x‖2 → ∞, faster than ‖x‖2: there exists a function r(t) → ∞, as t → ∞ such that
+f (x) ≥ r(‖x‖2) ∀x.
+Thus, whenever we can compute explicitly the Legendre–Fenchel transformation of f , we get a lot of “global” information on f . Unfortunately, the more detailed investigation of the properties of LegendreFenchel transformation is beyond our scope. Below we simply list some facts and examples.
+• From the definition of Legendre transformation,
+f (x) + f ∗(d) ≥ xT d ∀x, d.
+Specifying here f and f ∗, we get certain inequality, e.g., the following one: [Young’s Inequality] if p and q are positive reals such that 1
+p+1
+q = 1, then
+|x|p
+p + |d|q
+q ≥ xd ∀x, d ∈ R
+• The Legendre–Fenchel transformation of the function
+f (x) ≡ −a
+is the function which is equal to a at the origin and is +∞ outside the origin; similarly, the Legendre–Fenchel transformation of an affine function d ̄T x − a is equal to a at d = d ̄ and is +∞ when d = d ̄; • The Legendre–Fenchel transformation of the strictly convex quadratic form
+f (x) = 1
+2 xT Ax
+(A 0) is the quadratic form
+f ∗(d) = 1
+2 dT A−1d
+• The Legendre–Fenchel transformation of the Euclidean norm
+f (x) = ‖x‖2
+is the function which is equal to 0 in the closed unit ball centered at the origin and is +∞ outside the ball.
+
+
+ 50 2 Convex Optimization Theory
+2.5 Exercises and Notes
+Exercises.
+1. Determine whether the following sets are convex or not.
+(a) {x ∈ R2 : x1 + i2x2 ≤ 1, i = 1, . . . , 10}. (b) {x ∈ R2 : x2
+1 + 2ix1x2 + i2x2
+2 ≤ 1, i = 1, . . . , 10}.
+(c) {x ∈ R2 : x2
+1 + ix1x2 + i2x2
+2 ≤ 1, i = 1, . . . , 10}.
+(d) {x ∈ R2 : x2
+1 + 5x1x2 + 4x2
+2 ≤ 1}.
+(e) {x ∈ R2 : exp{x1} ≤ x2}. (f) {x ∈ R2 : exp{x1} ≥ x2}. (g) {x ∈ Rn : ∑n
+i=1xi2 = 1}.
+2. Assume that X = {x1, . . . , xk} and Y = {y1, . . . , ym} are finite sets in Rn, with
+k + m ≥ n + 2, and all the points x1, . . . , xk, y1, . . . , ym are distinct. Assume that for
+any subset S ⊂ X ∪Y comprised of n + 2 points the convex hulls of the sets X ∩ S
+and Y ∩ S do not intersect. Then the convex hulls of X and Y also do not intersect. (Hint: Assume on contrary that the convex hulls of X and Y intersect, so that
+∑k
+i=1λixi = ∑m
+j=1μjy j
+for certain nonnegative λi, ∑iλi = 1, and certain nonnegative μj, ∑ jμj = 1, and look at the expression of this type with the minimum possible total number of nonzero coefficients λi, μj.) 3. Prove that the following functions are convex on the indicated domains:
+(a) x2
+y on {(x, y) ∈ R2 | y > 0},
+(b) ln(exp{x} + exp{y}) on the 2D plane.
+4. A function f defined on a convex set Q is called log-convex on Q, if it takes real positive values on Q and the function ln f is convex on Q. Prove that
+(a) a log-convex on Q function is convex on Q, (b) the sum (more generally, linear combination with positive coefficients) of two log-convex functions on Q also is log-convex on the set.
+5. Show the following statements related to the computation of subgradients.
+(a) The subgradient of f (x) = √x does not exist at x = 0. (b) The subdifferential of f (x) = |x| is given by [−1, 1]. (c) Let u and v be given. What is the subdifferential of f (w, b) = max{0, v(wT u + b)} + ρ‖w‖2
+2 at w and b.
+(d) The subdifferential of f (x) = ‖x‖ is given by ∂ f (0) = {x ∈ Rn|‖x‖ ≤ 1} and ∂ f (x) = {x/‖x‖} for x = 0.
+6. Find the minimizer of a linear function
+f (x) = cT x
+
+
+ 2.5 Exercises and Notes 51
+on the set
+Vp = {x ∈ Rn | ∑n
+i=1|xi|p ≤ 1},
+where p, 1 < p < ∞, is a parameter. What happens with the solution when the parameter becomes 0.5? 7. Let a1, . . . , an > 0, α,β > 0. Solve the optimization problem
+mxin
+{
+∑n
+i=1
+ai
+xiα
+: x > 0, ∑ixβ
+i ≤1
+} .
+8. Consider the optimization problem
+mx,ayx { f (x, y) = ax + by + ln(ln y − x) + ln(y) : (x, y) ∈ X = {y > exp{x}}} ,
+where a, b ∈ R are parameters. Is the problem convex? What is the domain in space of parameters where the problem is solvable? What is the optimal value? Is it convex in the parameters? 9. Let a1, . . . , an be positive reals, and let 0 < s < r be two reals. Find maximum and minimum of the function
+∑n
+i=1ai|xi|r
+on the surface
+∑n
+i=1|xi|s = 1.
+Notes. Further readings on convex analysis and convex optimization theory can be found on the monographs [50, 118], classic textbooks [12, 16, 79, 97, 104, 107, 120], and online course materials [92].
+
+
+ Chapter 3
+Deterministic Convex Optimization
+In this chapter, we study algorithms for solving convex optimization problems. We will focus on algorithms that have been applied or have the potential to be applied for solving machine learning and other data analysis problems. More specifically, we will discuss first-order methods which have been proven effective for large-scale optimization. These methods also form the basis for other computationally efficient methods, e.g., stochastic and randomized methods to be discussed in later chapters.
+3.1 Subgradient Descent
+We start with the simplest gradient descent method to minimize a differentiable convex function f . Starting from an initial point x1 ∈ Rn, the gradient descent method updates the search point xt according to
+xt+1 = xt − γt ∇ f (xt ),t = 1, 2, . . . , (3.1.1)
+where γt > 0 is a certain stepsize at the t-th iteration. The rationale behind (3.1.1) is to move a small step along the direction (also known as the steepest descent direction) that minimizes the local first-order Taylor approximation of f . We need to make two essential modifications to the gradient descent method in order to solve a general convex optimization problem given by
+f ∗ := xm∈iXn f (x). (3.1.2)
+Here X ⊆ Rn is a closed convex set and f : X → R is a proper l.s.c. convex function. Without specific mention, we assume that the set of optimal solutions of (3.1.2) is nonempty and x∗ is an arbitrary solution of (3.1.2). First, since the objective function f is not necessarily differentiable, it makes sense to replace ∇ f (xt) in (3.1.1) with a subgradient g(xt ) ∈ ∂ f (xt ). Second, the recursion in (3.1.1) applies only to
+© Springer Nature Switzerland AG 2020
+G. Lan, First-Order and Stochastic Optimization Methods for Machine Learning, Springer Series in the Data Sciences, https://doi.org/10.1007/978-3-030-39568-1_3
+53
+
+
+ 54 3 Deterministic Convex Optimization
+unconstrained problems. For the constrained case when X = Rn, the search point xt+1 defined in (3.1.1) may fall outside the feasible set X. Hence, it is necessary to “push” xt+1 back to X by using projection. Incorporating these enhancements, we update xt according to
+xt+1 := argminx∈X ‖x − (xt − γt g(xt ))‖2,t = 1, 2, . . . , (3.1.3)
+for some g(xt ) ∈ ∂ f (xt ) and γt > 0. The projected subgradient iteration in (3.1.3) admits some natural explanation from the proximity control point of view. Indeed, (3.1.3) can be written equivalently as
+xt+1 = argminy∈X
+1
+2 ‖x − (xt − γt g(xt ))‖2
+2
+= argminx∈Xγt 〈g(xt ), x − xt 〉 + 1
+2 ‖x − xt ‖2
+2
+= argminx∈Xγt [ f (xt ) + 〈g(xt ), x − xt 〉] + 1
+2 ‖x − xt ‖2
+2
+= argminx∈Xγt 〈g(xt ), x〉 + 1
+2 ‖x − xt ‖2
+2. (3.1.4)
+This implies that we would like to minimize the linear approximation f (xt ) + 〈g(xt ), x − xt 〉 of f (x) over X, without moving too far away from xt so as to have ‖x − xt ‖2
+2 small. The parameter γt > 0 balances these two terms, and its selection will depend on the properties of the objective function f , e.g., the differentiability of f , the Lipschitz continuity of its gradients, and so forth.
+3.1.1 General Nonsmooth Convex Problems
+We will first consider a general convex function f which is Lipschitz continuous over X, i.e., ∃M > 0 such that
+| f (x) − f (y)| ≤ M‖x − y‖2 ∀x, y ∈ X. (3.1.5)
+Observe that this assumption is not too restrictive in view of Theorem 2.4. The following lemma provides an important characterization for xt+1 by using the representation in (3.1.4).
+Lemma 3.1. Let xt+1 be defined in (3.1.3). For any y ∈ X, we have
+γt 〈g(xt ), xt+1 − x〉 + 1
+2 ‖xt+1 − xt ‖2
+2≤ 1
+2 ‖x − xt ‖2
+2− 1
+2 ‖x − xt+1‖2
+2.
+Proof. Denote φ(x) = γt 〈g(xt ), x〉 + 1
+2 ‖x − xt ‖2
+2. By the strong convexity of φ, we have
+φ(x) ≥ φ(xt+1) + 〈φ′(xt+1), x − xt+1〉 + 1
+2 ‖x − xt+1‖2
+2.
+
+
+ 3.1 Subgradient Descent 55
+Moreover, by the first-order optimality condition of (3.1.4), we have 〈φ′(xt+1), x − xt+1〉 ≥ 0 for any x ∈ X. The result immediately follows by combining these two inequalities.
+The following theorem describes some general convergence properties for the subgradient descent method. Note that in our convergence analysis for first-order methods, we often use the following simple inequality
+bt − at2
+2 ≤ b2
+2a , ∀a > 0, b ∈ R,t ∈ R. (3.1.6)
+Theorem 3.1. Let xt ,t = 1, . . . , k, be generated by (3.1.3). Under Assumption (3.1.5), we have
+∑k
+t=sγt [ f (xt ) − f (x)] ≤ 1
+2
+[
+‖x − xs‖2
+2 + M2∑k
+t=sγ2
+t
+]
+, ∀x ∈ X. (3.1.7)
+Proof. By the convexity of f and Lemma 3.1,
+γt [ f (xt ) − f (x)] ≤ γt 〈g(xt ), xt − x〉
+≤1
+2 ‖x − xt ‖2
+2− 1
+2 ‖x − xt+1‖2
+2
++ γt 〈g(xt ), xt − xt+1〉 − 1
+2 ‖xt+1 − xt ‖2
+2
+≤1
+2 ‖x − xt ‖2
+2− 1
+2 ‖x − xt+1‖2
+2 + γt2
+2 ‖g(xt )‖2
+2
+≤1
+2 ‖x − xt ‖2
+2− 1
+2 ‖x − xt+1‖2
+2 + γt2
+2 M2,
+where the third inequality follows from the Cauchy–Schwarz inequality and (3.1.6). The result then immediately follows by summing up the above inequality from t = s to k.
+We now provide a simple specific choice for the stepsizes γt .
+Corollary 3.1. Let us denote
+D2
+X ≡ DX,‖·‖22/2 := max
+x1 ,x2 ∈X
+‖x1 −x2 ‖22
+2 . (3.1.8)
+Suppose that the number of iterations k is fixed and
+γt =
+√
+2D2X
+kM2 ,t = 1, . . . , k.
+Then f (x ̄k
+1)− f ∗ ≤
+√2MDX
+2√k , ∀k ≥ 1,
+where
+x ̄k
+s=
+(
+∑k
+t=sγt
+)−1
+∑k
+t=s(γt xt ). (3.1.9)
+
+
+ 56 3 Deterministic Convex Optimization
+Proof. By Theorem 3.1 and the fact that f (x ̄sk) ≤ (∑k
+t=sγt )−1∑k
+t=s f (xt ), we have
+f (x ̄k
+s ) ≤ (2∑k
+t=sγt )−1 [
+‖x∗ − xs‖2
+2 + M2∑k
+t=sγ2
+t
+]
+. (3.1.10)
+If γt = γ, t = 1, . . . , k, we have
+f (x ̄k
+1) − f ∗ ≤ 1
+2
+(2
+kγ D2
+X + M2γ
+) .
+The result follows by minimizing the right-hand side (RHS) of above inequality w.r.t. γ.
+We can also use variable stepsizes without fixing the number of iterations k a priori.
+Corollary 3.2. If
+γt =
+√
+2D2X
+tM2 ,t = 1, . . . , k,
+then f (x ̄k
+k/2 ) − f ∗ ≤ (1+2 ln 3)MDX
+2(√2−1)√k+1
+for any k ≥ 3, where x ̄k
+k/2 is defined in (3.1.9).
+Proof. It suffices to bound the RHS of (3.1.10) by using the following bounds:
+∑k
+t= k/2 γt = ∑k
+t= k/2
+√
+2D2X
+tM2 ≥
+√2DX M
+∫ k+1
+(k+1)/2
+t −1/2 dt
+≥
+√2DX
+M (1 − √12 )(k + 1)1/2, ∀k ≥ 1.
+∑k
+t= k/2 γ2
+t = 2D2X
+M2 ∑k
+t= k/2
+1
+t ≤ 2D2X
+M2
+∫k
+k/2 −1
+1
+t ≤ 2D2X
+M2 ln k
+k/2 −1
+≤ 2D2X
+M2 ln 3, ∀k ≥ 3.
+Observe that in (3.1.9), we define the output solution as the weighted average of the iterates {xk}. However, we can define the output solution xˆk ∈ {x1, . . . , xk} as the best solution found so far in the trajectory, i.e.,
+f (xˆk) = min
+i=1,...,k f (xi). (3.1.11)
+We can easily see that all the results stated in Theorem 3.1 and Corollaries 3.1 and 3.2 still hold with this different selection of output solution. Moreover, it is worth noting that the definition of the diameter DX in (3.1.8) depends on the norm ‖· ‖2. We will discuss later how to generalize such a characteristic of the feasible set X.
+
+
+ 3.1 Subgradient Descent 57
+3.1.2 Nonsmooth Strongly Convex Problems
+In this subsection, we assume that f , in addition to (3.1.5), is strongly convex, i.e., ∃μ > 0 s.t.
+f (y) ≥ f (x) + 〈g(x), y − x〉 + μ
+2 ‖y − x‖2
+2, ∀x, y ∈ X, (3.1.12)
+where g(x) ∈ ∂ f (x).
+Theorem 3.2. Let xt ,t = 1, . . . , k, be generated by (3.1.3). Under Assumptions (3.1.5) and (3.1.12), if for some wt ≥ 0,
+wt (1−μγt )
+γt ≤ wt−1
+γt−1 , (3.1.13)
+then
+∑k
+t=1wt [ f (xt ) − f (x)] ≤ w1(1−μγ1)
+2γ1 ‖x∗ − x1‖2
+2 − wk
+2γk ‖x − xk+1‖2
+2 + M2∑k
+t=1wtγt .
+(3.1.14)
+Proof. By the strong convexity of f and Lemma 3.1,
+f (xt ) − f (x) ≤ 〈g(xt ), xt − x〉 − μ
+2 ‖x − xt ‖2
+2 ≤ 1−μγt
+2γt ‖x − xt ‖2
+2− 1
+2γt ‖x − xt+1‖2
+2
++ 〈g(xt ), xt − xt+1〉 − 1
+2γt ‖xt+1 − xt ‖2
+2 ≤ 1−μγt
+2γt ‖x − xt ‖2
+2− 1
+2γt ‖x − xt+1‖2
+2 + γt
+2 ‖g(xt )‖2
+2 ≤ 1−μγt
+2γt ‖x − xt ‖2
+2− 1
+2γt ‖x − xt+1‖2
+2 + γt
+2 M2,
+where the last inequality follows from the Cauchy–Schwarz inequality and (3.1.6). Summing up these inequalities with weight wt , we obtain (3.1.14).
+Below we provide a specific selection of {γk} and {wk}.
+Corollary 3.3. If
+γt = 2
+μt and wt = t, ∀t ≥ 1, (3.1.15)
+then f (x ̄k
+1) − f (x) + μk
+2(k+1) ‖xk+1 − x‖2 ≤ 4M2
+μ(k+1) , ∀x ∈ X .
+where x ̄k
+1 is defined in (3.1.9).
+Proof. It can be easily seen that
+wt (1−μγt )
+γt = μt(t−2)
+2 and wt−1
+γt−1 = μ(t−1)2
+2
+and hence that (3.1.13) holds. It then follows from (3.1.14) and (3.1.15) that
+∑k
+t=1t[ f (xt ) − f (x)] ≤ μ
+4 ‖x1 − x‖2 − μk2
+4 ‖xk+1 − x‖2 + 2kM2
+μ.
+
+
+ 58 3 Deterministic Convex Optimization
+Using the definition of x ̄k in (3.1.9) and the convexity of f , we conclude that
+f (x ̄k
+1) − f (x) ≤ 2
+k(k+1) ( μ
+4 ‖x1 − x‖2 − μk2
+4 ‖xk+1 − x‖2 + 2kM2
+μ ).
+In view of Corollary 3.3, we can bound both the function optimality gap f (x ̄k
+1) −
+f (x∗) and the distance to the optimal solution ‖xk+1 − x‖2 by O(1/k). Here O(1/k) means “in the order of 1/k”. Similar to the general convex case, we can use the xˆk in (3.1.11) in place of x ̄k
+1 as the output solution.
+3.1.3 Smooth Convex Problems
+In this subsection, we consider differentiable convex functions f with Lipschitz continuous gradients, i.e.,
+‖∇ f (x) − ∇ f (y)‖2 ≤ L‖x − y‖2, ∀x, y ∈ X. (3.1.16)
+These functions are referred to as smooth convex function in this text. Since f is differentiable, we can set the subgradient g(xt ) = ∇ f (xt ) in (3.1.3), and the resulting algorithm is often called projected gradient method. We first prove a convenient representation about smoothness. Observe that this result does not depend on the convexity of f .
+Lemma 3.2. For any x, y ∈ X, we have
+f (y) − f (x) − 〈 f ′(x), y − x〉 ≤ L
+2 ‖y − x‖2
+2. (3.1.17)
+Proof. For all x, y ∈ X, we have
+f (y) = f (x) +
+∫1
+0
+〈 f ′(x +τ(y − x)), y − x〉dτ
+= f (x) + 〈 f ′(x), y − x〉 +
+∫1
+0
+〈 f ′(x +τ(y − x)) − f ′(x), y − x〉dτ.
+Therefore,
+f (y) − f (x) − 〈 f ′(x), y − x〉
+=
+∫1
+0
+〈 f ′(x + τ(y − x)) − f ′(x), y − x〉dτ
+≤
+∫1
+0
+‖ f ′(x + τ(y − x)) − f ′(x)‖2‖y − x‖2dτ
+≤
+∫1
+0
+τL‖y − x‖2
+2dτ = L
+2 ‖y − x‖2
+2.
+Our next result shows that the function values at the iterates xt , t ≥ 1, are monotonically nonincreasing.
+
+
+ 3.1 Subgradient Descent 59
+Lemma 3.3. Let {xt } be generated by (3.1.3). If (3.1.16) holds and
+γt ≤ 2
+L , (3.1.18)
+then f (xt+1) ≤ f (xt ), ∀t ≥ 1.
+Proof. By the optimality condition of (3.1.3), we have
+〈γt g(xt ) + xt+1 − xt , x − xt+1〉 ≥ 0, ∀x ∈ X .
+Letting x = xt in the above relation, we obtain
+γt 〈g(xt ), xt+1 − xt 〉 ≤ −‖xt+1 − xt ‖2
+2. (3.1.19)
+It then follows from (3.1.17) and the above relation that
+f (xt+1) ≤ f (xt ) + 〈g(xt ), xt+1 − xt 〉 + L
+2 ‖xt+1 − xt ‖2
+2
+≤ f (xt ) −
+(1
+γt − L
+2
+)
+‖xt+1 − xt ‖2
+2 ≤ f (xt ).
+We are now ready to establish the main convergence properties for the projected gradient method applied to smooth convex optimization problems.
+Theorem 3.3. Let {xt } be generated by (3.1.3). If (3.1.16) holds and
+γt = γ ≤ 1
+L , ∀t ≥ 1, (3.1.20)
+then f (xk+1) − f (x) ≤ 1
+2γk ‖x − x1‖2
+2, ∀x ∈ X.
+Proof. By (3.1.17), we have
+f (xt+1) ≤ f (xt ) + 〈g(xt ), xt+1 − xt 〉 + L
+2 ‖xt+1 − xt ‖2
+2
+≤ f (xt ) + 〈g(xt ), x − xt 〉 + 〈g(xt ), xt+1 − x〉 + L
+2 ‖xt+1 − xt ‖2
+2. (3.1.21)
+It then follows from the above inequality, the convexity of f , and Lemma 3.1 that
+f (xt+1) ≤ f (x) + 1
+2γt
+(‖x − xt ‖2
+2 − ‖x − xt+1‖2
+2 − ‖xt − xt+1‖2
+2
+)
++L
+2 ‖xt+1 − xt ‖2
+2
+≤ f (x) + 1
+2γ
+(‖x − xt ‖2
+2 − ‖x − xt+1‖2
+2
+),
+where the last inequality follows from (3.1.20). Summing up the above inequalities from t = 1 to k, and using Lemma 3.3, we have
+k[ f (xk+1) − f (x)] ≤ ∑k
+t=1[ f (xt+1) − f (x)] ≤ 1
+2γ‖x − x1‖2
+2.
+In view of Theorem 3.3, one may choose γ = 1/L and then the rate of convergence of the projected gradient method becomes f (xk+1) − f ∗ ≤ L/(2k).
+
+
+ 60 3 Deterministic Convex Optimization
+3.1.4 Smooth and Strongly Convex Problems
+In this section, we discuss the convergence properties of the projected gradient method when the objective function f is smooth and strongly convex.
+Theorem 3.4. Let {xt } be generated by (3.1.3). Assume (3.1.12) and (3.1.16) hold, and let γt = γ = 1/L, t = 1, . . . , k. Then,
+‖x − xk+1‖2
+2 ≤ (1 − μ
+L )k‖x − x1‖2
+2. (3.1.22)
+Proof. It follows from (3.1.21), the strong convexity of f , and Lemma 3.1 that
+f (xt+1) ≤ f (x) − μ
+2 ‖x − xt ‖2
+2+ 1
+2γt
+(‖x − xt ‖2
+2 − ‖x − xt+1‖2
+2 − ‖xt − xt+1‖2
+2
+)
++L
+2 ‖xt+1 − xt ‖2
+2
+≤ f (x) + 1−μγ
+2γ ‖x − xt ‖2
+2− 1
+2γ ‖x − xt+1‖2
+2.
+Using the above relation, the facts γ = 1/L and f (xt) − f (x∗) ≥ 0, we have
+‖xt+1 − x∗‖2
+2 ≤ (1 − μ
+L )‖xt − x∗‖2
+2,
+which clearly implies (3.1.22).
+In order to find a solution x ̄ ∈ X such that ‖x ̄ − x∗‖2 ≤ ε, it suffices to have
+(1 − μ
+L )k‖x − x1‖2
+2 ≤ ε ⇐⇒ k log(1 − μ
+L ) ≤ log ε
+‖x−x1 ‖22
+⇐⇒ k ≥ 1
+− log(1− μ
+L ) log ‖x−x1‖22
+ε
+⇐= k ≥ L
+μ log ‖x−x1‖22
+ε , (3.1.23)
+where the last inequality follows from the fact that − log(1 − α) ≥ α for any α ∈ [0, 1).
+3.2 Mirror Descent
+The subgradient descent method is intrinsically linked to the Euclidean structure of Rn. More specifically, the construction of the method relies on the Euclidean projection (see (3.1.3)), and the quantities DX and M used in the efficiency estimate (see Corollary 3.1) are defined in terms of the Euclidean norm. In this section we develop a substantial generalization of the subgradient descent method allowing to adjust, to some extent, the method to the possibly non-Euclidean geometry of the problem in question. We shall see in the mean time that we can gain a lot, both theoretically and numerically, from such an adjustment.
+
+
+ 3.2 Mirror Descent 61
+Let ‖ · ‖ be a (general) norm on Rn and ‖x‖∗ = sup‖y‖≤1〈x, y〉 be its dual norm. We say that a function ν : X → R is a distance generating function modulus σν > 0 with respect to ‖ · ‖, if ν is convex and continuous on X, the set
+Xo = {x ∈ X : there exists p ∈ Rn such that x ∈ arg minu∈X [pT u + ν(u)]}
+is convex (note that Xo always contains the relative interior of X), and restricted to Xo, ν is continuously differentiable and strongly convex with parameter σν with respect to ‖ · ‖, i.e.,
+〈x′ − x, ∇ν(x′) − ∇ν(x)〉 ≥ σν‖x′ − x‖2, ∀x′, x ∈ Xo. (3.2.1)
+The simplest example of a distance generating function is ν(x) = ‖x‖2
+2/2 (modulus
+1 with respect to ‖ · ‖2, Xo = X). Associated with the distance generating function, we define the prox-function (Bregman’s distance or divergence) V : Xo × X → R+ as follows
+V (x, z) = ν(z) − [ν(x) + 〈∇ν(x), z − x〉. (3.2.2)
+Note that V (x, ·) is nonnegative and is strongly convex modulus σν with respect to the norm ‖ · ‖. Also by the strong convexity of ν, we have
+V (x, z) ≥ σν
+2 ‖x − z‖2. (3.2.3)
+In case ν(x) = ‖x‖2
+2/2, we have V (x, z) = ‖z − x‖2
+2/2.
+Without loss of generality, we assume that the strong convexity modulus σν of ν is given by 1. Indeed, if σν = 1, we can always choose ν/σν as the distance generating function and define its associated prox-function. The following quantity DX > 0 will be used frequently in the complexity analysis of first-order and stochastic algorithms.
+D2
+X ≡ D2
+X,ν := max
+x1,x∈X V (x1, x). (3.2.4)
+Clearly, the definition of DX,ν generalizes the definition of DX,‖·‖22/2 in (3.1.8) with
+ν(x) = ‖x‖2
+2/2. With the definition of the prox-function, we modify the subgradient iteration in (3.1.4) to xt+1 = argminx∈Xγt 〈g(xt ), x〉 +V (xt , x),t = 1, 2, . . . . (3.2.5)
+This implies that we would like to minimize a linear approximation of f , but do not move too far away from xt in terms of V (xt , x). It can be easily seen that (3.1.4) is a special case of (3.2.5) with V (xt , x) = ‖x − xt ‖2
+2/2. The following lemma characterizes the updated solution xt+1 in (3.2.5).
+Lemma 3.4. Let xt+1 be defined in (3.2.5). For any y ∈ X, we have
+γt 〈g(xt ), xt+1 − x〉 +V (xt , xt+1) ≤ V (xt , x) −V (xt+1, x).
+Proof. By the optimality condition of (3.2.5),
+
+
+ 62 3 Deterministic Convex Optimization
+〈γt g(xt ) + ∇V (xt , xt+1), x − xt 〉 ≥ 0, ∀x ∈ X,
+where ∇V (xt , xt+1) denotes the gradient of V (xt , ·) at xt+1. Using the definition of the prox-function (3.2.2), it is easy to verify that
+V (xt , x) = V (xt , xt+1) + 〈∇V (xt , xt+1), x − xt+1〉 +V (xt+1, x), ∀x ∈ X. (3.2.6)
+The result then immediately follows by combining the above two relations.
+With the help of Lemma 3.4, we can easily establish some general convergence properties for the mirror descent method. In order to provide an efficiency estimate that does not rely on the Euclidean structure, we assume that the subgradients of f satisfy
+‖g(xt )‖∗ ≤ M, ∀t ≥ 1.
+Theorem 3.5. Let xt ,t = 1, . . . , k, be generated by (3.2.5) and define x ̄sk as in (3.1.9). Then
+f (x ̄k
+s)− f∗ ≤
+(
+∑k
+t=sγt
+)−1 [
+V (xs, x∗) + 1
+2 M2∑k
+t=sγ2
+t
+] ,
+where x∗ denotes an arbitrary solution of (3.1.2).
+Proof. By the convexity of f and Lemma 3.4,
+γt [ f (xt ) − f (x)] ≤ γt 〈g(xt ), xt − x〉
+≤ V (xt , x) −V (xt+1, x) + γt 〈g(xt ), xt − xt+1〉 −V (xt , xt+1).
+Note that by the strong convexity of ν, the Cauchy–Schwarz inequality, and the fact that bt − at2/2 ≤ b2/(2a) for any a > 0, we have
+γt 〈g(xt ), xt − xt+1〉 −V (xt , xt+1) ≤ γt 〈g(xt ), xt − xt+1〉 − 1
+2 ‖xt+1 − xt ‖2
+≤ γ2
+t ‖g(xt )‖2∗ ≤ 1
+2 γ2
+t M2.
+Combining the above two relations, we conclude
+γt [ f (xt ) − f (x)] ≤ V (xt , x) −V (xt+1, x) + 1
+2 γ2
+t M2.
+The result then immediately follows by summing up the above inequality from t = s to k, and using the fact that f (x ̄sk) ≤ (∑k
+t=sγt )−1∑k
+t=s f (xt ).
+We now provide a simple specific choice for the stepsizes γt .
+Corollary 3.4. Let the number of iterations k be fixed and assume that
+γt =
+√
+2D2X
+kM2 ,t = 1, . . . , k.
+Then f (x ̄1,k) − f ∗ ≤
+√2MDX
+√k , ∀k ≥ 1.
+
+
+ 3.2 Mirror Descent 63
+Proof. The proof is almost identical to that for Corollary 3.1 and hence the details are skipped.
+We can also use variable stepsizes without fixing the number of iterations k a priori.
+Excercise 1 Show that if
+γt = DX
+M√t , t = 1, 2, . . . ,
+then f (x ̄ k/2 ,k) − f ∗ ≤ O(1)( M√DkX ), where O(1) denotes an absolute constant.
+Comparing the results obtained in Corollaries 3.1 and 3.4, we see that for both the subgradient and mirror descent methods, the inaccuracy in terms of the objective of the approximate solution is bounded by O(k−1/2). A benefit of the mirror descent over the subgradient descent algorithm is its potential possibility to reduce the constant factor hidden in O(·) by adjusting the norm ‖ · ‖ and the distance generating function ν(·) to the geometry of the problem.
+Example 3.1. Let X = {x ∈ Rn : ∑n
+i=1xi = 1, x ≥ 0} be a standard simplex. Consider two setups for the mirror descent method: – Euclidean setup, where ‖ · ‖ = ‖ · ‖2 and ν(x) = 1
+2 ‖x‖2
+2
+– 1-setup, where ‖x‖ = ‖x‖1 := ∑n
+i=1|xi| and ν is the entropy
+ν(x) = ∑n
+i=1xi ln xi. (3.2.7)
+The Euclidean setup leads to the subgradient descent method which is easily implementable (computing the projection subproblem in (3.1.4) requires O(n ln n) operations) and guarantees that
+f (x ̄k
+1) − f (x∗) ≤ O(1)M ̄ k−1/2, (3.2.8)
+provided that the constant M ̄ = maxx∈X ‖g(x)‖ is known and the stepsizes in Corollary 3.1 are used (note that the Euclidean diameter of X is of order of 1). The 1-setup
+corresponds to Xo = {x ∈ X : x > 0}, DX = √ln n, x1 = argminXω = n−1(1, . . . , 1)T , σν = 1, and ‖x‖∗ = ‖x‖∞ ≡ maxi |xi|. The associated mirror descent is easily im
+plementable: the prox-function here is V (x, z) = ∑n
+i=1zi ln zi
+xi , and the subproblem
+x+ = argminz∈X
+[yT (z − x) +V (x, z)] can be computed in O(n) operations according to the explicit formula:
+x+
+i = xie−yi
+∑n
+k=1xke−yk , i = 1, . . . , n.
+The efficiency estimate guaranteed with the 1-setup is
+f (x ̃k
+1) − f (x∗) ≤ O(1)√ln nM ̄ ∗k−1/2, (3.2.9)
+
+
+ 64 3 Deterministic Convex Optimization
+provided that the constant M ̄ ∗ = maxx∈X ‖g(x)‖∗ is known and the constant stepsizes in Corollary 3.4 are used. To compare (3.2.9) and (3.2.8), observe that M ̄ ∗ ≤ M ̄ , and
+the ratio M ̄ ∗/M ̄ can be as small as n−1/2. Thus, the efficiency estimate for the 1setup never is much worse than the estimate for the Euclidean setup, and for large n can be far better than the latter estimate: √
+1
+ln n ≤ √lnM ̄nM ̄ ∗ ≤
+√
+n
+lnn , k = 1, 2, . . . ,
+both the upper and the lower bounds being achievable. Thus, when X is a standard simplex of large dimension, we have strong reasons to prefer the 1-setup to the usual Euclidean one.
+It should be noted that the mirror descent method will exhibit stronger rate of convergence when applied to strongly convex or smooth problems. We leave the development of these results as an exercise (see Sect. 3.10).
+3.3 Accelerated Gradient Descent
+In this subsection, we discuss an important improvement to the gradient descent method, namely the accelerated (or fast) gradient method applied to smooth convex optimization problems. Note that in this discussion, we incorporate the idea of mirror-descent method into the accelerated gradient method by using the proxfunction discussed in the previous subsection. In particular, we assume that given an arbitrary norm ‖ · ‖ (‖ · ‖∗ denotes its conjugate),
+‖∇ f (x) − ∇ f (y)‖∗ ≤ L‖x − y‖, ∀x, y ∈ X. (3.3.1)
+Similar to (3.1.17), we can show that for any x, y ∈ X, we have
+f (y) − f (x) − 〈 f ′(x), y − x〉 ≤ L
+2 ‖y − x‖2. (3.3.2)
+Moreover, we assume that for some μ ≥ 0,
+f (y) ≥ f (x) + 〈 f ′(x), y − x〉 + μV (x, y), ∀x, y ∈ X. (3.3.3)
+If μ = 0, (3.3.3) is implied by the convexity of f . If μ > 0, it generalizes the definition of strong convexity in terms of Bregman’s distance. In fact, there exist many variants of the accelerated gradient method. Below we study one of its simplest variants. Given (xt−1, x ̄t−1) ∈ X × X, we set
+xt = (1 − qt )x ̄t−1 + qt xt−1, (3.3.4)
+xt = argminx∈X {γt [〈 f ′(xt ), x〉 + μV (xt , x)] +V (xt−1, x)}, (3.3.5)
+x ̄t = (1 − αt )x ̄t−1 + αt xt , (3.3.6)
+
+
+ 3.3 Accelerated Gradient Descent 65
+for some qt ∈ [0, 1], γt ≥ 0, and αt ∈ [0, 1]. In comparison with the gradient descent method, the accelerated gradient descent method builds up a lower approximation of the objective function, defined by
+f (xt ) + 〈 f ′(xt ), x − xt 〉 + μV (xt , x),
+at the search point xt , which is different from the other search point xt used for proximity control (see (3.3.5)). Moreover, we compute the output solution x ̄t as a convex combination of the sequence {xt }. Note that we have not specified the parameters {qt }, {γt }, and {αt } yet. In fact, the selection of these parameters will depend on the problem classes to be solved. We will discuss this issue after establishing some generic convergence properties of this method. The first technical result below characterizes the solution of the projection (or prox-mapping) step (3.3.5). It is worth noting that the function ν is not necessarily strongly convex.
+Lemma 3.5. Let the convex function p : X → R, the points x ̃, y ̃ ∈ X, and the scalars μ1,μ2 ≥ 0 be given. Let ν : X → R be a differentiable convex function and V (x, z) be defined in (3.2.2). If
+uˆ ∈ Argmin{p(u) + μ1V (x ̃, u) + μ2V (y ̃, u) : u ∈ X},
+then for any u ∈ X, we have
+p(uˆ) + μ1V (x ̃, uˆ) + μ2V (y ̃, uˆ) ≤ p(u) + μ1V (x ̃, u) + μ2V (y ̃, u) − (μ1 + μ2)V (uˆ, u).
+Proof. The definition of uˆ and the fact V (x ̃, ·) is a differentiable convex function imply that, for some p′(uˆ) ∈ ∂p(uˆ), we have
+〈p′(uˆ) + μ1∇V (x ̃, uˆ) + μ2∇V (y ̃, uˆ), u − uˆ〉 ≥ 0, ∀u ∈ X,
+where ∇V (x ̃, uˆ) denotes the gradient of V (x ̃, ·) at uˆ. Using the definition of V (x, z) in (3.2.2), it is easy to verify that
+V (x ̃, u) = V (x ̃, uˆ) + 〈∇V (x ̃, uˆ), u − uˆ〉 +V (uˆ, u), ∀u ∈ X.
+Using the above two relations and the assumption that p is convex, we then conclude that
+p(u) + μ1V (x ̃, u) + μ2V (y ̃, u)
+= p(u) + μ1[V (x ̃, uˆ) + 〈∇V (x ̃, uˆ), u − uˆ〉 +V (uˆ, u)] + μ2[V (y ̃, uˆ) + 〈∇V (y ̃, uˆ), u − uˆ〉 +V (uˆ, u)]
+≥ p(uˆ) + μ1V (x ̃, uˆ) + μ2V (y ̃, uˆ) + 〈p′(uˆ) + μ1∇V (x ̃, uˆ) + μ2∇V (y ̃, uˆ), u − uˆ〉 + (μ1 + μ2)V (uˆ, u) ≥ [p(uˆ) + μ1V (x ̃, uˆ) + μ2V (y ̃, uˆ)] + (μ1 + μ2)V (uˆ, u).
+
+
+ 66 3 Deterministic Convex Optimization
+Proposition 3.1 below describes some important recursion of the accelerated gradient descent method.
+Proposition 3.1. Let (xt , xt , x ̄t ) ∈ X × X × X be generated by the accelerated gradient method in (3.3.4)–(3.3.6). If
+αt ≥ qt , (3.3.7)
+L(αt −qt )
+1−qt ≤ μ, (3.3.8)
+Lqt (1−αt )
+1−qt ≤ 1
+γt , (3.3.9)
+then for any x ∈ X,
+f (x ̄t ) − f (x) + αt (μ+ 1
+γt )V (xt , x) ≤ (1 − αt )[ f (x ̄t−1) − f (x)] + γαtt V (xt−1, x).
+(3.3.10)
+Proof. Denote dt = x ̄t − xt . It follows from (3.3.4) and (3.3.6) that
+dt = (qt − αt )x ̄t−1 + αt xt − qt xt−1
+= αt
+[
+xt − αt −qt
+αt (1−qt ) xt − qt (1−αt )
+αt (1−qt ) xt−1
+]
+, (3.3.11)
+which, in view of the convexity of ‖ · ‖2 and (3.3.7), implies that
+‖dt ‖2 ≤ αt
+[ αt −qt
+1−qt ‖xt − xt ‖2 + qt (1−αt )
+1−qt ‖xt − xt−1‖2]
+.
+Using the above relation and (3.3.2), we have
+f (x ̄t ) ≤ f (xt ) + 〈 f ′(xt ), x ̄t − xt 〉 + L
+2 ‖dt ‖2
+= (1 − αt )[ f (xt )+〈 f ′(xt ), x ̄t−1 − xt 〉]+αt [ f (xt ) + 〈 f ′(xt ), xt − xt 〉]+ L
+2 ‖dt ‖2
+≤ (1 − αt ) f (x ̄t−1)
++ αt
+[
+f (xt )+〈 f ′(xt ), xt − xt 〉+ L(αt −qt )
+2(1−qt ) ‖xt − xt ‖2 + Lqt (1−αt )
+2(1−qt ) ‖xt − xt−1‖2]
+≤ (1 − αt ) f (x ̄t−1)
++ αt
+[
+f (xt ) + 〈 f ′(xt ), xt − xt 〉 + μV (xt , xt ) + 1
+γt V (xt−1, xt )
+]
+, (3.3.12)
+where the last inequality follows from (3.2.3), (3.3.8), and (3.3.9). Now using the above inequality, the definition of xt in (3.3.5), and Lemma 3.5, we conclude
+f (x ̄t ) ≤ (1 − αt ) f (x ̄t−1) + αt [ f (xt ) + 〈 f ′(xt ), x − xt 〉 + μV (xt , x)]
++ γαtt V (xt−1, x) − αt (μ + 1
+γt )V (xt , x)
+≤ (1 − αt ) f (x ̄t−1) + αt f (x) + γαtt V (xt−1, x) − αt (μ + 1
+γt )V (xt , x),
+
+
+ 3.3 Accelerated Gradient Descent 67
+where the last inequality follows from (3.3.3). Subtracting f (x) from both sides of the above inequality and rearranging the terms, we obtain the result.
+Below we discuss the convergence of the accelerated gradient descent method for smooth convex function which are not necessarily strongly convex (i.e., μ = 0).
+Theorem 3.6. Let (xt , xt , x ̄t ) ∈ X × X × X be generated by the accelerated gradient descent method in (3.3.4)–(3.3.6). If
+αt = qt , (3.3.13)
+Lαt ≤ 1
+γt , (3.3.14)
+γt (1−αt )
+αt ≤ γt−1
+αt−1 , (3.3.15)
+for any t = 1, . . . , k, then we have
+f (x ̄k) − f (x∗) + γαkk V (xk, x∗) ≤ αkγ1(1−α1)
+γkα1 [ f (x ̄0) − f (x∗)] + γαkk V (x0, x∗). (3.3.16)
+In particular, if qt = αt = 2
+t+1 and γt = t
+2L ,
+for any t = 1, . . . , k, then
+f (x ̄k) − f (x∗) ≤ 4L
+k(k+1)V (x0, x∗).
+Proof. Using the fact that μ = 0, (3.3.13) and (3.3.14), we can easily see that (3.3.7)–(3.3.9) hold. It then follows from (3.3.10) that
+γt
+αt [ f (x ̄t ) − f (x∗)] + V (xt , x∗) ≤ γt (1−αt )
+αt [ f (x ̄t−1) − f (x∗)] +V (xt−1, x∗)
+≤ γt−1
+αt−1 [ f (x ̄t−1) − f (x∗)] + V (xt−1, x∗),
+where the last inequality follows from (3.3.15) and the fact that f (x ̄t−1) − f (x∗) ≥ 0. Summing up these inequalities and rearranging the terms, we obtain (3.3.16).
+It follows from the previous result that in order to find a solution x ̄ ∈ X such that f (x ̄) − f (x∗) ≤ ε, the number of iteration performed by the accelerated gradient
+method can be bounded by O(1/√ε). This bound turns out to be optimal for solving a general class of large-scale smooth convex optimization problems. One way to improve this complexity bound is to consider more specialized problems. Below we introduce a substantially improved result for the smooth and strongly convex case, i.e., μ > 0.
+Theorem 3.7. Let (xt , xt , x ̄t ) ∈ X × X × X be generated by the accelerated gradient descent method in (3.3.4)–(3.3.6). If αt = α, γt = γ, and qt = q, t = 1, . . . , k, satisfy
+(3.3.7)–(3.3.9) and
+1
+γ(1−α) ≤ μ + 1
+γ, (3.3.17)
+then for any x ∈ X,
+
+
+ 68 3 Deterministic Convex Optimization
+f (x ̄k) − f (x) + α(μ+ 1
+γ)V (xk−1, x) ≤ (1 − α)k[ f (x ̄0) − f (x) + α(μ+ 1
+γ)V (x1, x)]. (3.3.18) In particular, if
+α=
+√μ
+L , q = α−μ/L
+1−μ/L , and γ = α
+μ(1−α) , (3.3.19)
+then for any x ∈ X,
+f (x ̄k)− f (x)+α(μ+ 1
+γ)V (xk−1, x)≤
+(
+1−
+√μ
+L
+)k
+[ f (x ̄0)− f (x)+α(μ+ 1
+γ)V (x1, x)].
+(3.3.20)
+Proof. The result in (3.3.18) follows directly from (3.3.10) and (3.3.17). Moreover, we can easily check that the parameters in (3.3.19) satisfy (3.3.7)–(3.3.9) and (3.3.17) with equality, which implies (3.3.20).
+Using a similar reasoning to (3.1.23), we can see that the total number of iterations performed by the accelerated gradient method to solve strongly convex prob
+lems can be bounded by O(√L/μlog 1/ε) in order to find a point x ̄ ∈ X such that f (x ̄) − f (x∗) ≤ ε.
+We now turn our attention to a relatively easy extension of the accelerated gradient descent method for solving a certain class of nonsmooth optimization problems given by
+xm∈iXn
+{ f (x) := fˆ(x) + F(x)} . (3.3.21)
+Here fˆ is a simple (not necessarily smooth) convex function and F is a smooth convex function with Lipschitz continuous gradients. Moreover, we assume that the Lipschitz constant of ∇F is given by L and that for some μ ≥ 0,
+F(y) ≥ F(x) + 〈F′(x), y − x〉 + μV (x, y), ∀x, y ∈ X. (3.3.22)
+In order to solve the above composite problem, we only need to slightly modify (3.3.4)–(3.3.6) as follows.
+xt = (1 − qt )x ̄t−1 + qt xt−1, (3.3.23)
+xt = argminx∈X {γt [〈 f ′(xt ), x〉 + μV (xt , x) + fˆ(x)] +V (xt−1, x)}, (3.3.24)
+x ̄t = (1 − αt )x ̄t−1 + αt xt . (3.3.25)
+Hence, the difference exists in that we keep fˆ inside the subproblem (3.3.24).
+Corollary 3.5. The performance guarantees stated in Theorems 3.6 and 3.7 still hold for the above variant of accelerated gradient descent method applied to (3.3.21).
+Proof. It suffices to show that Proposition 3.1 holds. First note that relation (3.3.12) still holds with f replaced by F, i.e.,
+
+
+ 3.4 Game Interpretation for Accelerated Gradient Descent 69
+F(x ̄t ) ≤ (1 − αt )F(x ̄t−1)
++ αt
+[
+F(xt ) + 〈F′(xt ), xt − xt 〉 + μV (xt , xt ) + 1
+γt V (xt−1, xt )
+] .
+Moreover, by convexity of fˆ, we have fˆ(x ̄t ) ≤ (1 − αt ) fˆ(x ̄t−1) + αt fˆ(xt ). Adding up the previous two relations, using the definition of xt in (3.3.24), and Lemma 3.5, we conclude
+f (x ̄t ) ≤ (1 − αt ) f (x ̄t−1)
++ αt
+[
+F(xt ) + 〈F′(xt ), xt − xt 〉 + μV (xt , xt ) + fˆ(xt )+ 1
+γt V (xt−1, xt )
+]
+≤ (1 − αt ) f (x ̄t−1) + αt [F(xt ) + 〈F′(xt ), x − xt 〉 + μV (xt , x) + fˆ(x)]
++ γαtt V (xt−1, x) − αt (μ + 1
+γt )V (xt , x)
+≤ (1 − αt ) f (x ̄t−1) + αt f (x) + γαtt V (xt−1, x) − αt (μ + 1
+γt )V (xt , x),
+where the last inequality follows from (3.3.22). Subtracting f (x) from both sides of the above inequality and rearranging the terms, we obtain the result.
+3.4 Game Interpretation for Accelerated Gradient Descent
+In this subsection, we intend to provide some intuition that might help us to better understand the accelerated gradient descent method. First let us consider the smooth case without the strong convexity assumption, i.e., μ = 0 in (3.3.3). Let Jf be the conjugate function of f , i.e., Jf (y) = max〈y, x〉 − f (x). Since f is convex and smooth, it is proper and the conjugate of Jf is given by
+(Jf )∗ = f . We can then rewrite (3.1.2) equivalently as
+xm∈iXn myax
+{〈x, y〉 − Jf (y)} . (3.4.1)
+This saddle point reformulation admits some natural buyer-supplier game interpretation. In particular, the dual variables y can be viewed as the prices for a list of products, and x are the order quantities for the buyer. The supplier’s goal is to specify the prices to maximize the profit 〈x, y〉 − Jf (y) while the buyer intends to minimize the cost 〈x, y〉 by determining the order quantities x. Given an initial pair of order quantities and product prices (x0, y0) ∈ X × Rn, we need to design an iterative algorithm to play this game so that the buyer and supplier can achieve the equilibrium as soon as possible. Next we describe the supplier and buyer’s strategies to play this game iteratively, and then demonstrate that the accelerated gradient descent method can be viewed as a special case of this procedure. Let V be the prox-function defined in (3.2.2) and define
+W (y1, y2) := Jf (y2) − Jf (y1) − 〈J′f (y1), y2 − y1〉. (3.4.2)
+
+
+ 70 3 Deterministic Convex Optimization
+The supplier and buyer will iteratively perform the following three steps.
+x ̃t = xt−1 + λt (xt−1 − xt−2), (3.4.3)
+yt = argminy〈−x ̃t , y〉 + Jf (y) + τtW (yt−1, y), (3.4.4)
+xt = argminx∈X 〈yt , x〉 + ηtV (xt−1, x). (3.4.5)
+In (3.4.3), the supplier predicts the demand by using historical data xt−1 and xt−2. In (3.4.4), the supplier intends to maximize the profit without moving too far away from yt−1 in terms of W (yt−1, y). Then in (3.4.5) the buyer determines the order quantity by minimizing the cost without moving too far away from xt−1 in terms of V (xt−1, x).
+It is interesting to notice that problem (3.4.4) is equivalent to the computation of gradients.
+Lemma 3.6. Let x ̃ ∈ X and y0 be given. Also for any τ > 0, let us denote z = [x ̃ +
+τJ′f (y0)]/(1 + τ). Then we have
+∇ f (z) = argminy
+{〈−x ̃, y〉 + Jf (y) + τtW (y0, y)} .
+Proof. In view of the definition of W (y0, y), we have
+argminy
+{〈−x ̃, y〉 + Jf (y) + τtW (y0, y)}
+= arg myin
+{−〈x ̃ + τJ′f (y0), y〉 + (1 + τ)Jf (y)}
+= arg myax
+{〈z, y〉 − Jf (y)} = ∇ f (z).
+In view of the above result, if
+J′f (yt−1) = xt−1, (3.4.6)
+xt = 1
+1+τt
+(x ̃t + τt xt−1
+) , (3.4.7)
+then
+yt = argminy
+{−〈xt , y〉 + Jf (y)} = ∇ f (xt ). (3.4.8)
+Moreover, by the optimality condition of (3.4.8), we must have xt = J′f (yt ) for some
+J′f (yt ) ∈ ∂Jf (yt ). Therefore, we can show that (3.4.6), (3.4.7), and (3.4.8) hold by
+induction, under the assumption that J′f (y0) = x0. The latter assumption can be satisfied by setting y0 = ∇ f (x0). Using these observations, we can reformulate (3.4.3)(3.4.5) as
+xt = 1
+1+τt
+(x ̃t + τt xt−1
+)
+=1
+1+τt
+[τt xt−1 + (1 + λt )xt−1 − λt xt−2
+] , (3.4.9)
+xt = argminx∈X 〈∇ f (xt ), x〉 + ηtV (xt−1, x). (3.4.10)
+
+
+ 3.4 Game Interpretation for Accelerated Gradient Descent 71
+Now we will show that the above definition of xt and xt will be equivalent to those in the accelerated gradient descent method (3.3.4)–(3.3.6). It can be seen from (3.3.4) and (3.3.6) that
+xt = (1 − qt ) [(1 − αt−1)x ̄t−1] + qt xt−1
+= (1 − qt )
+[ 1−αt−1
+1−qt−1 (xt−1 − qt−1xt−1) + αt−1xt−1
+]
++ qt xt−1
+= (1−qt )(1−αt−1)
+1−qt−1 xt−1 + [(1 − qt )αt−1 + qt ] xt−1 − qt−1(1−qt )(1−αt−1)
+1−qt−1 xt−2. (3.4.11)
+In particular, if qt = αt as in the smooth case, the above relation can be further simplified to
+xt = (1 − αt )xt−1 + [(1 − αt )αt−1 + αt ]xt−1 − αt−1(1 − αt )xt−2,
+which is equivalent to (3.4.9) if
+τt = 1−αtαt and λt = αt−1(1−αt )
+αt .
+Now let us consider the strongly convex case with μ > 0. In order to provide a game interpretation, we define
+f ̃(x) = f (x) − μν(x).
+By (3.3.3), the function f ̃(x) must be a convex function. Indeed, for any x, y ∈ X,
+f ̃(y) − f ̃(x) − 〈∇ f ̃(x), y − x〉= f (y) − f (x) − 〈∇ f (x), y − x〉 − μV (x, y) ≥ 0.
+We can then rewrite (3.1.2) as
+xm∈iXnμν(x) + f ̃(x),
+or equivalently,
+xm∈iXn μν(x) + myax
+{
+〈x, y〉 − Jf ̃(y)
+}
+, (3.4.12)
+where Jf ̃ denotes the conjugate function of f ̃. Accordingly, we define the iterative game between the supplier and buyer as follows.
+x ̃t = xt−1 + λt (xt−1 − xt−2), (3.4.13)
+yt = argminy〈−x ̃t , y〉 + Jf ̃(y) + τtW (yt−1, y), (3.4.14)
+xt = argminx∈X 〈yt , x〉 + μν(x) + ηtV (xt−1, x). (3.4.15)
+In (3.4.13), the supplier predicts the demand by using historical data xt−1 and xt−2. In (3.4.14), the supplier still intends to maximize the profit without moving too far away from yt−1 in terms of W (yt−1, y), but the local cost function changes to Jf ̃(y). Then in (3.4.15) the buyer determines the order quantity by minimizing the local cost 〈yt , x〉 + μν(x) without moving too far away from xt−1 in terms of V (xt−1, x).
+
+
+ 72 3 Deterministic Convex Optimization
+Similar to (3.4.9) and (3.4.10), we can show that
+xt = 1
+1+τt
+[τt xt−1 + (1 + λt )xt−1 − λt xt−2
+] , (3.4.16)
+xt = argminx∈X 〈∇ f ̃(xt ), x〉 + μν(x) + ηtV (xt−1, x)
+= argminx∈X 〈∇ f (xt ) − μ∇ν(xt ), x〉 + μw(x) + ηtV (xt−1, x)
+= argminx∈X 〈∇ f (xt ), x〉 + μV (xt , x) + ηtV (xt−1, x). (3.4.17)
+By properly choosing τt , λt , qt , and αt , we can show that these steps are equivalent to (3.3.4) and (3.3.5).
+3.5 Smoothing Scheme for Nonsmooth Problems
+In this section, we consider the convex programming problem of
+f ∗ ≡ xm∈iXn
+{ f (x) := fˆ(x) + F(x)} , (3.5.1)
+where fˆ : X → R is a simple Lipschitz continuous convex function and
+F(x) := max
+y∈Y {〈Ax, y〉 − gˆ(y)} . (3.5.2)
+Here, Y ⊆ Rm is a compact convex set, gˆ : Y → R is a continuous convex function on Y , and A denotes a linear operator from Rn to Rm. Observe also that problem (3.5.1)–(3.5.2) can be written in an adjoint form:
+max
+y∈Y {g(y) := −gˆ(y) + G(y)} , G(y) := xm∈iXn
+{〈Ax, y〉 + fˆ(x)} . (3.5.3)
+While the function F given by (3.5.2) is a nonsmooth convex function in general, it can be closely approximated by a class of smooth convex functions defined as follows. Let ω(y) be a distance-generating function of Y with modulus 1 and proxcenter cω = argminy∈Y ω(y). Also let us denote
+W (y) ≡ W (cω, y) := ω(y) − ω(cω) − 〈∇ω(cω), y − cω〉,
+and, for some η > 0,
+Fη(x) := myax {〈Ax, y〉 − gˆ(y) −ηW (y) : y ∈ Y } , (3.5.4)
+fη(x) := fˆ(x) + Fη(x). (3.5.5)
+Then we have, for every x ∈ X,
+Fη(x) ≤ F(x) ≤ Fη(x) + ηD2
+Y , (3.5.6)
+
+
+ 3.5 Smoothing Scheme for Nonsmooth Problems 73
+and, as a consequence,
+fη(x) ≤ f (x) ≤ fη(x) + ηD2
+Y , (3.5.7)
+where DY ≡ DY,ω is defined in (3.2.4). Moreover, we can show that Fη is a smooth convex function.
+Lemma 3.7. Fη(·) has Lipschitz-continuous gradient with constant
+Lη ≡ L (Fη) := ‖A‖2
+η , (3.5.8)
+where ‖A‖ denotes the operator norm of A.
+Proof. Let x1, x2 ∈ Y be given, and denote
+y1 = argmaxy {〈Ax1, y〉 − gˆ(y) −ηW (y) : y ∈ Y } , (3.5.9)
+y2 = argmaxy {〈Ax2, y〉 − gˆ(y) −ηW (y) : y ∈ Y } . (3.5.10)
+The gradients of Fη at x1 and x2, by implicit function theorem, are given by AT y1 and AT y2, respectively. By the optimality conditions for (3.5.9) and (3.5.10), we have
+〈Ax1 − gˆ′(y1) − η[∇ω(y1) − ∇ω(cω)], y − y1〉 ≤ 0, (3.5.11)
+〈Ax2 − gˆ′(y2) − η[∇ω(y2) − ∇ω(cω)], y − y2〉 ≤ 0, (3.5.12)
+for any y ∈ Y and some gˆ′(y1) ∈ ∂gˆ(y1) and gˆ′(y2) ∈ ∂gˆ(y2). Letting y = y2 and y = y1 in (3.5.11) and (3.5.12) respectively, and summing up the resulting inequalities, we obtain
+−〈A(x1 − x2), y1 − y2〉 + 〈η∇ω(y1) − ∇ω(y2), y1 − y2〉 ≤ 0.
+Using the above inequality and the strong convexity of ω, we conclude
+η‖y1 − y2‖2 ≤ η〈∇ω(y1) − ∇ω(y2), y1 − y2〉 ≤ −〈A(x1 − x2), y1 − y2〉 ≤ ‖A‖‖x1 − x2‖‖y1 − y2‖,
+which implies that ‖y1 − y2‖ ≤ ‖A‖‖x1 − x2‖/η and hence that
+‖∇Fη(x1) − ∇Fη(x2)‖ = ‖AT (y1 − y2)‖ ≤ ‖A‖2‖x1 − x2‖/η.
+Since Fη is a smooth convex function and fˆ is a simple convex function, we can apply the accelerated gradient descent method in (3.3.23)–(3.3.25) to solve
+fη∗ := xm∈iXn fη(x). (3.5.13)
+
+
+ 74 3 Deterministic Convex Optimization
+Then, in view of Theorem 3.6 and Corollary 3.5, after performing the algorithm for at most ⌈
+2
+√
+2LηD2X
+ε
+⌉
+(3.5.14)
+iterations, we will be able to find a solution x ̄ ∈ X such that fη(x ̄) − fη∗ ≤ ε
+2 . Noting
+that by (3.5.7), f (x ̄) ≤ fη(x ̄) + ηDY2 and f ∗ ≥ fη∗, we then conclude that
+f (x ̄) − f ∗ ≤ ε
+2 + ηD2
+Y.
+If one chooses η > 0 small enough, e.g.,
+η= ε
+2DY2
+,
+then we will have
+f (x ̄) − f ∗ ≤ ε
+and the total number of iterations in (3.5.14) will reduce to
+⌈ 4‖A‖DX DY ε
+⌉ .
+Observe that in the above discussion, we have assumed fˆ to be relatively simple. Of course this does not have to be true. For example, if fˆ itself is a smooth convex function and its gradients are Lˆ -Lipschitz continuous, then we can apply the accelerated gradient descent method in (3.3.23)–(3.3.25) (rather than (3.3.23)–(3.3.25)) to solve (3.5.13). This method will require us to compute the gradient of both fˆ and Fη at each iteration. Then it is not difficult to show that the total number of iterations
+performed by this method for finding a solution x ̄ ∈ X such that f (x ̄) − f ∗ can be bounded by
+O
+{√ Lˆ Dε2X + ‖A‖DX DY
+ε
+} .
+It is worth noting that this bound can be substantially improved, in terms of the total number of gradient computations of ∇ fˆ. We will have some further discussions for this type of improvement in Sect. 8.2.
+3.6 Primal–Dual Method for Saddle-Point Optimization
+In this subsection, we continue our discussion about the following more general (than (3.5.1)) bilinear saddle point optimization problem:
+xm∈iXn
+{
+fˆ(x) + max
+y∈Y 〈Ax, y〉 − gˆ(y)
+}
+. (3.6.1)
+Here X ⊆ Rn and Y ⊆ Rm are closed convex sets, A ∈ Rn×m denotes a linear mapping from Rn to Rm, and fˆ : X → R and gˆ : X → R are convex functions satisfying
+
+
+ 3.6 Primal–Dual Method for Saddle-Point Optimization 75
+fˆ(y) − fˆ(x) − 〈 fˆ′(x), y − x〉 ≥ μpV (x, y), ∀x, y ∈ X, (3.6.2)
+gˆ(y) − gˆ(x) − 〈gˆ′(x), y − x〉 ≥ μdW (x, y), ∀x, y ∈ Y, (3.6.3)
+for some μp ≥ 0 and μd ≥ 0, where V and W , respectively, denote the prox-functions associated with distances generating functions ν and ω in the primal and dual spaces, i.e.,
+V (x, y) := ν(y) −ν(x) − 〈ν′(x, y), y − x〉, (3.6.4) W (x, y) := ω(y) −ω(x) − 〈ω′(x, y), y − x〉. (3.6.5)
+For the sake of simplicity, we assume that both ν and ω have modulus 1 w.r.t. the respective norms in the primal and dual spaces. Without specific mention, we assume that the set of optimal primal and dual solutions of (3.6.1) is nonempty, and that z∗ := (x∗, y∗) is an optimal pair of primal and dual solutions of (3.6.1). As discussed in the previous subsection, problem (3.6.1) covers the optimization problem (3.1.2) as a special case. As another example, we can write the Lagrangian dual of xm∈iXn { f (x) : Ax = b} (3.6.6)
+in the form of (3.6.1) by dualizing the linear constraint Ax = b. Denote z ≡ (x, y) and z ̄ ≡ (x ̄, y ̄) and define
+Q(z ̄, z) := fˆ(x ̄) + 〈Ax ̄, y〉 − gˆ(y) − [ fˆ(x) + 〈Ax, y ̄〉 − gˆ(y ̄)]. (3.6.7)
+Note that by definition z ̄ is a saddle point if and only if ∀z = (x, y) ∈ Z,
+fˆ(x ̄) + 〈Ax ̄, y〉 − gˆ(y) ≤ fˆ(x ̄) + 〈Ax ̄, y ̄〉 − gˆ(y ̄) ≤ [ fˆ(x) + 〈Ax, y ̄〉 − gˆ(y ̄)].
+It then follows that z ̄ ∈ Z ≡ X ×Y is a pair of saddle points if and only if Q(z ̄, z) ≤ 0 for any z ∈ Z, or equivalent, Q(z, z ̄) ≥ 0 for any z ∈ Z. The smoothing scheme described in Sect. 3.5 can be viewed as an indirect approach for solving bilinear saddle point problems. Below we describe a direct primal–dual method for solving the saddle point problem (3.6.1). This method generalizes the game interpretation of the accelerated gradient descent method discussed in Sect. 3.4. Given (xt−2, xt−1, yt−1) ∈ X × X × Y , this algorithm updates xt and yt according to
+x ̃t = xt−1 + λt (xt−1 − xt−2), (3.6.8)
+yt = argminy〈−Ax ̃t , y〉 + gˆ(y) + τtW (yt−1, y), (3.6.9)
+xt = argminx∈X 〈yt , Ax〉 + fˆ(x) + ηtV (xt−1, x). (3.6.10)
+Clearly, the accelerated gradient descent method in (3.4.3)–(3.4.5) can be viewed as a special case of the above primal–dual method applied to problem (3.4.12). We first state a simple relation based on the optimality conditions for (3.6.9) and (3.6.10).
+
+
+ 76 3 Deterministic Convex Optimization
+Lemma 3.8. Assume that φ : X → R satisfies
+φ(y) ≥ φ(x) + 〈φ′(x), y − x〉 + μV (x, y), ∀x, y ∈ X (3.6.11)
+for some μ ≥ 0. If
+x ̄ = argmin{φ(x) +V (x ̃, x)}, (3.6.12)
+then
+φ(x ̄) +V (x ̃, x ̄) + (μ+ 1)V (x ̄, x) ≤ φ(x) +V (x ̃, x), ∀x ∈ X.
+Proof. It follows from the definition of V that V (x ̃, x) = V (x ̃, x ̄) + 〈∇V (x ̃, x ̄), x − x ̄〉 + V (x ̄, x). Using this relation, (3.6.11), and the optimality condition for problem (3.6.12), we have
+φ(x) +V (x ̃, x) = φ(x) + [V (x ̃, x ̄) + 〈∇V (x ̃, x ̄), x − x ̄〉 +V (x ̄, x)] ≥ φ(x ̄) + 〈φ′(x ̄), x − x ̄〉 + μV (x ̄, x)
++ [V (x ̃, x ̄) + 〈∇V (x ̃, x ̄), x − x ̄〉 +V (x ̄, x)] ≥ φ(x ̄) +V (x ̃, x ̄) + (μ+ 1)V (x ̄, x), ∀x ∈ X.
+We now prove some general convergence properties of the primal–dual method.
+Theorem 3.8. If
+γtλt = γt−1, (3.6.13)
+γtτt ≤ γt−1(τt−1 + μd), (3.6.14)
+γtηt ≤ γt−1(ηt−1 + μp), (3.6.15)
+τtηt−1 ≥ λt ‖A‖2, (3.6.16)
+for any t ≥ 2, then
+∑k
+t=1γt Q(zt , z) ≤ γ1η1V (x0, x) − γk(ηk + μp)V (xk, x)
++ γ1τ1W (y0, y) − γk
+(
+τk + μd − ‖A‖2
+ηk
+)
+W (yk, y). (3.6.17)
+Moreover, we have
+γk
+(
+τk + μd − ‖A‖2
+ηk
+)
+W (yk, y∗) ≤ γ1η1V (x0, x∗) + γ1τ1W (y0, y∗), (3.6.18)
+γk
+(
+ηk − ‖A‖2
+τk +μd
+)
+V (xk−1, xk) ≤ γ1η1V (x0, x∗) + γ1τ1W (y0, y∗). (3.6.19)
+Proof. It follows from Lemma 3.8 applied to (3.6.9) and (3.6.10) that
+〈−Ax ̃t , yt −y〉+gˆ(yt )−gˆ(y) ≤ τt [W (yt−1, y) −W (yt−1, yt )]−(τt +μd)W (yt , y),
+〈A(xt −x), yt 〉+ fˆ(xt )− fˆ(x) ≤ ηt [V (xt−1, x) −V (xt−1, xt )]−(ηt +μp)V (xt , x).
+
+
+ 3.6 Primal–Dual Method for Saddle-Point Optimization 77
+Summing up these inequalities and using the definition of the gap function Q, we have
+Q(zt , z) + 〈A(xt −x ̃t ), yt −y〉 ≤ ηt [V (xt−1, x) −V (xt−1, xt )]−(ηt +μp)V (xt , x) + τt [W (yt−1, y) −W (yt−1, yt )] − (τt + μd)W (yt , y).
+Noting that by (3.4.13), we have
+〈A(xt − x ̃t ), yt − y〉 = 〈A(xt − xt−1), yt − y〉 − λt 〈A(xt−1 − xt−2), yt − y〉
+= 〈A(xt − xt−1), yt − y〉 − λt 〈A(xt−1 − xt−2), yt−1 − y〉
++ λt 〈A(xt−1 − xt−2), yt−1 − yt 〉.
+Combining the above two relations, multiplying both sides by γt ≥ 0, and summing up the resulting inequality, we have
+∑k
+t=1γt Q(zt , z)
+≤ ∑k
+t=1γt [ηtV (xt−1, x) − (ηt + μp)V (xt , x)]
++ ∑k
+t=1γt [τtW (yt−1, y) − (τt + μd)W (yt , y)]
++ ∑k
+t=1γt [〈A(xt − xt−1), yt − y〉 − λt 〈A(xt−1 − xt−2), yt−1 − y〉]
+− ∑k
+t=1γt [τtW (yt−1, yt ) + ηtV (xt−1, xt ) + λt 〈A(xt−1 − xt−2), yt−1 − yt 〉].
+The above inequality, in view of (3.6.13)–(3.6.15) and the fact that x0 = x−1, then implies that
+∑k
+t=1γt Q(zt , z) ≤ γ1η1V (x0, x) − γk(ηk + μp)V (xk, x) + γ1τ1W (y0, y) − γk(τk + μd)W (yk, y)
+− ∑k
+t=1γt [τtW (yt−1, yt ) + ηtV (xt−1, xt ) + λt 〈A(xt−1 − xt−2), yt−1 − yt 〉]
++ γk〈A(xk − xk−1), yk − y〉.
+Also note that by (3.6.13) and (3.6.16), we have
+− ∑k
+t=1γt [τtW (yt−1, yt ) + ηtV (xt−1, xt ) + λt 〈A(xt−1 − xt−2), yt−1 − yt 〉]
+≤ −∑k
+t=2[ γtτt
+2 ‖yt−1 − yt ‖2 + γt−1ηt−1
+2 ‖xt−2 − xt−1‖2
+− γtλt ‖A‖‖xt−1 − xt−2‖‖yt−1 − yt ‖]
+− γkηkV (xk−1, xk)
+≤ −γkηkV (xk−1, xk).
+Combining the above two inequalities, we obtain
+∑k
+t=1γt Q(zt , z) ≤ γ1η1V (x0, x) − γk(ηk + μp)V (xk, x) + γ1τ1W (y0, y)
+− γk(τk + μd)W (yk, y) − γkηkV (xk−1, xk)
++ γk〈A(xk − xk−1), yk − y〉. (3.6.20)
+
+
+ 78 3 Deterministic Convex Optimization
+The result in (3.6.17) then follows from the above inequality and the fact that by (3.6.16),
+− (τk + μd)W (yk, y) − ηkV (xk−1, xk) + 〈A(xk − xk−1), yk − y〉
+≤ −(τk + μd)W (yk, y) − ηk
+2 ‖xk − xk−1‖2 + ‖A‖‖xk − xk−1‖‖yk − y‖
+≤ −(τk + μd)W (yk, y) + ‖A‖2
+2ηk ‖yk − y‖2
+≤−
+(
+τk + μd − ‖A‖2
+ηk
+)
+W (yk, y).
+Fixing z = z∗ in the above inequality and using the fact that Q(zt, z∗) ≥ 0, we obtain (3.6.18). Finally, (3.6.19) follows from similar ideas and a different bound
+− (τk + μd)W (yk, y) − ηkV (xk−1, xk) + 〈A(xk − xk−1), yk − y〉
+≤ − τk+μd
+2 ‖yk − y‖2
+2 − ηkV (xk−1, xk) + ‖A‖‖xk − xk−1‖‖yk − y‖2
+≤ −ηkV (xk−1, xk) + ‖A‖2
+2(τk+μd ) ‖xk − xk−1‖2
+≤−
+(
+ηk − ‖A‖2
+τk +μd
+)
+V (xk−1, xk).
+Based on Theorem 3.8, we will provide different ways to specify the algorithmic parameters {τt }, {ηt }, and {γt } for solving different classes of problems.
+3.6.1 General Bilinear Saddle Point Problems
+In this subsection, we assume that the parameters μp = μd = 0 in (3.6.2). Moreover, for the sake of simplicity, we assume that both the primal and dual feasible sets X and Y are bounded. Discussions about primal–dual type method for solving problems with unbounded feasible sets can be found later in Sects. 3.6.4 and 4.4. Given z ̄ ∈ Z, we define the primal–dual gap as
+mz∈aZx Q(z ̄, z). (3.6.21)
+Our goal is to show that the primal–dual gap evaluated at the output solution
+z ̄k = ∑k
+t=1(γt zk)
+∑k
+t=1γt
+(3.6.22)
+will converge to zero by properly specifying the algorithmic parameters. We use the following quantities in the convergence analysis of the primal dual method:
+D2
+X ≡ D2
+X,ν := max
+x0,x∈X V (x0, x) and D2
+Y ≡ D2
+Y,ω = max
+y0,y∈Y W (y0, y). (3.6.23)
+
+
+ 3.6 Primal–Dual Method for Saddle-Point Optimization 79
+Corollary 3.6. If γt = 1, τt = τ, ηt = η, λt = 1, and τη ≥ ‖A‖2 for any t = 1, . . . , k, then mz∈aZx Q(z ̄k, z) ≤ 1
+k (ηD2
+X + τD2
+Y ).
+Proof. We can easily check that all the conditions (3.6.13)–(3.6.16) hold. It then follows from (3.6.17) that
+∑k
+t=1Q(zt , z) ≤ ηV (x0, x) + τW (y0, y). (3.6.24)
+Dividing both sides by k and using the convexity of Q(z ̄k, z) w.r.t. z ̄k, we have
+Q(z ̄k, z) ≤ 1
+k [ηV (x0, x) + τW (y0, y)].
+The result then follows by maximizing both sides of the above inequality w.r.t. z ∈ Z.
+It can be seen from the above result that the best selection of τ and η is given by
+η = ‖A‖DY
+DX and τ = ‖A‖DX
+DY .
+With such a selection, the rate of convergence of the primal–dual method reduces to
+mz∈aZx Q(z ̄k, z) ≤ ‖A‖DX DY
+k.
+3.6.2 Smooth Bilinear Saddle Point Problems
+In this subsection, we first assume that μp = 0 but μd > 0. We call these problems smooth bilinear saddle point problems because the objective function in (3.6.1) is a differentiable convex function with Lipschitz continuous gradient. We will show that by properly specifying algorithmic parameters, the primal–dual method will exhibit an O(1/k2) rate of convergence. For the sake of simplicity, we assume that the primal feasible region X is bounded.
+Corollary 3.7. If γt = t, τt = μd(t − 1)/2, ηt = 2‖A‖2/(μdt), and λt = (t − 1)/t, then
+mz∈aZx Q(z ̄k, z) ≤ 4‖A‖2D2X
+μd k(k+1) .
+where z ̄k is defined in (3.6.22).
+Proof. Observe that all the conditions (3.6.13)–(3.6.16) hold. It then follows from (3.6.17) that
+∑k
+t=1γt Q(zt , z) ≤ γ1η1V (x0, x) = 2‖A‖2V (x0,x)
+μd . (3.6.25)
+
+
+ 80 3 Deterministic Convex Optimization
+Dividing both sides by ∑t γt and using the convexity of Q(z ̄k, z) w.r.t. z ̄k, we have
+Q(z ̄k, z) ≤ 4‖A‖2V (x0,x)
+μd k(k+1) .
+The result then follows by maximizing both sides of the above inequality w.r.t. z ∈ X.
+Next, we assume that μp > 0 but μd = 0. Moreover, for the sake of simplicity, we assume that the dual feasible set Y is bounded. Similar to the previous corollary, we can show the following result.
+Corollary 3.8. If γt = t + 1, τt = 4‖A‖2/[μp(t + 1)], ηt = μpt/2, and λt = t/(t + 1), then mz∈aZx Q(z ̄k, z) ≤ 2
+k(k+3)
+[
+μpD2
+X + 4‖A‖2DY2
+μp
+] .
+Proof. Observe that all the conditions (3.6.13)–(3.6.16) hold. It then follows from (3.6.17) that
+∑k
+t=1γt Q(zt , z) ≤ γ1η1V (x0, x) + γ1τ1W (y0, y)
+≤ μpV (x0, x) + 4‖A‖2W (y0,y)
+μp . (3.6.26)
+Dividing both sides by ∑t γt and using the convexity of Q(z ̄k, z) w.r.t. z ̄k, we have
+Q(z ̄k, z) ≤ 2
+k(k+3)
+[
+μpV (x0, x) + 4‖A‖2W (y0,y)
+μp
+] .
+The result then follows by maximizing both sides of the above inequality w.r.t. z ∈ X.
+3.6.3 Smooth and Strongly Convex Bilinear Saddle Point Problems
+In this subsection, we assume that μp > 0 and μd > 0. We call these problems smooth and strongly convex bilinear saddle point problems because the objective function in (3.6.1) is both smooth and strongly convex.
+Corollary 3.9. Assume that
+λ= 1
+2
+[
+2 + μpμd
+‖A‖2 −
+√
+(2 + μpμd
+‖A‖2 )2 − 4
+] .
+If γt = λ−t , τt = μdλ/(1 − λ), ηt = μpλ/(1 − λ) and λt = λ, then
+μp
+1−λV (xk, x∗) + μdW (yk, y∗) ≤ λk
+1−λ [μpV (x0, x∗) + μdW (y0, y∗)] .
+
+
+ 3.6 Primal–Dual Method for Saddle-Point Optimization 81
+Proof. Observe that all the conditions (3.6.13)–(3.6.16) hold. It then follows from (3.6.17) (with z = z∗) and Q(zt , z∗) ≥ 0 that
+0 ≤ ∑k
+t=1γt Q(zt , z∗) ≤ γ1τ1W (y0, y∗) − γkμdW (yk, y∗) + γ1η1V (x0, x∗) − γk(ηk + μp)V (xk, x∗),
+which clearly implies the result.
+3.6.4 Linearly Constrained Problems
+In this subsection, we analyze the convergence of the primal–dual method applied to the linear constrained problem (3.6.6). For the sake of simplicity, let us assume that b = 0. We can then apply this algorithm with fˆ(x) = f (x) and gˆ(x) = 0 to the saddle point reformulation of (3.6.6) given by
+xm∈iXn myax { f (x) + 〈Ax, y〉} . (3.6.27)
+Since the dual feasible set is unbounded, we set the dual prox-function to W (yt−1, y) = ‖y − yt−1‖2
+2/2 and restate the algorithm as follows.
+x ̃t = xt−1 + λt (xt−1 − xt−2), (3.6.28)
+yt = argminy{〈−Ax ̃t , y〉 + τt
+2 ‖y − yt−1‖2
+2} = yt−1 + 1
+τt Ax ̃t , (3.6.29)
+xt = argminx∈X 〈yt , Ax〉 + f (x) + ηtV (xt−1, x). (3.6.30)
+Moreover, to deal with the unbounded dual feasible set of (3.6.27) we have to modify the convergence analysis given in the previous subsections. We first prove a general convergence result for the above algorithm without specifying any algorithmic parameters.
+Theorem 3.9. Suppose that the conditions in (3.6.13)–(3.6.16) hold (with μd = 0). If, in addition,
+γ1τ1 = γkτk, (3.6.31)
+τkηk ≥ ‖A‖2, (3.6.32)
+then
+f (x ̄k) − f (x∗) ≤ 1
+∑k
+t=1γt
+[γ1η1V (x0, x∗) + γ1τ1
+2 ‖y0‖2
+2
+] , (3.6.33)
+‖Ax ̄k‖2 ≤ 1
+∑k
+t=1γt
+{
+γ1τ1
+√ηk +γk ‖A‖√τk
+√γk (ηkτk −‖A‖2 )
+√2γ1η1V (x0, x∗)
++
+[
+γ1τ1
+√ηk +γk ‖A‖√τk
+√γk (ηkτk −‖A‖2 )
+√γ1τ1 + γ1τ1
+]
+‖y0 − y∗‖2
+}
+. (3.6.34)
+
+
+ 82 3 Deterministic Convex Optimization
+Proof. It follows from (3.6.31) and (3.6.32) that
+γ1τ1W (y0, y) − γkτkW (yk, y) − γkηkV (xk−1, xk) − γk〈A(xk − xk−1), yk − y〉
+≤ γ1τ1
+2 ‖y−y0‖2
+2− γkτk
+2 ‖y−yk‖2
+2 − γkηk
+2 ‖xk−xk−1‖2−γk〈A(xk − xk−1), yk − y〉
+= γ1τ1
+2 ‖y0‖2
+2 − γkτk
+2 ‖yk‖2
+2 − γkηk
+2 ‖xk − xk−1‖2 − γk〈A(xk − xk−1), yk〉
++ 〈γ1τ1(yk − y0) + γkA(xk − xk−1), y〉
+≤ γ1τ1
+2 ‖y0‖2
+2 + 〈γ1τ1(yk − y0) + γkA(xk − xk−1), y〉,
+which, in view of (3.6.20), then implies that
+∑k
+t=1γt Q(zt , z) ≤ γ1η1V (x0, x) − γk(ηk + μp)V (xk, x)
++ γ1τ1
+2 ‖y0‖2
+2 + 〈γ1τ1(yk − y0) + γkA(xk − xk−1), y〉.
+Fixing x = x∗ and noting that Ax∗ = 0, we have Q(zt , (x∗, y)) = f (xt ) − f (x∗) + 〈Axt , y〉. Using the previous two relations, we obtain
+∑k
+t=1γt [ f (xt ) − f (x∗)] + 〈∑k
+t=1(γt Axt ) − γ1τ1(yk − y0) − γkA(xk−xk−1), y〉
+≤ γ1η1V (x0, x∗) − γk(ηk + μp)V (xk, x∗) + γ1τ1
+2 ‖y0‖2
+2, (3.6.35)
+for any y, which implies
+∑k
+t=1(γt Axt ) − γ1τ1(yk − y0) − γkA(xk − xk−1) = 0,
+since otherwise the left-hand side of (3.6.35) can be unbounded. Using the above two observations and the convexity of f , we have
+f (x ̄k) − f (x∗) ≤ 1
+∑k
+t=1γt
+∑k
+t=1γt [ f (xt ) − f (x∗)]
+≤1
+∑k
+t=1γt
+[γ1η1V (x0, x∗) + γ1τ1
+2 ‖y0‖2
+2
+],
+‖Ax ̄k‖2 = 1
+∑k
+t=1γt
+∑k
+t=1‖γt Axt ‖2
+=1
+∑k
+t=1γt
+[‖γ1τ1(yk − y0) + γkA(xk − xk−1)‖2]
+≤1
+∑k
+t=1γt
+[γ1τ1‖yk − y0‖2 + γk‖A‖‖xk − xk−1‖] . (3.6.36)
+Also by (3.6.18) and (3.6.19), we have
+‖yk − y∗‖2
+2 ≤ ηk
+γk (ηkτk −‖A‖2 )
+[2γ1η1V (x0, x∗) + γ1τ1‖y0 − y∗‖2
+2
+],
+‖xk − xk−1‖2 ≤ τk
+γk (ηkτk −‖A‖2 )
+[2γ1η1V (x0, x∗) + γ1τ1‖y0 − y∗‖2
+2
+],
+which implies that
+
+
+ 3.6 Primal–Dual Method for Saddle-Point Optimization 83
+γ1τ1‖yk − y0‖2 + γk‖A‖‖xk − xk−1‖
+≤ γ1τ1(‖yk − y∗‖2 + ‖y0 − y∗‖2) + γk‖A‖‖xk − xk−1‖
+≤ γ1τ1
+[√ ηk
+γk (ηkτk −‖A‖2 )
+(√2γ1η1V (x0, x∗)+√γ1τ1‖y0 − y∗‖2
+)
++ ‖y0−y∗‖2
+]
++ γk‖A‖
+√ τk
+γk (ηkτk −‖A‖2 )
+(√2γ1η1V (x0, x∗) + √γ1τ1‖y0 − y∗‖2
+)
+= γ1τ1
+√ηk +γk ‖A‖√τk
+√γk (ηkτk −‖A‖2 )
+[√2γ1η1V (x0, x∗) + √γ1τ1‖y0−y∗‖2
+]
++ γ1τ1‖y0−y∗‖2.
+Using this relation in (3.6.36), we obtain (3.6.34).
+Let us first consider the case when f is a general convex function which is not necessarily strongly convex. The proof of this result directly follows from Theorem 3.9.
+Corollary 3.10. If γt = 1, τt = τ, ηt = η, λt = 1, and τη ≥ ‖A‖2 for any t = 1, . . . , k, then
+f (x ̄k) − f (x∗) ≤ 1
+k
+[ηV (x0, x∗) + τ
+2 ‖y0‖2
+2
+],
+‖Ax ̄k‖2 ≤ 1
+k
+[ τ√η+‖A‖√τ ητ−‖A‖2
+√2ηV (x0, x∗) +
+( τ√ητ+‖A‖τ
+ητ−‖A‖2 +τ
+)
+‖y0−y∗‖2
+] .
+In particular, if η = 2‖A‖ and τ = ‖A‖, then
+f (x ̄k) − f (x∗) ≤ ‖A‖
+k
+[2V (x0, x∗) + 1
+2 ‖y0‖2] ,
+‖Ax ̄k‖2 ≤ 2(√2+1)
+k
+√
+V (x0, x∗) + ‖A‖+√2+1
+k ‖y0 − y∗‖.
+Next we consider the case when f is strongly convex with modulus μp.
+Corollary 3.11. If γt = t +1, τt = 4‖A‖2/[μp(t +1)], ηt = μpt/2, and λt = t/(t +1), then for any k ≥ 2,
+f (x ̄k) − f (x∗) ≤ 2
+k(k+3)
+[
+μpV (x0, x∗) + 2‖A‖2
+μp ‖y0‖2
+2
+] ,
+‖Ax ̄k‖2 ≤ 2
+k(k+3)
+[
+2(2 + √3)‖A‖
+√
+2V (x0, x∗) + 4(3+√3)‖A‖2‖y0−y∗‖2
+μp
+] .
+Proof. Note that ∑k
+t=1γt = k(k + 3)/2. Also observe that
+ηkτk − ‖A‖2 = 2k‖A‖2
+k+1 − ‖A‖2 = (k−1)‖A‖2
+k+1
+and hence that
+γ1τ1
+√ηk +γk ‖A‖√τk
+√γk(ηkτk−‖A‖2) = 4‖A‖√k/2+2‖A‖√k+1
+√μp(k−1) ≤ 2‖A‖
+√μp (2 + √3), ∀k ≥ 2.
+The results then follows from (3.6.33) and (3.6.34), the selection of γt ,τt and ηt , and the previous bounds.
+
+
+ 84 3 Deterministic Convex Optimization
+3.7 Alternating Direction Method of Multipliers
+In this section, we discuss a popular primal–dual type method called the alternating direction method of multipliers (ADMM) for solving a special class of linearly constrained convex optimization problems. Consider the problem of
+min
+x∈X,y∈Y { f (x) + g(y) : Ax + By = b} , (3.7.1)
+where X ⊆ Rp and Y ⊆ Rq are closed convex sets, the vector b ∈ Rm and matrices A ∈ Rm×p and B ∈ Rm×q are given. Moreover, we assume that the optimal solution (x∗, y∗) exists, along with an arbitrary dual multiplier λ∗ ∈ Rm associated with the linear constraint Ax + By = b. This problem can be viewed as a special case of problem (3.6.6). ADMM updates both the primal and dual variables (xt , yt ,λt ). Given (yt−1,λt−1) ∈ Y × Rm and some penalty parameter ρ > 0, this algorithm computes (xt , yt ,λt ) according to
+xt = argminx∈X f (x) + 〈λt−1, Ax + Byt−1 − b〉 + ρ
+2 ‖Ax + Byt−1 − b‖2, (3.7.2)
+yt = argminy∈Y g(y) + 〈λt−1, Axt + By − b〉 + ρ
+2 ‖Axt + By − b‖2, (3.7.3)
+λt = λt−1 + ρ(Axt + Byt − b). (3.7.4)
+For notational convenience, let us denote zt ≡ (xt , yt ,λt ), z ≡ (x, y,λ), and let the primal–dual gap function Q be defined in (3.6.7), i.e.,
+Q(zt , z) = f (xt ) + g(yt ) + 〈λ, Axt + Byt − b〉
+− [ f (x) + g(y) + 〈λt, Ax + By − b〉]. (3.7.5)
+Moreover, we denote an arbitrary pair of primal–dual solution of (3.7.1) by z∗ = (x∗, y∗,λ∗).
+Theorem 3.10. Let zt , t = 1, . . . , k, be the sequence generated by ADMM with some ρ > 0, and define z ̄k = ∑k
+t=1zt /k. Then we have
+f (x ̄k) + g(y ̄k) − f (x∗) − g(y∗) ≤ 1
+2k
+[1
+ρ ‖λ0‖2
+2 + ρ‖B(y0 − y∗)‖2
+2
+]
+, (3.7.6)
+‖Ax ̄k + By ̄k − b‖2 ≤ 1
+k
+(2
+ρ‖λ0 − λ∗‖2 + ‖B(y0 − y∗)‖2
+)
+. (3.7.7)
+Proof. In view of the optimality conditions of (3.7.2) and (3.7.3), we have
+f (xt ) − f (x) + 〈λt−1 + ρ(Axt + Byt−1 − b), A(xt − x)〉 ≤ 0, g(yt ) − g(y) + 〈λt−1 + ρ(Axt + Byt − b), B(yt − y)〉 ≤ 0,
+
+
+ 3.7 Alternating Direction Method of Multipliers 85
+which together with (3.7.4) then imply that
+f (xt ) − f (x) ≤ −〈λt + ρB(yt−1 − yt ), A(xt − x)〉, g(yt ) − g(y) ≤ −〈λt , B(yt − y)〉.
+Using these two relations and (3.7.5), we have
+Q(zt , z) ≤ −〈λt + ρB(yt−1 − yt ), A(xt − x)〉 − 〈λt , B(yt − y)〉 + 〈λ, Axt + Byt − b〉 − 〈λt, Ax + By − b〉
+= 〈λ − λt , Axt + Byt − b〉 + ρ〈B(yt − yt−1, A(xt − x)〉
+= 〈λ − λt , 1
+ρ(λt − λt−1)〉 + ρ〈B(yt − yt−1), A(xt − x)〉.
+Noting that
+2〈λ − λt ,λt − λt−1〉 = ‖λ − λt−1‖2
+2 − ‖λ − λt ‖2
+2 − ‖λt−1 − λt ‖2
+2,
+and
+2〈B(yt − yt−1), A(xt − x)〉
+= ‖Ax+Byt−1−b‖2
+2−‖Ax+Byt − b‖2
+2 + ‖Axt +Byt −b‖2
+2 − ‖Axt +Byt−1−b‖2
+2
+= ‖Ax+Byt−1−b‖2
+2 − ‖Ax+Byt − b‖2
+2+ 1
+ρ2 ‖λt−1−λt ‖2
+2 − ‖Axt +Byt−1−b‖2
+2,
+we conclude that
+Q(zt , z) ≤ 1
+2ρ
+(‖λt−1 − λ‖2
+2 − ‖λt − λ‖2
+2
+)
++ρ
+2
+(‖Ax+Byt−1 − b‖2
+2 − ‖Ax+Byt − b‖2
+2 − ‖Axt +Byt−1 − b‖2
+2
+).
+Summing up the above inequality from t = 1, . . . , k, we obtain
+∑k
+t=1Q(zt , z) ≤ 1
+2ρ
+(‖λ0 − λ‖2
+2 − ‖λk − λ‖2
+2
+)
++ρ
+2
+(‖B(y0 − y)‖2
+2 − ‖B(yk − y)‖2
+2
+) . (3.7.8)
+Setting z = z∗ in the above inequality and using the fact that Q(z ̄k, z∗) ≥ 0, we can see that
+‖λk − λ∗‖2
+2 ≤ ‖λ0 − λ∗‖2
+2 + ρ2‖B(y0 − y∗)‖2
+2
+and hence that
+‖λk − λ0‖2 ≤ ‖λ0 − λ∗‖2 + ‖λk − λ∗‖2 ≤ 2‖λ0 − λ∗‖2 + ρ‖B(y0 − y∗)‖2. (3.7.9)
+Moreover, letting z = (x∗, y∗,λ) in (3.7.8), and noting that
+1
+k ∑k
+t=1Q(zt , (x∗, y∗,λ)) ≥ Q(z ̄k, (x∗, y∗,λ)) = f (x ̄k) + g(y ̄k)− f (x∗)−g(y∗) + 〈λ, Ax ̄k + By ̄k−b〉,
+
+
+ 86 3 Deterministic Convex Optimization
+and that
+1 2
+(‖λ0 − λ‖2
+2 − ‖λk − λ‖2
+2
+)= 1
+2
+(‖λ0‖2
+2 − ‖λk‖2
+2
+) − 〈λ,λ0 − λk〉,
+we have
+f (x ̄k) + g(y ̄k) − f (x∗) − g(y∗) + 〈λ, Ax ̄k + By ̄k − b + 1
+ρk (λ0 − λk)〉
+≤1
+2k
+[1 ρ
+(‖λ0‖2
+2 − ‖λk‖2
+2
+) + ρ(‖B(y0 − y∗)‖2
+2 − ‖B(yk − y∗)‖2
+2
+)]
+≤1
+2k
+[1
+ρ ‖λ0‖2
+2 + ρ‖B(y0 − y∗)‖2
+2
+] .
+for any λ ∈ Rm. This relation implies that Ax ̄k + By ̄k − b + 1
+ρk (λ0 − λk) = 0, and hence that (3.7.6) holds. (3.7.7) also directly follows from the previous observation and (3.7.9).
+In comparison with the primal–dual method, the selection of the algorithmic parameter in the ADMM method seems to be simpler. Moreover, the rate of convergence of ADMM depends only on the norm of one part of the constraint matrix, i.e., ‖B‖ rather than ‖[A, B]‖. However, this method requires the solution of more complicated subproblems and it is not straightforward to generalize this algorithm for solving problems with more than two blocks of variables.
+3.8 Mirror-Prox Method for Variational Inequalities
+This section focuses on variational inequality (VI) that can be used to model a wide range of optimization, equilibrium, and complementarity problems. Given a nonempty closed convex set X ⊆ Rn and a continuous map F : X → Rn, the variational inequality problem, denoted by VI(X, F), is to find x∗ ∈ X satisfying
+〈F(x∗), x − x∗〉 ≥ 0 ∀ x ∈ X. (3.8.1)
+Such a point x∗ is often called a strong solution of VI(X, F). In particular, if F is given by the gradient of f , then (3.8.1) is exactly the first-order necessary optimality condition of minx∈X f (x). One important class of VI problems is called monotone VI for which the operator F(·) is monotone, i.e.,
+〈F(x) − F(y), x − y〉 ≥ 0 ∀ x, y ∈ X. (3.8.2)
+These monotone VIs cover convex optimization problems as a special case. They also cover the following saddle point problems
+xm∈iXn max
+y∈Y F(x, y),
+where F is convex w.r.t. x and concave w.r.t. y.
+
+
+ 3.8 Mirror-Prox Method for Variational Inequalities 87
+A related notion is a weak solution of VI(X, F), i.e., a point x∗ ∈ X such that
+〈F(x), x − x∗〉 ≥ 0 ∀ x ∈ X. (3.8.3)
+Note that if F(·) is monotone and continuous, a weak solution of VI(X, F) must be a strong solution and vice versa. In this section, we focus on the mirror-prox method for solving these VI problems. The mirror-prox method evolves from Korpelevich’s extragradient method. We assume that a distance generating function ν with modulus 1 and its associated prox-function V : Xo × X → R+ are given. The basic scheme of the mirror-prox method can be described as follows.
+Input: Initial point x1 ∈ X and stepsizes {γk}k≥1. (0) Set k = 1. (1) Compute
+yk = argminx∈X
+{〈γkF(xk), x〉 +V (xk, x)}, (3.8.4)
+xk+1 = argminx∈X
+{〈γkF(yk), x〉 +V (xk, x)}. (3.8.5)
+(2) Set k = k + 1 and go to Step 1.
+We now add a few remarks about the above mirror-prox method. First, observe that under the Euclidean case when ‖ · ‖ = ‖ · ‖2 and ν(x) = ‖x‖2/2, the computation of (yt , xt ), t ≥ 1, is the same as Korpelevich’s extragradient or Euclidean extragradient method. Second, the above method is slightly different that Nemirovski’s mirror-prox method for solving monotone VI problems which can possibly skip the extragradient step (3.8.5) depending on the progress of the algorithm. We will establish the convergence of the mirror-prox method for solving different types of VIs.
+3.8.1 Monotone Variational Inequalities
+In this subsection, we discuss the convergence properties of the mirror-prox method for solving monotone VIs. We first show an important recursion of the mirror-prox method for VI(X, F), which holds for VI problems not necessarily monotone.
+Lemma 3.9. Let x1 ∈ X be given and the pair (yk, xk+1) ∈ X × X be computed according to (3.8.4)–(3.8.5). Then for any x ∈ X, we have
+γk〈F(yk), yk − x〉 − γ2
+k
+2 ‖F(xk) − F(yk)‖2∗ +V (xk, yk) ≤ V (xk, x) −V (xk+1, x). (3.8.6)
+Proof. By (3.8.4) and Lemma 3.5 (with p(·) = γk〈F(xk), ·〉, x ̃ = xk, and uˆ = yk), we have
+
+
+ 88 3 Deterministic Convex Optimization
+γk〈F(xk), yk − x〉 +V (xk, yk) +V (yk, x) ≤ V (xk, x), ∀x ∈ X.
+Letting x = xk+1 in the above inequality, we obtain
+γk〈F(xk), yk − xk+1〉 +V (xk, yk) +V (yk, xk+1) ≤ V (xk, xk+1). (3.8.7)
+Moreover, by (3.8.5) and Lemma 3.5 (with p(·) = γk〈F(yk), ·〉, x ̃ = xk, and uˆ = xk+1), we have
+γk〈F(yk), xk+1 − x〉 +V (xk, xk+1) +V (xk+1, x) ≤ V (xk, x), ∀x ∈ X .
+Replacing V (xk, xk+1) in the above inequality with the bound in (3.8.7) and noting that 〈F(yk), xk+1 − x〉 = 〈F(yk), yk − x〉 − 〈F(yk), yk − xk+1〉, we have
+γk〈F(yk), yk − x〉 + γk〈F(xk) − F(yk), yk − xk+1〉
++V (xk, yk) +V (yk, xk+1) +V (xk+1, x) ≤ V (xk, x).
+Moreover, by using the Cauchy–Schwarz inequality and the strong convexity of ν, we have
+γk〈F(xk) − F(yk), yk − xk+1〉 +V (xk, yk) +V (yk, xk+1)
+≥ −γk‖F(xk) − F(yk)‖∗‖yk − xk+1‖ +V (xk, yk) +V (yk, xk+1)
+≥ −γk‖F(xk) − F(yk)‖∗ [2V (yk, xk+1)]1/2 +V (xk, yk) +V (yk, xk+1)
+≥ − γ2
+k
+2 ‖F(xk) − F(yk)‖2∗ +V (xk, yk),
+where the last inequality follows from (3.1.6). Combining the above two conclusions we arrive at relation (3.8.20).
+We define a termination criterion to characterize the weak solutions of VI problems as follows: g(x ̄) := sup
+x∈X
+〈F(x), x ̄ − x〉. (3.8.8)
+Note that we must have g(x ̄) ≥ 0 by setting x = x ̄ in the right-hand side of the above definition. Hence, g(x ̄) measures how much the condition in (3.8.3) is violated. It should be noted that the mirror-prox method can also generate a solution that approximately satisfies the stronger criterion in (3.8.1). We will discuss the computation of strong solutions in next subsection. For the sake of simplicity, we focus on the case when F is Lipschitz continuous, i.e.,
+‖F(x) − F(y)‖∗ ≤ L‖x − y‖, ∀ x, y ∈ X. (3.8.9)
+Note, however, that this algorithm can also be applied to more general problems for which F is Hölder continuous, locally Lipschitz continuous, continuous, or bounded. We leave the extension to these cases as an exercise.
+Theorem 3.11. Let x1 ∈ X be given and the pair (yk, xk+1) ∈ X × X be computed according to (3.8.4)–(3.8.5). Also let us denote
